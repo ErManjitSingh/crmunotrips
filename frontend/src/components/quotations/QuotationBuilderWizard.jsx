@@ -245,7 +245,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         search: debouncedPackageSearch || undefined,
         destination,
       }),
-      API.get('/packages', { skipErrorToast: true }),
+      API.get('/packages', { skipErrorToast: true }).catch(() => ({ data: [] })),
     ])
       .then(([unoResult, localRes]) => {
         if (cancelled) return;
@@ -259,7 +259,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           .map((p) => ({ ...p, catalogSource: 'custom' }));
         setPackages([...customs, ...uno]);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Failed to load UNO packages for quotation:', err);
         if (!cancelled) setPackages([]);
       })
       .finally(() => {

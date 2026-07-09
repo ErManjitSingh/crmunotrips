@@ -1,4 +1,7 @@
-const UNO_PUBLIC_API_BASE = 'https://api.unohotelsandresorts.com';
+import API from '../api/axios';
+
+/** Source of truth for UNO package catalog (proxied via CRM /api/uno-packages). */
+export const UNO_PACKAGES_API_URL = 'https://api.unohotelsandresorts.com/v1/packages';
 
 function toNumber(value, fallback = 0) {
   const num = Number(value);
@@ -30,7 +33,9 @@ export function matchesDestination(pkg = {}, destination = '') {
   const text = String(destination || '').trim();
   if (!text) return true;
 
-  const pkgDestination = String(pkg.destination || pkg.destinationName || pkg.destination_name || pkg.destination_city || '').trim();
+  const pkgDestination = String(
+    pkg.destination || pkg.destinationName || pkg.destination_name || pkg.destination_city || ''
+  ).trim();
   if (!pkgDestination) return true;
 
   const terms = text
@@ -54,62 +59,69 @@ export function mapUnoPackage(raw = {}, { includeDetail = false } = {}) {
   const destination =
     raw.destination_city ||
     raw.destination_name ||
+    raw.destination ||
     [raw.state, raw.country].filter(Boolean).join(', ') ||
     'India';
 
   const mapped = {
-    _id: raw.id,
-    id: raw.id,
+    _id: raw.id || raw._id,
+    id: raw.id || raw._id,
     slug: raw.slug,
-    packageCode: raw.package_code || '',
+    packageCode: raw.package_code || raw.packageCode || '',
     name: raw.name || '',
     destination,
-    destinationName: raw.destination_name || destination,
+    destinationName: raw.destination_name || raw.destinationName || destination,
     state: raw.state || '',
     country: raw.country || 'India',
-    duration,
-    durationNights,
-    durationLabel: raw.duration_label || `${duration}D / ${durationNights}N`,
-    startingPrice: toNumber(raw.discounted_price ?? raw.base_price, 0),
-    basePrice: toNumber(raw.base_price, 0),
-    discountedPrice: raw.discounted_price == null ? null : toNumber(raw.discounted_price, 0),
-    packageType: raw.tour_type || 'domestic',
+    duration: raw.duration || duration,
+    durationNights: raw.durationNights || durationNights,
+    durationLabel: raw.duration_label || raw.durationLabel || `${duration}D / ${durationNights}N`,
+    startingPrice: toNumber(raw.discounted_price ?? raw.base_price ?? raw.startingPrice, 0),
+    basePrice: toNumber(raw.base_price ?? raw.basePrice, 0),
+    discountedPrice: raw.discounted_price == null && raw.discountedPrice == null
+      ? null
+      : toNumber(raw.discounted_price ?? raw.discountedPrice, 0),
+    packageType: raw.tour_type || raw.packageType || 'domestic',
     currency: raw.currency || 'INR',
-    coverImage: raw.featured_image || '',
-    shortDescription: raw.short_description || '',
+    coverImage: raw.featured_image || raw.coverImage || '',
+    shortDescription: raw.short_description || raw.shortDescription || '',
     description: raw.description || '',
     inclusions: Array.isArray(raw.inclusions) ? raw.inclusions : [],
     exclusions: Array.isArray(raw.exclusions) ? raw.exclusions : [],
     externalSource: 'uno_hotels',
     status: raw.status,
-    bookingCount: toNumber(raw.booking_count, 0),
-    avgRating: toNumber(raw.avg_rating, 0),
-    reviewCount: toNumber(raw.review_count, 0),
-    isFeatured: Boolean(raw.is_featured),
-    isCustomizable: Boolean(raw.is_customizable),
+    bookingCount: toNumber(raw.booking_count ?? raw.bookingCount, 0),
+    avgRating: toNumber(raw.avg_rating ?? raw.avgRating, 0),
+    reviewCount: toNumber(raw.review_count ?? raw.reviewCount, 0),
+    isFeatured: Boolean(raw.is_featured ?? raw.isFeatured),
+    isCustomizable: Boolean(raw.is_customizable ?? raw.isCustomizable),
   };
 
-  if (includeDetail) {
-    mapped.galleryImages = Array.isArray(raw.gallery_images) ? raw.gallery_images : [];
-    mapped.remarks = Array.isArray(raw.remarks) ? raw.remarks : [];
-    mapped.termsConditions = Array.isArray(raw.terms_conditions) ? raw.terms_conditions : [];
-    mapped.cancellationPolicy = Array.isArray(raw.cancellation_policy) ? raw.cancellation_policy : [];
-    mapped.faqs = Array.isArray(raw.faqs) ? raw.faqs : [];
-    mapped.itinerary = Array.isArray(raw.itinerary_days)
-      ? raw.itinerary_days.map((day) => ({
-          id: day.id || `day-${day.day_number}`,
-          day: day.day_number,
-          title: day.title || `Day ${day.day_number}`,
-          description: day.description || '',
-          hotel: day.hotel_name || '',
-          activities: [day.arrival, day.transport].filter(Boolean).join(' · '),
-          meals: Array.isArray(day.meals_selected) ? day.meals_selected.join(', ') : day.dinner || '',
-          transport: day.transport || day.cab_name || day.transport_mode || '',
-          accommodation: day.hotel_name || '',
-          dayImage: day.day_image || '',
-          dayImages: Array.isArray(day.day_images) ? day.day_images : [],
-        }))
+  if (includeDetail || raw.itinerary?.length || raw.itinerary_days?.length) {
+    mapped.galleryImages = Array.isArray(raw.gallery_images || raw.galleryImages)
+      ? raw.gallery_images || raw.galleryImages
       : [];
+    mapped.remarks = raw.remarks || [];
+    mapped.termsConditions = raw.terms_conditions || raw.termsConditions || [];
+    mapped.cancellationPolicy = raw.cancellation_policy || raw.cancellationPolicy || [];
+    mapped.faqs = Array.isArray(raw.faqs) ? raw.faqs : [];
+    mapped.itinerary = Array.isArray(raw.itinerary)
+      ? raw.itinerary
+      : Array.isArray(raw.itinerary_days)
+        ? raw.itinerary_days.map((day) => ({
+            id: day.id || `day-${day.day_number}`,
+            day: day.day_number,
+            title: day.title || `Day ${day.day_number}`,
+            description: day.description || '',
+            hotel: day.hotel_name || '',
+            activities: [day.arrival, day.transport].filter(Boolean).join(' · '),
+            meals: Array.isArray(day.meals_selected) ? day.meals_selected.join(', ') : day.dinner || '',
+            transport: day.transport || day.cab_name || day.transport_mode || '',
+            accommodation: day.hotel_name || '',
+            dayImage: day.day_image || '',
+            dayImages: Array.isArray(day.day_images) ? day.day_images : [],
+          }))
+        : [];
   }
 
   return mapped;
@@ -130,26 +142,31 @@ function inferCityFromDestination(destination = '') {
   );
 }
 
+/**
+ * Fetch packages from UNO Hotels API (https://api.unohotelsandresorts.com/v1/packages)
+ * via CRM backend proxy /api/uno-packages.
+ */
 export async function fetchUnoPublicPackages({ page = 1, limit = 50, search = '', destination = '' } = {}) {
-  const url = new URL('/v1/packages', UNO_PUBLIC_API_BASE);
-  url.searchParams.set('page', String(page));
-  url.searchParams.set('limit', String(limit));
-
   const effectiveSearch = search || (destination ? inferCityFromDestination(destination) : '');
-  if (effectiveSearch) url.searchParams.set('search', effectiveSearch);
 
-  const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error('Failed to fetch public packages');
-  const json = await res.json();
-  const items = Array.isArray(json?.items) ? json.items : [];
-  const mapped = items.map((item) => mapUnoPackage(item));
-  const filtered = destination ? mapped.filter((pkg) => matchesDestination(pkg, destination)) : mapped;
+  const { data } = await API.get('/uno-packages', {
+    params: {
+      page,
+      limit,
+      search: effectiveSearch || undefined,
+      destination: destination || undefined,
+    },
+    skipErrorToast: true,
+  });
+
+  const items = Array.isArray(data?.items) ? data.items.map((item) => mapUnoPackage(item)) : [];
 
   return {
-    items: filtered,
-    total: destination ? filtered.length : toNumber(json?.total, filtered.length),
-    page: toNumber(json?.page, page),
-    totalPages: toNumber(json?.total_pages, 1),
+    items,
+    total: toNumber(data?.total, items.length),
+    page: toNumber(data?.page, page),
+    totalPages: toNumber(data?.totalPages, 1),
+    source: data?.source || 'uno_hotels_public',
   };
 }
 
@@ -157,27 +174,9 @@ export async function fetchUnoPublicPackageDetail(idOrSlug) {
   const key = String(idOrSlug || '').trim();
   if (!key) throw new Error('Package id is required');
 
-  const detailUrl = new URL(`/v1/packages/${encodeURIComponent(key)}`, UNO_PUBLIC_API_BASE);
-  const detailRes = await fetch(detailUrl.toString(), { headers: { Accept: 'application/json' } });
-  if (detailRes.ok) {
-    const detail = await detailRes.json();
-    return mapUnoPackage(detail, { includeDetail: true });
-  }
+  const { data } = await API.get(`/uno-packages/${encodeURIComponent(key)}`, {
+    skipErrorToast: true,
+  });
 
-  const list = await fetchUnoPublicPackages({ limit: 100, page: 1 });
-  const fallback = list.items.find(
-    (p) => p._id === key || p.id === key || p.slug === key || p.packageCode === key
-  );
-  if (!fallback) throw new Error('Package detail not found');
-
-  if (fallback.slug && fallback.slug !== key) {
-    try {
-      return await fetchUnoPublicPackageDetail(fallback.slug);
-    } catch {
-      /* use summary */
-    }
-  }
-
-  return fallback;
+  return mapUnoPackage(data, { includeDetail: true });
 }
-
