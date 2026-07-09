@@ -6,6 +6,7 @@ import AppSidebar from '../sidebar/AppSidebar';
 import TopBar from '../TopBar';
 import MissedFollowUpAlert from '../notifications/MissedFollowUpAlert';
 import SidebarUpgradeCard from '../sidebar/SidebarUpgradeCard';
+import SalesExecutiveMobileNav from './SalesExecutiveMobileNav';
 import { salesExecutiveNavItems } from './sidebar-config';
 
 function SalesExecutiveShell() {
