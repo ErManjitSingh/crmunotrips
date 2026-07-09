@@ -15,19 +15,11 @@ function exec(conn, cmd) {
   return new Promise((resolve, reject) => {
     conn.exec(cmd, { pty: true }, (err, stream) => {
       if (err) return reject(err);
-      let out = '';
-      let errOut = '';
-      stream.on('data', (d) => {
-        process.stdout.write(d);
-        out += d;
-      });
-      stream.stderr.on('data', (d) => {
-        process.stderr.write(d);
-        errOut += d;
-      });
+      stream.on('data', (d) => process.stdout.write(d));
+      stream.stderr.on('data', (d) => process.stderr.write(d));
       stream.on('close', (code) => {
-        if (code !== 0) reject(new Error(`Exit ${code}: ${errOut || out}`));
-        else resolve(out);
+        if (code !== 0) reject(new Error(`Exit ${code}`));
+        else resolve();
       });
     });
   });
@@ -37,7 +29,7 @@ const script = `set -e
 export DEBIAN_FRONTEND=noninteractive
 cd ${APP_ROOT}
 
-echo "==> Git sync from origin/main..."
+echo "==> Git sync from origin/main (force)..."
 git fetch origin main
 git checkout main 2>/dev/null || git checkout -b main
 git reset --hard origin/main
@@ -77,7 +69,7 @@ conn
     console.log('SSH connected.\n');
     try {
       await exec(conn, script);
-      console.log('\nDeploy finished. Test: http://testing.unotrips.com/api/health');
+      console.log('\nDeploy finished. Test: https://testing.unotrips.com/api/health');
     } catch (e) {
       console.error('\nDeploy failed:', e.message);
       process.exitCode = 1;
@@ -86,7 +78,7 @@ conn
     }
   })
   .on('error', (e) => {
-    console.error('SSH error:', e.message);
+    console.error(e);
     process.exit(1);
   })
-  .connect({ host: HOST, port: PORT, username: USER, password: PASSWORD, readyTimeout: 30000 });
+  .connect({ host: HOST, port: PORT, username: USER, password: PASSWORD });
