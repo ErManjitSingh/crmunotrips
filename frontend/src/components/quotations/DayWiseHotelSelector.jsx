@@ -45,6 +45,12 @@ export default function DayWiseHotelSelector({ destination, nights = 1, value = 
       nights: 1,
     });
     onChange(next.sort((a, b) => a.day - b.day));
+
+    if (selection.mealPlan && day < stayNights) {
+      const nextNight = day + 1;
+      const nextNightDone = next.find((item) => item.day === nextNight)?.mealPlan;
+      if (!nextNightDone) setActiveDay(nextNight);
+    }
   };
 
   const applyToAllNights = () => {

@@ -8,7 +8,6 @@ import {
   ImageOff,
   Loader2,
   MapPin,
-  Star,
   Users,
   UtensilsCrossed,
   Wifi,
@@ -68,27 +67,6 @@ function ImageCard({ src, alt, className, fallbackIcon: FallbackIcon = ImageOff 
   );
 }
 
-function StarRating({ rating = 0, category }) {
-  const stars = Math.min(5, Math.max(0, Math.round(Number(rating) || 0)));
-  if (!stars && !category) return null;
-  return (
-    <div className="flex items-center gap-1.5">
-      {stars > 0 && (
-        <div className="flex items-center gap-0.5">
-          {Array.from({ length: stars }).map((_, i) => (
-            <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
-          ))}
-        </div>
-      )}
-      {category && (
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-700/90 bg-amber-500/10 px-1.5 py-0.5 rounded-md">
-          {category}
-        </span>
-      )}
-    </div>
-  );
-}
-
 function SubStepBar({ subStep, value }) {
   return (
     <div className="flex items-center gap-1 p-1 rounded-2xl bg-surface-elevated/80 border border-subtle">
@@ -125,9 +103,9 @@ function SubStepBar({ subStep, value }) {
   );
 }
 
-function HotelCard({ hotel, selected, disabled, onSelect }) {
+function HotelListRow({ hotel, selected, disabled, onSelect }) {
   const thumb = pickImageUrl(hotel.thumbnailUrl, hotel.images?.[0]);
-  const amenityPreview = (hotel.amenities || []).slice(0, 3);
+  const stars = Math.min(5, Math.max(0, Math.round(Number(hotel.starCategory || hotel.rating) || 0)));
 
   return (
     <button
@@ -135,51 +113,46 @@ function HotelCard({ hotel, selected, disabled, onSelect }) {
       disabled={disabled}
       onClick={() => onSelect(hotel)}
       className={cn(
-        'group relative rounded-2xl border text-left overflow-hidden transition-all duration-200',
-        'hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5',
+        'w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all',
         selected
-          ? 'border-amber-500 ring-2 ring-amber-500/30 shadow-md shadow-amber-500/10'
-          : 'border-subtle hover:border-amber-400/40'
+          ? 'border-amber-500/50 bg-amber-500/10 ring-2 ring-amber-500/20'
+          : 'border-subtle hover:bg-surface-elevated'
       )}
     >
-      <div className="relative h-40 overflow-hidden">
-        <ImageCard
-          src={thumb}
-          alt={hotel.name}
-          className="w-full h-full transition-transform duration-300 group-hover:scale-105"
-          fallbackIcon={Building2}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-          <StarRating rating={hotel.starCategory || hotel.rating} category={hotel.category} />
-          <p className="font-bold text-sm mt-1 line-clamp-2 leading-snug">{hotel.name}</p>
+      {thumb ? (
+        <img src={thumb} alt="" className="h-14 w-14 rounded-lg object-cover border border-subtle shrink-0" loading="lazy" />
+      ) : (
+        <div className="h-14 w-14 rounded-lg bg-surface-elevated border border-subtle shrink-0 flex items-center justify-center">
+          <Building2 className="w-5 h-5 text-content-muted/50" />
         </div>
-        {hotel.startingPrice > 0 && (
-          <div className="absolute top-2 right-2 px-2 py-1 rounded-lg bg-white/95 text-amber-800 text-xs font-bold shadow-sm">
-            from {formatINR(hotel.startingPrice)}
-          </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-semibold text-sm line-clamp-1">{hotel.name}</p>
+          {stars > 0 && (
+            <span className="text-[10px] font-semibold text-amber-700 bg-amber-500/10 px-1.5 py-0.5 rounded-md">
+              {stars}★
+            </span>
+          )}
+          {hotel.category && (
+            <span className="text-[10px] font-semibold uppercase text-content-muted">{hotel.category}</span>
+          )}
+        </div>
+        <p className="text-xs text-content-muted mt-0.5 line-clamp-1 flex items-center gap-1">
+          <MapPin className="w-3 h-3 shrink-0" />
+          {hotel.location || hotel.city}
+        </p>
+        {(hotel.amenities || []).length > 0 && (
+          <p className="text-[10px] text-content-muted mt-1 line-clamp-1 capitalize">
+            {(hotel.amenities || []).slice(0, 3).map((a) => a.replace(/_/g, ' ')).join(' · ')}
+          </p>
         )}
       </div>
-      <div className="p-3 space-y-2 bg-surface-base">
-        <div className="flex items-center gap-1 text-xs text-content-muted">
-          <MapPin className="w-3 h-3 shrink-0 text-amber-600" />
-          <span className="truncate">{hotel.location || hotel.city}</span>
-        </div>
-        {amenityPreview.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {amenityPreview.map((item) => (
-              <span
-                key={item}
-                className="text-[10px] px-2 py-0.5 rounded-full bg-surface-elevated text-content-muted capitalize"
-              >
-                {item.replace(/_/g, ' ')}
-              </span>
-            ))}
-          </div>
+      <div className="shrink-0 text-right">
+        {hotel.startingPrice > 0 && (
+          <p className="text-sm font-bold text-amber-700">from {formatINR(hotel.startingPrice)}</p>
         )}
-        {hotel.reviewCount > 0 && (
-          <p className="text-[10px] text-content-muted">{hotel.reviewCount} reviews</p>
-        )}
+        {selected && <Check className="w-4 h-4 text-amber-600 ml-auto mt-1" />}
       </div>
     </button>
   );
@@ -426,9 +399,9 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
               <p className="text-xs text-content-muted mt-1">Try a different destination or check Uno Hotels catalog.</p>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 gap-4 max-h-[480px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
               {hotels.map((hotel) => (
-                <HotelCard
+                <HotelListRow
                   key={hotel.id}
                   hotel={hotel}
                   selected={value?.hotel?.id === hotel.id}
