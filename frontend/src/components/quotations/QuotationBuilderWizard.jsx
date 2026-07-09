@@ -8,7 +8,7 @@ import Avatar from '../ui/Avatar';
 import VirtualizedList from '../ui/VirtualizedList';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { buildListParams, unwrapPagination } from '../../utils/apiHelpers';
-import ItineraryBuilder from '../packages/ItineraryBuilder';
+import { fetchUnoPublicPackages, fetchUnoPublicPackageDetail } from '../../lib/unoPublicPackages';
 import InclusionExclusionEditor, { cleanInclusionExclusionLines } from './InclusionExclusionEditor';
 import QuotePricingPanel from './QuotePricingPanel';
 import QuotePdfPreview from './QuotePdfPreview';
@@ -18,6 +18,7 @@ import { WIZARD_STEPS } from './constants';
 import { calculatePricing, defaultItineraryDay, defaultWizardState, formatINR, matchesResourceDestination } from './quotationUtils';
 import { buildSelectedHotelsSnapshot } from './quotePdfHelpers';
 import { unwrapList } from '../../utils/apiHelpers';
+import ItineraryBuilder from '../packages/ItineraryBuilder';
 import { cn } from '../../lib/utils';
 
 const ADMIN_CONFIG = {
@@ -238,23 +239,21 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     let cancelled = false;
     setLoadingPackages(true);
     Promise.all([
-      API.get('/public-packages', {
-        params: {
-          limit: 100,
-          search: debouncedPackageSearch || undefined,
-        },
-        skipErrorToast: true,
+      fetchUnoPublicPackages({
+        limit: 100,
+        page: 1,
+        search: debouncedPackageSearch || undefined,
+        destination,
       }),
       API.get('/packages', { skipErrorToast: true }),
     ])
-      .then(([unoRes, localRes]) => {
+      .then(([unoResult, localRes]) => {
         if (cancelled) return;
-        const uno = unwrapList(unoRes.data).map((p) => ({
+        const uno = (unoResult.items || []).map((p) => ({
           ...p,
           _id: p._id || p.id,
           catalogSource: 'uno',
-        }))
-          .filter((p) => matchesResourceDestination(p, destination));
+        }));
         const customs = unwrapList(localRes.data)
           .filter((p) => p.sourceType === 'uno_clone' && matchesResourceDestination(p, destination))
           .map((p) => ({ ...p, catalogSource: 'custom' }));
@@ -333,8 +332,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         const res = await API.get(`/packages/${id}`, { skipErrorToast: true });
         detail = res.data;
       } else {
-        const res = await API.get(`/public-packages/${id}`, { skipErrorToast: true });
-        detail = res.data;
+        detail = await fetchUnoPublicPackageDetail(pkg.slug || id);
       }
       applyPackageDetail(detail);
     } catch {

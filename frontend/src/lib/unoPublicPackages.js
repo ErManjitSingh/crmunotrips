@@ -30,7 +30,7 @@ export function matchesDestination(pkg = {}, destination = '') {
   const text = String(destination || '').trim();
   if (!text) return true;
 
-  const pkgDestination = String(pkg.destination || pkg.destination_city || pkg.destination_name || '').trim();
+  const pkgDestination = String(pkg.destination || pkg.destinationName || pkg.destination_name || pkg.destination_city || '').trim();
   if (!pkgDestination) return true;
 
   const terms = text
@@ -38,7 +38,9 @@ export function matchesDestination(pkg = {}, destination = '') {
     .map((part) => normalize(part.replace(/\s+india$/i, '')))
     .filter((part) => part.length >= 3);
 
-  const haystack = normalize(pkgDestination);
+  const haystack = normalize(
+    [pkgDestination, pkg.name, pkg.destinationName].filter(Boolean).join(' ')
+  );
   return terms.some((term) => {
     if (haystack.includes(term) || term.includes(haystack)) return true;
     const cityToken = term.split(' ')[0];
@@ -113,11 +115,28 @@ export function mapUnoPackage(raw = {}, { includeDetail = false } = {}) {
   return mapped;
 }
 
+function inferCityFromDestination(destination = '') {
+  const text = String(destination || '').trim();
+  if (!text) return '';
+
+  const firstPart = text.split(',')[0]?.trim() || text;
+  return (
+    firstPart
+      .replace(
+        /\s+(India|Himachal Pradesh|Uttarakhand|Rajasthan|Kerala|Goa|Punjab|Delhi)$/i,
+        ''
+      )
+      .trim() || firstPart
+  );
+}
+
 export async function fetchUnoPublicPackages({ page = 1, limit = 50, search = '', destination = '' } = {}) {
   const url = new URL('/v1/packages', UNO_PUBLIC_API_BASE);
   url.searchParams.set('page', String(page));
   url.searchParams.set('limit', String(limit));
-  if (search) url.searchParams.set('search', search);
+
+  const effectiveSearch = search || (destination ? inferCityFromDestination(destination) : '');
+  if (effectiveSearch) url.searchParams.set('search', effectiveSearch);
 
   const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error('Failed to fetch public packages');
@@ -135,7 +154,10 @@ export async function fetchUnoPublicPackages({ page = 1, limit = 50, search = ''
 }
 
 export async function fetchUnoPublicPackageDetail(idOrSlug) {
-  const detailUrl = new URL(`/v1/packages/${idOrSlug}`, UNO_PUBLIC_API_BASE);
+  const key = String(idOrSlug || '').trim();
+  if (!key) throw new Error('Package id is required');
+
+  const detailUrl = new URL(`/v1/packages/${encodeURIComponent(key)}`, UNO_PUBLIC_API_BASE);
   const detailRes = await fetch(detailUrl.toString(), { headers: { Accept: 'application/json' } });
   if (detailRes.ok) {
     const detail = await detailRes.json();
@@ -143,8 +165,19 @@ export async function fetchUnoPublicPackageDetail(idOrSlug) {
   }
 
   const list = await fetchUnoPublicPackages({ limit: 100, page: 1 });
-  const fallback = list.items.find((p) => p._id === idOrSlug || p.slug === idOrSlug);
+  const fallback = list.items.find(
+    (p) => p._id === key || p.id === key || p.slug === key || p.packageCode === key
+  );
   if (!fallback) throw new Error('Package detail not found');
+
+  if (fallback.slug && fallback.slug !== key) {
+    try {
+      return await fetchUnoPublicPackageDetail(fallback.slug);
+    } catch {
+      /* use summary */
+    }
+  }
+
   return fallback;
 }
 

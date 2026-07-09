@@ -65,7 +65,9 @@ export function matchesResourceDestination(resource = {}, destination = '') {
   const text = String(destination || '').trim();
   if (!text) return true;
 
-  const resourceDestination = String(resource.destination || '').trim();
+  const resourceDestination = String(
+    resource.destination || resource.destinationName || resource.destination_name || resource.destination_city || ''
+  ).trim();
   if (!resourceDestination) return true;
 
   const normalize = (value) =>

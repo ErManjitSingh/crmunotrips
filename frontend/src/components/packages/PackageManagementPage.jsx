@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Package, RefreshCw } from 'lucide-react';
 import API from '../../api/axios';
+import { fetchUnoPublicPackages, fetchUnoPublicPackageDetail } from '../../lib/unoPublicPackages';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
 import TablePagination, { DEFAULT_PAGE_SIZE } from '../ui/TablePagination';
@@ -46,20 +47,17 @@ export default function PackageManagementPage() {
   const fetchPackages = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await API.get('/public-packages', {
-        params: {
-          page: pagination.pageIndex + 1,
-          limit: pagination.pageSize,
-          search: debouncedSearch || undefined,
-        },
-        skipErrorToast: true,
+      const result = await fetchUnoPublicPackages({
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
+        search: debouncedSearch || undefined,
       });
-      const rows = res.data?.items || [];
+      const rows = result.items || [];
       const filteredByType = typeFilter ? rows.filter((p) => p.packageType === typeFilter) : rows;
       setPackages(filteredByType);
       setMeta({
-        total: Number(res.data?.total || 0),
-        totalPages: Number(res.data?.totalPages || 1),
+        total: Number(result.total || filteredByType.length),
+        totalPages: Number(result.totalPages || 1),
       });
     } catch {
       setPackages([]);
@@ -93,8 +91,8 @@ export default function PackageManagementPage() {
     setDetail(pkg);
     setDetailLoading(true);
     try {
-      const res = await API.get(`/public-packages/${pkg._id || pkg.id}`, { skipErrorToast: true });
-      setDetail(res.data);
+      const data = await fetchUnoPublicPackageDetail(pkg.slug || pkg._id || pkg.id);
+      setDetail(data);
     } catch {
       setDetail(pkg);
     } finally {
