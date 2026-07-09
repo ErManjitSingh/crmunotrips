@@ -114,7 +114,7 @@ export function mapUnoPackage(raw = {}, { includeDetail = false } = {}) {
             title: day.title || `Day ${day.day_number}`,
             description: day.description || '',
             hotel: day.hotel_name || '',
-            activities: [day.arrival, day.transport].filter(Boolean).join(' · '),
+            activities: [day.arrival, day.transport, day.cab_name, day.transport_mode].filter(Boolean).join(' · '),
             meals: Array.isArray(day.meals_selected) ? day.meals_selected.join(', ') : day.dinner || '',
             transport: day.transport || day.cab_name || day.transport_mode || '',
             accommodation: day.hotel_name || '',

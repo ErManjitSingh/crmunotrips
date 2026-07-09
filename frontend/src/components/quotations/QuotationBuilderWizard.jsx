@@ -299,8 +299,13 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
 
   const applyPackageDetail = (detail) => {
     const cloned = JSON.parse(JSON.stringify(detail));
-    const itinerary =
+    const rawItinerary =
       cloned.itinerary?.length > 0 ? cloned.itinerary : buildFallbackItinerary(cloned);
+    const itinerary = rawItinerary.map((d, index) => ({
+      ...d,
+      id: d.id || `day-${d.day || index + 1}`,
+      day: d.day || index + 1,
+    }));
     const normalized = { ...cloned, itinerary };
     setSelectedPkgDetail(normalized);
     setCustomItinerary(itinerary.map((d) => ({ ...d })));
@@ -567,6 +572,21 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                 )}
                 {loadingPackageDetail && (
                   <p className="text-xs text-amber-700">Loading package itinerary & details...</p>
+                )}
+                {!loadingPackageDetail && state.packageId && customItinerary.length > 0 && activePkg && (
+                  <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-content-primary">Package Itinerary</p>
+                      <p className="text-xs text-content-muted mt-0.5">
+                        {customItinerary.length} day{customItinerary.length !== 1 ? 's' : ''} loaded — add, remove, or edit days below
+                      </p>
+                    </div>
+                    <ItineraryBuilder
+                      itinerary={customItinerary}
+                      onChange={setCustomItinerary}
+                      destination={activePkg.destination}
+                    />
+                  </div>
                 )}
               </div>
             )}
