@@ -49,6 +49,11 @@ systemctl start redis-server 2>/dev/null || true
 
 echo "==> Backend install..."
 cd ${APP_ROOT}/backend
+if grep -q UNO_HOTELS_API_BASE_URL .env 2>/dev/null; then
+  sed -i 's|UNO_HOTELS_API_BASE_URL=.*|UNO_HOTELS_API_BASE_URL=http://127.0.0.1:8000|' .env
+else
+  echo 'UNO_HOTELS_API_BASE_URL=http://127.0.0.1:8000' >> .env
+fi
 npm install --omit=dev
 
 echo "==> Frontend build..."

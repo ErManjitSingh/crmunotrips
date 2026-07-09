@@ -46,6 +46,73 @@ function mapItineraryDays(days = []) {
   });
 }
 
+function pickHotelLabel(option = {}) {
+  return (
+    option.name ||
+    option.hotel_name ||
+    option.title ||
+    option.hotelName ||
+    option.tier_name ||
+    ''
+  );
+}
+
+function mapDayOptionsToItinerary(days = []) {
+  return days.map((day) => {
+    const hotelOptions = Array.isArray(day.hotel_options) ? day.hotel_options : [];
+    const defaultHotel =
+      pickHotelLabel(hotelOptions.find((option) => option.is_default || option.isDefault || option.is_selected))
+      || pickHotelLabel(hotelOptions[0])
+      || '';
+
+    const sightseeing = (Array.isArray(day.sightseeing) ? day.sightseeing : [])
+      .map((spot) => spot.name)
+      .filter(Boolean);
+    const activities = (Array.isArray(day.activities) ? day.activities : [])
+      .map((activity) => activity.name)
+      .filter(Boolean);
+    const activityText = [...sightseeing, ...activities].join(' · ');
+
+    return {
+      id: `day-${day.day_number}`,
+      day: day.day_number,
+      title: day.title || `Day ${day.day_number}`,
+      description: day.location || '',
+      hotel: defaultHotel,
+      activities: activityText,
+      meals: '',
+      transport: '',
+      accommodation: defaultHotel,
+      dayImage: sanitizeImageUrl(day.day_image),
+      dayImages: sanitizeImages(day.day_images || []),
+    };
+  });
+}
+
+async function fetchUnoPackageDayOptions(slug) {
+  const payload = await unoFetch(`/v1/packages/${encodeURIComponent(slug)}/day-options`);
+  const unwrapped = unwrapPayload(payload);
+  if (Array.isArray(unwrapped?.days)) return unwrapped.days;
+  if (Array.isArray(unwrapped?.data?.days)) return unwrapped.data.days;
+  return [];
+}
+
+async function attachItineraryFromDayOptions(mapped, slug) {
+  if (!slug) return mapped;
+
+  try {
+    const days = await fetchUnoPackageDayOptions(slug);
+    if (days.length > 0) {
+      mapped.itinerary = mapDayOptionsToItinerary(days);
+      return mapped;
+    }
+  } catch {
+    /* fall back to itinerary_days or generated days */
+  }
+
+  return mapped;
+}
+
 function buildFallbackItinerary(pkg, destination) {
   const days = parseDurationDays(pkg);
   return Array.from({ length: days }, (_, index) => {
@@ -200,43 +267,74 @@ async function fetchUnoPackageById(packageId) {
   const key = String(packageId || '').trim();
   if (!key) throw new ApiError(400, 'Package id is required');
 
+  let mapped = null;
+  let slug = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(key) ? '' : key;
+
   // UNO detail endpoint accepts slug; UUID id returns 404.
   try {
     const detail = await unoFetch(`/v1/packages/${encodeURIComponent(key)}`);
-    return mapUnoPackage(unwrapPayload(detail), { includeItinerary: true, includeDetail: true });
+    const raw = unwrapPayload(detail);
+    slug = raw.slug || slug;
+    mapped = mapUnoPackage(raw, { includeDetail: true });
   } catch (err) {
     if (err.statusCode !== 404) throw err;
   }
 
-  const list = await fetchUnoPackages({ limit: UNO_API_MAX_LIMIT, page: 1 });
-  const summary = list.items.find(
-    (item) => item.id === key || item._id === key || item.slug === key
-  );
-  if (!summary) throw new ApiError(404, 'Package not found in Uno Hotels catalog');
+  if (!mapped) {
+    const list = await fetchUnoPackages({ limit: UNO_API_MAX_LIMIT, page: 1 });
+    const summary = list.items.find(
+      (item) => item.id === key || item._id === key || item.slug === key
+    );
+    if (!summary) throw new ApiError(404, 'Package not found in Uno Hotels catalog');
 
-  if (summary.slug && summary.slug !== key) {
-    try {
-      const detail = await unoFetch(`/v1/packages/${encodeURIComponent(summary.slug)}`);
-      return mapUnoPackage(unwrapPayload(detail), { includeItinerary: true, includeDetail: true });
-    } catch {
-      /* fall back to summary */
+    slug = summary.slug || slug;
+
+    if (summary.slug && summary.slug !== key) {
+      try {
+        const detail = await unoFetch(`/v1/packages/${encodeURIComponent(summary.slug)}`);
+        const raw = unwrapPayload(detail);
+        slug = raw.slug || summary.slug;
+        mapped = mapUnoPackage(raw, { includeDetail: true });
+      } catch {
+        /* fall back to summary */
+      }
+    }
+
+    if (!mapped) {
+      mapped = mapUnoPackage(
+        {
+          ...summary,
+          id: summary.id || summary._id,
+          slug: summary.slug,
+          duration_days: summary.duration,
+          duration_nights: summary.durationNights,
+          duration_label: summary.durationLabel,
+          base_price: summary.basePrice,
+          tour_type: summary.packageType,
+          destination_city: summary.destination,
+        },
+        { includeDetail: true }
+      );
     }
   }
 
-  return mapUnoPackage(
-    {
-      ...summary,
-      id: summary.id || summary._id,
-      slug: summary.slug,
-      duration_days: summary.duration,
-      duration_nights: summary.durationNights,
-      duration_label: summary.durationLabel,
-      base_price: summary.basePrice,
-      tour_type: summary.packageType,
-      destination_city: summary.destination,
-    },
-    { includeItinerary: true, includeDetail: true }
-  );
+  mapped = await attachItineraryFromDayOptions(mapped, slug || mapped.slug);
+
+  if (!mapped.itinerary?.length) {
+    const destination = mapped.destination || 'India';
+    mapped.itinerary = buildFallbackItinerary(
+      {
+        id: mapped.id,
+        slug: mapped.slug,
+        duration_days: mapped.duration,
+        short_description: mapped.shortDescription,
+        description: mapped.description,
+      },
+      destination
+    );
+  }
+
+  return mapped;
 }
 
 async function getUnoPackageById(packageId) {
