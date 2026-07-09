@@ -1,19 +1,20 @@
-/** Dark navy sidebar with blue active states — matches UNO Trips CRM design */
+/** Dark navy sidebar with purple active states — matches UNO Trips CRM design */
 const DARK_NAVY = {
   brandGradient: 'from-orange-500 to-orange-600',
   brandShadow: 'shadow-orange-500/40',
   brandGlow: 'bg-orange-400/20',
   titleOrange: 'text-white',
   titleGradient: 'text-white',
-  indicator: 'bg-blue-400',
+  indicator: 'bg-[#5D5FEF]',
   iconActive: 'text-white',
   iconBoxActive: 'bg-transparent',
   iconInactive: 'text-slate-400 group-hover:text-slate-200',
-  itemActive: 'bg-blue-500 text-white shadow-md shadow-blue-500/30',
+  itemActive: 'bg-[#5D5FEF] text-white shadow-md shadow-[#5D5FEF]/30',
   groupActive: 'text-white bg-white/[0.06]',
-  searchFocus: 'focus:ring-blue-500/30 focus:border-blue-500/40',
+  searchFocus: 'focus:ring-[#5D5FEF]/30 focus:border-[#5D5FEF]/40',
   searchIconFocus: 'group-focus-within:text-slate-400',
   avatarGradient: 'from-orange-500 to-orange-600',
+  badge: 'bg-[#5D5FEF]/25 text-violet-200',
 };
 
 export const SIDEBAR_ACCENTS = {
@@ -29,7 +30,7 @@ export const SIDEBAR_ACCENTS = {
   },
   violet: {
     ...DARK_NAVY,
-    itemActive: 'bg-violet-600 text-white shadow-md shadow-violet-500/30',
+    itemActive: 'bg-[#5D5FEF] text-white shadow-md shadow-[#5D5FEF]/30',
     headerBg: 'from-transparent to-transparent',
     headerBorder: 'border-white/10',
     titleGradient: 'text-white',

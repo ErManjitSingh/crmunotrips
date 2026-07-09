@@ -9,7 +9,7 @@ function formatTodayDate() {
   });
 }
 
-export default function ExecutivePageShell({ title, description, action, showDate = true, children }) {
+export default function ExecutivePageShell({ title, description, icon: Icon, action, showDate = true, children }) {
   return (
     <div className="space-y-6 pb-8">
       <motion.div
@@ -18,9 +18,16 @@ export default function ExecutivePageShell({ title, description, action, showDat
         className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
       >
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-content-primary tracking-tight">{title}</h1>
+          <div className="flex items-center gap-2.5">
+            {Icon && (
+              <div className="w-9 h-9 rounded-xl bg-[#5D5FEF]/10 flex items-center justify-center shrink-0">
+                <Icon className="w-[18px] h-[18px] text-[#5D5FEF]" strokeWidth={2} />
+              </div>
+            )}
+            <h1 className="text-2xl sm:text-[28px] font-bold text-content-primary tracking-tight">{title}</h1>
+          </div>
           {description && (
-            <p className="text-sm text-content-secondary mt-1">{description}</p>
+            <p className="text-sm text-content-secondary mt-1.5 sm:ml-[46px]">{description}</p>
           )}
         </div>
         <div className="flex items-center gap-3 shrink-0">

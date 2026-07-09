@@ -12,38 +12,30 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import ExecutivePageShell from './ExecutivePageShell';
 import { Button } from '../ui/button';
 import {
-  executiveCard,
   executiveCardHover,
   executiveInput,
   executiveBanner,
   executiveIconAccent,
 } from './executivePageStyles';
 import PriorityBadge from '../sales-manager/PriorityBadge';
+import ExecutiveLeadKpiStrip from './ExecutiveLeadKpiStrip';
+import ExecutivePipelineCard from './ExecutivePipelineCard';
+import ExecutiveLeadsFilterBar from './ExecutiveLeadsFilterBar';
 import {
   LeadIdPill,
   DestinationChip,
   BudgetBadge,
   ManagerStatusBadge,
   CustomerCell,
+  TravelDateCell,
 } from '../sales-manager/LeadListBadges';
-import { LEAD_FILTERS, EXEC_FILTER_THEMES, formatTravelDate, formatFollowUpDate } from './executiveUtils';
+import { LEAD_FILTERS, EXEC_FILTER_THEMES, formatFollowUpDate } from './executiveUtils';
 import LeadActionsMenu, { ActionModal } from './LeadActionsMenu';
 import VirtualizedRoleTable from '../ui/VirtualizedRoleTable';
-import { DEFAULT_PAGE_SIZE } from '../ui/TablePagination';
 import AddFollowUpModal from '../followups/AddFollowUpModal';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/followupApi';
-import { LEAD_STATUSES, DESTINATIONS } from '../leads/constants';
 
 const ICONS = { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users };
-
-const PRIORITY_OPTIONS = [
-  { value: '', label: 'All priorities' },
-  { value: 'hot', label: 'Hot leads' },
-  { value: 'high', label: 'High priority' },
-  { value: 'urgent', label: 'Urgent' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
-];
 
 const STATUSES = [
   'new',
@@ -67,7 +59,7 @@ export default function MyLeadsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [destinationFilter, setDestinationFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   const [modal, setModal] = useState(null);
   const [modalStatus, setModalStatus] = useState('contacted');
   const [modalStatusReason, setModalStatusReason] = useState('');
@@ -151,7 +143,7 @@ export default function MyLeadsPage() {
     }),
     columnHelper.accessor('travelDate', {
       header: 'Travel Date',
-      cell: (i) => <span className="text-xs text-content-secondary">{formatTravelDate(i.getValue())}</span>,
+      cell: (i) => <TravelDateCell date={i.getValue()} />,
     }),
     columnHelper.accessor('budget', {
       header: 'Budget',
@@ -188,91 +180,66 @@ export default function MyLeadsPage() {
   ], []);
 
   return (
-    <ExecutivePageShell title={meta.title} description={meta.desc} showDate={false}>
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`${executiveBanner} backdrop-blur-xl`}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-2xl bg-white/80 dark:bg-slate-900/60 shadow-sm ${theme.icon}`}>
-              <Icon className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-content-primary tabular-nums">{isLoading ? '—' : total}</p>
-              <p className="text-sm text-content-secondary">{meta.title}</p>
-            </div>
+    <ExecutivePageShell title={meta.title} description={meta.desc} icon={Icon} showDate={false}>
+      {isAllView ? (
+        <>
+          <div className="flex flex-col xl:flex-row gap-4 items-stretch">
+            <ExecutiveLeadKpiStrip />
+            <ExecutivePipelineCard />
           </div>
-          {filter === 'hot' && (
-            <div className="text-xs text-content-secondary max-w-sm">
-              Auto-highlighted: budget &gt; ₹50K · travel within 30 days · repeat customers
-            </div>
-          )}
-          <div className="flex items-center gap-2 text-sm font-semibold text-violet-600 bg-violet-500/10 px-3 py-1.5 rounded-full ring-1 ring-violet-500/20">
-            <TrendingUp className="w-4 h-4" /> Your pipeline
-          </div>
-        </div>
-      </motion.div>
 
-      <div className={`flex flex-col gap-3 ${isAllView ? '' : 'max-w-md'}`}>
-        <div className="relative flex-1 max-w-md">
-          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${executiveIconAccent}`} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, destination, phone…"
-            className={`w-full pl-10 pr-4 py-2.5 ${executiveInput}`}
+          <ExecutiveLeadsFilterBar
+            search={search}
+            onSearchChange={setSearch}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            destinationFilter={destinationFilter}
+            onDestinationChange={setDestinationFilter}
+            priorityFilter={priorityFilter}
+            onPriorityChange={setPriorityFilter}
           />
-        </div>
-        {isAllView && (
-          <div className="flex flex-wrap gap-2">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className={`h-10 px-3 ${executiveInput}`}
-            >
-              <option value="">All statuses</option>
-              {LEAD_STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
-            <select
-              value={destinationFilter}
-              onChange={(e) => setDestinationFilter(e.target.value)}
-              className={`h-10 px-3 ${executiveInput}`}
-            >
-              <option value="">All destinations</option>
-              {DESTINATIONS.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className={`h-10 px-3 ${executiveInput}`}
-            >
-              {PRIORITY_OPTIONS.map((p) => (
-                <option key={p.value || 'all'} value={p.value}>{p.label}</option>
-              ))}
-            </select>
-            {(statusFilter || destinationFilter || priorityFilter) && (
-              <Button
-                type="button"
-                variant="secondary"
-                className="h-10 rounded-xl"
-                onClick={() => {
-                  setStatusFilter('');
-                  setDestinationFilter('');
-                  setPriorityFilter('');
-                }}
-              >
-                Clear filters
-              </Button>
-            )}
+        </>
+      ) : (
+        <>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`${executiveBanner} backdrop-blur-xl`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-2xl bg-white/80 dark:bg-slate-900/60 shadow-sm ${theme.icon}`}>
+                  <Icon className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-content-primary tabular-nums">{isLoading ? '—' : total}</p>
+                  <p className="text-sm text-content-secondary">{meta.title}</p>
+                </div>
+              </div>
+              {filter === 'hot' && (
+                <div className="text-xs text-content-secondary max-w-sm">
+                  Auto-highlighted: budget &gt; ₹50K · travel within 30 days · repeat customers
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#5D5FEF] bg-[#5D5FEF]/10 px-3 py-1.5 rounded-full ring-1 ring-[#5D5FEF]/20">
+                <TrendingUp className="w-4 h-4" /> Your pipeline
+              </div>
+            </div>
+          </motion.div>
+
+          <div className="flex flex-col gap-3 max-w-md">
+            <div className="relative flex-1 max-w-md">
+              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${executiveIconAccent}`} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name, destination, phone…"
+                className={`w-full pl-10 pr-4 py-2.5 ${executiveInput}`}
+              />
+            </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       <VirtualizedRoleTable
         data={leads}

@@ -50,6 +50,7 @@ router.use('/reminders', reminderRoutes);
 router.use('/quotations', quotationRoutes);
 router.use('/packages', packageRoutes);
 router.use('/uno-packages', unoHotelsPackageRoutes);
+router.use('/public-packages', unoHotelsPackageRoutes);
 router.use('/uno-hotels', unoHotelsHotelRoutes);
 router.use('/hotels', hotelRoutes);
 router.use('/cabs', cabRoutes);

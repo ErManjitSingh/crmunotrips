@@ -21,6 +21,7 @@ export default function VirtualizedRoleTable({
   total,
   onPaginationChange,
   totalLabel = 'leads',
+  paginationAccent = 'violet',
   rowClassName = 'hover:bg-violet-50/40 dark:hover:bg-violet-950/20 transition-colors',
   tableClassName = 'w-full text-sm',
   containerClassName = 'rounded-2xl border border-subtle bg-white dark:bg-slate-900 shadow-sm overflow-hidden',
@@ -122,6 +123,7 @@ export default function VirtualizedRoleTable({
           onPageSizeChange={(pageSize) => onPaginationChange({ pageIndex: 0, pageSize })}
           totalLabel={totalLabel}
           showPageNumbers
+          accent={paginationAccent}
           className="border-t border-subtle bg-slate-50/50"
         />
       )}

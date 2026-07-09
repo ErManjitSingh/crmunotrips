@@ -2,6 +2,7 @@ const Lead = require('../models/Lead');
 const FollowUp = require('../models/FollowUp');
 const Quotation = require('../models/Quotation');
 const Package = require('../models/Package');
+const { getUnoPackagesTotal } = require('./unoHotelsPackageService');
 const Notification = require('../models/Notification');
 const Booking = require('../models/Booking');
 const SupportTicket = require('../models/SupportTicket');
@@ -117,7 +118,7 @@ async function buildAdminNavCounts(userId, { branchId } = {}) {
     }),
     Quotation.countDocuments(withBranch({}, branchId)),
     Quotation.countDocuments(withBranch({ status: 'pending_approval' }, branchId)),
-    Package.countDocuments(),
+    getUnoPackagesTotal().catch(() => Package.countDocuments()),
     unreadNotifications(userId, branchId),
     countFollowUpsToday({}, branchId),
     buildOperationsNavCounts(userId, { branchId }),
@@ -233,6 +234,15 @@ async function aggregateExecutiveLeadCounts(userId, branchId) {
           { $match: { 'reactivation.isReactivated': true, status: 'reactivated' } },
           { $count: 'n' },
         ],
+        urgent: [
+          {
+            $match: {
+              priority: 'urgent',
+              status: { $nin: ['converted', 'lost', 'booked_from_another_company'] },
+            },
+          },
+          { $count: 'n' },
+        ],
         customers: [
           { $match: { $or: [{ status: 'converted' }, { isRepeatCustomer: true }] } },
           { $count: 'n' },
@@ -252,6 +262,7 @@ async function aggregateExecutiveLeadCounts(userId, branchId) {
       converted: facetCount(row, 'converted'),
       lost: facetCount(row, 'lost'),
       reactivated: facetCount(row, 'reactivated'),
+      urgent: facetCount(row, 'urgent'),
     },
     customers: facetCount(row, 'customers'),
     leadIds: (row?.leadIds || []).map((l) => l._id),

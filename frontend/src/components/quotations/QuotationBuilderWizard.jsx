@@ -112,7 +112,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const [dayWiseHotels, setDayWiseHotels] = useState([]);
   const [loadingPackageDetail, setLoadingPackageDetail] = useState(false);
   const [loadingPackages, setLoadingPackages] = useState(false);
+  const [packageSearch, setPackageSearch] = useState('');
+  const debouncedPackageSearch = useDebouncedValue(packageSearch, 350);
   const [saving, setSaving] = useState(false);
+
+  const isMongoPackageId = (id) => id && /^[a-fA-F0-9]{24}$/.test(String(id));
 
   useEffect(() => {
     let cancelled = false;
@@ -224,7 +228,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   };
 
   useEffect(() => {
-    const destination = selectedLead?.destination;
+    if (step !== 2) return undefined;
+    const destination = selectedLead?.destination?.trim();
     if (!destination) {
       setPackages([]);
       return undefined;
@@ -232,12 +237,28 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
 
     let cancelled = false;
     setLoadingPackages(true);
-    API.get('/uno-packages', {
-      params: { limit: 50, destination },
-      skipErrorToast: true,
-    })
-      .then((res) => {
-        if (!cancelled) setPackages(unwrapList(res.data));
+    Promise.all([
+      API.get('/public-packages', {
+        params: {
+          limit: 100,
+          search: debouncedPackageSearch || undefined,
+        },
+        skipErrorToast: true,
+      }),
+      API.get('/packages', { skipErrorToast: true }),
+    ])
+      .then(([unoRes, localRes]) => {
+        if (cancelled) return;
+        const uno = unwrapList(unoRes.data).map((p) => ({
+          ...p,
+          _id: p._id || p.id,
+          catalogSource: 'uno',
+        }))
+          .filter((p) => matchesResourceDestination(p, destination));
+        const customs = unwrapList(localRes.data)
+          .filter((p) => p.sourceType === 'uno_clone' && matchesResourceDestination(p, destination))
+          .map((p) => ({ ...p, catalogSource: 'custom' }));
+        setPackages([...customs, ...uno]);
       })
       .catch(() => {
         if (!cancelled) setPackages([]);
@@ -249,7 +270,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     return () => {
       cancelled = true;
     };
-  }, [selectedLead?.destination]);
+  }, [step, debouncedPackageSearch, selectedLead?.destination]);
 
   const buildPackageSnapshot = (pkg) => ({
     ...pkg,
@@ -277,9 +298,10 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   };
 
   const applyPackageDetail = (detail) => {
+    const cloned = JSON.parse(JSON.stringify(detail));
     const itinerary =
-      detail.itinerary?.length > 0 ? detail.itinerary : buildFallbackItinerary(detail);
-    const normalized = { ...detail, itinerary };
+      cloned.itinerary?.length > 0 ? cloned.itinerary : buildFallbackItinerary(cloned);
+    const normalized = { ...cloned, itinerary };
     setSelectedPkgDetail(normalized);
     setCustomItinerary(itinerary.map((d) => ({ ...d })));
     setCustomInclusions(normalized.inclusions?.length ? [...normalized.inclusions] : ['']);
@@ -296,7 +318,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   };
 
   const selectPackage = async (pkg) => {
-    setState((s) => ({ ...s, packageId: pkg._id }));
+    const id = pkg._id || pkg.id;
+    setState((s) => ({ ...s, packageId: id }));
     setCustomItinerary([]);
     setCustomInclusions([]);
     setCustomExclusions([]);
@@ -305,8 +328,15 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setDayWiseHotels([]);
     setLoadingPackageDetail(true);
     try {
-      const res = await API.get(`/uno-packages/${pkg._id}`, { skipErrorToast: true });
-      applyPackageDetail(res.data);
+      let detail;
+      if (pkg.catalogSource === 'custom' || isMongoPackageId(id)) {
+        const res = await API.get(`/packages/${id}`, { skipErrorToast: true });
+        detail = res.data;
+      } else {
+        const res = await API.get(`/public-packages/${id}`, { skipErrorToast: true });
+        detail = res.data;
+      }
+      applyPackageDetail(detail);
     } catch {
       applyPackageDetail(pkg);
     } finally {
@@ -340,7 +370,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       const payload = {
         quoteNumber: `Q-${Date.now().toString().slice(-6)}`,
         leadId: state.leadId,
-        packageId: state.packageId,
+        packageId: isMongoPackageId(state.packageId) ? state.packageId : null,
         status,
         pricing: state.pricing,
         selectedHotels: buildSelectedHotelsSnapshot(dayWiseHotels),
@@ -483,24 +513,61 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
               <div className="space-y-3">
                 <h2 className="text-lg font-bold">Select Package</h2>
                 <p className="text-xs text-content-muted">
-                  Packages for <span className="font-medium text-content-primary">{selectedLead?.destination || 'selected lead'}</span> from Uno Hotels
+                  Packages matching lead destination from Uno Hotels catalog
+                  {selectedLead?.destination ? (
+                    <> — lead destination: <span className="font-medium text-content-primary">{selectedLead.destination}</span></>
+                  ) : null}
                 </p>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
+                  <input
+                    type="search"
+                    value={packageSearch}
+                    onChange={(e) => setPackageSearch(e.target.value)}
+                    placeholder="Search packages by name or destination..."
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-subtle bg-surface text-sm outline-none focus:ring-2 focus:ring-amber-500/30"
+                  />
+                </div>
                 {loadingPackages ? (
                   <p className="text-sm text-content-muted py-8 text-center">Loading packages...</p>
                 ) : (
-                <div className="grid sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto">
+                <div className="space-y-2 max-h-[420px] overflow-y-auto">
                   {packages.length === 0 ? (
-                    <p className="text-sm text-content-muted col-span-full py-8 text-center">No packages found for this destination.</p>
+                    <p className="text-sm text-content-muted py-8 text-center">No packages found for this lead destination.</p>
                   ) : packages.map((p) => (
-                    <button key={p._id} type="button" onClick={() => selectPackage(p)} className={cn('p-4 rounded-xl border text-left', state.packageId === p._id ? 'border-amber-500/50 bg-amber-500/10 ring-2 ring-amber-500/20' : 'border-subtle hover:bg-surface-elevated')}>
-                      <p className="font-bold">{p.name}</p>
-                      <p className="text-xs text-content-muted mt-1">{p.destination} · {p.durationLabel || `${p.duration}D`} · from {formatINR(p.startingPrice)}</p>
+                    <button
+                      key={`${p.catalogSource || 'pkg'}-${p._id}`}
+                      type="button"
+                      onClick={() => selectPackage(p)}
+                      className={cn(
+                        'w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all',
+                        state.packageId === p._id
+                          ? 'border-amber-500/50 bg-amber-500/10 ring-2 ring-amber-500/20'
+                          : 'border-subtle hover:bg-surface-elevated'
+                      )}
+                    >
+                      {p.coverImage ? (
+                        <img src={p.coverImage} alt="" className="h-12 w-12 rounded-lg object-cover border border-subtle shrink-0" loading="lazy" />
+                      ) : (
+                        <div className="h-12 w-12 rounded-lg bg-surface-elevated border border-subtle shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm line-clamp-1">{p.name}</p>
+                        <p className="text-xs text-content-muted mt-0.5">
+                          {p.destination} · {p.durationLabel || `${p.duration}D`} · from {formatINR(p.startingPrice)}
+                        </p>
+                      </div>
+                      {p.catalogSource === 'custom' && (
+                        <span className="shrink-0 text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-violet-500/10 text-violet-700 border border-violet-400/30">
+                          Your copy
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
                 )}
                 {loadingPackageDetail && (
-                  <p className="text-xs text-amber-700">Loading package itinerary...</p>
+                  <p className="text-xs text-amber-700">Loading package itinerary & details...</p>
                 )}
               </div>
             )}

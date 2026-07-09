@@ -135,13 +135,20 @@ export function ManagerStatusBadge({ status, lead }) {
 export function CustomerCell({ name, lead }) {
   const isReturning = lead?.isRepeatCustomer || lead?.isVip;
   return (
-    <div className="flex items-center gap-2.5 min-w-0 max-w-[180px]">
+    <div className="flex items-center gap-2.5 min-w-0 max-w-[200px]">
       <Avatar name={name} size="sm" className="!w-8 !h-8 !text-[11px] shrink-0" />
-      <div className="min-w-0">
+      <div className="min-w-0 flex items-center gap-2">
         <p className="font-semibold text-sm text-content-primary truncate">{name}</p>
-        <span className={cn('text-[11px] font-medium', isReturning ? 'text-emerald-600' : 'text-blue-600')}>
-          {isReturning ? 'Returning' : 'New'}
-        </span>
+        {!isReturning && (
+          <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[#5D5FEF]/10 text-[10px] font-semibold text-[#5D5FEF]">
+            New
+          </span>
+        )}
+        {isReturning && (
+          <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-[10px] font-semibold text-emerald-600">
+            Returning
+          </span>
+        )}
       </div>
     </div>
   );

@@ -60,7 +60,7 @@ export default function SidebarNavGroup({ group, defaultOpen = false }) {
             >
               <Icon className="w-[18px] h-[18px]" />
               {displayBadge > 0 && (
-                <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-blue-400 ring-2 ring-[#0f172a]" />
+                <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-[#5D5FEF] ring-2 ring-[#12162B]" />
               )}
             </button>
           </TooltipTrigger>
@@ -100,7 +100,7 @@ export default function SidebarNavGroup({ group, defaultOpen = false }) {
         <Icon className="w-[18px] h-[18px] shrink-0" strokeWidth={2} />
         <span className="flex-1 text-left truncate">{group.label}</span>
         {displayBadge > 0 && (
-          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-blue-500/20 text-blue-300 tabular-nums">
+          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-[#5D5FEF]/20 text-violet-300 tabular-nums">
             {displayBadge > 999 ? '999+' : displayBadge}
           </span>
         )}

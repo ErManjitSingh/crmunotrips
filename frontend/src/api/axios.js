@@ -26,11 +26,15 @@ API.interceptors.request.use((config) => {
   if (selectedBranchId) {
     config.headers['x-branch-id'] = selectedBranchId;
     const method = (config.method || 'get').toLowerCase();
+    const url = config.url || '';
+    const skipBranchQueryParam = url.includes('/public-packages') || url.includes('/uno-packages');
     if (method === 'get') {
-      config.params = {
-        ...(config.params || {}),
-        branchId: config.params?.branchId || selectedBranchId,
-      };
+      if (!skipBranchQueryParam) {
+        config.params = {
+          ...(config.params || {}),
+          branchId: config.params?.branchId || selectedBranchId,
+        };
+      }
     }
   }
   return config;

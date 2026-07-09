@@ -1,6 +1,6 @@
 const ApiError = require('../utils/apiError');
 
-const BASE_URL = (process.env.UNO_HOTELS_API_BASE_URL || 'https://unohotels-backend.onrender.com').replace(/\/$/, '');
+const BASE_URL = (process.env.UNO_HOTELS_API_BASE_URL || 'https://api.unohotelsandresorts.com').replace(/\/$/, '');
 
 let cachedAdminToken = null;
 let tokenExpiresAt = 0;

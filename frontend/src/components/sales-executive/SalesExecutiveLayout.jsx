@@ -5,7 +5,7 @@ import { SidebarProvider, useSidebar } from '../../context/SidebarContext';
 import AppSidebar from '../sidebar/AppSidebar';
 import TopBar from '../TopBar';
 import MissedFollowUpAlert from '../notifications/MissedFollowUpAlert';
-import SalesExecutiveMobileNav from './SalesExecutiveMobileNav';
+import SidebarUpgradeCard from '../sidebar/SidebarUpgradeCard';
 import { salesExecutiveNavItems } from './sidebar-config';
 
 function SalesExecutiveShell() {
@@ -16,13 +16,14 @@ function SalesExecutiveShell() {
     user,
     navItems: salesExecutiveNavItems,
     brandSubtitle: 'Sales Executive',
-    accent: 'sky',
+    accent: 'violet',
     profilePath: '/sales-executive/profile',
     quickActions: [],
+    sidebarFooter: <SidebarUpgradeCard />,
   };
 
   return (
-    <div className="flex h-dvh max-h-dvh overflow-hidden bg-[#F8F9FB] dark:bg-surface-app">
+    <div className="flex h-dvh max-h-dvh overflow-hidden bg-[#F8F9FD] dark:bg-surface-app">
       <div className="hidden lg:block shrink-0">
         <AppSidebar {...sidebarProps} className="h-dvh border-r-violet-500/10" />
       </div>

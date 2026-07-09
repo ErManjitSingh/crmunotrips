@@ -4,6 +4,41 @@ const Cab = require('../models/Cab');
 const Flight = require('../models/Flight');
 const ApiError = require('../utils/apiError');
 const asyncHandler = require('../utils/asyncHandler');
+const { getUnoPackageById } = require('../services/unoHotelsPackageService');
+
+function mapItineraryForDb(days = []) {
+  return days.map((day) => ({
+    day: day.day,
+    title: day.title || `Day ${day.day}`,
+    description: day.description || '',
+    meals: day.meals || '',
+    accommodation: day.accommodation || day.hotel || '',
+    hotel: day.hotel || '',
+    activities: day.activities || '',
+    transport: day.transport || '',
+  }));
+}
+
+function mapUnoDetailToPackageDoc(detail, userId) {
+  return {
+    name: detail.name,
+    destination: detail.destination,
+    duration: detail.duration || 1,
+    durationLabel: detail.durationLabel || '',
+    startingPrice: detail.startingPrice || 0,
+    packageType: detail.packageType || 'domestic',
+    packageCode: detail.packageCode || '',
+    shortDescription: detail.shortDescription || '',
+    coverImage: detail.coverImage || '',
+    inclusions: detail.inclusions || [],
+    exclusions: detail.exclusions || [],
+    itinerary: mapItineraryForDb(detail.itinerary || []),
+    sourceType: 'uno_clone',
+    sourcePackageId: String(detail.id || detail._id || ''),
+    sourceSlug: detail.slug || '',
+    createdBy: userId,
+  };
+}
 
 function applySearch(items, search) {
   if (!search) return items;
@@ -54,7 +89,22 @@ const duplicatePackage = asyncHandler(async (req, res) => {
     ...rest,
     name: `${original.name} (Copy)`,
     itinerary: (original.itinerary || []).map((d) => ({ ...d })),
+    inclusions: [...(original.inclusions || [])],
+    exclusions: [...(original.exclusions || [])],
+    sourceType: 'uno_clone',
+    sourcePackageId: original.sourcePackageId || null,
+    sourceSlug: original.sourceSlug || null,
     createdBy: req.user._id,
+  });
+  res.status(201).json(copy);
+});
+
+const cloneFromUnoPackage = asyncHandler(async (req, res) => {
+  const detail = await getUnoPackageById(req.params.unoId);
+  const payload = mapUnoDetailToPackageDoc(detail, req.user._id);
+  const copy = await Package.create({
+    ...payload,
+    name: `${payload.name} (Copy)`,
   });
   res.status(201).json(copy);
 });
@@ -135,6 +185,7 @@ module.exports = {
   updatePackage,
   deletePackage,
   duplicatePackage,
+  cloneFromUnoPackage,
   listHotels,
   createHotel,
   updateHotel,

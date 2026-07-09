@@ -95,7 +95,7 @@ export default function SidebarNavItem({ item, isActive, nested = false }) {
                     ? 'bg-white/20 text-white'
                     : accentStyle
                       ? accentStyle.badge
-                      : 'bg-blue-500/20 text-blue-300'
+                      : accent.badge || 'bg-[#5D5FEF]/20 text-violet-300'
                 )}
               >
                 {item.badge > 999 ? '999+' : item.badge}
@@ -113,7 +113,7 @@ export default function SidebarNavItem({ item, isActive, nested = false }) {
               ? 'bg-orange-500'
               : item.accent === 'red'
                 ? 'bg-red-500'
-                : 'bg-blue-500'
+                : 'bg-[#5D5FEF]'
           )}
         />
       )}

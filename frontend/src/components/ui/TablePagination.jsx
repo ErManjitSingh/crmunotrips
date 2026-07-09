@@ -14,6 +14,7 @@ export default function TablePagination({
   totalCount,
   hasMore = false,
   showPageNumbers = false,
+  accent = 'blue',
   className = '',
 }) {
   const usingTable = !!table;
@@ -68,6 +69,10 @@ export default function TablePagination({
     return result;
   }, [showPageNumbers, resolvedPageCount, resolvedPageIndex]);
 
+  const activePageClass = accent === 'violet'
+    ? 'bg-[#5D5FEF] text-white shadow-sm'
+    : 'bg-blue-500 text-white shadow-sm';
+
   return (
     <div className={cn('flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3', className)}>
       <p className="text-sm text-content-muted">
@@ -83,15 +88,18 @@ export default function TablePagination({
       </p>
       <div className="flex items-center gap-2 flex-wrap">
         {!usingTable && typeof onPageSizeChange === 'function' && (
-          <select
-            className="h-9 rounded-lg border border-subtle bg-white px-2.5 text-sm text-content-primary outline-none focus:ring-2 focus:ring-blue-500/25"
-            value={resolvedPageSize}
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          >
-            {[10, 25, 50, 100].map((size) => (
-              <option key={size} value={size}>{size} per page</option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-content-muted whitespace-nowrap">Rows per page</span>
+            <select
+              className="h-9 rounded-lg border border-subtle bg-white px-2.5 text-sm text-content-primary outline-none focus:ring-2 focus:ring-[#5D5FEF]/25"
+              value={resolvedPageSize}
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            >
+              {[10, 25, 50, 100].map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </div>
         )}
         <button
           type="button"
@@ -118,7 +126,7 @@ export default function TablePagination({
                   className={cn(
                     'min-w-[36px] h-9 px-2 rounded-lg text-sm font-medium transition-colors',
                     p === resolvedPageIndex
-                      ? 'bg-blue-500 text-white shadow-sm'
+                      ? activePageClass
                       : 'border border-subtle bg-white text-content-primary hover:bg-slate-50'
                   )}
                 >

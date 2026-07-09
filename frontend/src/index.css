@@ -4,7 +4,9 @@
 
 @layer base {
   :root {
-    --color-bg-app: #f8fafc;
+    --color-bg-app: #F8F9FD;
+    --color-primary: #5D5FEF;
+    --color-primary-hover: #4F51E0;
     --color-surface: #ffffff;
     --color-surface-elevated: #ffffff;
     --color-glass: rgba(255, 255, 255, 0.72);
@@ -18,7 +20,7 @@
     --sidebar-text: #f8fafc;
     --sidebar-muted: #94a3b8;
     --sidebar-hover: rgba(255, 255, 255, 0.06);
-    --sidebar-active: #3b82f6;
+    --sidebar-active: #5D5FEF;
     --sidebar-active-text: #ffffff;
 
     /* Sidebar with decorative background image */
@@ -297,14 +299,14 @@
     --sidebar-text: #f8fafc;
     --sidebar-muted: #94a3b8;
     --sidebar-hover: rgba(255, 255, 255, 0.06);
-    --sidebar-active: #3b82f6;
+    --sidebar-active: #5D5FEF;
     --sidebar-border: rgba(255, 255, 255, 0.08);
     --sidebar-active-text: #ffffff;
-    background: linear-gradient(180deg, #0f172a 0%, #0c1222 50%, #070b14 100%);
+    background: #12162B;
   }
 
   .dark .sidebar-dark {
-    background: linear-gradient(180deg, #0f172a 0%, #0a0f1a 50%, #050810 100%);
+    background: #12162B;
   }
 
   /* FullCalendar v6 — premium follow-up calendar */

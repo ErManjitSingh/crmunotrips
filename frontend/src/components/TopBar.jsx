@@ -211,7 +211,10 @@ export default function TopBar({ onMenuClick }) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search leads, customers, bookings..."
-              className="w-full h-10 pl-10 pr-20 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-subtle text-sm text-content-primary placeholder:text-content-muted outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-500/40 transition-all"
+              className={cn(
+                'w-full h-10 pl-10 pr-20 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-subtle text-sm text-content-primary placeholder:text-content-muted outline-none transition-all',
+                accent.searchFocus
+              )}
             />
             <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-700 border border-subtle text-[10px] font-semibold text-content-muted pointer-events-none">
               <Command className="w-2.5 h-2.5" />
