@@ -142,17 +142,23 @@ function inferCityFromDestination(destination = '') {
   );
 }
 
+/** UNO API max page size (higher values return HTTP 422). */
+export const UNO_PACKAGES_MAX_LIMIT = 50;
+
 /**
  * Fetch packages from UNO Hotels API (https://api.unohotelsandresorts.com/v1/packages)
- * via CRM backend proxy /api/uno-packages.
+ * via CRM backend proxy /api/uno-packages — never call UNO from the browser (CORS).
  */
 export async function fetchUnoPublicPackages({ page = 1, limit = 50, search = '', destination = '' } = {}) {
-  const effectiveSearch = search || (destination ? inferCityFromDestination(destination) : '');
+  const safeLimit = Math.min(Number(limit) || UNO_PACKAGES_MAX_LIMIT, UNO_PACKAGES_MAX_LIMIT);
+  const effectiveSearch = (search || (destination ? inferCityFromDestination(destination) : ''))
+    .trim()
+    .toLowerCase();
 
   const { data } = await API.get('/uno-packages', {
     params: {
       page,
-      limit,
+      limit: safeLimit,
       search: effectiveSearch || undefined,
       destination: destination || undefined,
     },

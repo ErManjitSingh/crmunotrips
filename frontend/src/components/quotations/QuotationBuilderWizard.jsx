@@ -240,7 +240,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setLoadingPackages(true);
     Promise.all([
       fetchUnoPublicPackages({
-        limit: 100,
+        limit: 50,
         page: 1,
         search: debouncedPackageSearch || undefined,
         destination,

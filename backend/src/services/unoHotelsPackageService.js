@@ -133,10 +133,13 @@ function mapUnoPackage(pkg, { includeItinerary = false, includeDetail = false } 
   return mapped;
 }
 
+/** UNO public packages API rejects limit > 50 (returns 422). */
+const UNO_API_MAX_LIMIT = 50;
+
 function buildListCacheKey(query = {}) {
   const normalized = {
     page: Number(query.page) || 1,
-    limit: Math.min(Number(query.limit) || 50, 100),
+    limit: Math.min(Number(query.limit) || UNO_API_MAX_LIMIT, UNO_API_MAX_LIMIT),
     search: query.search || '',
     destination: query.destination || '',
     status: query.status || 'published',
@@ -147,8 +150,9 @@ function buildListCacheKey(query = {}) {
 }
 
 async function fetchUnoPackages(query = {}) {
-  const limit = Math.min(Number(query.limit) || 50, 100);
-  const search = query.search || inferCityFromDestination(query.destination) || '';
+  const limit = Math.min(Number(query.limit) || UNO_API_MAX_LIMIT, UNO_API_MAX_LIMIT);
+  const rawSearch = query.search || inferCityFromDestination(query.destination) || '';
+  const search = String(rawSearch).trim().toLowerCase();
   const page = Math.max(1, Number(query.page) || 1);
   const payload = await unoFetch('/v1/packages', {
     query: {
@@ -190,7 +194,7 @@ async function listUnoPackages(query = {}) {
 }
 
 async function fetchUnoPackageById(packageId) {
-  const list = await fetchUnoPackages({ limit: 100, page: 1 });
+  const list = await fetchUnoPackages({ limit: UNO_API_MAX_LIMIT, page: 1 });
   const summary = list.items.find((item) => item.id === packageId || item._id === packageId);
   if (!summary) throw new ApiError(404, 'Package not found in Uno Hotels catalog');
 
