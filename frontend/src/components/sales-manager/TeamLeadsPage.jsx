@@ -8,11 +8,11 @@ import AdminAssignLeadModal from '../leads/AdminAssignLeadModal';
 import ReactivationActionsModal from '../lead-detail/ReactivationActionsModal';
 import { useLeadAssign } from '../../hooks/useLeadAssign';
 import { useLeadReactivate } from '../../hooks/useLeadReactivate';
+import { TooltipProvider } from '../ui/tooltip';
 import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import API from '../../api/axios';
-import { useDataRefresh } from '../../hooks/useDataRefresh';
 import { useRoleLeadsQuery } from '../../hooks/useRoleLeadsQuery';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import PageHeader from '../ui/PageHeader';
@@ -72,8 +72,6 @@ export default function TeamLeadsPage() {
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
   }, [filter, debouncedSearch]);
-
-  useDataRefresh(['leads'], fetchLeads);
 
   const { assignees, assigneesLoading, handleAssign, assignConfirmDialog } = useLeadAssign({
     onAssigned: () => {
@@ -218,18 +216,20 @@ export default function TeamLeadsPage() {
       {!isLoading && leads.length === 0 && isLostView ? (
         <ReactivationEmptyState isLost />
       ) : (
-        <VirtualizedRoleTable
-          data={leads}
-          columns={columns}
-          isLoading={isLoading}
-          pagination={pagination}
-          pageCount={pageCount}
-          total={total}
-          onPaginationChange={setPagination}
-          containerClassName={`rounded-2xl border ${theme.border} bg-surface/80 backdrop-blur-xl shadow-lg shadow-violet-500/5`}
-          headerRowClassName={`border-b ${theme.border} bg-gradient-to-r ${theme.header}`}
-          getRowClassName={executiveStallRowClass}
-        />
+        <TooltipProvider delayDuration={0}>
+          <VirtualizedRoleTable
+            data={leads}
+            columns={columns}
+            isLoading={isLoading}
+            pagination={pagination}
+            pageCount={pageCount}
+            total={total}
+            onPaginationChange={setPagination}
+            containerClassName={`rounded-2xl border ${theme.border} bg-surface/80 backdrop-blur-xl shadow-lg shadow-violet-500/5`}
+            headerRowClassName={`border-b ${theme.border} bg-gradient-to-r ${theme.header}`}
+            getRowClassName={executiveStallRowClass}
+          />
+        </TooltipProvider>
       )}
 
       <AdminAssignLeadModal

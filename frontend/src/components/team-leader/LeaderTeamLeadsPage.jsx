@@ -5,7 +5,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Search, Users, MoreHorizontal, Eye, MessageSquare, AlertTriangle, UserPlus, RefreshCw, XCircle, Flame } from 'lucide-react';
 import { createColumnHelper } from '@tanstack/react-table';
 import API from '../../api/axios';
-import { useDataRefresh } from '../../hooks/useDataRefresh';
 import { useRoleLeadsQuery } from '../../hooks/useRoleLeadsQuery';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import PageHeader from '../ui/PageHeader';
@@ -28,6 +27,7 @@ import ReactivationActionsModal from '../lead-detail/ReactivationActionsModal';
 import { useLeadReactivate } from '../../hooks/useLeadReactivate';
 import { useMyTeamQuery } from '../../hooks/useMyTeamQuery';
 import MyTeamPanel from './MyTeamPanel';
+import { TooltipProvider } from '../ui/tooltip';
 import {
   DropdownMenuRoot, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
@@ -107,8 +107,6 @@ export default function LeaderTeamLeadsPage() {
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
   }, [debouncedSearch, filter]);
-
-  useDataRefresh(['leads'], fetchLeads);
 
   const handleComment = async () => {
     if (!modal?.lead || !text.trim()) return;
@@ -253,19 +251,21 @@ export default function LeaderTeamLeadsPage() {
           className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-subtle bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30"
         />
       </div>
-      <VirtualizedRoleTable
-        data={leads}
-        columns={columns}
-        isLoading={isLoading}
-        pagination={pagination}
-        pageCount={pageCount}
-        total={total}
-        onPaginationChange={setPagination}
-        emptyMessage={filter === 'lost' ? 'No lost leads' : 'No leads in this view'}
-        containerClassName={`rounded-2xl border ${showRecoveryUi ? 'border-teal-500/25 shadow-lg shadow-teal-500/5' : 'border-subtle'} bg-surface/80 backdrop-blur-xl`}
-        headerRowClassName={showRecoveryUi ? `border-b bg-gradient-to-r ${theme.header} ${theme.border}` : 'border-b border-subtle bg-surface-elevated/50'}
-        getRowClassName={executiveStallRowClass}
-      />
+      <TooltipProvider delayDuration={0}>
+        <VirtualizedRoleTable
+          data={leads}
+          columns={columns}
+          isLoading={isLoading}
+          pagination={pagination}
+          pageCount={pageCount}
+          total={total}
+          onPaginationChange={setPagination}
+          emptyMessage={filter === 'lost' ? 'No lost leads' : 'No leads in this view'}
+          containerClassName={`rounded-2xl border ${showRecoveryUi ? 'border-teal-500/25 shadow-lg shadow-teal-500/5' : 'border-subtle'} bg-surface/80 backdrop-blur-xl`}
+          headerRowClassName={showRecoveryUi ? `border-b bg-gradient-to-r ${theme.header} ${theme.border}` : 'border-b border-subtle bg-surface-elevated/50'}
+          getRowClassName={executiveStallRowClass}
+        />
+      </TooltipProvider>
 
       <ActionModal open={modal?.type === 'comment'} title="Add Comment" onClose={() => setModal(null)}>
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder="Team leader note…" className="w-full rounded-xl border border-subtle bg-surface-elevated p-3 text-sm mb-4" />

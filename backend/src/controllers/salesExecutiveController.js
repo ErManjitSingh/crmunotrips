@@ -33,6 +33,11 @@ const {
 } = require('../utils/queryHelpers');
 const { createFollowUpForLead, updateFollowUpRecord } = require('../services/followUpService');
 const { markLeadViewedByExecutive } = require('../services/leadExecutiveStallService');
+const {
+  getExecutiveLeadIds,
+  buildExecutiveFollowUpFilter,
+  buildExecutiveQuotationFilter,
+} = require('../services/executiveScopeService');
 const { resolvePackageReference } = require('../utils/packageRef');
 const { getExecutiveFollowUpSummary, getMissedFollowUpsPreview } = require('../services/followUpSummaryService');
 const { ROLE_LABELS } = require('../config/roles');
@@ -44,16 +49,6 @@ const {
 } = require('../repositories/roleScopedRepository');
 
 const LEAD_FILTER_KEYS = ['new', 'contacted', 'follow-up', 'hot', 'converted', 'lost', 'reactivated', 'all'];
-
-async function getExecutiveLeadIds(userId, branchId = null) {
-  const leads = await Lead.find({
-    assignedTo: userId,
-    ...(branchId ? { branchId } : {}),
-  })
-    .select('_id')
-    .lean();
-  return leads.map((l) => l._id);
-}
 
 async function resolveExecutiveQuotationStatus(leadId, requestedStatus, excludeQuotationId = null) {
   if (requestedStatus === 'draft') return 'draft';
@@ -235,7 +230,7 @@ const addLeadNote = asyncHandler(async (req, res) => {
 const listFollowUps = asyncHandler(async (req, res) => {
   const leadIds = await getExecutiveLeadIds(req.user._id, req.branchId);
   const result = await findScopedFollowUpsPaginated(
-    { $or: [{ assignedTo: req.user._id }, { lead: { $in: leadIds } }] },
+    buildExecutiveFollowUpFilter(req.user._id, req.branchId, leadIds),
     req.query,
     { branchId: req.branchId }
   );
@@ -244,7 +239,7 @@ const listFollowUps = asyncHandler(async (req, res) => {
 
 const getFollowUpSummary = asyncHandler(async (req, res) => {
   const leadIds = await getExecutiveLeadIds(req.user._id, req.branchId);
-  const baseFilter = { $or: [{ assignedTo: req.user._id }, { lead: { $in: leadIds } }] };
+  const baseFilter = buildExecutiveFollowUpFilter(req.user._id, req.branchId, leadIds);
   const [summary, missedPreview] = await Promise.all([
     getExecutiveFollowUpSummary(req.user._id, leadIds),
     getMissedFollowUpsPreview(baseFilter, 8),
@@ -254,14 +249,12 @@ const getFollowUpSummary = asyncHandler(async (req, res) => {
 
 const createFollowUp = asyncHandler(async (req, res) => {
   const leadId = req.body.lead || req.body.leadId;
-  const leadIds = await getExecutiveLeadIds(req.user._id, req.branchId);
   const lead = await Lead.findOne({ _id: leadId, ...(req.branchId ? { branchId: req.branchId } : {}) });
   if (!lead) throw new ApiError(404, 'Lead not found');
 
-  const owns =
-    lead.assignedTo?.toString() === req.user._id.toString() ||
-    leadIds.some((id) => id.toString() === leadId.toString());
-  if (!owns) throw new ApiError(403, 'This lead is not assigned to you');
+  if (lead.assignedTo?.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, 'This lead is not assigned to you');
+  }
 
   const populated = await createFollowUpForLead({ body: req.body, user: req.user });
   res.status(201).json(populated);
@@ -271,8 +264,7 @@ const updateFollowUp = asyncHandler(async (req, res) => {
   const leadIds = await getExecutiveLeadIds(req.user._id, req.branchId);
   const followup = await FollowUp.findOne({
     _id: req.params.id,
-    $or: [{ assignedTo: req.user._id }, { lead: { $in: leadIds } }],
-    ...(req.branchId ? { branchId: req.branchId } : {}),
+    ...buildExecutiveFollowUpFilter(req.user._id, req.branchId, leadIds),
   });
   if (!followup) throw new ApiError(404, 'Follow-up not found');
 
@@ -282,9 +274,7 @@ const updateFollowUp = asyncHandler(async (req, res) => {
 
 const listQuotations = asyncHandler(async (req, res) => {
   const leadIds = await getExecutiveLeadIds(req.user._id, req.branchId);
-  const filter = {
-    $or: [{ createdByExecutive: req.user._id }, { lead: { $in: leadIds } }],
-  };
+  const filter = buildExecutiveQuotationFilter(req.user._id, req.branchId, leadIds);
   if (req.query.status) filter.status = req.query.status;
 
   const result = await findScopedQuotationsPaginated(filter, req.query, { branchId: req.branchId });
@@ -414,8 +404,7 @@ const updateQuotation = asyncHandler(async (req, res) => {
   const leadIds = await getExecutiveLeadIds(req.user._id, req.branchId);
   const quotation = await Quotation.findOne({
     _id: req.params.id,
-    $or: [{ createdByExecutive: req.user._id }, { lead: { $in: leadIds } }],
-    ...(req.branchId ? { branchId: req.branchId } : {}),
+    ...buildExecutiveQuotationFilter(req.user._id, req.branchId, leadIds),
   });
   if (!quotation) throw new ApiError(404, 'Quotation not found');
 
@@ -531,21 +520,29 @@ const getProfile = asyncHandler(async (req, res) => {
 });
 
 const getCalendar = asyncHandler(async (req, res) => {
-  const leadIds = await getExecutiveLeadIds(req.user._id, req.branchId);
+  const rangeStart = new Date();
+  rangeStart.setDate(rangeStart.getDate() - 30);
+  const rangeEnd = new Date();
+  rangeEnd.setDate(rangeEnd.getDate() + 120);
 
   const [followups, travelLeads] = await Promise.all([
     FollowUp.find({
-      $or: [{ assignedTo: req.user._id }, { lead: { $in: leadIds } }],
+      assignedTo: req.user._id,
+      scheduledAt: { $gte: rangeStart, $lte: rangeEnd },
       ...(req.branchId ? { branchId: req.branchId } : {}),
     })
       .populate('lead', 'name')
+      .sort({ scheduledAt: 1 })
+      .limit(200)
       .lean(),
     Lead.find({
       assignedTo: req.user._id,
-      travelDate: { $exists: true, $ne: null },
+      travelDate: { $gte: rangeStart, $lte: rangeEnd },
       ...(req.branchId ? { branchId: req.branchId } : {}),
     })
       .select('name destination travelDate')
+      .sort({ travelDate: 1 })
+      .limit(100)
       .lean(),
   ]);
 

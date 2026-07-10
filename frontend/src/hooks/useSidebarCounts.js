@@ -1,9 +1,8 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import { useAuth } from '../context/AuthContext';
 import API from '../api/axios';
-import { useDataRefresh } from './useDataRefresh';
 import { NAV_COUNTS_STALE_MS, GC_TIME_MS } from '../lib/queryConfig';
 import { invalidateNavCounts } from '../lib/queryInvalidation';
 
@@ -12,6 +11,7 @@ export function useSidebarCounts(enabled = true) {
   const { selectedBranchId } = useSelector((s) => s.branch);
   const queryClient = useQueryClient();
   const userId = user?._id || user?.id;
+  const debounceRef = useRef(null);
 
   const query = useQuery({
     queryKey: ['nav-counts', String(userId || ''), user?.role, selectedBranchId || 'all'],
@@ -26,21 +26,26 @@ export function useSidebarCounts(enabled = true) {
     staleTime: NAV_COUNTS_STALE_MS,
     gcTime: GC_TIME_MS,
     placeholderData: (prev) => prev,
-    retry: 2,
-    refetchOnMount: true,
+    retry: 1,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const refresh = useCallback(() => {
     invalidateNavCounts(queryClient);
   }, [queryClient]);
 
-  useDataRefresh(['nav-counts'], refresh, enabled && !!userId);
-
   useEffect(() => {
     if (!enabled || !userId) return undefined;
-    const onUnread = () => refresh();
+    const onUnread = () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => refresh(), 3000);
+    };
     window.addEventListener('notifications:unread', onUnread);
-    return () => window.removeEventListener('notifications:unread', onUnread);
+    return () => {
+      window.removeEventListener('notifications:unread', onUnread);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [enabled, userId, refresh]);
 
   return query.data ?? null;

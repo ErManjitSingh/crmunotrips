@@ -12,19 +12,21 @@ const { startOfDay } = require('../utils/queryHelpers');
 
 const REMINDER_WINDOW_MS = 15 * 60 * 1000;
 const TICK_MS = 60 * 1000;
+const BATCH_LIMIT = 100;
 
-async function alreadyNotified(userId, type, followUpId, withinMs = null) {
-  const followUpIdStr = followUpId?.toString?.() || `${followUpId}`;
-  const query = {
-    user: userId,
+async function loadNotifiedFollowUpIds(type, followUpIds) {
+  if (!followUpIds.length) return new Set();
+  const idStrings = followUpIds.flatMap((id) => {
+    const value = id?.toString?.() || `${id}`;
+    return [id, value];
+  });
+  const rows = await Notification.find({
     type,
-    'meta.followUpId': { $in: [followUpId, followUpIdStr] },
-  };
-  if (withinMs) {
-    query.createdAt = { $gte: new Date(Date.now() - withinMs) };
-  }
-  const exists = await Notification.findOne(query).select('_id');
-  return !!exists;
+    'meta.followUpId': { $in: idStrings },
+  })
+    .select('meta.followUpId')
+    .lean();
+  return new Set(rows.map((row) => `${row.meta?.followUpId}`));
 }
 
 async function processFollowUpReminders() {
@@ -37,13 +39,22 @@ async function processFollowUpReminders() {
   })
     .populate('lead', 'name assignedTo')
     .populate('assignedTo', 'name _id')
+    .sort({ scheduledAt: 1 })
+    .limit(BATCH_LIMIT)
     .lean();
+
+  const notified = await loadNotifiedFollowUpIds(
+    NOTIFICATION_TYPES.FOLLOWUP_REMINDER,
+    dueSoon.map((fu) => fu._id)
+  );
 
   for (const fu of dueSoon) {
     const userId = fu.assignedTo?._id || fu.lead?.assignedTo;
     if (!userId) continue;
-    if (await alreadyNotified(userId, NOTIFICATION_TYPES.FOLLOWUP_REMINDER, fu._id, 24 * 60 * 60 * 1000)) continue;
+    const followUpIdStr = fu._id?.toString?.() || `${fu._id}`;
+    if (notified.has(followUpIdStr)) continue;
     await notifyFollowUpReminder(fu, fu.lead);
+    notified.add(followUpIdStr);
   }
 }
 
@@ -57,26 +68,24 @@ async function processMissedFollowUps() {
 
   const missed = await FollowUp.find({
     status: 'missed',
-    scheduledAt: { $lt: todayStart },
+    scheduledAt: { $lt: todayStart, $gte: new Date(todayStart.getTime() - 14 * 24 * 60 * 60 * 1000) },
   })
     .populate('lead', 'name assignedTo')
     .populate('assignedTo', 'name _id')
+    .sort({ scheduledAt: 1 })
+    .limit(BATCH_LIMIT)
     .lean();
 
+  const notified = await loadNotifiedFollowUpIds(
+    NOTIFICATION_TYPES.FOLLOWUP_MISSED,
+    missed.map((fu) => fu._id)
+  );
+
   for (const fu of missed) {
-    const execId = fu.assignedTo?._id || fu.lead?.assignedTo;
-    // Missed alert is persistent; send only once until follow-up is rescheduled/added.
-    if (execId) {
-      if (await alreadyNotified(execId, NOTIFICATION_TYPES.FOLLOWUP_MISSED, fu._id)) continue;
-    } else {
-      const followUpIdStr = fu._id?.toString?.() || `${fu._id}`;
-      const exists = await Notification.findOne({
-        type: NOTIFICATION_TYPES.FOLLOWUP_MISSED,
-        'meta.followUpId': { $in: [fu._id, followUpIdStr] },
-      }).select('_id');
-      if (exists) continue;
-    }
+    const followUpIdStr = fu._id?.toString?.() || `${fu._id}`;
+    if (notified.has(followUpIdStr)) continue;
     await notifyFollowUpMissed(fu, fu.lead);
+    notified.add(followUpIdStr);
   }
 }
 

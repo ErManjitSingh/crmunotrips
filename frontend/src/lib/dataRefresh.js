@@ -45,7 +45,7 @@ export function shouldEmitDataRefresh(config) {
 /** Map mutation URL → cache keys that should refetch. */
 export function keysFromMutationUrl(url, _method) {
   const path = (url || '').split('?')[0].toLowerCase();
-  const keys = new Set(['nav-counts']);
+  const keys = new Set();
 
   const leadPath =
     /\/leads(\/|$)/.test(path) ||
@@ -57,6 +57,7 @@ export function keysFromMutationUrl(url, _method) {
   if (leadPath || /\/sales-manager\/assign/.test(path) || /\/leads\/assign/.test(path)) {
     keys.add('leads');
     keys.add('dashboard');
+    keys.add('nav-counts');
     const leadIdMatch = path.match(/\/leads\/([a-f0-9]{24})/);
     if (leadIdMatch) keys.add(`lead:${leadIdMatch[1]}`);
   }
@@ -65,6 +66,7 @@ export function keysFromMutationUrl(url, _method) {
     keys.add('followups');
     keys.add('leads');
     keys.add('dashboard');
+    keys.add('nav-counts');
   }
 
   if (/\/users(\/|$)/.test(path) || /\/roles(\/|$)/.test(path) || /\/team(\/|$)/.test(path)) {

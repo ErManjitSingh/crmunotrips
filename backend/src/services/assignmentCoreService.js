@@ -4,6 +4,7 @@ const Team = require('../models/Team');
 const AssignmentRoundRobin = require('../models/AssignmentRoundRobin');
 const { startOfCalendarDay } = require('./attendanceService');
 const { stampExecutiveAssignment } = require('./leadExecutiveStallService');
+const { invalidateExecutiveLeadIdsCache } = require('./executiveScopeService');
 
 const ACTIVE_LEAD_STATUSES = [
   'new',
@@ -61,12 +62,23 @@ async function advanceRoundRobin(key, poolLength) {
 async function pickExecutive(candidates, { branchId, poolKey, destinationId }) {
   if (!candidates.length) return null;
 
-  const enriched = await Promise.all(
-    candidates.map(async (user) => ({
-      user,
-      activeLeadCount: await countActiveLeadsForUser(user._id, branchId),
-    }))
-  );
+  const candidateIds = candidates.map((user) => user._id);
+  const countRows = await Lead.aggregate([
+    {
+      $match: {
+        assignedTo: { $in: candidateIds },
+        status: { $in: ACTIVE_LEAD_STATUSES },
+        ...(branchId ? { branchId } : {}),
+      },
+    },
+    { $group: { _id: '$assignedTo', activeLeadCount: { $sum: 1 } } },
+  ]);
+  const countMap = new Map(countRows.map((row) => [String(row._id), row.activeLeadCount]));
+
+  const enriched = candidates.map((user) => ({
+    user,
+    activeLeadCount: countMap.get(String(user._id)) || 0,
+  }));
 
   const minCount = Math.min(...enriched.map((c) => c.activeLeadCount));
   const tied = enriched.filter((c) => c.activeLeadCount === minCount);
@@ -116,6 +128,7 @@ async function applyExecutiveAssignment(lead, executive) {
   }
 
   await lead.save();
+  await invalidateExecutiveLeadIdsCache(executive._id, lead.branchId);
 }
 
 async function applySalesManagerAssignment(lead, manager) {

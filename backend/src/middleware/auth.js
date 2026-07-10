@@ -6,6 +6,21 @@ const { getPermissionsForRole } = require('../config/permissions');
 const { resolveUserPermissions } = require('../services/permissionsService');
 const { ROLE_LABELS, ROLE_DASHBOARD_PATHS } = require('../config/roles');
 
+const userCache = new Map();
+const USER_CACHE_MS = 45_000;
+
+async function loadAuthUser(userId) {
+  const key = String(userId);
+  const hit = userCache.get(key);
+  if (hit && hit.expiresAt > Date.now()) return hit.user;
+
+  const user = await User.findById(userId).select('-password');
+  if (user) {
+    userCache.set(key, { user, expiresAt: Date.now() + USER_CACHE_MS });
+  }
+  return user;
+}
+
 const protect = asyncHandler(async (req, res, next) => {
   let token;
   if (req.headers.authorization?.startsWith('Bearer')) {
@@ -14,7 +29,7 @@ const protect = asyncHandler(async (req, res, next) => {
   if (!token) throw new ApiError(401, 'Not authorized, no token');
 
   const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  const user = await User.findById(decoded.id).select('-password');
+  const user = await loadAuthUser(decoded.id);
   if (!user || user.status === 'disabled') throw new ApiError(401, 'User not found or disabled');
 
   const branchIdFromHeader = req.headers['x-branch-id'];

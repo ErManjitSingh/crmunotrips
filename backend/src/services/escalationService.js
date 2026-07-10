@@ -9,15 +9,31 @@ const LEVELS = [
   { key: '1h', minutes: 60, roles: ['sales_manager'] },
 ];
 
+const BATCH_LIMIT = 100;
+const LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
+
 async function processFollowUpEscalations() {
   const now = Date.now();
   const overdue = await FollowUp.find({
     status: 'pending',
-    scheduledAt: { $lt: new Date(now) },
+    scheduledAt: {
+      $lt: new Date(now),
+      $gte: new Date(now - LOOKBACK_MS),
+    },
   })
     .populate('lead', 'name branchId assignedTo')
     .populate('assignedTo', 'name')
+    .sort({ scheduledAt: 1 })
+    .limit(BATCH_LIMIT)
     .lean();
+
+  if (!overdue.length) return;
+
+  const followUpIds = overdue.map((fu) => fu._id);
+  const existing = await LeadEscalation.find({ followUpId: { $in: followUpIds } })
+    .select('followUpId level')
+    .lean();
+  const existingKeys = new Set(existing.map((row) => `${row.followUpId}:${row.level}`));
 
   for (const fu of overdue) {
     const overdueMs = now - new Date(fu.scheduledAt).getTime();
@@ -25,9 +41,7 @@ async function processFollowUpEscalations() {
 
     for (const level of LEVELS) {
       if (overdueMin < level.minutes) continue;
-
-      const exists = await LeadEscalation.findOne({ followUpId: fu._id, level: level.key }).select('_id');
-      if (exists) continue;
+      if (existingKeys.has(`${fu._id}:${level.key}`)) continue;
 
       await LeadEscalation.create({
         leadId: fu.lead?._id || fu.lead,
@@ -38,6 +52,7 @@ async function processFollowUpEscalations() {
         notifiedRoles: level.roles,
         meta: { leadName: fu.lead?.name, executiveName: fu.assignedTo?.name },
       });
+      existingKeys.add(`${fu._id}:${level.key}`);
 
       await logLeadActivity({
         leadId: fu.lead?._id || fu.lead,

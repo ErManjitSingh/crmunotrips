@@ -341,6 +341,8 @@ async function buildExecutiveDashboard(userId, options = {}) {
       status: 'pending',
     })
       .populate('lead', 'name destination')
+      .sort({ scheduledAt: 1 })
+      .limit(20)
       .lean(),
     Quotation.countDocuments({
       ...quoteScope,

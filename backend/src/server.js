@@ -75,6 +75,7 @@ async function start() {
 
   archiveOldTrips().catch(() => {});
   setInterval(() => archiveOldTrips().catch(() => {}), 24 * 60 * 60 * 1000);
+  setInterval(() => purgeOldActivityLogs().catch(() => {}), 60 * 60 * 1000);
 
   httpServer.listen(port, () => {
     console.log(`[API] Running on http://127.0.0.1:${port}`);

@@ -99,6 +99,11 @@ async function ensureIndexes() {
     WhatsAppMessage.collection.createIndex({ lead: 1, direction: 1, status: 1 }, { background: true }),
     Payment.collection.createIndex({ branchId: 1, status: 1, paidAt: -1 }, { background: true }),
     Notification.collection.createIndex({ user: 1, read: 1, createdAt: -1 }, { background: true }),
+    Notification.collection.createIndex({ user: 1, type: 1, 'meta.followUpId': 1 }, { background: true }),
+    Quotation.collection.createIndex({ createdByExecutive: 1, branchId: 1, status: 1 }, { background: true }),
+    Lead.collection.createIndex({ branchId: 1, status: 1, firstContactAt: 1, createdAt: 1 }, { background: true }),
+    Lead.collection.createIndex({ branchId: 1, assignedTo: 1, isDeleted: 1, priority: 1 }, { background: true }),
+    FollowUp.collection.createIndex({ status: 1, scheduledAt: 1 }, { background: true }),
   ]);
 
   console.log('[MongoDB] Performance indexes ensured');

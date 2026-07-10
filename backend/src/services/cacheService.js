@@ -2,6 +2,28 @@ const { getRedisClient } = require('../config/redis');
 
 const memory = new Map();
 const DEFAULT_TTL_MS = 60_000;
+const MEMORY_MAX_KEYS = 5000;
+
+function trimMemory() {
+  if (memory.size <= MEMORY_MAX_KEYS) return;
+  const overflow = memory.size - MEMORY_MAX_KEYS;
+  const keys = [...memory.keys()].slice(0, overflow);
+  keys.forEach((key) => memory.delete(key));
+}
+
+async function scanAndDelete(redis, pattern) {
+  let cursor = '0';
+  const batch = [];
+  do {
+    const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+    cursor = nextCursor;
+    if (keys.length) batch.push(...keys);
+    if (batch.length >= 200) {
+      await redis.del(...batch.splice(0, batch.length));
+    }
+  } while (cursor !== '0');
+  if (batch.length) await redis.del(...batch);
+}
 
 async function get(key) {
   const redis = getRedisClient();
@@ -36,6 +58,7 @@ async function set(key, value, ttlMs = DEFAULT_TTL_MS) {
     }
   }
   memory.set(key, payload);
+  trimMemory();
 }
 
 async function getOrSet(key, factory, ttlMs = DEFAULT_TTL_MS) {
@@ -52,8 +75,7 @@ async function invalidate(prefix) {
     const redis = getRedisClient();
     if (redis) {
       try {
-        const keys = await redis.keys('*');
-        if (keys.length) await redis.del(keys);
+        await scanAndDelete(redis, '*');
       } catch {
         /* ignore */
       }
@@ -68,8 +90,7 @@ async function invalidate(prefix) {
   const redis = getRedisClient();
   if (redis) {
     try {
-      const keys = await redis.keys(`${prefix}*`);
-      if (keys.length) await redis.del(keys);
+      await scanAndDelete(redis, `${prefix}*`);
     } catch {
       /* ignore */
     }

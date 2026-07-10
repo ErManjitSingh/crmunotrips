@@ -20,6 +20,8 @@ async function processSlaBreaches() {
     createdAt: { $lt: cutoff },
   })
     .populate('assignedTo', 'name')
+    .sort({ createdAt: 1 })
+    .limit(50)
     .lean();
 
   for (const lead of overdue) {

@@ -39,6 +39,7 @@ const { setReactivationStage } = require('../services/reactivationService');
 const { logLeadActivity } = require('../services/leadActivityService');
 const { logLeadTransfer } = require('../services/leadTransferService');
 const { stampExecutiveAssignment } = require('../services/leadExecutiveStallService');
+const { invalidateExecutiveLeadIdsCache } = require('../services/executiveScopeService');
 const { logAudit, diffLeadChanges } = require('../services/leadAuditService');
 const { applyLeadMetrics } = require('../services/leadScoringService');
 const {
@@ -675,6 +676,10 @@ const assignLeads = asyncHandler(async (req, res) => {
     { _id: { $in: ids }, ...(branchId ? { branchId } : {}), isDeleted: { $ne: true } },
     patch
   );
+
+  if (assigneeRole === 'sales_executive') {
+    await invalidateExecutiveLeadIdsCache(assigneeId, branchId);
+  }
 
   const transferType = ids.length > 1 ? 'bulk_assign' : 'assign';
   await Promise.all(

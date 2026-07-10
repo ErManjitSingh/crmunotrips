@@ -8,7 +8,6 @@ async function purgeOldActivityLogs() {
 }
 
 async function logActivity({ type, user, userId, action, target, ip, meta, branchId }) {
-  await purgeOldActivityLogs();
   return ActivityLog.create({
     type,
     user: user || 'System',

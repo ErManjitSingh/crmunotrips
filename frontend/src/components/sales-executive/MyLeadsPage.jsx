@@ -6,7 +6,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import API from '../../api/axios';
 import { isLeadStatusLocked } from '../../utils/leadUtils';
-import { useDataRefresh } from '../../hooks/useDataRefresh';
 import { useRoleLeadsQuery } from '../../hooks/useRoleLeadsQuery';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import ExecutivePageShell from './ExecutivePageShell';
@@ -59,7 +58,7 @@ export default function MyLeadsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [destinationFilter, setDestinationFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 25 });
   const [modal, setModal] = useState(null);
   const [modalStatus, setModalStatus] = useState('contacted');
   const [modalStatusReason, setModalStatusReason] = useState('');
@@ -99,8 +98,6 @@ export default function MyLeadsPage() {
       setPriorityFilter('');
     }
   }, [isAllView]);
-
-  useDataRefresh(['leads'], fetchLeads);
 
   const handleChangeStatus = async () => {
     if (!modal?.lead) return;
