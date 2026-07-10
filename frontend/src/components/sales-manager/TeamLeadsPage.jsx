@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Users, Inbox, UserCheck, Flame, XCircle, TrendingUp, Eye, UserPlus, RefreshCw } from 'lucide-react';
+import { Users, Inbox, UserCheck, Flame, XCircle, TrendingUp, Eye, UserPlus, RefreshCw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '../ui/button';
 import AdminAssignLeadModal from '../leads/AdminAssignLeadModal';
@@ -9,16 +9,16 @@ import ReactivationActionsModal from '../lead-detail/ReactivationActionsModal';
 import { useLeadAssign } from '../../hooks/useLeadAssign';
 import { useLeadReactivate } from '../../hooks/useLeadReactivate';
 import { TooltipProvider } from '../ui/tooltip';
-import {
-  createColumnHelper,
-} from '@tanstack/react-table';
-import API from '../../api/axios';
+import { createColumnHelper } from '@tanstack/react-table';
 import { useRoleLeadsQuery } from '../../hooks/useRoleLeadsQuery';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import PageHeader from '../ui/PageHeader';
 import { DEFAULT_PAGE_SIZE } from '../ui/TablePagination';
 import VirtualizedRoleTable from '../ui/VirtualizedRoleTable';
 import PriorityBadge from './PriorityBadge';
+import ManagerLeadKpiStrip from './ManagerLeadKpiStrip';
+import ManagerPipelineCard from './ManagerPipelineCard';
+import ExecutiveLeadsFilterBar from '../sales-executive/ExecutiveLeadsFilterBar';
 import {
   LeadIdPill,
   SourceBadge,
@@ -27,6 +27,7 @@ import {
   ExecutiveBadge,
   ManagerStatusBadge,
   CustomerCell,
+  formatFollowUpDate,
   FILTER_THEMES,
 } from './LeadListBadges';
 import { ExecutiveStallIndicator, executiveStallRowClass } from './ExecutiveStallIndicator';
@@ -46,6 +47,10 @@ export default function TeamLeadsPage() {
   const queryClient = useQueryClient();
   const { filter = 'all' } = useParams();
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [destinationFilter, setDestinationFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const debouncedSearch = useDebouncedValue(search, 350);
   const [assignLead, setAssignLead] = useState(null);
   const [reactivateLead, setReactivateLead] = useState(null);
@@ -54,11 +59,15 @@ export default function TeamLeadsPage() {
   const theme = FILTER_THEMES[filter] || FILTER_THEMES.all;
   const Icon = meta.icon;
   const isLostView = filter === 'lost';
+  const isAllView = filter === 'all';
 
   const { data, isLoading } = useRoleLeadsQuery({
     endpoint: '/sales-manager/leads',
     filter,
     search: debouncedSearch,
+    status: isAllView ? statusFilter : '',
+    destination: isAllView ? destinationFilter : '',
+    priority: isAllView ? priorityFilter : '',
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
   });
@@ -71,7 +80,7 @@ export default function TeamLeadsPage() {
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
-  }, [filter, debouncedSearch]);
+  }, [filter, debouncedSearch, statusFilter, destinationFilter, priorityFilter]);
 
   const { assignees, assigneesLoading, handleAssign, assignConfirmDialog } = useLeadAssign({
     onAssigned: () => {
@@ -97,77 +106,115 @@ export default function TeamLeadsPage() {
     });
   };
 
-  useEffect(() => {
-    setPagination((p) => ({ ...p, pageIndex: 0 }));
-  }, [filter, search, leads.length]);
+  const toggleRow = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
-  const columns = useMemo(() => [
-    columnHelper.accessor('leadId', {
-      header: 'Lead ID',
-      cell: (i) => <LeadIdPill id={i.getValue()} />,
-    }),
-    columnHelper.accessor('name', {
-      header: 'Customer',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <CustomerCell name={row.original.name} lead={row.original} />
-          <ExecutiveStallIndicator lead={row.original} />
-          <PriorityBadge lead={row.original} />
-        </div>
-      ),
-    }),
-    columnHelper.accessor('destination', {
-      header: 'Destination',
-      cell: (i) => <DestinationChip name={i.getValue()} />,
-    }),
-    columnHelper.accessor('budget', {
-      header: 'Budget',
-      cell: (i) => <BudgetBadge amount={i.getValue()} />,
-    }),
-    columnHelper.accessor('sourceLabel', {
-      header: 'Source',
-      cell: ({ row }) => <SourceBadge source={row.original.source} label={row.original.sourceLabel} />,
-    }),
-    columnHelper.accessor('assignedTo', {
-      header: 'Executive',
-      cell: (i) => <ExecutiveBadge name={i.getValue()?.name} unassigned={!i.getValue()} />,
-    }),
-    columnHelper.accessor('status', {
-      header: 'Status',
-      cell: ({ row }) => <ManagerStatusBadge status={row.original.status} lead={row.original} />,
-    }),
-    columnHelper.display({
-      id: 'actions',
-      header: 'Actions',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1">
-          <Link
-            to={`/sales-manager/leads/${row.original._id}/view`}
-            className="inline-flex items-center h-7 px-2 rounded-md border border-subtle text-[11px] font-medium hover:bg-surface-elevated"
-          >
-            <Eye className="w-3 h-3 mr-0.5" /> View
-          </Link>
-          {reactivate.isLost(row.original) ? (
-            <Button
-              size="sm"
-              variant="teal"
-              className="h-7 px-2 text-[11px]"
-              onClick={() => {
-                setReactivateLead(row.original);
-                reactivate.openReactivate();
-              }}
+  const columns = useMemo(() => {
+    const base = [];
+
+    if (isAllView) {
+      base.push(
+        columnHelper.display({
+          id: 'select',
+          header: '',
+          cell: ({ row }) => (
+            <input
+              type="checkbox"
+              checked={selectedIds.has(row.original._id)}
+              onChange={() => toggleRow(row.original._id)}
+              className="rounded border-subtle text-[#5D5FEF] focus:ring-[#5D5FEF]/30"
+              aria-label={`Select ${row.original.name}`}
+            />
+          ),
+        })
+      );
+    }
+
+    base.push(
+      columnHelper.accessor('leadId', {
+        header: 'Lead ID',
+        cell: (i) => <LeadIdPill id={i.getValue()} />,
+      }),
+      columnHelper.accessor('name', {
+        header: 'Customer',
+        cell: ({ row }) => (
+          <div className="space-y-1.5 min-w-0">
+            <CustomerCell name={row.original.name} lead={row.original} showPhone={isAllView} />
+            <div className="flex items-center gap-1.5 flex-wrap pl-10">
+              <ExecutiveStallIndicator lead={row.original} />
+              {!isAllView && <PriorityBadge lead={row.original} />}
+            </div>
+          </div>
+        ),
+      }),
+      columnHelper.accessor('destination', {
+        header: 'Destination',
+        cell: (i) => <DestinationChip name={i.getValue()} />,
+      }),
+      columnHelper.accessor('budget', {
+        header: 'Budget',
+        cell: (i) => <BudgetBadge amount={i.getValue()} />,
+      }),
+      columnHelper.accessor('sourceLabel', {
+        header: 'Source',
+        cell: ({ row }) => <SourceBadge source={row.original.source} label={row.original.sourceLabel} />,
+      }),
+      columnHelper.accessor('assignedTo', {
+        header: 'Executive',
+        cell: (i) => <ExecutiveBadge name={i.getValue()?.name} unassigned={!i.getValue()} />,
+      }),
+      columnHelper.accessor('status', {
+        header: 'Status',
+        cell: ({ row }) => <ManagerStatusBadge status={row.original.status} lead={row.original} />,
+      }),
+      columnHelper.accessor('nextFollowUp', {
+        header: 'Next Follow-up',
+        cell: (i) => (
+          <span className="text-xs text-content-secondary whitespace-nowrap">{formatFollowUpDate(i.getValue())}</span>
+        ),
+      }),
+      columnHelper.display({
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-1">
+            <Link
+              to={`/sales-manager/leads/${row.original._id}/view`}
+              className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-subtle text-content-secondary hover:bg-surface-elevated"
+              title="View lead"
             >
-              <RefreshCw className="w-3 h-3 mr-0.5" /> Reactivate
-            </Button>
-          ) : (
-            <Button size="sm" variant="gradient" className="h-7 px-2 text-[11px]" onClick={() => setAssignLead(row.original)}>
-              <UserPlus className="w-3 h-3 mr-0.5" /> {row.original.assignedTo ? 'Reassign' : 'Assign'}
-            </Button>
-          )}
-        </div>
-      ),
-    }),
-  ], [reactivate, setReactivateLead, setAssignLead]);
+              <Eye className="w-4 h-4" />
+            </Link>
+            {reactivate.isLost(row.original) ? (
+              <Button
+                size="sm"
+                variant="teal"
+                className="h-8 px-2.5 text-[11px]"
+                onClick={() => {
+                  setReactivateLead(row.original);
+                  reactivate.openReactivate();
+                }}
+              >
+                <RefreshCw className="w-3 h-3 mr-0.5" /> Reactivate
+              </Button>
+            ) : (
+              <Button size="sm" variant="gradient" className="h-8 px-2.5 text-[11px]" onClick={() => setAssignLead(row.original)}>
+                <UserPlus className="w-3 h-3 mr-0.5" /> {row.original.assignedTo ? 'Reassign' : 'Assign'}
+              </Button>
+            )}
+          </div>
+        ),
+      })
+    );
+
+    return base;
+  }, [isAllView, reactivate, selectedIds, setReactivateLead, setAssignLead]);
 
   return (
     <div className="space-y-6">
@@ -175,43 +222,63 @@ export default function TeamLeadsPage() {
 
       {isLostView && <ReactivationFlowSteps />}
 
-      {/* Colorful filter banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`relative overflow-hidden rounded-2xl border ${theme.border} bg-gradient-to-r ${theme.gradient} p-5 backdrop-blur-xl`}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-2xl bg-surface/80 shadow-sm ${theme.icon}`}>
-              <Icon className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-content-primary tabular-nums">{isLoading ? '—' : total}</p>
-              <p className="text-sm text-content-secondary">{meta.title}</p>
-            </div>
+      {isAllView ? (
+        <>
+          <div className="flex flex-col xl:flex-row gap-4 items-stretch">
+            <ManagerLeadKpiStrip />
+            <ManagerPipelineCard />
           </div>
-          {isLostView ? (
-            <div className="flex items-center gap-2 text-sm font-semibold text-teal-700 bg-teal-500/10 px-3 py-1.5 rounded-full ring-1 ring-teal-500/25">
-              <RefreshCw className="w-4 h-4" /> Reactivate to recover
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-600 bg-emerald-500/10 px-3 py-1.5 rounded-full ring-1 ring-emerald-500/20">
-              <TrendingUp className="w-4 h-4" /> Live pipeline
-            </div>
-          )}
-        </div>
-      </motion.div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-violet-500" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search leads…"
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-violet-500/20 bg-surface/80 backdrop-blur-xl text-sm outline-none focus:ring-2 focus:ring-violet-500/40 shadow-sm"
-        />
-      </div>
+          <ExecutiveLeadsFilterBar
+            search={search}
+            onSearchChange={setSearch}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            destinationFilter={destinationFilter}
+            onDestinationChange={setDestinationFilter}
+            priorityFilter={priorityFilter}
+            onPriorityChange={setPriorityFilter}
+          />
+        </>
+      ) : (
+        <>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`relative overflow-hidden rounded-2xl border ${theme.border} bg-gradient-to-r ${theme.gradient} p-5 backdrop-blur-xl`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-2xl bg-surface/80 shadow-sm ${theme.icon}`}>
+                  <Icon className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-content-primary tabular-nums">{isLoading ? '—' : total}</p>
+                  <p className="text-sm text-content-secondary">{meta.title}</p>
+                </div>
+              </div>
+              {isLostView ? (
+                <div className="flex items-center gap-2 text-sm font-semibold text-teal-700 bg-teal-500/10 px-3 py-1.5 rounded-full ring-1 ring-teal-500/25">
+                  <RefreshCw className="w-4 h-4" /> Reactivate to recover
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-600 bg-emerald-500/10 px-3 py-1.5 rounded-full ring-1 ring-emerald-500/20">
+                  <TrendingUp className="w-4 h-4" /> Live pipeline
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          <div className="relative max-w-md">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search leads…"
+              className="w-full px-4 py-2.5 rounded-xl border border-violet-500/20 bg-surface/80 backdrop-blur-xl text-sm outline-none focus:ring-2 focus:ring-violet-500/40 shadow-sm"
+            />
+          </div>
+        </>
+      )}
 
       {!isLoading && leads.length === 0 && isLostView ? (
         <ReactivationEmptyState isLost />
@@ -225,8 +292,9 @@ export default function TeamLeadsPage() {
             pageCount={pageCount}
             total={total}
             onPaginationChange={setPagination}
-            containerClassName={`rounded-2xl border ${theme.border} bg-surface/80 backdrop-blur-xl shadow-lg shadow-violet-500/5`}
-            headerRowClassName={`border-b ${theme.border} bg-gradient-to-r ${theme.header}`}
+            containerClassName={`rounded-2xl border ${isAllView ? 'border-subtle' : theme.border} bg-white dark:bg-slate-900 shadow-sm`}
+            headerRowClassName={`border-b ${isAllView ? 'border-subtle bg-slate-50/80 dark:bg-slate-900/80' : `${theme.border} bg-gradient-to-r ${theme.header}`}`}
+            thClassName="text-left px-4 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted whitespace-nowrap bg-slate-50/80 dark:bg-slate-900/80"
             getRowClassName={executiveStallRowClass}
           />
         </TooltipProvider>

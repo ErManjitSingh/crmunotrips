@@ -8,6 +8,7 @@ const Booking = require('../models/Booking');
 const SupportTicket = require('../models/SupportTicket');
 const TripTask = require('../models/TripTask');
 const { getExecutiveIdsForLeader } = require('./teamScopeService');
+const { buildExecutiveStallQuery } = require('./leadExecutiveStallService');
 const { withBranch } = require('../utils/branchScope');
 
 function todayRange() {
@@ -140,11 +141,13 @@ async function buildAdminNavCounts(userId, { branchId } = {}) {
 
 async function aggregateSalesManagerLeadCounts(branchId) {
   const match = withBranch({ isDeleted: { $ne: true } }, branchId);
+  const stallMatch = buildExecutiveStallQuery();
   const [row] = await Lead.aggregate([
     { $match: match },
     {
       $facet: {
         all: [{ $count: 'n' }],
+        statusNew: [{ $match: { status: 'new' } }, { $count: 'n' }],
         unassigned: [{ $match: { assignedTo: null } }, { $count: 'n' }],
         assigned: [{ $match: { assignedTo: { $ne: null } } }, { $count: 'n' }],
         hot: [
@@ -156,6 +159,17 @@ async function aggregateSalesManagerLeadCounts(branchId) {
           },
           { $count: 'n' },
         ],
+        inProgress: [
+          {
+            $match: {
+              status: {
+                $in: ['contacted', 'working_progress', 'follow_up', 'negotiation', 'quotation_sent', 'reactivated'],
+              },
+            },
+          },
+          { $count: 'n' },
+        ],
+        needsAttention: [{ $match: stallMatch }, { $count: 'n' }],
         lost: [
           { $match: { status: { $in: ['lost', 'booked_from_another_company'] } } },
           { $count: 'n' },
@@ -167,9 +181,12 @@ async function aggregateSalesManagerLeadCounts(branchId) {
 
   return {
     all: facetCount(row, 'all'),
+    statusNew: facetCount(row, 'statusNew'),
     unassigned: facetCount(row, 'unassigned'),
     assigned: facetCount(row, 'assigned'),
     hot: facetCount(row, 'hot'),
+    inProgress: facetCount(row, 'inProgress'),
+    needsAttention: facetCount(row, 'needsAttention'),
     lost: facetCount(row, 'lost'),
     reactivated: facetCount(row, 'reactivated'),
   };
@@ -295,11 +312,33 @@ async function buildExecutiveNavCounts(userId, { branchId } = {}) {
 
 async function aggregateTeamLeaderLeadCounts(squadFilter) {
   const fiveDaysAgo = new Date(Date.now() - 5 * 86400000);
+  const stallMatch = buildExecutiveStallQuery();
   const [row] = await Lead.aggregate([
     { $match: squadFilter },
     {
       $facet: {
         all: [{ $count: 'n' }],
+        statusNew: [{ $match: { status: 'new' } }, { $count: 'n' }],
+        hot: [
+          {
+            $match: {
+              $or: [{ isHot: true }, { leadScore: 'hot' }],
+              status: { $nin: ['converted', 'lost', 'booked_from_another_company'] },
+            },
+          },
+          { $count: 'n' },
+        ],
+        inProgress: [
+          {
+            $match: {
+              status: {
+                $in: ['contacted', 'working_progress', 'follow_up', 'negotiation', 'quotation_sent', 'reactivated'],
+              },
+            },
+          },
+          { $count: 'n' },
+        ],
+        needsAttention: [{ $match: stallMatch }, { $count: 'n' }],
         lost: [
           { $match: { status: { $in: ['lost', 'booked_from_another_company'] } } },
           { $count: 'n' },
@@ -329,6 +368,10 @@ async function aggregateTeamLeaderLeadCounts(squadFilter) {
 
   return {
     all: facetCount(row, 'all'),
+    statusNew: facetCount(row, 'statusNew'),
+    hot: facetCount(row, 'hot'),
+    inProgress: facetCount(row, 'inProgress'),
+    needsAttention: facetCount(row, 'needsAttention'),
     lost: facetCount(row, 'lost'),
     reactivated: facetCount(row, 'reactivated'),
     escalations: facetCount(row, 'escalations'),

@@ -16,6 +16,9 @@ import {
   DestinationChip, BudgetBadge, ExecutiveBadge, ManagerStatusBadge, CustomerCell, FILTER_THEMES,
 } from '../sales-manager/LeadListBadges';
 import { ExecutiveStallIndicator, executiveStallRowClass } from '../sales-manager/ExecutiveStallIndicator';
+import ManagerLeadKpiStrip from '../sales-manager/ManagerLeadKpiStrip';
+import ManagerPipelineCard from '../sales-manager/ManagerPipelineCard';
+import ExecutiveLeadsFilterBar from '../sales-executive/ExecutiveLeadsFilterBar';
 import {
   ReactivationHeroBanner, ReactivationFlowSteps, ReactivationEmptyState,
 } from '../leads/ReactivationPanelUi';
@@ -60,8 +63,12 @@ export default function LeaderTeamLeadsPage() {
   const MetaIcon = meta.icon;
   const theme = FILTER_THEMES[filter] || FILTER_THEMES.all;
   const showRecoveryUi = filter === 'lost' || filter === 'reactivated';
+  const isAllView = filter === 'all';
   const { data: myTeam = { team: null, members: [], message: null }, isLoading: teamLoading } = useMyTeamQuery();
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [destinationFilter, setDestinationFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
   const [reactivateLeadRow, setReactivateLeadRow] = useState(null);
   const debouncedSearch = useDebouncedValue(search, 350);
   const [modal, setModal] = useState(null);
@@ -72,6 +79,9 @@ export default function LeaderTeamLeadsPage() {
     endpoint: '/team-leader/leads',
     filter,
     search: debouncedSearch,
+    status: isAllView ? statusFilter : '',
+    destination: isAllView ? destinationFilter : '',
+    priority: isAllView ? priorityFilter : '',
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
   });
@@ -106,7 +116,7 @@ export default function LeaderTeamLeadsPage() {
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
-  }, [debouncedSearch, filter]);
+  }, [debouncedSearch, filter, statusFilter, destinationFilter, priorityFilter]);
 
   const handleComment = async () => {
     if (!modal?.lead || !text.trim()) return;
@@ -127,12 +137,12 @@ export default function LeaderTeamLeadsPage() {
     columnHelper.accessor('name', {
       header: 'Customer',
       cell: ({ row }) => (
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <CustomerCell name={row.original.name} lead={row.original} />
+        <div className="space-y-1.5">
+          <CustomerCell name={row.original.name} lead={row.original} showPhone={isAllView} />
+          <div className="flex items-center gap-1.5 flex-wrap pl-10">
             <ExecutiveStallIndicator lead={row.original} />
+            {row.original.isHot && <PriorityBadge lead={row.original} />}
           </div>
-          {row.original.isHot && <PriorityBadge lead={row.original} />}
         </div>
       ),
     }),
@@ -143,8 +153,7 @@ export default function LeaderTeamLeadsPage() {
       header: 'Status',
       cell: ({ row }) => <ManagerStatusBadge status={row.original.status} lead={row.original} />,
     }),
-    columnHelper.accessor('nextFollowUp', { header: 'Next Follow-up', cell: (i) => <span className="text-xs">{formatFollowUpDate(i.getValue())}</span> }),
-    columnHelper.accessor('priority', { header: 'Priority', cell: ({ row }) => <PriorityBadge lead={row.original} /> }),
+    columnHelper.accessor('nextFollowUp', { header: 'Next Follow-up', cell: (i) => <span className="text-xs text-content-secondary whitespace-nowrap">{formatFollowUpDate(i.getValue())}</span> }),
     columnHelper.display({
       id: 'actions',
       header: 'Actions',
@@ -200,13 +209,39 @@ export default function LeaderTeamLeadsPage() {
         </div>
       ),
     }),
-  ], [reactivate, openAssign, setReactivateLeadRow, setModal, setText]);
+  ], [reactivate, openAssign, setReactivateLeadRow, setModal, setText, isAllView]);
 
   return (
     <div className="space-y-6">
       <PageHeader title={meta.title} description={meta.desc} breadcrumbs={['Team Leader', 'Leads', meta.title]} />
 
       {filter === 'all' && (
+        <>
+          <MyTeamPanel
+            team={myTeam.team}
+            members={myTeam.members}
+            message={myTeam.message}
+            loading={teamLoading}
+          />
+          <div className="flex flex-col xl:flex-row gap-4 items-stretch">
+            <ManagerLeadKpiStrip />
+            <ManagerPipelineCard dashboardPath="/team-leader/dashboard" />
+          </div>
+          <ExecutiveLeadsFilterBar
+            search={search}
+            onSearchChange={setSearch}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            destinationFilter={destinationFilter}
+            onDestinationChange={setDestinationFilter}
+            priorityFilter={priorityFilter}
+            onPriorityChange={setPriorityFilter}
+            showAddLead={false}
+          />
+        </>
+      )}
+
+      {filter === 'all' ? null : (
         <MyTeamPanel
           team={myTeam.team}
           members={myTeam.members}
@@ -226,7 +261,7 @@ export default function LeaderTeamLeadsPage() {
           theme={filter}
           icon={MetaIcon}
         />
-      ) : (
+      ) : !isAllView ? (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -240,17 +275,19 @@ export default function LeaderTeamLeadsPage() {
             </div>
           </div>
         </motion.div>
-      )}
+      ) : null}
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search customer, destination, executive…"
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-subtle bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30"
-        />
-      </div>
+      {!isAllView && (
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search customer, destination, executive…"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-subtle bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+          />
+        </div>
+      )}
       <TooltipProvider delayDuration={0}>
         <VirtualizedRoleTable
           data={leads}
@@ -261,8 +298,8 @@ export default function LeaderTeamLeadsPage() {
           total={total}
           onPaginationChange={setPagination}
           emptyMessage={filter === 'lost' ? 'No lost leads' : 'No leads in this view'}
-          containerClassName={`rounded-2xl border ${showRecoveryUi ? 'border-teal-500/25 shadow-lg shadow-teal-500/5' : 'border-subtle'} bg-surface/80 backdrop-blur-xl`}
-          headerRowClassName={showRecoveryUi ? `border-b bg-gradient-to-r ${theme.header} ${theme.border}` : 'border-b border-subtle bg-surface-elevated/50'}
+          containerClassName={`rounded-2xl border ${isAllView ? 'border-subtle bg-white dark:bg-slate-900 shadow-sm' : showRecoveryUi ? 'border-teal-500/25 shadow-lg shadow-teal-500/5' : 'border-subtle'} bg-surface/80 backdrop-blur-xl`}
+          headerRowClassName={isAllView ? 'border-b border-subtle bg-slate-50/80 dark:bg-slate-900/80' : showRecoveryUi ? `border-b bg-gradient-to-r ${theme.header} ${theme.border}` : 'border-b border-subtle bg-surface-elevated/50'}
           getRowClassName={executiveStallRowClass}
         />
       </TooltipProvider>

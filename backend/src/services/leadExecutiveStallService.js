@@ -55,9 +55,33 @@ function computeExecutiveStallFlags(lead, now = new Date()) {
   };
 }
 
+function buildExecutiveStallQuery(now = new Date()) {
+  const assignedCutoff = new Date(now.getTime() - STALL_MINUTES * 60 * 1000);
+  const viewCutoff = assignedCutoff;
+  return {
+    assignedTo: { $ne: null },
+    status: { $nin: TERMINAL_STATUSES },
+    lastFollowUp: null,
+    nextFollowUp: null,
+    $expr: {
+      $and: [
+        { $lte: [{ $ifNull: ['$assignedAt', '$createdAt'] }, assignedCutoff] },
+        {
+          $or: [
+            { $eq: [{ $ifNull: ['$executiveLastViewedAt', null] }, null] },
+            { $lte: ['$executiveLastViewedAt', viewCutoff] },
+          ],
+        },
+      ],
+    },
+  };
+}
+
 module.exports = {
   STALL_MINUTES,
+  TERMINAL_STATUSES,
   stampExecutiveAssignment,
   markLeadViewedByExecutive,
   computeExecutiveStallFlags,
+  buildExecutiveStallQuery,
 };

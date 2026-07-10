@@ -16,7 +16,7 @@ export function ExecutiveStallIndicator({ lead, className }) {
           )}
         >
           <AlertTriangle className="w-3 h-3 shrink-0" />
-          No follow-up
+          No follow-up Urgent
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-xs text-left leading-relaxed">

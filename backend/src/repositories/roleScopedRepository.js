@@ -36,7 +36,7 @@ function applyReactivationQueryFilters(mongoFilter, query = {}) {
 }
 
 function buildManagerLeadFilter(query = {}) {
-  const { filter, search } = query;
+  const { filter, search, status, destination, priority } = query;
   const mongoFilter = { ...buildLeadSearchFilter(search) };
 
   if (filter === 'unassigned') mongoFilter.assignedTo = null;
@@ -48,6 +48,11 @@ function buildManagerLeadFilter(query = {}) {
   } else if (filter === 'hot') {
     mongoFilter.isHot = true;
     mongoFilter.status = { $nin: ['lost', 'booked_from_another_company'] };
+  } else if (!filter || filter === 'all') {
+    if (status) mongoFilter.status = status;
+    if (destination) mongoFilter.destination = destination;
+    if (priority === 'hot') mongoFilter.isHot = true;
+    else if (priority) mongoFilter.priority = priority;
   }
 
   return mongoFilter;
@@ -140,6 +145,12 @@ async function findTeamLeaderLeadsPaginated(squadFilter, query = {}, options = {
   if (query.filter === 'hot') {
     extra.$or = [{ isHot: true }, { leadScore: 'hot' }];
     extra.status = { $nin: ['converted', 'lost', 'booked_from_another_company'] };
+  }
+  if (!query.filter || query.filter === 'all') {
+    if (query.status) extra.status = query.status;
+    if (query.destination) extra.destination = query.destination;
+    if (query.priority === 'hot') extra.isHot = true;
+    else if (query.priority) extra.priority = query.priority;
   }
   const filter = withBranch({ ...squadFilter, ...extra, ...buildLeadSearchFilter(query.search) }, options.branchId);
 
