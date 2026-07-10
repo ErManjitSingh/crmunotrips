@@ -16,6 +16,7 @@ import PriorityBadge from '../sales-manager/PriorityBadge';
 import {
   DestinationChip, BudgetBadge, ExecutiveBadge, ManagerStatusBadge, CustomerCell, FILTER_THEMES,
 } from '../sales-manager/LeadListBadges';
+import { ExecutiveStallIndicator, executiveStallRowClass } from '../sales-manager/ExecutiveStallIndicator';
 import {
   ReactivationHeroBanner, ReactivationFlowSteps, ReactivationEmptyState,
 } from '../leads/ReactivationPanelUi';
@@ -129,7 +130,10 @@ export default function LeaderTeamLeadsPage() {
       header: 'Customer',
       cell: ({ row }) => (
         <div className="space-y-1">
-          <CustomerCell name={row.original.name} lead={row.original} />
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <CustomerCell name={row.original.name} lead={row.original} />
+            <ExecutiveStallIndicator lead={row.original} />
+          </div>
           {row.original.isHot && <PriorityBadge lead={row.original} />}
         </div>
       ),
@@ -260,6 +264,7 @@ export default function LeaderTeamLeadsPage() {
         emptyMessage={filter === 'lost' ? 'No lost leads' : 'No leads in this view'}
         containerClassName={`rounded-2xl border ${showRecoveryUi ? 'border-teal-500/25 shadow-lg shadow-teal-500/5' : 'border-subtle'} bg-surface/80 backdrop-blur-xl`}
         headerRowClassName={showRecoveryUi ? `border-b bg-gradient-to-r ${theme.header} ${theme.border}` : 'border-b border-subtle bg-surface-elevated/50'}
+        getRowClassName={executiveStallRowClass}
       />
 
       <ActionModal open={modal?.type === 'comment'} title="Add Comment" onClose={() => setModal(null)}>

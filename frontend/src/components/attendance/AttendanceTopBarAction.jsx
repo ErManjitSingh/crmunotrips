@@ -27,8 +27,6 @@ export default function AttendanceTopBarAction({ accent }) {
     return null;
   }
 
-  const mode = status.record?.workMode === 'wfh' ? 'WFH' : 'Office';
-
   const handleCheckOut = async () => {
     await API.post('/attendance/check-out', {}, { successMessage: 'Checked out successfully' });
     load();
@@ -46,7 +44,6 @@ export default function AttendanceTopBarAction({ accent }) {
       )}
       title="Check out for today"
     >
-      <span className="text-content-muted text-xs">{mode}</span>
       <LogOut className="w-4 h-4" />
       Check Out
     </button>

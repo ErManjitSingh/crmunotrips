@@ -109,6 +109,8 @@ const leadSchema = new mongoose.Schema(
     isRepeatCustomer: { type: Boolean, default: false },
     assigneeRole: { type: String },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+    assignedAt: { type: Date, index: true },
+    executiveLastViewedAt: { type: Date },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     assignedTeamLeader: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     teamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },

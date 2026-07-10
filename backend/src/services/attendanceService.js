@@ -155,9 +155,9 @@ async function getTodayStatus(userId) {
   };
 }
 
-async function checkIn(userId, workMode) {
-  if (!['office', 'wfh'].includes(workMode)) {
-    throw new ApiError(400, 'workMode must be office or wfh');
+async function checkIn(userId, workMode = 'office') {
+  if (workMode !== 'office') {
+    throw new ApiError(400, 'workMode must be office');
   }
 
   const user = await User.findById(userId);
@@ -266,8 +266,7 @@ async function buildRangeSummary(viewer, branchId = null, fromInput = null, toIn
 
   const present = formatted.filter((r) => r.status === 'present').length;
   const late = formatted.filter((r) => r.status === 'late').length;
-  const officeUsers = formatted.filter((r) => r.workMode === 'office');
-  const wfhUsers = formatted.filter((r) => r.workMode === 'wfh');
+  const officeUsers = formatted.filter((r) => r.workMode === 'office' || r.workMode === 'wfh');
   const onlineUsers = isSingleDay && isToday ? formatted.filter((r) => r.isOnline) : [];
   const uniqueUsers = new Set(formatted.map((r) => r.userId?.toString())).size;
 
@@ -291,7 +290,6 @@ async function buildRangeSummary(viewer, branchId = null, fromInput = null, toIn
     absentToday: absentUsers.length,
     lateToday: late,
     officeCount: officeUsers.length,
-    wfhCount: wfhUsers.length,
     onlineCount: onlineUsers.length,
     totalScoped: scopedUsers.length,
     totalCheckIns: formatted.length,
@@ -309,7 +307,6 @@ async function buildRangeSummary(viewer, branchId = null, fromInput = null, toIn
     isToday,
     summary,
     officeUsers: isSingleDay ? officeUsers : [],
-    wfhUsers: isSingleDay ? wfhUsers : [],
     lateUsers: isSingleDay ? formatted.filter((r) => r.status === 'late') : [],
     onlineUsers,
     absentUsers,

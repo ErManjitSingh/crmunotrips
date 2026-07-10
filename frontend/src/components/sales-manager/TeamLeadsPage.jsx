@@ -29,6 +29,7 @@ import {
   CustomerCell,
   FILTER_THEMES,
 } from './LeadListBadges';
+import { ExecutiveStallIndicator, executiveStallRowClass } from './ExecutiveStallIndicator';
 import { ReactivationFlowSteps, ReactivationEmptyState } from '../leads/ReactivationPanelUi';
 
 const TITLES = {
@@ -112,6 +113,7 @@ export default function TeamLeadsPage() {
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           <CustomerCell name={row.original.name} lead={row.original} />
+          <ExecutiveStallIndicator lead={row.original} />
           <PriorityBadge lead={row.original} />
         </div>
       ),
@@ -226,6 +228,7 @@ export default function TeamLeadsPage() {
           onPaginationChange={setPagination}
           containerClassName={`rounded-2xl border ${theme.border} bg-surface/80 backdrop-blur-xl shadow-lg shadow-violet-500/5`}
           headerRowClassName={`border-b ${theme.border} bg-gradient-to-r ${theme.header}`}
+          getRowClassName={executiveStallRowClass}
         />
       )}
 

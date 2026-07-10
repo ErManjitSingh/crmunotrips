@@ -14,6 +14,7 @@ const {
 const { getMonthlyTarget, buildTargetProgress } = require('../services/salesTargetService');
 const { buildTeamLeaderDashboard } = require('../services/dashboardService');
 const { sumConvertedPackageRevenue } = require('../utils/convertedPackageRevenue');
+const { stampExecutiveAssignment } = require('../services/leadExecutiveStallService');
 const { getOrSetFresh, cacheKey } = require('../services/dashboardCacheService');
 const {
   findTeamLeaderLeadsPaginated,
@@ -148,6 +149,7 @@ const updateLead = asyncHandler(async (req, res) => {
   }
   lead.assignedTo = executiveId;
   lead.assigneeRole = 'sales_executive';
+  stampExecutiveAssignment(lead);
   const team = await getTeamForLeader(req.user._id);
   if (team) {
     lead.teamId = team._id;

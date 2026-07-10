@@ -30,6 +30,7 @@ export default function VirtualizedRoleTable({
   tdClassName = defaultTd,
   estimateRowHeight = 56,
   maxHeight = 'min(70vh, 680px)',
+  getRowClassName,
 }) {
   const scrollRef = useRef(null);
 
@@ -94,7 +95,10 @@ export default function VirtualizedRoleTable({
                 {virtualRows.map((virtualRow) => {
                   const row = tableRows[virtualRow.index];
                   return (
-                    <tr key={row.id} className={rowClassName}>
+                    <tr
+                      key={row.id}
+                      className={cn(rowClassName, getRowClassName?.(row.original))}
+                    >
                       {row.getVisibleCells().map((cell) => (
                         <td key={cell.id} className={cn(tdClassName)}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}

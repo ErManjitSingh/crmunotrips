@@ -1,5 +1,3 @@
-import { Building2, Home } from 'lucide-react';
-
 function formatTime(iso) {
   if (!iso) return '—';
   return new Intl.DateTimeFormat('en-IN', {
@@ -8,22 +6,6 @@ function formatTime(iso) {
     minute: '2-digit',
     hour12: true,
   }).format(new Date(iso));
-}
-
-function ModeBadge({ mode }) {
-  const isWfh = mode === 'wfh';
-  return (
-    <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-        isWfh
-          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-          : 'bg-blue-500/15 text-blue-700 dark:text-blue-400'
-      }`}
-    >
-      {isWfh ? <Home className="w-3 h-3" /> : <Building2 className="w-3 h-3" />}
-      {isWfh ? 'WFH' : 'Office'}
-    </span>
-  );
 }
 
 function formatDate(iso) {
@@ -61,7 +43,6 @@ export default function AttendanceTeamList({
             <tr className="text-left text-content-muted border-b border-subtle">
               {showDate && <th className="px-5 py-2.5 font-medium">Date</th>}
               <th className="px-5 py-2.5 font-medium">Name</th>
-              <th className="px-5 py-2.5 font-medium">Mode</th>
               <th className="px-5 py-2.5 font-medium">Check In</th>
               <th className="px-5 py-2.5 font-medium">Check Out</th>
               <th className="px-5 py-2.5 font-medium">Hours</th>
@@ -75,9 +56,6 @@ export default function AttendanceTeamList({
                   <td className="px-5 py-3 text-content-secondary text-xs whitespace-nowrap">{formatDate(r.date)}</td>
                 )}
                 <td className="px-5 py-3 font-medium text-content-primary">{r.userName}</td>
-                <td className="px-5 py-3">
-                  <ModeBadge mode={r.workMode} />
-                </td>
                 <td className="px-5 py-3 text-content-secondary tabular-nums">{formatTime(r.checkIn)}</td>
                 <td className="px-5 py-3 text-content-secondary tabular-nums">{formatTime(r.checkOut)}</td>
                 <td className="px-5 py-3 text-content-secondary tabular-nums">

@@ -97,7 +97,6 @@ export default function AdminAttendancePage() {
   const sectionTitles = useMemo(() => {
     return {
       office: isSingleDay ? 'Office Today' : 'Office',
-      wfh: isSingleDay ? 'WFH Today' : 'WFH',
       online: 'Currently Online',
       late: isSingleDay ? 'Late Today' : 'Late',
       all: isSingleDay ? 'All Attendance Today' : `All Check-ins (${rangeLabel})`,
@@ -109,7 +108,7 @@ export default function AdminAttendancePage() {
     <div className="space-y-6 pb-8">
       <PageHeader
         title="Attendance"
-        description="Filter by today, yesterday, last 7 days, or the full month — office, WFH, late & online"
+        description="Filter by today, yesterday, last 7 days, or the full month — office, late & online"
         breadcrumbs={['Team Management', 'Attendance']}
       />
 
@@ -147,18 +146,11 @@ export default function AdminAttendancePage() {
 
           {isSingleDay ? (
             <>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <AttendanceTeamList
-                  records={data?.officeUsers}
-                  title={sectionTitles.office}
-                  emptyMessage="No office check-ins"
-                />
-                <AttendanceTeamList
-                  records={data?.wfhUsers}
-                  title={sectionTitles.wfh}
-                  emptyMessage="No WFH check-ins"
-                />
-              </div>
+              <AttendanceTeamList
+                records={data?.officeUsers}
+                title={sectionTitles.office}
+                emptyMessage="No office check-ins"
+              />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <AttendanceTeamList

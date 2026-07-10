@@ -54,6 +54,8 @@ const QUOTATION_POPULATE = [
   { path: 'approvedBy', select: 'name email' },
 ];
 
+const { computeExecutiveStallFlags } = require('../services/leadExecutiveStallService');
+
 function enrichLead(lead) {
   const obj = lead?.toObject ? lead.toObject() : { ...lead };
   const travelMs = obj.travelDate ? new Date(obj.travelDate).getTime() - Date.now() : Infinity;
@@ -76,6 +78,8 @@ function enrichLead(lead) {
     vip: '💎',
   };
 
+  const stallFlags = computeExecutiveStallFlags(obj);
+
   return {
     ...obj,
     isHot,
@@ -85,6 +89,7 @@ function enrichLead(lead) {
     sourceShort,
     sourceLabel: sourceShort,
     temperatureLabel: obj.temperature ? `${temperatureEmoji[obj.temperature] || ''} ${obj.temperature}`.trim() : null,
+    ...stallFlags,
   };
 }
 

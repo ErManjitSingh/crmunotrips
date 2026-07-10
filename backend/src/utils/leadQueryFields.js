@@ -17,6 +17,8 @@ const LEAD_LIST_SELECT = [
   'adults',
   'children',
   'assignedTo',
+  'assignedAt',
+  'executiveLastViewedAt',
   'assignedTeamLeader',
   'createdBy',
   'branchId',

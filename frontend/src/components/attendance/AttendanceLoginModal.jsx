@@ -1,23 +1,18 @@
 import { useState } from 'react';
-import { Building2, Home, LogIn } from 'lucide-react';
+import { Building2, LogIn } from 'lucide-react';
 import API from '../../api/axios';
 import AppModal from '../ui/AppModal';
-
-const WORK_MODES = [
-  { value: 'office', label: 'Office', icon: Building2, gradient: 'from-blue-500 to-indigo-600' },
-  { value: 'wfh', label: 'Work From Home', icon: Home, gradient: 'from-emerald-500 to-teal-600' },
-];
 
 export default function AttendanceLoginModal({ open, onSuccess }) {
   const [acting, setActing] = useState(false);
 
-  const handleCheckIn = async (workMode) => {
+  const handleCheckIn = async () => {
     setActing(true);
     try {
       await API.post(
         '/attendance/check-in',
-        { workMode },
-        { successMessage: workMode === 'wfh' ? 'WFH check-in completed' : 'Office check-in completed' }
+        { workMode: 'office' },
+        { successMessage: 'Office check-in completed' }
       );
       onSuccess?.();
     } finally {
@@ -33,25 +28,20 @@ export default function AttendanceLoginModal({ open, onSuccess }) {
         </div>
         <h2 className="text-xl font-bold text-content-primary">Mark your attendance</h2>
         <p className="text-sm text-content-secondary mt-2 mb-6">
-          Please check in for today. Choose how you are working.
+          Please check in for today before continuing.
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {WORK_MODES.map(({ value, label, icon: Icon, gradient }) => (
-            <button
-              key={value}
-              type="button"
-              disabled={acting}
-              onClick={() => handleCheckIn(value)}
-              className="flex flex-col items-center gap-3 p-5 rounded-xl border border-subtle hover:border-brand-500/50 bg-surface-elevated/50 hover:bg-surface-elevated transition-all disabled:opacity-60"
-            >
-              <div className={`p-3 rounded-xl bg-gradient-to-br ${gradient} text-white shadow-md`}>
-                <Icon className="w-6 h-6" />
-              </div>
-              <span className="font-semibold text-content-primary">{label}</span>
-            </button>
-          ))}
-        </div>
+        <button
+          type="button"
+          disabled={acting}
+          onClick={handleCheckIn}
+          className="inline-flex flex-col items-center gap-3 p-5 rounded-xl border border-subtle hover:border-brand-500/50 bg-surface-elevated/50 hover:bg-surface-elevated transition-all disabled:opacity-60 w-full max-w-xs mx-auto"
+        >
+          <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md">
+            <Building2 className="w-6 h-6" />
+          </div>
+          <span className="font-semibold text-content-primary">Office Check-in</span>
+        </button>
 
         <p className="text-xs text-content-muted mt-5">You can check in only once per day.</p>
       </div>

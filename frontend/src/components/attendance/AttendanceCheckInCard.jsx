@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Home, LogIn, LogOut, Clock } from 'lucide-react';
+import { Building2, LogIn, LogOut, Clock } from 'lucide-react';
 import API from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { requiresAttendanceCheckIn } from '../../constants/attendance';
@@ -16,17 +16,11 @@ function formatTime(iso) {
   }).format(new Date(iso));
 }
 
-const WORK_MODES = [
-  { value: 'office', label: 'Office', icon: Building2, color: 'from-blue-500 to-indigo-600' },
-  { value: 'wfh', label: 'Work From Home', icon: Home, color: 'from-emerald-500 to-teal-600' },
-];
-
 export default function AttendanceCheckInCard({ onChanged }) {
   const { user } = useAuth();
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
-  const [pickMode, setPickMode] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -45,15 +39,14 @@ export default function AttendanceCheckInCard({ onChanged }) {
     onChanged?.();
   });
 
-  const handleCheckIn = async (workMode) => {
+  const handleCheckIn = async () => {
     setActing(true);
     try {
       await API.post(
         '/attendance/check-in',
-        { workMode },
-        { successMessage: workMode === 'wfh' ? 'WFH check-in completed' : 'Office check-in completed' }
+        { workMode: 'office' },
+        { successMessage: 'Office check-in completed' }
       );
-      setPickMode(false);
       load();
       onChanged?.();
     } finally {
@@ -83,7 +76,6 @@ export default function AttendanceCheckInCard({ onChanged }) {
   }
 
   const record = status?.record;
-  const workModeLabel = record?.workMode === 'wfh' ? 'Work From Home' : 'Office';
 
   return (
     <motion.div
@@ -99,7 +91,7 @@ export default function AttendanceCheckInCard({ onChanged }) {
           {status?.checkedIn ? (
             <>
               <p className="text-lg font-bold text-content-primary">
-                Checked in · {workModeLabel}
+                Checked in · Office
                 {record?.status === 'late' && (
                   <span className="ml-2 text-xs font-semibold text-amber-600 dark:text-amber-400">Late</span>
                 )}
@@ -113,7 +105,7 @@ export default function AttendanceCheckInCard({ onChanged }) {
           ) : (
             <>
               <p className="text-lg font-bold text-content-primary">Not checked in today</p>
-              <p className="text-sm text-content-secondary mt-0.5">Select Office or Work From Home</p>
+              <p className="text-sm text-content-secondary mt-0.5">Mark your office attendance for today</p>
             </>
           )}
         </div>
@@ -129,44 +121,19 @@ export default function AttendanceCheckInCard({ onChanged }) {
               <LogOut className="w-4 h-4" /> Check Out
             </button>
           )}
-          {status?.canCheckIn && !pickMode && (
+          {status?.canCheckIn && (
             <button
               type="button"
-              onClick={() => setPickMode(true)}
+              onClick={handleCheckIn}
               disabled={acting}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold disabled:opacity-60"
             >
+              <Building2 className="w-4 h-4" />
               <LogIn className="w-4 h-4" /> Check In
             </button>
           )}
         </div>
       </div>
-
-      {pickMode && status?.canCheckIn && (
-        <div className="mt-4 pt-4 border-t border-subtle grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {WORK_MODES.map(({ value, label, icon: Icon, color }) => (
-            <button
-              key={value}
-              type="button"
-              disabled={acting}
-              onClick={() => handleCheckIn(value)}
-              className="flex items-center gap-3 p-4 rounded-xl border border-subtle hover:border-brand-500/40 bg-surface hover:bg-surface-elevated transition-colors text-left disabled:opacity-60"
-            >
-              <div className={`p-2.5 rounded-xl bg-gradient-to-br ${color} text-white shadow-md`}>
-                <Icon className="w-5 h-5" />
-              </div>
-              <span className="font-semibold text-content-primary">{label}</span>
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setPickMode(false)}
-            className="sm:col-span-2 text-sm text-content-muted hover:text-content-primary"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
     </motion.div>
   );
 }

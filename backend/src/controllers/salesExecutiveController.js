@@ -32,6 +32,7 @@ const {
   generateQuoteNumber,
 } = require('../utils/queryHelpers');
 const { createFollowUpForLead, updateFollowUpRecord } = require('../services/followUpService');
+const { markLeadViewedByExecutive } = require('../services/leadExecutiveStallService');
 const { resolvePackageReference } = require('../utils/packageRef');
 const { getExecutiveFollowUpSummary, getMissedFollowUpsPreview } = require('../services/followUpSummaryService');
 const { ROLE_LABELS } = require('../config/roles');
@@ -104,6 +105,8 @@ const getLeadDetail = asyncHandler(async (req, res) => {
     extraFilter: { assignedTo: req.user._id },
   });
   if (!lead) throw new ApiError(404, 'Lead not found');
+
+  markLeadViewedByExecutive(lead._id, req.user._id).catch(() => {});
 
   const includeRelated = req.query.includeRelated === '1' || req.query.includeRelated === 'true';
   if (!includeRelated) {

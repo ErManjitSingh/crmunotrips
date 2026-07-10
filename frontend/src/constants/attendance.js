@@ -1,4 +1,4 @@
-/** Roles that must check in (Office / WFH). Admin & Sales Manager are excluded. */
+/** Roles that must check in (office). Admin & Sales Manager are excluded. */
 export const ATTENDANCE_CHECK_IN_ROLES = [
   'team_leader',
   'sales_executive',

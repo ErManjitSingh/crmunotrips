@@ -4,6 +4,7 @@ const Team = require('../models/Team');
 const ApiError = require('../utils/apiError');
 const { ROLE_LABELS } = require('../config/roles');
 const { getExecutiveIdsForLeader, getLeaderLeadScopeFilter } = require('./teamScopeService');
+const { stampExecutiveAssignment } = require('./leadExecutiveStallService');
 
 const ASSIGNABLE_ROLES = ['sales_manager', 'team_leader', 'sales_executive'];
 
@@ -21,6 +22,7 @@ function buildAssignmentPatch(assigneeRole, assignee) {
   } else if (assigneeRole === 'sales_executive') {
     patch.assignedTo = assignee._id;
     patch.assigneeRole = 'sales_executive';
+    stampExecutiveAssignment(patch);
   } else {
     throw new ApiError(400, 'Invalid assignee role');
   }

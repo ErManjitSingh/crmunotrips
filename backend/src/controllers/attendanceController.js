@@ -17,7 +17,7 @@ const postCheckIn = asyncHandler(async (req, res) => {
   const { workMode } = req.body;
   const record = await checkIn(req.user._id, workMode);
   res.status(201).json({
-    message: workMode === 'wfh' ? 'Work From Home check-in successful' : 'Office check-in successful',
+    message: 'Office check-in successful',
     record,
   });
 });
