@@ -279,6 +279,7 @@ const QuotePdfPreview = forwardRef(function QuotePdfPreview({ quote }, ref) {
             <thead>
               <tr>
                 <th>Vehicle</th>
+                <th>Trip</th>
                 <th>From</th>
                 <th>To</th>
               </tr>
@@ -287,6 +288,7 @@ const QuotePdfPreview = forwardRef(function QuotePdfPreview({ quote }, ref) {
               {vehicles.map((v) => (
                 <tr key={v.name}>
                   <td><strong>{v.name}</strong></td>
+                  <td>{v.tripType ? v.tripType.replace(/_/g, ' ') : '—'}</td>
                   <td>{v.startDate ? formatQuoteDateShort(v.startDate) : '—'}</td>
                   <td>{v.endDate ? formatQuoteDateShort(v.endDate) : '—'}</td>
                 </tr>

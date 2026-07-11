@@ -13,6 +13,7 @@ import InclusionExclusionEditor, { cleanInclusionExclusionLines } from './Inclus
 import QuotePricingPanel from './QuotePricingPanel';
 import QuotePdfPreview from './QuotePdfPreview';
 import DayWiseHotelSelector, { isDayWiseHotelsComplete, sumDayWiseHotelCost } from './DayWiseHotelSelector';
+import UnoCabSelector, { buildSelectedCabSnapshot } from './UnoCabSelector';
 import { parsePackageNights } from './UnoHotelSelector';
 import { WIZARD_STEPS } from './constants';
 import { calculatePricing, defaultItineraryDay, defaultWizardState, formatINR, matchesResourceDestination } from './quotationUtils';
@@ -101,9 +102,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const debouncedLeadSearch = useDebouncedValue(leadSearch, 500);
   const [loadingLeads, setLoadingLeads] = useState(false);
   const [packages, setPackages] = useState([]);
-  const [cabs, setCabs] = useState([]);
   const [flights, setFlights] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [selectedUnoCab, setSelectedUnoCab] = useState(null);
   const [state, setState] = useState({ ...defaultWizardState });
   const [customItinerary, setCustomItinerary] = useState([]);
   const [customInclusions, setCustomInclusions] = useState([]);
@@ -124,7 +125,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
 
     const loadResources = async () => {
       const requests = [
-        API.get('/cabs', { skipErrorToast: true }),
         API.get('/flights', { skipErrorToast: true }),
         API.get('/activities', { skipErrorToast: true }),
       ];
@@ -134,14 +134,12 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
 
       const pick = (index) => (results[index].status === 'fulfilled' ? results[index].value.data : []);
 
-      setCabs(unwrapList(pick(0)));
-      setFlights(unwrapList(pick(1)));
-      setActivities(unwrapList(pick(2)));
+      setFlights(unwrapList(pick(0)));
+      setActivities(unwrapList(pick(1)));
     };
 
     loadResources().catch(() => {
       if (!cancelled) {
-        setCabs([]);
         setFlights([]);
         setActivities([]);
       }
@@ -277,6 +275,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     itinerary: customItinerary,
     inclusions: cleanInclusionExclusionLines(customInclusions),
     exclusions: cleanInclusionExclusionLines(customExclusions),
+    cabCategory: selectedUnoCab?.cabCategory || selectedUnoCab?.vehicleType || pkg?.cabCategory || '',
   });
 
   const selectLead = (lead) => {
@@ -287,6 +286,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setCustomExclusions([]);
     setCustomizeTab('itinerary');
     setDayWiseHotels([]);
+    setSelectedUnoCab(null);
   };
 
   const buildFallbackItinerary = (detail) => {
@@ -312,6 +312,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setCustomInclusions(normalized.inclusions?.length ? [...normalized.inclusions] : ['']);
     setCustomExclusions(normalized.exclusions?.length ? [...normalized.exclusions] : ['']);
     setCustomizeTab('itinerary');
+    setSelectedUnoCab(null);
     setState((s) => ({
       ...s,
       pricing: {
@@ -331,6 +332,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setCustomizeTab('itinerary');
     setSelectedPkgDetail(null);
     setDayWiseHotels([]);
+    setSelectedUnoCab(null);
     setLoadingPackageDetail(true);
     try {
       let detail;
@@ -359,12 +361,12 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
 
   useEffect(() => {
     const hotelCost = sumDayWiseHotelCost(dayWiseHotels);
-    const cabCost = cabs.filter((c) => state.selectedCabIds.includes(c._id)).reduce((s, c) => s + (c.cost || 0), 0);
+    const cabCost = Number(selectedUnoCab?.totalAmount || selectedUnoCab?.cost || 0);
     const flightCost = flights.filter((f) => state.selectedFlightIds.includes(f._id)).reduce((s, f) => s + (f.cost || 0), 0);
     const activityCost = activities.filter((a) => state.selectedActivityIds.includes(a._id)).reduce((s, a) => s + (a.price || 0), 0);
     const calc = calculatePricing({ ...state.pricing, hotelCost, cabCost, flightCost, activityCost });
     setState((s) => ({ ...s, pricing: { ...s.pricing, hotelCost, cabCost, flightCost, activityCost, total: calc.total, profitMargin: calc.profitMargin } }));
-  }, [state.selectedCabIds, state.selectedFlightIds, state.selectedActivityIds, cabs, flights, activities, state.pricing.baseCost, state.pricing.taxes, state.pricing.markup, state.pricing.discount, dayWiseHotels]);
+  }, [selectedUnoCab, state.selectedFlightIds, state.selectedActivityIds, flights, activities, state.pricing.baseCost, state.pricing.taxes, state.pricing.markup, state.pricing.discount, dayWiseHotels]);
 
   const handleSave = async (saveAs) => {
     if (!state.leadId || !state.packageId) return;
@@ -378,7 +380,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         status,
         pricing: state.pricing,
         selectedHotels: buildSelectedHotelsSnapshot(dayWiseHotels),
-        selectedCabs: cabs.filter((c) => state.selectedCabIds.includes(c._id)),
+        selectedCabs: buildSelectedCabSnapshot(selectedUnoCab),
         selectedFlights: flights.filter((f) => state.selectedFlightIds.includes(f._id)),
         selectedActivities: activities.filter((a) => state.selectedActivityIds.includes(a._id)),
         package: buildPackageSnapshot(activePkg),
@@ -414,8 +416,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     package: buildPackageSnapshot(activePkg),
     pricing: state.pricing,
     selectedHotels: buildSelectedHotelsSnapshot(dayWiseHotels),
+    selectedCabs: buildSelectedCabSnapshot(selectedUnoCab),
   } : null;
-
   return (
     <div className="max-w-4xl mx-auto pb-12">
       <div className="flex items-center gap-3 mb-6">
@@ -682,22 +684,26 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
               />
             )}
             {step === 5 && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold">Add Transport</h2>
-                <p className="text-sm font-medium text-content-muted">Cabs</p>
-                {cabs.map((c) => (
-                  <button key={c._id} type="button" onClick={() => toggleId('selectedCabIds', c._id)} className={cn('w-full flex justify-between p-3 rounded-xl border text-left', state.selectedCabIds.includes(c._id) ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-subtle')}>
-                    <span className="text-sm">{c.vehicleType} · {c.pickupLocation} → {c.dropLocation}</span>
-                    <span className="font-bold text-sm">{formatINR(c.cost)}</span>
-                  </button>
-                ))}
-                <p className="text-sm font-medium text-content-muted pt-2">Flights</p>
-                {flights.map((f) => (
-                  <button key={f._id} type="button" onClick={() => toggleId('selectedFlightIds', f._id)} className={cn('w-full flex justify-between p-3 rounded-xl border text-left', state.selectedFlightIds.includes(f._id) ? 'border-sky-500/50 bg-sky-500/10' : 'border-subtle')}>
-                    <span className="text-sm">{f.airline} {f.flightNumber}</span>
-                    <span className="font-bold text-sm">{formatINR(f.cost)}</span>
-                  </button>
-                ))}
+              <div className="space-y-6">
+                <UnoCabSelector
+                  lead={selectedLead}
+                  pkg={activePkg}
+                  value={selectedUnoCab}
+                  onChange={setSelectedUnoCab}
+                />
+                <div className="border-t border-subtle pt-4 space-y-4">
+                  <h2 className="text-lg font-bold">Flights</h2>
+                  {flights.length === 0 ? (
+                    <p className="text-sm text-content-muted">No flights configured.</p>
+                  ) : (
+                    flights.map((f) => (
+                      <button key={f._id} type="button" onClick={() => toggleId('selectedFlightIds', f._id)} className={cn('w-full flex justify-between p-3 rounded-xl border text-left', state.selectedFlightIds.includes(f._id) ? 'border-sky-500/50 bg-sky-500/10' : 'border-subtle')}>
+                        <span className="text-sm">{f.airline} {f.flightNumber}</span>
+                        <span className="font-bold text-sm">{formatINR(f.cost)}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
             )}
             {step === 6 && (

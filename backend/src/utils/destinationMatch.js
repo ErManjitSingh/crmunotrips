@@ -21,6 +21,43 @@ function inferCityFromDestination(destination = '') {
   );
 }
 
+function inferStateFromDestination(destination = '') {
+  const text = String(destination || '').trim();
+  if (!text) return '';
+
+  const knownStates = [
+    'Himachal Pradesh',
+    'Uttarakhand',
+    'Rajasthan',
+    'Kerala',
+    'Goa',
+    'Punjab',
+    'Jammu and Kashmir',
+    'Ladakh',
+    'Sikkim',
+    'West Bengal',
+    'Maharashtra',
+    'Karnataka',
+    'Tamil Nadu',
+  ];
+
+  for (const state of knownStates) {
+    if (new RegExp(state.replace(/\s+/g, '\\s+'), 'i').test(text)) return state;
+  }
+
+  const parts = text.split(',').map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 2) return parts[parts.length - 1].replace(/\s+india$/i, '').trim();
+
+  return '';
+}
+
+function parseRouteCities(routing = '') {
+  return String(routing || '')
+    .split(/[→\-–>|,/]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 function extractLocationTerms(destination = '') {
   const text = String(destination || '').trim();
   if (!text) return [];
@@ -72,6 +109,8 @@ function matchesDestination(target = {}, destination = '') {
 module.exports = {
   normalizeLocation,
   inferCityFromDestination,
+  inferStateFromDestination,
+  parseRouteCities,
   extractLocationTerms,
   matchesDestination,
   buildLocationHaystack,

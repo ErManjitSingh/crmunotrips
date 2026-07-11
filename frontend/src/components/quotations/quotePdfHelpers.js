@@ -299,16 +299,22 @@ export function resolveQuoteVehicles(quote) {
   if (pkg.vehicles?.length) return pkg.vehicles;
 
   const cab = quote.selectedCabs?.[0];
-  const cabName = pkg.cabCategory || cab?.vehicleType || 'Private Cab';
+  const cabName = cab?.name || cab?.vehicleType || cab?.cabCategory || pkg.cabCategory || 'Private Cab';
   const lead = resolveQuoteLead(quote);
-  const start = lead.travelDate;
+  const start = cab?.travelDate || lead.travelDate;
   const end = getDayDate(lead.travelDate, (pkg.duration || 1) - 1);
 
   if (cab) {
+    const routeLabel = [cab.pickupCity || cab.pickupLocation, cab.dropCity || cab.dropLocation]
+      .filter(Boolean)
+      .join(' → ');
     return [{
-      name: cabName,
+      name: routeLabel ? `${cabName} (${routeLabel})` : cabName,
+      vehicleType: cab.vehicleType || cab.cabCategory || cabName,
       startDate: start,
       endDate: end || start,
+      seatingCapacity: cab.seatingCapacity,
+      tripType: cab.tripType,
     }];
   }
 

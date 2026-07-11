@@ -63,7 +63,7 @@ async function getAdminToken() {
   return token;
 }
 
-async function unoFetch(path, { query = {}, admin = false } = {}) {
+async function unoFetch(path, { query = {}, admin = false, method = 'GET', body = null } = {}) {
   const url = new URL(`${BASE_URL}${path}`);
   Object.entries(query).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
@@ -78,7 +78,13 @@ async function unoFetch(path, { query = {}, admin = false } = {}) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(url, { headers });
+  const init = { method, headers };
+  if (body && method !== 'GET') {
+    headers['Content-Type'] = 'application/json';
+    init.body = JSON.stringify(body);
+  }
+
+  const res = await fetch(url, init);
   const json = await res.json().catch(() => ({}));
 
   if (!res.ok) {
