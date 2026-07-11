@@ -357,84 +357,79 @@
   border-bottom: none;
 }
 
-/* ── Itinerary ── */
+/* ── Itinerary (mockup-style) ── */
 .quote-ht-itinerary-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .quote-ht-day-card {
   border: 1px solid var(--uno-border);
-  border-radius: var(--uno-radius);
+  border-radius: 12px;
   overflow: hidden;
   background: #fff;
   page-break-inside: avoid;
   break-inside: avoid;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .quote-ht-day-head {
-  background: var(--uno-gray-bg);
-  padding: 9px 13px;
-  border-bottom: 2px solid var(--uno-orange);
   display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fff;
+  border-bottom: 1px solid var(--uno-border);
   flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 6px;
-  align-items: flex-start;
 }
 
-.quote-ht-day-num {
+.quote-ht-day-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
-  height: 24px;
+  min-width: 32px;
+  height: 32px;
   background: var(--uno-orange);
   color: #fff;
   font-weight: 800;
-  font-size: 10px;
-  border-radius: 5px;
-  margin-right: 7px;
+  font-size: 11px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
-.quote-ht-day-head .day-title {
-  font-weight: 700;
-  font-size: 10.5px;
+.quote-ht-day-title {
+  margin: 0;
+  flex: 1;
+  min-width: 140px;
+  font-weight: 800;
+  font-size: 11px;
   color: var(--uno-black);
   text-transform: uppercase;
-  display: flex;
-  align-items: flex-start;
-  flex: 1;
-  min-width: 160px;
+  letter-spacing: 0.02em;
   line-height: 1.35;
 }
 
-.quote-ht-day-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: flex-end;
-}
-
-.quote-ht-meta-pill {
-  font-size: 8.5px;
-  color: var(--uno-text);
-  background: #fff;
-  border: 1px solid var(--uno-border);
-  padding: 2px 7px;
-  border-radius: 20px;
+.quote-ht-meals-pill {
+  font-size: 9px;
   font-weight: 600;
+  color: var(--uno-orange-deep);
+  background: var(--uno-orange-light);
+  border: 1px solid var(--uno-orange-soft);
+  padding: 5px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
 }
 
-.quote-ht-meta-pill .lbl {
+.quote-ht-day-date {
+  padding: 0 14px 8px;
+  font-size: 9px;
   color: var(--uno-muted);
   font-weight: 500;
 }
 
 .quote-ht-day-body {
-  padding: 11px 13px;
+  padding: 0 14px 12px;
   font-size: 10.5px;
   color: #4b5563;
   line-height: 1.65;
@@ -442,7 +437,7 @@
 }
 
 .quote-ht-day-extra {
-  padding: 0 13px 10px;
+  padding: 0 14px 10px;
   font-size: 10px;
   color: #6b7280;
 }
@@ -457,119 +452,190 @@
   color: var(--uno-muted);
 }
 
-/* ── Hotel stay card (inside itinerary) ── */
+/* ── Hotel stay card (mockup layout) ── */
 .quote-ht-stay-card {
-  margin: 0 13px 13px;
-  border: 1px solid var(--uno-orange-soft);
-  border-radius: var(--uno-radius);
+  margin: 0 12px 12px;
+  border: 1px solid var(--uno-border);
+  border-radius: 10px;
   overflow: hidden;
-  background: var(--uno-orange-light);
+  background: #fafafa;
   page-break-inside: avoid;
   break-inside: avoid;
 }
 
-.quote-ht-stay-head {
+.quote-ht-stay-loc {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 13px;
+  gap: 5px;
+  padding: 8px 12px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--uno-muted);
   background: #fff;
-  border-bottom: 1px solid var(--uno-orange-soft);
+  border-bottom: 1px solid var(--uno-border);
 }
 
-.quote-ht-stay-icon {
-  font-size: 18px;
+.quote-ht-stay-loc-icon {
+  font-size: 11px;
   line-height: 1;
+}
+
+.quote-ht-stay-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  background: #fff;
+}
+
+.quote-ht-stay-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.quote-ht-stay-brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.quote-ht-stay-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--uno-orange-light);
+  border: 1px solid var(--uno-orange-soft);
+  border-radius: 8px;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.quote-ht-stay-text {
+  min-width: 0;
 }
 
 .quote-ht-stay-label {
   font-size: 8px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   color: var(--uno-orange-deep);
+  margin-bottom: 2px;
 }
 
 .quote-ht-stay-name {
-  margin: 1px 0 0;
+  margin: 0;
   font-size: 12px;
   font-weight: 800;
   color: var(--uno-black);
   line-height: 1.3;
 }
 
-.quote-ht-stay-photos {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr;
-  gap: 6px;
-  padding: 10px 13px 0;
+.quote-ht-stay-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  flex-wrap: wrap;
 }
 
-.quote-ht-stay-photo {
+.quote-ht-stay-stars {
+  color: #f59e0b;
+  font-size: 9px;
+  letter-spacing: -1px;
+}
+
+.quote-ht-stay-rating-val {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--uno-black);
+}
+
+.quote-ht-stay-reviews {
+  font-size: 8px;
+  color: var(--uno-muted);
+}
+
+.quote-ht-stay-thumbs {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: flex-start;
+}
+
+.quote-ht-stay-thumb {
   margin: 0;
-  border-radius: 6px;
+  width: 68px;
+  border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--uno-border);
   background: #fff;
 }
 
-.quote-ht-stay-photo-main {
-  grid-row: span 1;
-}
-
-.quote-ht-stay-img {
+.quote-ht-stay-thumb-img {
   display: block;
-  width: 100%;
-  height: 90px;
+  width: 68px;
+  height: 52px;
   object-fit: cover;
 }
 
-.quote-ht-stay-photo-main .quote-ht-stay-img {
-  height: 90px;
-}
-
-.quote-ht-stay-photo figcaption {
-  padding: 4px 7px;
-  font-size: 8px;
+.quote-ht-stay-thumb figcaption {
+  padding: 3px 4px;
+  font-size: 7px;
   font-weight: 600;
   color: var(--uno-muted);
-  background: #fff;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.quote-ht-stay-details {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 10px 13px 12px;
-}
-
-.quote-ht-stay-detail {
   background: #fff;
-  border: 1px solid var(--uno-border);
-  border-radius: 5px;
-  padding: 6px 9px;
 }
 
-.quote-ht-stay-detail-label {
+.quote-ht-stay-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 0 12px 12px;
+  background: #fff;
+}
+
+.quote-ht-stay-chip {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 9px;
+  background: var(--uno-gray-bg);
+  border: 1px solid var(--uno-border);
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.quote-ht-stay-chip-icon {
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.quote-ht-stay-chip-label {
   display: block;
-  font-size: 7.5px;
+  font-size: 7px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--uno-muted);
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
-.quote-ht-stay-detail-value {
+.quote-ht-stay-chip-value {
   display: block;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 9px;
+  font-weight: 700;
   color: var(--uno-black);
-  line-height: 1.35;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 /* ── Inc / Exc ── */
@@ -990,12 +1056,17 @@
     grid-template-columns: 1fr;
   }
 
-  .quote-ht-stay-photos {
-    grid-template-columns: 1fr 1fr;
+  .quote-ht-stay-chips {
+    grid-template-columns: 1fr;
   }
 
-  .quote-ht-stay-details {
-    grid-template-columns: 1fr;
+  .quote-ht-stay-main {
+    flex-direction: column;
+  }
+
+  .quote-ht-stay-thumbs {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .quote-ht-dest-gallery {

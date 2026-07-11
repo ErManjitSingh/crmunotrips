@@ -8,6 +8,7 @@ import {
   ImageOff,
   Loader2,
   MapPin,
+  Search,
   Users,
   UtensilsCrossed,
   Wifi,
@@ -299,12 +300,23 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
   const [loadingHotels, setLoadingHotels] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [hotelDetail, setHotelDetail] = useState(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
     let cancelled = false;
     setLoadingHotels(true);
     API.get('/uno-hotels', {
-      params: { destination, limit: 24 },
+      params: {
+        destination,
+        limit: debouncedSearch ? 50 : 24,
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      },
       skipErrorToast: true,
     })
       .then((res) => {
@@ -319,7 +331,7 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
     return () => {
       cancelled = true;
     };
-  }, [destination]);
+  }, [destination, debouncedSearch]);
 
   const selectHotel = async (hotel) => {
     setLoadingDetail(true);
@@ -378,25 +390,43 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
 
       {subStep === 'hotel' && (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-subtle bg-gradient-to-br from-amber-500/5 to-transparent p-4">
-            <h2 className="text-xl font-bold tracking-tight">Select Hotel</h2>
-            <p className="text-sm text-content-muted mt-1">
-              {destination
-                ? `Showing hotels in ${destination} — pick one to view rooms & meal plans`
-                : 'Choose a hotel for this quotation'}
-            </p>
+          <div className="rounded-2xl border border-subtle bg-gradient-to-br from-amber-500/5 to-transparent p-4 space-y-3">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight">Select Hotel</h2>
+              <p className="text-sm text-content-muted mt-1">
+                {destination
+                  ? `Hotels in ${destination} — search by name or location`
+                  : 'Choose a hotel for this quotation'}
+              </p>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
+              <input
+                type="search"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search hotel name, city, category..."
+                className="w-full h-10 pl-10 pr-4 rounded-xl border border-subtle bg-white text-sm text-content-primary placeholder:text-content-muted outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500/40 transition-all"
+              />
+            </div>
           </div>
 
           {loadingHotels ? (
             <div className="flex flex-col items-center justify-center py-16 text-content-muted gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-amber-600" />
-              <p className="text-sm">Finding hotels...</p>
+              <p className="text-sm">{debouncedSearch ? 'Searching hotels...' : 'Finding hotels...'}</p>
             </div>
           ) : hotels.length === 0 ? (
             <div className="text-center py-16 rounded-2xl border border-dashed border-subtle">
               <Building2 className="w-10 h-10 mx-auto text-content-muted/40 mb-3" />
-              <p className="text-sm font-medium">No hotels found</p>
-              <p className="text-xs text-content-muted mt-1">Try a different destination or check Uno Hotels catalog.</p>
+              <p className="text-sm font-medium">
+                {debouncedSearch ? `No hotels match "${debouncedSearch}"` : 'No hotels found'}
+              </p>
+              <p className="text-xs text-content-muted mt-1">
+                {debouncedSearch
+                  ? 'Try a different search term or clear the search.'
+                  : 'Try a different destination or check Uno Hotels catalog.'}
+              </p>
             </div>
           ) : (
             <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">

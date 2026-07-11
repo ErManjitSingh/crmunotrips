@@ -85,16 +85,18 @@ async function listUnoHotels(query = {}) {
   const limit = Math.min(Number(query.limit) || 24, 100);
   const destination = query.destination || '';
   const city = query.city || inferCityFromDestination(destination);
+  const searchTerm = String(query.search || query.q || '').trim();
 
   let rows = [];
   if (city) {
     try {
       rows = await fetchHotelRows({
         page,
-        limit,
+        limit: searchTerm ? Math.max(limit, 50) : limit,
         sort: query.sort || 'popular',
         city,
         ...(query.star_category ? { star_category: query.star_category } : {}),
+        ...(searchTerm ? { q: searchTerm } : {}),
       });
     } catch {
       rows = [];
@@ -103,7 +105,16 @@ async function listUnoHotels(query = {}) {
 
   rows = filterHotelsByDestination(rows, destination);
 
-  if (rows.length === 0 && destination) {
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    rows = rows.filter((hotel) =>
+      [hotel.name, hotel.city, hotel.location, hotel.category, ...(hotel.tags || [])]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term))
+    );
+  }
+
+  if (rows.length === 0 && destination && !searchTerm) {
     try {
       const broadRows = await fetchHotelRows({
         page: 1,

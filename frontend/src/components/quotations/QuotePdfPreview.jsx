@@ -62,65 +62,86 @@ function PdfImage({ src, alt, className }) {
   );
 }
 
-function HotelStayCard({ dayHotel, dayDate }) {
+function HotelStayCard({ dayHotel, dayMeals }) {
   if (!dayHotel?.name) return null;
 
   const hotelPhoto = dayHotel.hotelImages?.[0] || dayHotel.thumbnailUrl;
   const roomPhoto = dayHotel.roomImage || dayHotel.roomImages?.[0];
-  const extraHotelPhotos = (dayHotel.hotelImages || []).slice(1, 2);
+  const viewPhoto = (dayHotel.hotelImages || []).slice(1, 2)[0];
+  const mealPlan = dayHotel.meals || dayMeals || '—';
+  const location = dayHotel.city || dayHotel.location || '—';
+  const roomType = dayHotel.roomType || 'Deluxe';
+  const rating = Number(dayHotel.rating || dayHotel.starCategory || 0);
+  const reviewCount = dayHotel.reviewCount;
 
-  const details = [
-    dayHotel.roomType && { label: 'Room Type', value: dayHotel.roomType },
-    dayHotel.meals && { label: 'Meal Plan', value: dayHotel.meals },
-    dayHotel.city && { label: 'Location', value: dayHotel.city },
-    dayDate && { label: 'Check-in', value: formatQuoteDate(dayDate) },
-    dayHotel.checkOut && { label: 'Check-out', value: formatQuoteDateShort(dayHotel.checkOut) },
-    dayHotel.similarHotel && { label: 'Similar Hotel', value: dayHotel.similarHotel },
+  const thumbs = [
+    hotelPhoto && { src: hotelPhoto, label: 'Hotel', alt: dayHotel.name },
+    roomPhoto && { src: roomPhoto, label: roomType, alt: roomType },
+    viewPhoto && { src: viewPhoto, label: 'Hotel View', alt: dayHotel.name },
   ].filter(Boolean);
 
   return (
     <div className="quote-ht-stay-card">
-      <div className="quote-ht-stay-head">
-        <span className="quote-ht-stay-icon">🏨</span>
-        <div>
-          <div className="quote-ht-stay-label">Your Stay</div>
-          <h4 className="quote-ht-stay-name">{dayHotel.name}</h4>
-        </div>
+      <div className="quote-ht-stay-loc">
+        <span className="quote-ht-stay-loc-icon">📍</span>
+        {location}
       </div>
 
-      {(hotelPhoto || roomPhoto) && (
-        <div className="quote-ht-stay-photos">
-          {hotelPhoto && (
-            <figure className="quote-ht-stay-photo quote-ht-stay-photo-main">
-              <PdfImage src={hotelPhoto} alt={dayHotel.name} className="quote-ht-stay-img" />
-              <figcaption>Hotel</figcaption>
-            </figure>
-          )}
-          {roomPhoto && (
-            <figure className="quote-ht-stay-photo">
-              <PdfImage src={roomPhoto} alt={dayHotel.roomType || 'Room'} className="quote-ht-stay-img" />
-              <figcaption>{dayHotel.roomType || 'Room'}</figcaption>
-            </figure>
-          )}
-          {extraHotelPhotos.map((src) => (
-            <figure key={src} className="quote-ht-stay-photo">
-              <PdfImage src={src} alt={dayHotel.name} className="quote-ht-stay-img" />
-              <figcaption>Hotel View</figcaption>
-            </figure>
-          ))}
-        </div>
-      )}
-
-      {details.length > 0 && (
-        <div className="quote-ht-stay-details">
-          {details.map(({ label, value }) => (
-            <div key={label} className="quote-ht-stay-detail">
-              <span className="quote-ht-stay-detail-label">{label}</span>
-              <span className="quote-ht-stay-detail-value">{value}</span>
+      <div className="quote-ht-stay-main">
+        <div className="quote-ht-stay-info">
+          <div className="quote-ht-stay-brand">
+            <span className="quote-ht-stay-icon-box">🏨</span>
+            <div className="quote-ht-stay-text">
+              <div className="quote-ht-stay-label">Your Stay</div>
+              <h4 className="quote-ht-stay-name">{dayHotel.name}</h4>
+              {rating > 0 && (
+                <div className="quote-ht-stay-rating">
+                  <span className="quote-ht-stay-stars">{'★'.repeat(Math.min(5, Math.round(rating)))}</span>
+                  <span className="quote-ht-stay-rating-val">{rating.toFixed(1)}</span>
+                  {reviewCount > 0 && (
+                    <span className="quote-ht-stay-reviews">({reviewCount} reviews)</span>
+                  )}
+                </div>
+              )}
             </div>
-          ))}
+          </div>
         </div>
-      )}
+
+        {thumbs.length > 0 && (
+          <div className="quote-ht-stay-thumbs">
+            {thumbs.map((thumb) => (
+              <figure key={thumb.label + thumb.src} className="quote-ht-stay-thumb">
+                <PdfImage src={thumb.src} alt={thumb.alt} className="quote-ht-stay-thumb-img" />
+                <figcaption>{thumb.label}</figcaption>
+              </figure>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="quote-ht-stay-chips">
+        <div className="quote-ht-stay-chip">
+          <span className="quote-ht-stay-chip-icon">🛏</span>
+          <div>
+            <span className="quote-ht-stay-chip-label">Room Type</span>
+            <span className="quote-ht-stay-chip-value">{roomType}</span>
+          </div>
+        </div>
+        <div className="quote-ht-stay-chip">
+          <span className="quote-ht-stay-chip-icon">🍽</span>
+          <div>
+            <span className="quote-ht-stay-chip-label">Meal Plan</span>
+            <span className="quote-ht-stay-chip-value">{mealPlan}</span>
+          </div>
+        </div>
+        <div className="quote-ht-stay-chip">
+          <span className="quote-ht-stay-chip-icon">📍</span>
+          <div>
+            <span className="quote-ht-stay-chip-label">Location</span>
+            <span className="quote-ht-stay-chip-value">{location}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -287,28 +308,23 @@ const QuotePdfPreview = forwardRef(function QuotePdfPreview({ quote }, ref) {
               return (
                 <div key={day.id} className="quote-ht-day-card">
                   <div className="quote-ht-day-head">
-                    <div className="day-title">
-                      <span className="quote-ht-day-num">{day.day}</span>
-                      <span>{day.title}</span>
-                    </div>
-                    <div className="quote-ht-day-meta">
-                      {dayDate && (
-                        <span className="quote-ht-meta-pill">
-                          <span className="lbl">Date</span> {formatQuoteDateShort(dayDate)}
-                        </span>
-                      )}
-                      {day.meals && (
-                        <span className="quote-ht-meta-pill">
-                          <span className="lbl">Meals</span> {day.meals}
-                        </span>
-                      )}
-                      {(day.transport || pkg.cabCategory) && (
-                        <span className="quote-ht-meta-pill">
-                          <span className="lbl">Cab</span> {day.transport || pkg.cabCategory}
-                        </span>
-                      )}
-                    </div>
+                    <span className="quote-ht-day-badge">{String(day.day).padStart(2, '0')}</span>
+                    <h3 className="quote-ht-day-title">{day.title}</h3>
+                    {(dayHotel?.meals || day.meals) && (
+                      <span className="quote-ht-meals-pill">
+                        Meals: {dayHotel?.meals || day.meals}
+                      </span>
+                    )}
                   </div>
+
+                  {dayDate && (
+                    <div className="quote-ht-day-date">
+                      {formatQuoteDate(dayDate)}
+                      {(day.transport || pkg.cabCategory) && (
+                        <span> · Cab: {day.transport || pkg.cabCategory}</span>
+                      )}
+                    </div>
+                  )}
 
                   {day.description && (
                     <div className="quote-ht-day-body">{day.description}</div>
@@ -330,7 +346,7 @@ const QuotePdfPreview = forwardRef(function QuotePdfPreview({ quote }, ref) {
 
                   {hasHotel && (
                     <HotelStayCard
-                      dayDate={dayDate}
+                      dayMeals={day.meals}
                       dayHotel={
                         dayHotel || {
                           name: day.hotel,
