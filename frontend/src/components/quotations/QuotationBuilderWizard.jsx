@@ -9,6 +9,7 @@ import VirtualizedList from '../ui/VirtualizedList';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { buildListParams, unwrapPagination } from '../../utils/apiHelpers';
 import { fetchUnoPublicPackages, fetchUnoPublicPackageDetail } from '../../lib/unoPublicPackages';
+import { logSelectedPackageDebug } from '../../lib/logPackageDebug';
 import InclusionExclusionEditor, { cleanInclusionExclusionLines } from './InclusionExclusionEditor';
 import QuotePricingPanel from './QuotePricingPanel';
 import QuotePdfPreview from './QuotePdfPreview';
@@ -297,7 +298,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     );
   };
 
-  const applyPackageDetail = (detail) => {
+  const applyPackageDetail = (detail, meta = {}) => {
     const cloned = JSON.parse(JSON.stringify(detail));
     const rawItinerary =
       cloned.itinerary?.length > 0 ? cloned.itinerary : buildFallbackItinerary(cloned);
@@ -307,6 +308,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       day: d.day || index + 1,
     }));
     const normalized = { ...cloned, itinerary };
+    logSelectedPackageDebug(normalized, meta);
     setSelectedPkgDetail(normalized);
     setCustomItinerary(itinerary.map((d) => ({ ...d })));
     setCustomInclusions(normalized.inclusions?.length ? [...normalized.inclusions] : ['']);
@@ -335,16 +337,19 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setSelectedUnoCab(null);
     setLoadingPackageDetail(true);
     try {
-      let detail;
       if (pkg.catalogSource === 'custom' || isMongoPackageId(id)) {
         const res = await API.get(`/packages/${id}`, { skipErrorToast: true });
-        detail = res.data;
+        applyPackageDetail(res.data, { source: 'local_crm', listItem: pkg, apiPath: `/packages/${id}` });
       } else {
-        detail = await fetchUnoPublicPackageDetail(pkg.slug || id);
+        const detail = await fetchUnoPublicPackageDetail(pkg.slug || id);
+        applyPackageDetail(detail, {
+          source: 'uno_hotels',
+          listItem: pkg,
+          apiPath: `/uno-packages/${pkg.slug || id}`,
+        });
       }
-      applyPackageDetail(detail);
     } catch {
-      applyPackageDetail(pkg);
+      applyPackageDetail(pkg, { source: 'list_fallback', listItem: pkg });
     } finally {
       setLoadingPackageDetail(false);
     }

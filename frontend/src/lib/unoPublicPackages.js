@@ -97,6 +97,8 @@ export function mapUnoPackage(raw = {}, { includeDetail = false } = {}) {
     isCustomizable: Boolean(raw.is_customizable ?? raw.isCustomizable),
   };
 
+  if (raw._apiRaw) mapped._apiRaw = raw._apiRaw;
+
   if (includeDetail || raw.itinerary?.length || raw.itinerary_days?.length) {
     mapped.galleryImages = Array.isArray(raw.gallery_images || raw.galleryImages)
       ? raw.gallery_images || raw.galleryImages

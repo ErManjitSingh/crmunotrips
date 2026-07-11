@@ -129,6 +129,7 @@ async function attachItineraryFromDayOptions(mapped, slug) {
 
   try {
     const payload = await fetchUnoPackageDayOptionsPayload(slug);
+    mapped._apiRaw = { ...(mapped._apiRaw || {}), dayOptions: payload };
     const days = Array.isArray(payload?.days) ? payload.days : [];
     const packageCabs = (Array.isArray(payload?.cabs) ? payload.cabs : [])
       .filter((cab) => cab.is_active !== false)
@@ -306,14 +307,15 @@ async function fetchUnoPackageById(packageId) {
   if (!key) throw new ApiError(400, 'Package id is required');
 
   let mapped = null;
+  let rawPackageApi = null;
   let slug = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(key) ? '' : key;
 
   // UNO detail endpoint accepts slug; UUID id returns 404.
   try {
     const detail = await unoFetch(`/v1/packages/${encodeURIComponent(key)}`);
-    const raw = unwrapPayload(detail);
-    slug = raw.slug || slug;
-    mapped = mapUnoPackage(raw, { includeDetail: true });
+    rawPackageApi = unwrapPayload(detail);
+    slug = rawPackageApi.slug || slug;
+    mapped = mapUnoPackage(rawPackageApi, { includeDetail: true });
   } catch (err) {
     if (err.statusCode !== 404) throw err;
   }
@@ -330,9 +332,9 @@ async function fetchUnoPackageById(packageId) {
     if (summary.slug && summary.slug !== key) {
       try {
         const detail = await unoFetch(`/v1/packages/${encodeURIComponent(summary.slug)}`);
-        const raw = unwrapPayload(detail);
-        slug = raw.slug || summary.slug;
-        mapped = mapUnoPackage(raw, { includeDetail: true });
+        rawPackageApi = unwrapPayload(detail);
+        slug = rawPackageApi.slug || summary.slug;
+        mapped = mapUnoPackage(rawPackageApi, { includeDetail: true });
       } catch {
         /* fall back to summary */
       }
@@ -370,6 +372,10 @@ async function fetchUnoPackageById(packageId) {
       },
       destination
     );
+  }
+
+  if (rawPackageApi) {
+    mapped._apiRaw = { ...(mapped._apiRaw || {}), package: rawPackageApi };
   }
 
   return mapped;
