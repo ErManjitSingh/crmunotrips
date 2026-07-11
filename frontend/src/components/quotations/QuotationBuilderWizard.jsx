@@ -688,6 +688,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                 <UnoCabSelector
                   lead={selectedLead}
                   pkg={activePkg}
+                  packageCabs={activePkg?.packageCabs || []}
                   value={selectedUnoCab}
                   onChange={setSelectedUnoCab}
                 />

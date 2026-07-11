@@ -105,6 +105,11 @@ export function mapUnoPackage(raw = {}, { includeDetail = false } = {}) {
     mapped.termsConditions = raw.terms_conditions || raw.termsConditions || [];
     mapped.cancellationPolicy = raw.cancellation_policy || raw.cancellationPolicy || [];
     mapped.faqs = Array.isArray(raw.faqs) ? raw.faqs : [];
+    mapped.packageCabs = Array.isArray(raw.packageCabs)
+      ? raw.packageCabs
+      : Array.isArray(raw.package_cabs)
+        ? raw.package_cabs
+        : [];
     mapped.itinerary = Array.isArray(raw.itinerary)
       ? raw.itinerary
       : Array.isArray(raw.itinerary_days)

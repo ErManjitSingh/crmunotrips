@@ -308,8 +308,13 @@ export function resolveQuoteVehicles(quote) {
     const routeLabel = [cab.pickupCity || cab.pickupLocation, cab.dropCity || cab.dropLocation]
       .filter(Boolean)
       .join(' → ');
+    const cabLabel = cab.isPackageCab
+      ? `${cabName} (Package cab)`
+      : routeLabel
+        ? `${cabName} (${routeLabel})`
+        : cabName;
     return [{
-      name: routeLabel ? `${cabName} (${routeLabel})` : cabName,
+      name: cabLabel,
       vehicleType: cab.vehicleType || cab.cabCategory || cabName,
       startDate: start,
       endDate: end || start,

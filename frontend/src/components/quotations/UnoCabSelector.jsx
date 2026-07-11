@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Car, Check, Loader2, RefreshCw, Users } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Car, Check, Loader2, Package, RefreshCw, Search, Users } from 'lucide-react';
 import API from '../../api/axios';
 import { Button } from '../ui/button';
 import { formatINR } from './quotationUtils';
@@ -40,7 +40,13 @@ function inferCityFromDestination(destination = '') {
   return first.replace(/\s+(India|Himachal Pradesh|Uttarakhand|Rajasthan|Kerala|Goa|Punjab|Delhi)$/i, '').trim() || first;
 }
 
-function CabResultRow({ cab, selected, onSelect }) {
+function cabKey(cab) {
+  return cab?.id || cab?.slug || cab?.packageCabId || '';
+}
+
+function CabResultRow({ cab, selected, onSelect, priceLabel = 'total fare' }) {
+  const isPackageCab = cab.isPackageCab || cab.externalSource === 'uno_package';
+
   return (
     <button
       type="button"
@@ -56,16 +62,28 @@ function CabResultRow({ cab, selected, onSelect }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-bold text-sm">{cab.name}</p>
-            {cab.cabCategory && (
-              <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-surface-elevated text-content-muted">
-                {cab.cabCategory}
+            {isPackageCab && (
+              <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-violet-500/10 text-violet-700">
+                Package Cab
+              </span>
+            )}
+            {cab.isDefault && (
+              <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700">
+                Default
+              </span>
+            )}
+            {cab.isPopular && (
+              <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-700">
+                Popular
               </span>
             )}
             {selected && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
           </div>
           <p className="text-xs text-content-muted mt-1">
-            {cab.pickupCity} → {cab.dropCity}
-            {cab.tripType ? ` · ${cab.tripType.replace(/_/g, ' ')}` : ''}
+            {isPackageCab
+              ? `Included with this package · ${cab.seatingCapacity || '—'} seats`
+              : [cab.pickupCity, cab.dropCity].filter(Boolean).join(' → ') || 'Route cab'}
+            {!isPackageCab && cab.tripType ? ` · ${cab.tripType.replace(/_/g, ' ')}` : ''}
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
             {cab.seatingCapacity && (
@@ -83,7 +101,7 @@ function CabResultRow({ cab, selected, onSelect }) {
         </div>
         <div className="text-right shrink-0">
           <p className="text-base font-bold text-emerald-700">{formatINR(cab.totalAmount || cab.cost)}</p>
-          <p className="text-[10px] text-content-muted">total fare</p>
+          <p className="text-[10px] text-content-muted">{priceLabel}</p>
         </div>
       </div>
     </button>
@@ -93,12 +111,20 @@ function CabResultRow({ cab, selected, onSelect }) {
 export default function UnoCabSelector({
   lead,
   pkg,
+  packageCabs = [],
   value,
   onChange,
 }) {
   const destination = lead?.destination || pkg?.destination || '';
   const routing = pkg?.routing || pkg?.route || '';
   const routeCities = useMemo(() => parseRouteCities(routing), [routing]);
+  const attachedCabs = useMemo(
+    () => (Array.isArray(packageCabs) ? packageCabs : []).filter((cab) => cab.isActive !== false),
+    [packageCabs]
+  );
+
+  const [mode, setMode] = useState(attachedCabs.length ? 'package' : 'manual');
+  const autoSelectedRef = useRef(false);
 
   const defaults = useMemo(() => ({
     pickupCity: routeCities[0] || lead?.city || inferCityFromDestination(destination),
@@ -121,6 +147,21 @@ export default function UnoCabSelector({
   useEffect(() => {
     setForm(defaults);
   }, [defaults]);
+
+  useEffect(() => {
+    autoSelectedRef.current = false;
+    if (attachedCabs.length) setMode('package');
+    else setMode('manual');
+  }, [attachedCabs.length, pkg?.id, pkg?.slug]);
+
+  useEffect(() => {
+    if (!attachedCabs.length || value || autoSelectedRef.current) return;
+    const defaultCab = attachedCabs.find((cab) => cab.isDefault) || attachedCabs[0];
+    if (defaultCab) {
+      onChange(defaultCab);
+      autoSelectedRef.current = true;
+    }
+  }, [attachedCabs, value, onChange]);
 
   const canSearch = form.pickupCity && form.dropCity && form.dropState && form.travelDate;
 
@@ -158,134 +199,205 @@ export default function UnoCabSelector({
   };
 
   useEffect(() => {
-    if (canSearch) runSearch();
+    if (mode !== 'manual' || !canSearch || searched) return;
+    runSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [mode]);
 
   const setField = (key, val) => setForm((prev) => ({ ...prev, [key]: val }));
+
+  const handleModeChange = (nextMode) => {
+    setMode(nextMode);
+    if (nextMode === 'manual' && !searched && canSearch) runSearch();
+  };
 
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-subtle bg-gradient-to-br from-emerald-500/5 to-transparent p-4 space-y-3">
         <div>
-          <h3 className="text-lg font-bold tracking-tight">Select Cab — Uno Transport</h3>
+          <h3 className="text-lg font-bold tracking-tight">Select Transport</h3>
           <p className="text-sm text-content-muted mt-1">
-            Search available cabs from{' '}
-            <a href="https://api.unohotelsandresorts.com/" target="_blank" rel="noreferrer" className="text-emerald-700 underline">
-              Uno Hotels API
-            </a>
-            {' '}for this route
+            Use the cab attached to <strong>{pkg?.name || 'this package'}</strong>, or search manually from Uno API.
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-3">
-          <label className="block">
-            <span className="text-[11px] font-semibold uppercase text-content-muted">Pickup City</span>
-            <input
-              value={form.pickupCity}
-              onChange={(e) => setField('pickupCity', e.target.value)}
-              className="mt-1 w-full h-10 px-3 rounded-xl border border-subtle bg-white text-sm"
-              placeholder="Delhi"
-            />
-          </label>
-          <label className="block">
-            <span className="text-[11px] font-semibold uppercase text-content-muted">Drop City</span>
-            <input
-              value={form.dropCity}
-              onChange={(e) => setField('dropCity', e.target.value)}
-              className="mt-1 w-full h-10 px-3 rounded-xl border border-subtle bg-white text-sm"
-              placeholder="Manali"
-            />
-          </label>
-          <label className="block">
-            <span className="text-[11px] font-semibold uppercase text-content-muted">Drop State</span>
-            <input
-              value={form.dropState}
-              onChange={(e) => setField('dropState', e.target.value)}
-              className="mt-1 w-full h-10 px-3 rounded-xl border border-subtle bg-white text-sm"
-              placeholder="Himachal Pradesh"
-            />
-          </label>
-          <label className="block">
-            <span className="text-[11px] font-semibold uppercase text-content-muted">Trip Type</span>
-            <select
-              value={form.tripType}
-              onChange={(e) => setField('tripType', e.target.value)}
-              className="mt-1 w-full h-10 px-3 rounded-xl border border-subtle bg-white text-sm"
-            >
-              <option value="full_day">Full Day (Package)</option>
-              <option value="one_way">One Way</option>
-              <option value="round_trip">Round Trip</option>
-            </select>
-          </label>
-          <label className="block">
-            <span className="text-[11px] font-semibold uppercase text-content-muted">Travel Date</span>
-            <input
-              type="date"
-              value={form.travelDate}
-              onChange={(e) => setField('travelDate', e.target.value)}
-              className="mt-1 w-full h-10 px-3 rounded-xl border border-subtle bg-white text-sm"
-            />
-          </label>
-          <label className="block">
-            <span className="text-[11px] font-semibold uppercase text-content-muted">Passengers</span>
-            <input
-              type="number"
-              min={1}
-              max={50}
-              value={form.passengers}
-              onChange={(e) => setField('passengers', Number(e.target.value) || 1)}
-              className="mt-1 w-full h-10 px-3 rounded-xl border border-subtle bg-white text-sm"
-            />
-          </label>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => handleModeChange('package')}
+            disabled={!attachedCabs.length}
+            className={cn(
+              'inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all',
+              mode === 'package'
+                ? 'bg-violet-500 text-white border-violet-500 shadow-sm'
+                : 'bg-white border-subtle text-content-secondary hover:border-violet-400/40',
+              !attachedCabs.length && 'opacity-50 cursor-not-allowed'
+            )}
+          >
+            <Package className="w-4 h-4" />
+            Package Cab {attachedCabs.length ? `(${attachedCabs.length})` : ''}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleModeChange('manual')}
+            className={cn(
+              'inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all',
+              mode === 'manual'
+                ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
+                : 'bg-white border-subtle text-content-secondary hover:border-emerald-400/40'
+            )}
+          >
+            <Search className="w-4 h-4" />
+            Manual Search
+          </button>
         </div>
-
-        <Button type="button" variant="outline" className="rounded-xl gap-2" onClick={runSearch} disabled={loading || !canSearch}>
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          Search Cabs
-        </Button>
       </div>
 
       {value && (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-semibold truncate">{value.name} · {value.cabCategory || value.vehicleType}</p>
-            <p className="text-xs opacity-80 truncate">{value.pickupCity} → {value.dropCity}</p>
+            <p className="font-semibold truncate">
+              {value.name} · {value.cabCategory || value.vehicleType}
+              {value.isPackageCab ? ' · Package' : ' · Manual'}
+            </p>
+            <p className="text-xs opacity-80 truncate">
+              {value.isPackageCab
+                ? 'Attached to package'
+                : `${value.pickupCity || '—'} → ${value.dropCity || '—'}`}
+            </p>
           </div>
           <p className="font-bold shrink-0">{formatINR(value.totalAmount || value.cost)}</p>
         </div>
       )}
 
-      {error && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900">
-          {error}
+      {mode === 'package' && (
+        <div className="space-y-3">
+          {attachedCabs.length === 0 ? (
+            <div className="text-center py-12 rounded-2xl border border-dashed border-subtle">
+              <Package className="w-10 h-10 mx-auto text-content-muted/40 mb-3" />
+              <p className="text-sm font-medium">No cab attached to this package</p>
+              <p className="text-xs text-content-muted mt-1">Switch to Manual Search to pick a cab from Uno API.</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+              {attachedCabs.map((cab) => (
+                <CabResultRow
+                  key={cabKey(cab)}
+                  cab={cab}
+                  selected={cabKey(value) === cabKey(cab)}
+                  onSelect={onChange}
+                  priceLabel="package price"
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-14 text-content-muted gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-          <p className="text-sm">Searching cabs...</p>
-        </div>
-      ) : searched && results.length === 0 ? (
-        <div className="text-center py-14 rounded-2xl border border-dashed border-subtle">
-          <Car className="w-10 h-10 mx-auto text-content-muted/40 mb-3" />
-          <p className="text-sm font-medium">No cabs found for this route</p>
-          <p className="text-xs text-content-muted mt-1 max-w-sm mx-auto">
-            Try different cities or trip type. Route: {form.pickupCity} → {form.dropCity}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-          {results.map((cab) => (
-            <CabResultRow
-              key={cab.id || cab.slug}
-              cab={cab}
-              selected={value?.id === cab.id}
-              onSelect={(item) => onChange(item)}
-            />
-          ))}
-        </div>
+      {mode === 'manual' && (
+        <>
+          <div className="rounded-2xl border border-subtle bg-surface-base p-4 space-y-3">
+            <p className="text-sm font-semibold text-content-primary">Search route on Uno Cabs API</p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase text-content-muted">Pickup City</span>
+                <input
+                  value={form.pickupCity}
+                  onChange={(e) => setField('pickupCity', e.target.value)}
+                  className="mt-1 w-full h-10 px-3 rounded-xl border border-subtle bg-white text-sm"
+                  placeholder="Delhi"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase text-content-muted">Drop City</span>
+                <input
+                  value={form.dropCity}
+                  onChange={(e) => setField('dropCity', e.target.value)}
+                  className="mt-1 w-full h-10 px-3 rounded-xl border border-subtle bg-white text-sm"
+                  placeholder="Manali"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase text-content-muted">Drop State</span>
+                <input
+                  value={form.dropState}
+                  onChange={(e) => setField('dropState', e.target.value)}
+                  className="mt-1 w-full h-10 px-3 rounded-xl border border-subtle bg-white text-sm"
+                  placeholder="Himachal Pradesh"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase text-content-muted">Trip Type</span>
+                <select
+                  value={form.tripType}
+                  onChange={(e) => setField('tripType', e.target.value)}
+                  className="mt-1 w-full h-10 px-3 rounded-xl border border-subtle bg-white text-sm"
+                >
+                  <option value="full_day">Full Day (Package)</option>
+                  <option value="one_way">One Way</option>
+                  <option value="round_trip">Round Trip</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase text-content-muted">Travel Date</span>
+                <input
+                  type="date"
+                  value={form.travelDate}
+                  onChange={(e) => setField('travelDate', e.target.value)}
+                  className="mt-1 w-full h-10 px-3 rounded-xl border border-subtle bg-white text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase text-content-muted">Passengers</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={form.passengers}
+                  onChange={(e) => setField('passengers', Number(e.target.value) || 1)}
+                  className="mt-1 w-full h-10 px-3 rounded-xl border border-subtle bg-white text-sm"
+                />
+              </label>
+            </div>
+
+            <Button type="button" variant="outline" className="rounded-xl gap-2" onClick={runSearch} disabled={loading || !canSearch}>
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Search Cabs
+            </Button>
+          </div>
+
+          {error && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900">
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-14 text-content-muted gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+              <p className="text-sm">Searching cabs...</p>
+            </div>
+          ) : searched && results.length === 0 ? (
+            <div className="text-center py-14 rounded-2xl border border-dashed border-subtle">
+              <Car className="w-10 h-10 mx-auto text-content-muted/40 mb-3" />
+              <p className="text-sm font-medium">No cabs found for this route</p>
+              <p className="text-xs text-content-muted mt-1 max-w-sm mx-auto">
+                Try different cities or use Package Cab if available.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+              {results.map((cab) => (
+                <CabResultRow
+                  key={cabKey(cab)}
+                  cab={cab}
+                  selected={cabKey(value) === cabKey(cab)}
+                  onSelect={onChange}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {value && (
@@ -300,9 +412,11 @@ export default function UnoCabSelector({
 export function buildSelectedCabSnapshot(cab) {
   if (!cab) return [];
   return [{
-    _id: cab.id || cab.slug,
-    id: cab.id,
+    _id: cab.id || cab.slug || cab.packageCabId,
+    id: cab.id || cab.packageCabId,
     slug: cab.slug,
+    packageCabId: cab.packageCabId || (cab.isPackageCab ? cab.id : null),
+    cabTypeId: cab.cabTypeId || null,
     name: cab.name,
     vehicleType: cab.vehicleType || cab.cabCategory || cab.name,
     cabCategory: cab.cabCategory || cab.vehicleType || '',
@@ -315,9 +429,12 @@ export function buildSelectedCabSnapshot(cab) {
     travelDate: cab.travelDate || '',
     seatingCapacity: cab.seatingCapacity,
     isAc: cab.isAc,
+    isPackageCab: Boolean(cab.isPackageCab),
+    isDefault: Boolean(cab.isDefault),
     cost: cab.cost || cab.totalAmount || 0,
     totalAmount: cab.totalAmount || cab.cost || 0,
+    priceDelta: cab.priceDelta,
     fare: cab.fare || {},
-    externalSource: 'uno_cabs',
+    externalSource: cab.externalSource || (cab.isPackageCab ? 'uno_package' : 'uno_cabs'),
   }];
 }

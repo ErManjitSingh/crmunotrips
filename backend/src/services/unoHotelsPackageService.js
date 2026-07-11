@@ -89,11 +89,38 @@ function mapDayOptionsToItinerary(days = []) {
   });
 }
 
-async function fetchUnoPackageDayOptions(slug) {
+async function fetchUnoPackageDayOptionsPayload(slug) {
   const payload = await unoFetch(`/v1/packages/${encodeURIComponent(slug)}/day-options`);
-  const unwrapped = unwrapPayload(payload);
-  if (Array.isArray(unwrapped?.days)) return unwrapped.days;
-  if (Array.isArray(unwrapped?.data?.days)) return unwrapped.data.days;
+  return unwrapPayload(payload);
+}
+
+function mapPackageCab(cab = {}) {
+  return {
+    id: cab.id,
+    packageCabId: cab.id,
+    cabTypeId: cab.cab_type_id || null,
+    name: cab.name || 'Cab',
+    vehicleType: cab.name || 'Cab',
+    cabCategory: cab.name || '',
+    seatingCapacity: cab.seats,
+    description: cab.description || '',
+    featuredImage: sanitizeImageUrl(cab.image_url),
+    cost: Number(cab.price_delta || 0),
+    totalAmount: Number(cab.price_delta || 0),
+    priceDelta: Number(cab.price_delta || 0),
+    isDefault: Boolean(cab.is_default),
+    isPopular: Boolean(cab.is_popular),
+    isActive: cab.is_active !== false,
+    externalSource: 'uno_package',
+    isPackageCab: true,
+    tripType: 'full_day',
+  };
+}
+
+async function fetchUnoPackageDayOptions(slug) {
+  const payload = await fetchUnoPackageDayOptionsPayload(slug);
+  if (Array.isArray(payload?.days)) return payload.days;
+  if (Array.isArray(payload?.data?.days)) return payload.data.days;
   return [];
 }
 
@@ -101,7 +128,18 @@ async function attachItineraryFromDayOptions(mapped, slug) {
   if (!slug) return mapped;
 
   try {
-    const days = await fetchUnoPackageDayOptions(slug);
+    const payload = await fetchUnoPackageDayOptionsPayload(slug);
+    const days = Array.isArray(payload?.days) ? payload.days : [];
+    const packageCabs = (Array.isArray(payload?.cabs) ? payload.cabs : [])
+      .filter((cab) => cab.is_active !== false)
+      .map(mapPackageCab)
+      .sort((a, b) => {
+        if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+        return (a.priceDelta || 0) - (b.priceDelta || 0);
+      });
+
+    if (packageCabs.length) mapped.packageCabs = packageCabs;
+
     if (days.length > 0) {
       mapped.itinerary = mapDayOptionsToItinerary(days);
       return mapped;
