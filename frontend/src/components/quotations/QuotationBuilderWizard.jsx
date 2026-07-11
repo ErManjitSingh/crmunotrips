@@ -10,6 +10,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { buildListParams, unwrapPagination } from '../../utils/apiHelpers';
 import { fetchUnoPublicPackages, fetchUnoPublicPackageDetail } from '../../lib/unoPublicPackages';
 import { logSelectedPackageDebug } from '../../lib/logPackageDebug';
+import { resolvePackageCabs } from '../../lib/packageCabMapper';
 import InclusionExclusionEditor, { cleanInclusionExclusionLines } from './InclusionExclusionEditor';
 import QuotePricingPanel from './QuotePricingPanel';
 import QuotePdfPreview from './QuotePdfPreview';
@@ -307,7 +308,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       id: d.id || `day-${d.day || index + 1}`,
       day: d.day || index + 1,
     }));
-    const normalized = { ...cloned, itinerary };
+    const normalized = {
+      ...cloned,
+      itinerary,
+      packageCabs: resolvePackageCabs(cloned),
+    };
     logSelectedPackageDebug(normalized, meta);
     setSelectedPkgDetail(normalized);
     setCustomItinerary(itinerary.map((d) => ({ ...d })));
@@ -693,7 +698,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                 <UnoCabSelector
                   lead={selectedLead}
                   pkg={activePkg}
-                  packageCabs={activePkg?.packageCabs || []}
+                  packageCabs={resolvePackageCabs(activePkg || {})}
                   value={selectedUnoCab}
                   onChange={setSelectedUnoCab}
                 />

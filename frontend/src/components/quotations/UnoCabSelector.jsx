@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Car, Check, Loader2, Package, RefreshCw, Search, Users } from 'lucide-react';
 import API from '../../api/axios';
 import { Button } from '../ui/button';
-import { formatINR } from './quotationUtils';
+import { resolvePackageCabs } from '../../lib/packageCabMapper';
 import { cn } from '../../lib/utils';
 
 function formatApiDate(value) {
@@ -119,8 +119,8 @@ export default function UnoCabSelector({
   const routing = pkg?.routing || pkg?.route || '';
   const routeCities = useMemo(() => parseRouteCities(routing), [routing]);
   const attachedCabs = useMemo(
-    () => (Array.isArray(packageCabs) ? packageCabs : []).filter((cab) => cab.isActive !== false),
-    [packageCabs]
+    () => resolvePackageCabs({ packageCabs, _apiRaw: pkg?._apiRaw }),
+    [packageCabs, pkg?._apiRaw]
   );
 
   const [mode, setMode] = useState(attachedCabs.length ? 'package' : 'manual');

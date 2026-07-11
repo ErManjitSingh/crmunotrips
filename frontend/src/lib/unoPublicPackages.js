@@ -1,4 +1,5 @@
 import API from '../api/axios';
+import { resolvePackageCabs } from './packageCabMapper';
 
 /** Source of truth for UNO package catalog (proxied via CRM /api/uno-packages). */
 export const UNO_PACKAGES_API_URL = 'https://api.unohotelsandresorts.com/v1/packages';
@@ -107,11 +108,11 @@ export function mapUnoPackage(raw = {}, { includeDetail = false } = {}) {
     mapped.termsConditions = raw.terms_conditions || raw.termsConditions || [];
     mapped.cancellationPolicy = raw.cancellation_policy || raw.cancellationPolicy || [];
     mapped.faqs = Array.isArray(raw.faqs) ? raw.faqs : [];
-    mapped.packageCabs = Array.isArray(raw.packageCabs)
-      ? raw.packageCabs
-      : Array.isArray(raw.package_cabs)
-        ? raw.package_cabs
-        : [];
+    mapped.packageCabs = resolvePackageCabs({
+      packageCabs: raw.packageCabs,
+      package_cabs: raw.package_cabs,
+      _apiRaw: raw._apiRaw,
+    });
     mapped.itinerary = Array.isArray(raw.itinerary)
       ? raw.itinerary
       : Array.isArray(raw.itinerary_days)
