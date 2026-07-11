@@ -19,6 +19,24 @@ import {
 } from './quotePdfHelpers';
 import DestinationGallery from './DestinationGallery';
 
+function PdfSection({ title, children, flush, spaced, className = '' }) {
+  const sectionClass = [
+    'quote-ht-section',
+    spaced ? 'quote-ht-section-spaced' : '',
+    flush ? 'quote-ht-section--flush' : '',
+    className,
+  ].filter(Boolean).join(' ');
+
+  return (
+    <section className={sectionClass}>
+      {title && <div className="quote-ht-section-title">{title}</div>}
+      <div className={`quote-ht-section-content ${flush ? 'quote-ht-section-content-flush' : ''}`.trim()}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
 function PolicyBlock({ title, items }) {
   if (!items?.length) return null;
   return (
@@ -94,6 +112,7 @@ const QuotePdfPreview = forwardRef(function QuotePdfPreview({ quote }, ref) {
 
   return (
     <div ref={ref} className="quote-ht-pdf">
+      {/* Header */}
       <div className="quote-ht-topbar">
         <div className="quote-ht-brand-row">
           <img
@@ -110,7 +129,7 @@ const QuotePdfPreview = forwardRef(function QuotePdfPreview({ quote }, ref) {
         </div>
       </div>
 
-      {/* Package header + destination gallery */}
+      {/* Package hero + destination */}
       <div className="quote-ht-header-block">
         <div className="quote-ht-package-hero">
           <div className="quote-ht-package-hero-main">
@@ -140,67 +159,69 @@ const QuotePdfPreview = forwardRef(function QuotePdfPreview({ quote }, ref) {
         />
       </div>
 
-      <h2 className="quote-ht-main-title">Detailed Day Wise Itinerary</h2>
-
-      {/* Welcome block */}
-      <div className="quote-ht-welcome">
-        <strong>Hello,</strong>
-        <br />
-        Welcome to {COMPANY_INFO.name}
-        <br /><br />
-        {QUOTE_WELCOME_TEXT.split('\n\n').map((para) => (
-          <p key={para.slice(0, 24)} style={{ margin: '0 0 8px' }}>{para}</p>
-        ))}
-        <p style={{ margin: 0 }}>
-          For assistance call us 24/7: <strong>{COMPANY_INFO.phone}</strong>
-        </p>
-      </div>
+      {/* Welcome */}
+      <PdfSection title="Welcome">
+        <div className="quote-ht-welcome">
+          <strong>Hello {lead.name ? lead.name.split(' ')[0] : 'Guest'},</strong>
+          <br />
+          Welcome to {COMPANY_INFO.name}
+          <br /><br />
+          {QUOTE_WELCOME_TEXT.split('\n\n').map((para) => (
+            <p key={para.slice(0, 24)}>{para}</p>
+          ))}
+          <p>
+            For assistance call us 24/7: <strong>{COMPANY_INFO.phone}</strong>
+          </p>
+        </div>
+      </PdfSection>
 
       {/* Package Overview */}
-      <div className="quote-ht-section-title">Package Overview</div>
-      <table className="quote-ht-overview">
-        <tbody>
-          {[
-            ['Name of Package', `${pkg.name} [${quote.quoteNumber}]`],
-            ['Quotation Date', formatQuoteDate(quote.createdAt)],
-            ['Routing', pkg.routing || pkg.destination],
-            ['Package Category', pkg.packageCategory],
-            ['Duration', `${pkg.duration} Days & ${nights} Nights`],
-            ['No. of Rooms', `${pax.rooms}${pax.extraBeds ? ` | Extra Bed: ${pax.extraBeds}` : ''}`],
-            ['No. of Traveller', `Adult: ${pax.adults}${pax.kids ? ` | Kids: ${pax.kids}` : ''}`],
-            ...(pkg.cabCategory || vehicles[0]?.name ? [['Cab Category', pkg.cabCategory || vehicles[0]?.name]] : []),
-            ['Package Cost', `${formatINR(p.total)}/-`],
-            ['Prepared For', lead.name || 'Guest'],
-            ...(lead.phone ? [['Customer Phone', lead.phone]] : []),
-          ].map(([label, value]) => (
-            <tr key={label}>
-              <td className="label">{label}</td>
-              <td className="value">{value}</td>
+      <PdfSection title="Package Overview">
+        <table className="quote-ht-overview">
+          <tbody>
+            {[
+              ['Name of Package', `${pkg.name} [${quote.quoteNumber}]`],
+              ['Quotation Date', formatQuoteDate(quote.createdAt)],
+              ['Routing', pkg.routing || pkg.destination],
+              ['Package Category', pkg.packageCategory],
+              ['Duration', `${pkg.duration} Days & ${nights} Nights`],
+              ['No. of Rooms', `${pax.rooms}${pax.extraBeds ? ` | Extra Bed: ${pax.extraBeds}` : ''}`],
+              ['No. of Traveller', `Adult: ${pax.adults}${pax.kids ? ` | Kids: ${pax.kids}` : ''}`],
+              ...(pkg.cabCategory || vehicles[0]?.name ? [['Cab Category', pkg.cabCategory || vehicles[0]?.name]] : []),
+              ['Package Cost', `${formatINR(p.total)}/-`],
+              ['Prepared For', lead.name || 'Guest'],
+              ...(lead.phone ? [['Customer Phone', lead.phone]] : []),
+            ].map(([label, value]) => (
+              <tr key={label}>
+                <td className="label">{label}</td>
+                <td className="value">{value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </PdfSection>
+
+      {/* Package cost */}
+      <PdfSection title="Package Cost">
+        <table className="quote-ht-table quote-ht-table-nested">
+          <thead>
+            <tr>
+              <th>Package Type</th>
+              <th style={{ textAlign: 'right' }}>Amount</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            <tr className="quote-ht-amount-row">
+              <td style={{ fontWeight: 700 }}>{pkg.packageCategory}</td>
+              <td style={{ textAlign: 'right' }}>{formatINR(p.total)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </PdfSection>
 
-      {/* Package type cost row */}
-      <table className="quote-ht-table" style={{ marginTop: 14 }}>
-        <thead>
-          <tr>
-            <th>Package Type</th>
-            <th style={{ textAlign: 'right' }}>Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr className="quote-ht-amount-row">
-            <td style={{ fontWeight: 700 }}>{pkg.packageCategory}</td>
-            <td style={{ textAlign: 'right' }}>{formatINR(p.total)}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* Day-wise hotels — card layout with spacing between each night */}
+      {/* Day-wise hotels */}
       {hotels.length > 0 && (
-        <>
-          <div className="quote-ht-section-title quote-ht-section-title-spaced">Day-wise Hotel Details</div>
+        <PdfSection title="Day-wise Hotel Details" spaced>
           <div className="quote-ht-hotel-days">
             {hotels.map((h) => {
               const hotelPhoto = h.hotelImages?.[0] || h.thumbnailUrl;
@@ -238,14 +259,13 @@ const QuotePdfPreview = forwardRef(function QuotePdfPreview({ quote }, ref) {
               );
             })}
           </div>
-        </>
+        </PdfSection>
       )}
 
       {/* Vehicles */}
       {vehicles.length > 0 && (
-        <>
-          <div className="quote-ht-section-title" style={{ marginTop: 16 }}>Vehicle Details</div>
-          <table className="quote-ht-table">
+        <PdfSection title="Vehicle Details" spaced>
+          <table className="quote-ht-table quote-ht-table-nested">
             <thead>
               <tr>
                 <th>Vehicle</th>
@@ -263,83 +283,84 @@ const QuotePdfPreview = forwardRef(function QuotePdfPreview({ quote }, ref) {
               ))}
             </tbody>
           </table>
-        </>
+        </PdfSection>
       )}
 
       {/* Day-wise itinerary */}
       {pkg.itinerary?.length > 0 && (
-        <>
-          {pkg.itinerary.map((day) => {
-            const dayDate = getDayDate(lead.travelDate, day.day);
-            const dayHotel = resolveDayHotelForItinerary(quote, day.day);
-            return (
-              <div key={day.id} className="quote-ht-day-card">
-                <div className="quote-ht-day-head">
-                  <div className="day-title">
-                    <span className="quote-ht-day-num">{day.day}</span>
-                    <span>{day.title}</span>
+        <PdfSection title="Detailed Day Wise Itinerary" spaced flush>
+          <div className="quote-ht-itinerary-list">
+            {pkg.itinerary.map((day) => {
+              const dayDate = getDayDate(lead.travelDate, day.day);
+              const dayHotel = resolveDayHotelForItinerary(quote, day.day);
+              return (
+                <div key={day.id} className="quote-ht-day-card">
+                  <div className="quote-ht-day-head">
+                    <div className="day-title">
+                      <span className="quote-ht-day-num">{day.day}</span>
+                      <span>{day.title}</span>
+                    </div>
+                    <div className="quote-ht-day-meta">
+                      {dayDate && (
+                        <span className="quote-ht-meta-pill">
+                          <span className="lbl">Date</span> {formatQuoteDate(dayDate)}
+                        </span>
+                      )}
+                      {day.meals && (
+                        <span className="quote-ht-meta-pill">
+                          <span className="lbl">Meals</span> {day.meals}
+                        </span>
+                      )}
+                      {(dayHotel?.name || day.hotel) && (
+                        <span className="quote-ht-meta-pill">
+                          <span className="lbl">Hotel</span> {dayHotel?.name || day.hotel}
+                        </span>
+                      )}
+                      {(day.transport || pkg.cabCategory) && (
+                        <span className="quote-ht-meta-pill">
+                          <span className="lbl">Cab</span> {day.transport || pkg.cabCategory}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="quote-ht-day-meta">
-                    {dayDate && (
-                      <span className="quote-ht-meta-pill">
-                        <span className="lbl">Date</span> {formatQuoteDate(dayDate)}
-                      </span>
-                    )}
-                    {day.meals && (
-                      <span className="quote-ht-meta-pill">
-                        <span className="lbl">Meals</span> {day.meals}
-                      </span>
-                    )}
-                    {(dayHotel?.name || day.hotel) && (
-                      <span className="quote-ht-meta-pill">
-                        <span className="lbl">Hotel</span> {dayHotel?.name || day.hotel}
-                      </span>
-                    )}
-                    {(day.transport || pkg.cabCategory) && (
-                      <span className="quote-ht-meta-pill">
-                        <span className="lbl">Cab</span> {day.transport || pkg.cabCategory}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {day.description && (
-                  <div className="quote-ht-day-body">{day.description}</div>
-                )}
-                {(dayHotel || day.hotel) && (
-                  <DayHotelStay
-                    dayHotel={
-                      dayHotel || {
-                        name: day.hotel,
-                        roomType: '',
-                        meals: day.meals,
-                        city: pkg.destination?.split(/[,·]/)[0]?.trim(),
+                  {day.description && (
+                    <div className="quote-ht-day-body">{day.description}</div>
+                  )}
+                  {(dayHotel || day.hotel) && (
+                    <DayHotelStay
+                      dayHotel={
+                        dayHotel || {
+                          name: day.hotel,
+                          roomType: '',
+                          meals: day.meals,
+                          city: pkg.destination?.split(/[,·]/)[0]?.trim(),
+                        }
                       }
-                    }
-                  />
-                )}
-                {(day.sightseeing || day.activities || day.activityNotes) && (
-                  <div className="quote-ht-day-extra">
-                    {day.sightseeing && (
-                      <div><strong>Sightseeing for the day:</strong> {day.sightseeing}</div>
-                    )}
-                    {day.activities && (
-                      <div><strong>Activities:</strong> {day.activities}</div>
-                    )}
-                    {day.activityNotes && (
-                      <div style={{ marginTop: 4, fontStyle: 'italic' }}>{day.activityNotes}</div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </>
+                    />
+                  )}
+                  {(day.sightseeing || day.activities || day.activityNotes) && (
+                    <div className="quote-ht-day-extra">
+                      {day.sightseeing && (
+                        <div><strong>Sightseeing for the day:</strong> {day.sightseeing}</div>
+                      )}
+                      {day.activities && (
+                        <div><strong>Activities:</strong> {day.activities}</div>
+                      )}
+                      {day.activityNotes && (
+                        <div style={{ marginTop: 4, fontStyle: 'italic' }}>{day.activityNotes}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </PdfSection>
       )}
 
       {/* Inclusion & Exclusion */}
       {(pkg.inclusions?.length || pkg.exclusions?.length) && (
-        <>
-          <div className="quote-ht-section-title" style={{ marginTop: 16 }}>Inclusion &amp; Exclusion</div>
+        <PdfSection title="Inclusion & Exclusion" spaced>
           <div className="quote-ht-inc-exc">
             <div className="inc">
               <h4>Inclusion</h4>
@@ -358,64 +379,71 @@ const QuotePdfPreview = forwardRef(function QuotePdfPreview({ quote }, ref) {
               </ul>
             </div>
           </div>
-        </>
+        </PdfSection>
       )}
 
-      {/* Policies — same sections as reference PDF */}
-      <div className="quote-ht-section-title" style={{ marginTop: 16 }}>Policies &amp; Terms</div>
-      <div className="quote-ht-body">
-        <PolicyBlock title="Remarks" items={policies.remarks} />
-        <PolicyBlock title="Terms & Conditions" items={policies.terms} />
-        <PolicyBlock title="Confirmation Policy" items={policies.confirmation} />
-        <PolicyBlock title="Cancellation Policy" items={policies.cancellation} />
-        <PolicyBlock title="Amendment {Postpone & Prepone Policy}" items={policies.amendment} />
-      </div>
+      {/* Policies */}
+      <PdfSection title="Policies & Terms" spaced>
+        <div className="quote-ht-policies-wrap">
+          <PolicyBlock title="Remarks" items={policies.remarks} />
+          <PolicyBlock title="Terms & Conditions" items={policies.terms} />
+          <PolicyBlock title="Confirmation Policy" items={policies.confirmation} />
+          <PolicyBlock title="Cancellation Policy" items={policies.cancellation} />
+          <PolicyBlock title="Amendment {Postpone & Prepone Policy}" items={policies.amendment} />
+        </div>
+      </PdfSection>
 
       {/* Bank details */}
-      <div className="quote-ht-section-title" style={{ marginTop: 8 }}>Bank Details: Cash / Cheque at Bank or Net Transfer</div>
-      <table className="quote-ht-bank-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Bank</th>
-            <th>Account Name</th>
-            <th>Account No.</th>
-            <th>IFSC</th>
-            <th>Branch</th>
-            <th>UPI</th>
-          </tr>
-        </thead>
-        <tbody>
-          {banks.map((b, i) => (
-            <tr key={b.bank}>
-              <td>{i + 1}</td>
-              <td><strong>{b.bank}</strong></td>
-              <td>{b.accountName}</td>
-              <td>{b.accountNo}</td>
-              <td>{b.ifsc}</td>
-              <td>{b.branch}</td>
-              <td>{b.upi || '—'}</td>
+      <PdfSection title="Bank Details — Cash / Cheque / Net Transfer" spaced>
+        <table className="quote-ht-bank-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Bank</th>
+              <th>Account Name</th>
+              <th>Account No.</th>
+              <th>IFSC</th>
+              <th>Branch</th>
+              <th>UPI</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {banks.map((b, i) => (
+              <tr key={b.bank}>
+                <td>{i + 1}</td>
+                <td><strong>{b.bank}</strong></td>
+                <td>{b.accountName}</td>
+                <td>{b.accountNo}</td>
+                <td>{b.ifsc}</td>
+                <td>{b.branch}</td>
+                <td>{b.upi || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </PdfSection>
 
-      {/* Trip planner + address */}
-      <div className="quote-ht-planner">
-        <div className="quote-ht-planner-box">
-          <h4>Trip Planner Details</h4>
-          <div><strong>Name:</strong> {planner.name}</div>
-          {planner.phone && <div><strong>Contact No.:</strong> {planner.phone}</div>}
-          {!planner.phone && <div><strong>Contact No.:</strong> {COMPANY_INFO.phone}</div>}
+      {/* Trip planner + contact */}
+      <PdfSection title="Contact & Trip Planner" spaced>
+        <div className="quote-ht-planner">
+          <div className="quote-ht-planner-box">
+            <h4>Trip Planner Details</h4>
+            <div><strong>Name:</strong> {planner.name}</div>
+            {planner.phone ? (
+              <div><strong>Contact No.:</strong> {planner.phone}</div>
+            ) : (
+              <div><strong>Contact No.:</strong> {COMPANY_INFO.phone}</div>
+            )}
+          </div>
+          <div className="quote-ht-planner-box">
+            <h4>Address & Contact Info</h4>
+            <div>{COMPANY_INFO.address}</div>
+            <div className="quote-ht-contact-line">Phone: {COMPANY_INFO.phone}</div>
+            <div className="quote-ht-contact-line">Email: {COMPANY_INFO.email}</div>
+            <div className="quote-ht-contact-line">Web: {COMPANY_INFO.website || 'unotrips.com'}</div>
+          </div>
         </div>
-        <div className="quote-ht-planner-box">
-          <h4>Address &amp; Contact Info</h4>
-          <div>{COMPANY_INFO.address}</div>
-          <div className="quote-ht-contact-line">Phone: {COMPANY_INFO.phone}</div>
-          <div className="quote-ht-contact-line">Email: {COMPANY_INFO.email}</div>
-          <div className="quote-ht-contact-line">Web: {COMPANY_INFO.website || 'unotrips.com'}</div>
-        </div>
-      </div>
+      </PdfSection>
 
       <div className="quote-ht-footer">
         <img

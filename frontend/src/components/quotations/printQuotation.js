@@ -16,7 +16,7 @@ export function buildQuotationPrintDocument(contentHtml, title = 'Quotation') {
   <title>${safeTitle}</title>
   <style>
 ${quotePdfCss}
-    @page { margin: 8mm; size: A4 portrait; }
+    @page { margin: 10mm 12mm; size: A4 portrait; }
     html, body {
       margin: 0 !important;
       padding: 0 !important;
@@ -24,6 +24,14 @@ ${quotePdfCss}
       overflow: visible !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
+    }
+    .quote-ht-section {
+      orphans: 3;
+      widows: 3;
+    }
+    .quote-ht-section-title + .quote-ht-section-content {
+      page-break-before: avoid;
+      break-before: avoid;
     }
   </style>
 </head>
