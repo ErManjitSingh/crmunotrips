@@ -28,13 +28,15 @@ function parseDurationNights(pkg = {}) {
 function mapItineraryDays(days = []) {
   return days.map((day) => {
     const activityParts = [day.arrival, day.transport, day.cab_name, day.transport_mode].filter(Boolean);
+    const sightseeing = formatNamedList(day.sightseeing || []);
     return {
       id: day.id || `day-${day.day_number}`,
       day: day.day_number,
-      title: day.title || `Day ${day.day_number}`,
-      description: day.description || '',
+      title: String(day.title || `Day ${day.day_number}`).trim(),
+      description: String(day.description || day.location || '').trim(),
       hotel: day.hotel_name || '',
-      activities: activityParts.length ? activityParts.join(' · ') : '',
+      activities: activityParts.length ? activityParts.join(' · ') : sightseeing,
+      sightseeing,
       meals: Array.isArray(day.meals_selected) && day.meals_selected.length
         ? day.meals_selected.join(', ')
         : day.dinner || '',
@@ -57,36 +59,95 @@ function pickHotelLabel(option = {}) {
   );
 }
 
+function formatMealsLabel(meals = {}) {
+  if (typeof meals === 'string') return meals.trim();
+  const selected = [];
+  if (meals.breakfast) selected.push('Breakfast');
+  if (meals.lunch) selected.push('Lunch');
+  if (meals.dinner) selected.push('Dinner');
+  return selected.join(', ');
+}
+
+function formatNamedList(items = []) {
+  return items
+    .map((item) => item?.name || item?.title || (typeof item === 'string' ? item : ''))
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function pickDefaultHotelOption(options = []) {
+  return options.find((option) => option.is_default || option.isDefault || option.is_selected) || options[0] || null;
+}
+
+function mergeDayItinerary(itineraryDay = {}, optionDay = {}) {
+  const dayNumber = itineraryDay.day_number || optionDay.day_number;
+  const hotelOptions = Array.isArray(optionDay.hotel_options) ? optionDay.hotel_options : [];
+  const defaultHotelOption = pickDefaultHotelOption(hotelOptions);
+  const defaultHotelName =
+    pickHotelLabel(defaultHotelOption)
+    || itineraryDay.hotel_name
+    || '';
+
+  const sightseeing = formatNamedList(optionDay.sightseeing || []);
+  const activitiesFromOptions = formatNamedList(optionDay.activities || []);
+  const legacyActivityParts = [
+    itineraryDay.arrival,
+    itineraryDay.transport,
+    itineraryDay.cab_name,
+    itineraryDay.transport_mode,
+  ].filter(Boolean);
+  const legacyActivities = legacyActivityParts.join(' · ');
+  const activities = [activitiesFromOptions, legacyActivities].filter(Boolean).join(' · ');
+
+  const meals =
+    formatMealsLabel(defaultHotelOption?.meals)
+    || (Array.isArray(itineraryDay.meals_selected) ? itineraryDay.meals_selected.join(', ') : '')
+    || itineraryDay.dinner
+    || '';
+
+  const transport = itineraryDay.transport || itineraryDay.cab_name || itineraryDay.transport_mode || '';
+
+  return {
+    id: itineraryDay.id || optionDay.id || `day-${dayNumber}`,
+    day: dayNumber,
+    title: String(itineraryDay.title || optionDay.title || `Day ${dayNumber}`).trim(),
+    description: String(
+      itineraryDay.description
+      || optionDay.description
+      || optionDay.location
+      || ''
+    ).trim(),
+    hotel: defaultHotelName,
+    accommodation: defaultHotelName,
+    activities: activities || sightseeing,
+    sightseeing,
+    meals,
+    transport,
+    dayImage: sanitizeImageUrl(itineraryDay.day_image || optionDay.day_image),
+    dayImages: sanitizeImages(itineraryDay.day_images || optionDay.day_images || []),
+  };
+}
+
+function buildMergedItinerary(itineraryDays = [], optionDays = []) {
+  const itineraryByDay = new Map(
+    (Array.isArray(itineraryDays) ? itineraryDays : []).map((day) => [day.day_number, day])
+  );
+  const optionByDay = new Map(
+    (Array.isArray(optionDays) ? optionDays : []).map((day) => [day.day_number, day])
+  );
+  const dayNumbers = [...new Set([...itineraryByDay.keys(), ...optionByDay.keys()])]
+    .filter(Boolean)
+    .sort((a, b) => a - b);
+
+  if (!dayNumbers.length) return [];
+
+  return dayNumbers.map((dayNumber) =>
+    mergeDayItinerary(itineraryByDay.get(dayNumber) || {}, optionByDay.get(dayNumber) || { day_number: dayNumber })
+  );
+}
+
 function mapDayOptionsToItinerary(days = []) {
-  return days.map((day) => {
-    const hotelOptions = Array.isArray(day.hotel_options) ? day.hotel_options : [];
-    const defaultHotel =
-      pickHotelLabel(hotelOptions.find((option) => option.is_default || option.isDefault || option.is_selected))
-      || pickHotelLabel(hotelOptions[0])
-      || '';
-
-    const sightseeing = (Array.isArray(day.sightseeing) ? day.sightseeing : [])
-      .map((spot) => spot.name)
-      .filter(Boolean);
-    const activities = (Array.isArray(day.activities) ? day.activities : [])
-      .map((activity) => activity.name)
-      .filter(Boolean);
-    const activityText = [...sightseeing, ...activities].join(' · ');
-
-    return {
-      id: `day-${day.day_number}`,
-      day: day.day_number,
-      title: day.title || `Day ${day.day_number}`,
-      description: day.location || '',
-      hotel: defaultHotel,
-      activities: activityText,
-      meals: '',
-      transport: '',
-      accommodation: defaultHotel,
-      dayImage: sanitizeImageUrl(day.day_image),
-      dayImages: sanitizeImages(day.day_images || []),
-    };
-  });
+  return buildMergedItinerary([], days);
 }
 
 async function fetchUnoPackageDayOptionsPayload(slug) {
@@ -124,8 +185,10 @@ async function fetchUnoPackageDayOptions(slug) {
   return [];
 }
 
-async function attachItineraryFromDayOptions(mapped, slug) {
+async function attachItineraryFromDayOptions(mapped, slug, itineraryDaysFromPackage = []) {
   if (!slug) return mapped;
+
+  const packageItineraryDays = Array.isArray(itineraryDaysFromPackage) ? itineraryDaysFromPackage : [];
 
   try {
     const payload = await fetchUnoPackageDayOptionsPayload(slug);
@@ -141,12 +204,16 @@ async function attachItineraryFromDayOptions(mapped, slug) {
 
     if (packageCabs.length) mapped.packageCabs = packageCabs;
 
-    if (days.length > 0) {
-      mapped.itinerary = mapDayOptionsToItinerary(days);
+    if (days.length > 0 || packageItineraryDays.length > 0) {
+      mapped.itinerary = buildMergedItinerary(packageItineraryDays, days);
       return mapped;
     }
   } catch {
     /* fall back to itinerary_days or generated days */
+  }
+
+  if (packageItineraryDays.length > 0) {
+    mapped.itinerary = mapItineraryDays(packageItineraryDays);
   }
 
   return mapped;
@@ -358,7 +425,11 @@ async function fetchUnoPackageById(packageId) {
     }
   }
 
-  mapped = await attachItineraryFromDayOptions(mapped, slug || mapped.slug);
+  mapped = await attachItineraryFromDayOptions(
+    mapped,
+    slug || mapped.slug,
+    rawPackageApi?.itinerary_days || []
+  );
 
   if (!mapped.itinerary?.length) {
     const destination = mapped.destination || 'India';
@@ -383,7 +454,7 @@ async function fetchUnoPackageById(packageId) {
 
 async function getUnoPackageById(packageId) {
   return cacheService.getOrSet(
-    `uno:packages:detail:${packageId}`,
+    `uno:packages:detail:v2:${packageId}`,
     () => fetchUnoPackageById(packageId),
     DETAIL_CACHE_TTL_MS
   );

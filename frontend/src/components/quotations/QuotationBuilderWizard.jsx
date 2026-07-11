@@ -10,6 +10,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { buildListParams, unwrapPagination } from '../../utils/apiHelpers';
 import { fetchUnoPublicPackages, fetchUnoPublicPackageDetail } from '../../lib/unoPublicPackages';
 import { logSelectedPackageDebug } from '../../lib/logPackageDebug';
+import { resolvePackageItinerary } from '../../lib/packageItineraryMapper';
 import { resolvePackageCabs } from '../../lib/packageCabMapper';
 import InclusionExclusionEditor, { cleanInclusionExclusionLines } from './InclusionExclusionEditor';
 import QuotePricingPanel from './QuotePricingPanel';
@@ -301,9 +302,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
 
   const applyPackageDetail = (detail, meta = {}) => {
     const cloned = JSON.parse(JSON.stringify(detail));
-    const rawItinerary =
-      cloned.itinerary?.length > 0 ? cloned.itinerary : buildFallbackItinerary(cloned);
-    const itinerary = rawItinerary.map((d, index) => ({
+    const rawItinerary = resolvePackageItinerary(cloned);
+    const itinerarySource = rawItinerary.length > 0 ? rawItinerary : buildFallbackItinerary(cloned);
+    const itinerary = itinerarySource.map((d, index) => ({
       ...d,
       id: d.id || `day-${d.day || index + 1}`,
       day: d.day || index + 1,
@@ -583,22 +584,12 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                 </div>
                 )}
                 {loadingPackageDetail && (
-                  <p className="text-xs text-amber-700">Loading package itinerary & details...</p>
+                  <p className="text-xs text-amber-700">Loading package details...</p>
                 )}
-                {!loadingPackageDetail && state.packageId && customItinerary.length > 0 && activePkg && (
-                  <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
-                    <div>
-                      <p className="text-sm font-semibold text-content-primary">Package Itinerary</p>
-                      <p className="text-xs text-content-muted mt-0.5">
-                        {customItinerary.length} day{customItinerary.length !== 1 ? 's' : ''} loaded — add, remove, or edit days below
-                      </p>
-                    </div>
-                    <ItineraryBuilder
-                      itinerary={customItinerary}
-                      onChange={setCustomItinerary}
-                      destination={activePkg.destination}
-                    />
-                  </div>
+                {!loadingPackageDetail && state.packageId && customItinerary.length > 0 && (
+                  <p className="text-xs text-emerald-700">
+                    {customItinerary.length} day itinerary loaded. Continue to the next step to view and edit.
+                  </p>
                 )}
               </div>
             )}

@@ -1,5 +1,6 @@
 import API from '../api/axios';
 import { resolvePackageCabs } from './packageCabMapper';
+import { buildMergedItinerary, resolvePackageItinerary } from './packageItineraryMapper';
 
 /** Source of truth for UNO package catalog (proxied via CRM /api/uno-packages). */
 export const UNO_PACKAGES_API_URL = 'https://api.unohotelsandresorts.com/v1/packages';
@@ -113,22 +114,10 @@ export function mapUnoPackage(raw = {}, { includeDetail = false } = {}) {
       package_cabs: raw.package_cabs,
       _apiRaw: raw._apiRaw,
     });
-    mapped.itinerary = Array.isArray(raw.itinerary)
+    mapped.itinerary = Array.isArray(raw.itinerary) && raw.itinerary.length
       ? raw.itinerary
-      : Array.isArray(raw.itinerary_days)
-        ? raw.itinerary_days.map((day) => ({
-            id: day.id || `day-${day.day_number}`,
-            day: day.day_number,
-            title: day.title || `Day ${day.day_number}`,
-            description: day.description || '',
-            hotel: day.hotel_name || '',
-            activities: [day.arrival, day.transport, day.cab_name, day.transport_mode].filter(Boolean).join(' · '),
-            meals: Array.isArray(day.meals_selected) ? day.meals_selected.join(', ') : day.dinner || '',
-            transport: day.transport || day.cab_name || day.transport_mode || '',
-            accommodation: day.hotel_name || '',
-            dayImage: day.day_image || '',
-            dayImages: Array.isArray(day.day_images) ? day.day_images : [],
-          }))
+      : Array.isArray(raw.itinerary_days) && raw.itinerary_days.length
+        ? buildMergedItinerary(raw.itinerary_days, raw._apiRaw?.dayOptions?.days || [])
         : [];
   }
 
