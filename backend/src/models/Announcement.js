@@ -82,7 +82,9 @@ const announcementSchema = new mongoose.Schema(
 );
 
 announcementSchema.index({ active: 1, publishAt: 1, expiresAt: 1, pinToDashboard: -1 });
+announcementSchema.index({ active: 1, expiresAt: 1, publishAt: -1 });
 announcementSchema.index({ 'dismissals.user': 1 });
+announcementSchema.index({ 'reads.user': 1 });
 
 module.exports = mongoose.model('Announcement', announcementSchema);
 module.exports.ANNOUNCEMENT_TYPES = ANNOUNCEMENT_TYPES;

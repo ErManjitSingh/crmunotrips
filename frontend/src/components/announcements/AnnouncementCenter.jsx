@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   dismissAnnouncement,
@@ -8,9 +8,12 @@ import {
 } from '../../services/announcementApi';
 import AnnouncementHero from './AnnouncementHero';
 import AnnouncementCarousel from './AnnouncementCarousel';
-import AnnouncementPopup from './AnnouncementPopup';
 import AppModal from '../ui/AppModal';
 import { Button } from '../ui/button';
+
+const AnnouncementPopup = lazy(() => import('./AnnouncementPopup'));
+
+const FEED_KEY = ['announcements', 'feed'];
 
 export default function AnnouncementCenter() {
   const queryClient = useQueryClient();
@@ -18,9 +21,12 @@ export default function AnnouncementCenter() {
   const [detail, setDetail] = useState(null);
 
   const { data } = useQuery({
-    queryKey: ['announcements', 'feed'],
+    queryKey: FEED_KEY,
     queryFn: fetchAnnouncementFeed,
-    staleTime: 30_000,
+    staleTime: 120_000,
+    gcTime: 600_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   useEffect(() => {
@@ -29,43 +35,72 @@ export default function AnnouncementCenter() {
     }
   }, [data?.popup?._id, data?.popup?.popupAlreadySeen]);
 
-  const refresh = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['announcements', 'feed'] });
-  }, [queryClient]);
+  const patchFeed = useCallback(
+    (updater) => {
+      queryClient.setQueryData(FEED_KEY, (prev) => (prev ? updater(prev) : prev));
+    },
+    [queryClient]
+  );
 
-  const openDetail = async (item) => {
-    setDetail(item);
-    if (item?._id) {
-      try {
-        await markAnnouncementRead(item._id);
-        refresh();
-      } catch {
-        /* ignore */
-      }
-    }
-  };
+  const openDetail = useCallback(
+    (item) => {
+      setDetail(item);
+      if (!item?._id || item.isRead) return;
+      patchFeed((prev) => {
+        const mark = (row) => (row && String(row._id) === String(item._id) ? { ...row, isRead: true } : row);
+        return {
+          ...prev,
+          hero: mark(prev.hero),
+          popup: mark(prev.popup),
+          carousel: (prev.carousel || []).map(mark),
+          unreadCount: Math.max(0, (prev.unreadCount || 1) - 1),
+        };
+      });
+      markAnnouncementRead(item._id).catch(() => {});
+    },
+    [patchFeed]
+  );
 
-  const handleDismiss = async (item) => {
-    await dismissAnnouncement(item._id, 0);
-    refresh();
-  };
+  const handleDismiss = useCallback(
+    (item) => {
+      if (!item?._id) return;
+      patchFeed((prev) => {
+        const id = String(item._id);
+        const drop = (row) => (row && String(row._id) === id ? null : row);
+        const nextCarousel = (prev.carousel || []).filter((row) => String(row._id) !== id);
+        const nextHero = drop(prev.hero);
+        return {
+          ...prev,
+          hero: nextHero || nextCarousel[0] || null,
+          carousel: nextHero ? nextCarousel : nextCarousel.slice(1),
+          popup: drop(prev.popup),
+        };
+      });
+      dismissAnnouncement(item._id, 0).catch(() => {
+        queryClient.invalidateQueries({ queryKey: FEED_KEY });
+      });
+    },
+    [patchFeed, queryClient]
+  );
 
-  const handleParticipate = (item) => {
-    if (item.secondaryCtaUrl) window.open(item.secondaryCtaUrl, '_blank', 'noopener,noreferrer');
-    else openDetail(item);
-  };
+  const handleParticipate = useCallback(
+    (item) => {
+      if (item.secondaryCtaUrl) window.open(item.secondaryCtaUrl, '_blank', 'noopener,noreferrer');
+      else openDetail(item);
+    },
+    [openDetail]
+  );
 
-  const closePopup = async () => {
+  const closePopup = useCallback(() => {
     setPopupOpen(false);
-    if (data?.popup?._id) {
-      try {
-        await markAnnouncementPopupSeen(data.popup._id);
-        refresh();
-      } catch {
-        /* ignore */
-      }
-    }
-  };
+    const id = data?.popup?._id;
+    if (!id) return;
+    patchFeed((prev) => ({
+      ...prev,
+      popup: prev.popup ? { ...prev.popup, popupAlreadySeen: true } : null,
+    }));
+    markAnnouncementPopupSeen(id).catch(() => {});
+  }, [data?.popup?._id, patchFeed]);
 
   if (!data) return null;
   const hasContent = data.hero || data.carousel?.length;
@@ -83,15 +118,19 @@ export default function AnnouncementCenter() {
         <AnnouncementCarousel items={data.carousel || []} onReadMore={openDetail} />
       </div>
 
-      <AnnouncementPopup
-        announcement={data.popup}
-        open={popupOpen}
-        onClose={closePopup}
-        onView={(item) => {
-          closePopup();
-          openDetail(item);
-        }}
-      />
+      {popupOpen && (
+        <Suspense fallback={null}>
+          <AnnouncementPopup
+            announcement={data.popup}
+            open={popupOpen}
+            onClose={closePopup}
+            onView={(item) => {
+              closePopup();
+              openDetail(item);
+            }}
+          />
+        </Suspense>
+      )}
 
       <AppModal open={!!detail} onClose={() => setDetail(null)} size="lg" className="p-5 sm:p-6">
         {detail && (

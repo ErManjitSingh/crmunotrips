@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { lazy, Suspense, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Filter, Target, CalendarDays } from 'lucide-react';
@@ -8,7 +8,8 @@ import { useDashboardQuery } from '../../features/dashboard/hooks/useDashboardQu
 import { invalidateDashboard } from '../../lib/queryInvalidation';
 import ExecutiveKpiCards from './dashboard/ExecutiveKpiCards';
 import ExecutiveDashboardPanels from './dashboard/ExecutiveDashboardPanels';
-import AnnouncementCenter from '../announcements/AnnouncementCenter';
+
+const AnnouncementCenter = lazy(() => import('../announcements/AnnouncementCenter'));
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -116,7 +117,9 @@ export default function ExecutiveDashboard() {
         </div>
       </motion.div>
 
-      <AnnouncementCenter />
+      <Suspense fallback={null}>
+        <AnnouncementCenter />
+      </Suspense>
 
       <ExecutiveKpiCards kpis={data?.kpis} trends={data?.kpiTrends} />
       <ExecutiveDashboardPanels data={data} />

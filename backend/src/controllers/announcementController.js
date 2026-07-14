@@ -1,6 +1,45 @@
 const Announcement = require('../models/Announcement');
 const asyncHandler = require('../utils/asyncHandler');
 const { ANNOUNCEMENT_TYPES, PRIORITIES, AUDIENCE_ROLES } = require('../models/Announcement');
+const cacheService = require('../services/cacheService');
+
+const FEED_TTL_MS = 20_000;
+const PRIORITY_RANK = { urgent: 4, high: 3, normal: 2, low: 1 };
+
+const FEED_FIELDS = {
+  title: 1,
+  description: 1,
+  bodyHtml: 1,
+  type: 1,
+  priority: 1,
+  badge: 1,
+  tags: 1,
+  publishAt: 1,
+  expiresAt: 1,
+  pinToDashboard: 1,
+  enablePopup: 1,
+  ctaText: 1,
+  ctaUrl: 1,
+  secondaryCtaText: 1,
+  secondaryCtaUrl: 1,
+  progressLabel: 1,
+  progressPercent: 1,
+  audienceRoles: 1,
+  branchIds: 1,
+  customUserIds: 1,
+  active: 1,
+  dismissals: 1,
+  reads: 1,
+  popupSeen: 1,
+};
+
+function feedCacheKey(userId) {
+  return `announcement:feed:${userId}`;
+}
+
+async function bustAnnouncementCache() {
+  await cacheService.invalidate('announcement:');
+}
 
 function isActiveNow(announcement, now = new Date()) {
   if (!announcement.active) return false;
@@ -38,18 +77,80 @@ function isDismissed(announcement, userId, now = new Date()) {
 }
 
 function decorateForUser(announcement, userId) {
-  const obj = typeof announcement.toObject === 'function' ? announcement.toObject() : { ...announcement };
   const uid = String(userId);
-  const isRead = (obj.reads || []).some((r) => String(r.user) === uid);
-  const popupAlreadySeen = (obj.popupSeen || []).some((r) => String(r.user) === uid);
-  delete obj.dismissals;
-  delete obj.reads;
-  delete obj.popupSeen;
+  const isRead = (announcement.reads || []).some((r) => String(r.user) === uid);
+  const popupAlreadySeen = (announcement.popupSeen || []).some((r) => String(r.user) === uid);
+
   return {
-    ...obj,
+    _id: announcement._id,
+    title: announcement.title,
+    description: announcement.description,
+    bodyHtml: announcement.bodyHtml || '',
+    type: announcement.type,
+    priority: announcement.priority,
+    badge: announcement.badge || '',
+    tags: announcement.tags || [],
+    publishAt: announcement.publishAt,
+    expiresAt: announcement.expiresAt,
+    pinToDashboard: !!announcement.pinToDashboard,
+    enablePopup: !!announcement.enablePopup,
+    ctaText: announcement.ctaText,
+    ctaUrl: announcement.ctaUrl || '',
+    secondaryCtaText: announcement.secondaryCtaText,
+    secondaryCtaUrl: announcement.secondaryCtaUrl || '',
+    progressLabel: announcement.progressLabel,
+    progressPercent: announcement.progressPercent ?? null,
     isRead,
-    isDismissed: isDismissed(announcement, uid),
     popupAlreadySeen,
+  };
+}
+
+function slimCard(item) {
+  if (!item) return null;
+  const { bodyHtml, ...rest } = item;
+  return rest;
+}
+
+function sortVisible(a, b) {
+  if (!!a.pinToDashboard !== !!b.pinToDashboard) return a.pinToDashboard ? -1 : 1;
+  const pr = (PRIORITY_RANK[b.priority] || 0) - (PRIORITY_RANK[a.priority] || 0);
+  if (pr) return pr;
+  return new Date(b.publishAt || 0) - new Date(a.publishAt || 0);
+}
+
+async function buildFeed(user) {
+  const now = new Date();
+  const raw = await Announcement.find({
+    active: true,
+    $and: [
+      { $or: [{ publishAt: null }, { publishAt: { $lte: now } }] },
+      { $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }] },
+    ],
+  })
+    .select(FEED_FIELDS)
+    .sort({ pinToDashboard: -1, publishAt: -1 })
+    .limit(40)
+    .lean();
+
+  const visible = raw
+    .filter((a) => isActiveNow(a, now))
+    .filter((a) => matchesAudience(a, user))
+    .filter((a) => !isDismissed(a, user._id, now))
+    .map((a) => decorateForUser(a, user._id))
+    .sort(sortVisible);
+
+  const pinnedHero = visible.find((a) => a.pinToDashboard) || visible[0] || null;
+  const carousel = visible
+    .filter((a) => !pinnedHero || String(a._id) !== String(pinnedHero._id))
+    .slice(0, 8)
+    .map(slimCard);
+  const popup = visible.find((a) => a.enablePopup && !a.popupAlreadySeen) || null;
+
+  return {
+    hero: pinnedHero,
+    carousel,
+    popup: popup ? slimCard(popup) : null,
+    unreadCount: visible.filter((a) => !a.isRead).length,
   };
 }
 
@@ -65,6 +166,7 @@ const createOne = asyncHandler(async (req, res) => {
   const payload = { ...req.body, createdBy: req.user._id };
   if (!payload.audienceRoles?.length) payload.audienceRoles = ['sales_executive'];
   const item = await Announcement.create(payload);
+  await bustAnnouncementCache();
   res.status(201).json(item);
 });
 
@@ -74,77 +176,70 @@ const updateOne = asyncHandler(async (req, res) => {
     runValidators: true,
   });
   if (!item) return res.status(404).json({ message: 'Announcement not found' });
+  await bustAnnouncementCache();
   res.json(item);
 });
 
 const deleteOne = asyncHandler(async (req, res) => {
   const item = await Announcement.findByIdAndDelete(req.params.id);
   if (!item) return res.status(404).json({ message: 'Announcement not found' });
+  await bustAnnouncementCache();
   res.json({ ok: true });
 });
 
 const getFeed = asyncHandler(async (req, res) => {
-  const now = new Date();
-  const raw = await Announcement.find({ active: true })
-    .sort({ pinToDashboard: -1, priority: -1, publishAt: -1 })
-    .lean();
-
-  const visible = raw
-    .filter((a) => isActiveNow(a, now))
-    .filter((a) => matchesAudience(a, req.user))
-    .filter((a) => !isDismissed(a, req.user._id, now))
-    .map((a) => decorateForUser(a, req.user._id));
-
-  const pinnedHero = visible.find((a) => a.pinToDashboard) || visible[0] || null;
-  const carousel = visible.filter((a) => !pinnedHero || String(a._id) !== String(pinnedHero._id)).slice(0, 12);
-  const popup = visible.find((a) => a.enablePopup && !a.popupAlreadySeen) || null;
-
-  const highlights = {
-    activeIncentive: visible.find((a) => ['incentive', 'offer', 'promotion'].includes(a.type)) || null,
-    runningContest: visible.find((a) => a.type === 'contest') || null,
-    latestAnnouncement: visible[0] || null,
-    holiday: visible.find((a) => ['holiday', 'festival'].includes(a.type)) || null,
-    target: visible.find((a) => a.type === 'target') || null,
-  };
-
-  res.json({
-    hero: pinnedHero,
-    carousel,
-    popup,
-    highlights,
-    unreadCount: visible.filter((a) => !a.isRead).length,
-  });
+  const key = feedCacheKey(req.user._id);
+  const payload = await cacheService.getOrSet(key, () => buildFeed(req.user), FEED_TTL_MS);
+  res.json(payload);
 });
 
 const dismissOne = asyncHandler(async (req, res) => {
   const remindLaterHours = Number(req.body?.remindLaterHours || 0);
   const remindAt = remindLaterHours > 0 ? new Date(Date.now() + remindLaterHours * 3600 * 1000) : null;
-  const item = await Announcement.findById(req.params.id);
-  if (!item) return res.status(404).json({ message: 'Announcement not found' });
+  const userId = req.user._id;
 
-  item.dismissals = (item.dismissals || []).filter((d) => String(d.user) !== String(req.user._id));
-  item.dismissals.push({ user: req.user._id, at: new Date(), remindAt });
-  await item.save();
+  const pulled = await Announcement.updateOne(
+    { _id: req.params.id },
+    { $pull: { dismissals: { user: userId } } }
+  );
+  if (!pulled.matchedCount) return res.status(404).json({ message: 'Announcement not found' });
+
+  await Promise.all([
+    Announcement.updateOne(
+      { _id: req.params.id },
+      { $push: { dismissals: { user: userId, at: new Date(), remindAt } } }
+    ),
+    cacheService.invalidate(feedCacheKey(userId)),
+  ]);
+
   res.json({ ok: true });
 });
 
 const markRead = asyncHandler(async (req, res) => {
-  const item = await Announcement.findById(req.params.id);
-  if (!item) return res.status(404).json({ message: 'Announcement not found' });
-  if (!(item.reads || []).some((r) => String(r.user) === String(req.user._id))) {
-    item.reads.push({ user: req.user._id, at: new Date() });
-    await item.save();
+  const userId = req.user._id;
+  const result = await Announcement.updateOne(
+    { _id: req.params.id, 'reads.user': { $ne: userId } },
+    { $push: { reads: { user: userId, at: new Date() } } }
+  );
+  if (!result.matchedCount) {
+    const exists = await Announcement.exists({ _id: req.params.id });
+    if (!exists) return res.status(404).json({ message: 'Announcement not found' });
   }
+  await cacheService.invalidate(feedCacheKey(userId));
   res.json({ ok: true });
 });
 
 const markPopupSeen = asyncHandler(async (req, res) => {
-  const item = await Announcement.findById(req.params.id);
-  if (!item) return res.status(404).json({ message: 'Announcement not found' });
-  if (!(item.popupSeen || []).some((r) => String(r.user) === String(req.user._id))) {
-    item.popupSeen.push({ user: req.user._id, at: new Date() });
-    await item.save();
+  const userId = req.user._id;
+  const result = await Announcement.updateOne(
+    { _id: req.params.id, 'popupSeen.user': { $ne: userId } },
+    { $push: { popupSeen: { user: userId, at: new Date() } } }
+  );
+  if (!result.matchedCount) {
+    const exists = await Announcement.exists({ _id: req.params.id });
+    if (!exists) return res.status(404).json({ message: 'Announcement not found' });
   }
+  await cacheService.invalidate(feedCacheKey(userId));
   res.json({ ok: true });
 });
 
@@ -218,6 +313,7 @@ const seedDemo = asyncHandler(async (req, res) => {
     },
   ]);
 
+  await bustAnnouncementCache();
   res.json({ ok: true, seeded: true });
 });
 
