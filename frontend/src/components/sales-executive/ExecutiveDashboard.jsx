@@ -8,6 +8,7 @@ import { useDashboardQuery } from '../../features/dashboard/hooks/useDashboardQu
 import { invalidateDashboard } from '../../lib/queryInvalidation';
 import ExecutiveKpiCards from './dashboard/ExecutiveKpiCards';
 import ExecutiveDashboardPanels from './dashboard/ExecutiveDashboardPanels';
+import AnnouncementCenter from '../announcements/AnnouncementCenter';
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -114,6 +115,8 @@ export default function ExecutiveDashboard() {
           </div>
         </div>
       </motion.div>
+
+      <AnnouncementCenter />
 
       <ExecutiveKpiCards kpis={data?.kpis} trends={data?.kpiTrends} />
       <ExecutiveDashboardPanels data={data} />

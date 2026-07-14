@@ -17,6 +17,7 @@ import {
   Briefcase,
   Plane,
   CreditCard,
+  Megaphone,
 } from 'lucide-react';
 import { operationsAdminMenuChildren } from '../operations-manager/operations-nav-config';
 import { leadManagementSections } from './lead-management-config';
@@ -46,6 +47,12 @@ export const settingsMenuItems = [
     label: 'Email Templates',
     icon: Mail,
     permission: { module: 'email', action: 'manage' },
+  },
+  {
+    path: '/settings/announcements',
+    label: 'Announcements',
+    icon: Megaphone,
+    roles: ['admin'],
   },
   {
     path: '/settings/whatsapp-templates',

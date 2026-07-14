@@ -28,6 +28,7 @@ export const Notifications = lazy(() => import('../pages/Notifications'));
 export const SettingsPage = lazy(() => import('../pages/settings/SettingsPage'));
 export const WhatsAppTemplatesPage = lazy(() => import('../pages/settings/WhatsAppTemplatesPage'));
 export const EmailTemplatesPage = lazy(() => import('../pages/settings/EmailTemplatesPage'));
+export const AnnouncementsPage = lazy(() => import('../pages/settings/AnnouncementsPage'));
 export const EmailActivityPage = lazy(() => import('../pages/EmailActivityPage'));
 export const ReactivatedLeadsPage = lazy(() => import('../components/leads/ReactivatedLeadsPage'));
 

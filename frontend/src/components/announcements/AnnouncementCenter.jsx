@@ -1,0 +1,146 @@
+import { useCallback, useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  dismissAnnouncement,
+  fetchAnnouncementFeed,
+  markAnnouncementPopupSeen,
+  markAnnouncementRead,
+} from '../../services/announcementApi';
+import AnnouncementHero from './AnnouncementHero';
+import AnnouncementCarousel from './AnnouncementCarousel';
+import AnnouncementSidebar from './AnnouncementSidebar';
+import AnnouncementPopup from './AnnouncementPopup';
+import AppModal from '../ui/AppModal';
+import { Button } from '../ui/button';
+
+export default function AnnouncementCenter({ compact = false }) {
+  const queryClient = useQueryClient();
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [detail, setDetail] = useState(null);
+
+  const { data } = useQuery({
+    queryKey: ['announcements', 'feed'],
+    queryFn: fetchAnnouncementFeed,
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    if (data?.popup?._id && !data.popup.popupAlreadySeen) {
+      setPopupOpen(true);
+    }
+  }, [data?.popup?._id, data?.popup?.popupAlreadySeen]);
+
+  const refresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['announcements', 'feed'] });
+  }, [queryClient]);
+
+  const openDetail = async (item) => {
+    setDetail(item);
+    if (item?._id) {
+      try {
+        await markAnnouncementRead(item._id);
+        refresh();
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  const handleDismiss = async (item) => {
+    await dismissAnnouncement(item._id, 0);
+    refresh();
+  };
+
+  const handleRemind = async (item) => {
+    await dismissAnnouncement(item._id, 24);
+    refresh();
+  };
+
+  const handleParticipate = (item) => {
+    if (item.secondaryCtaUrl) window.open(item.secondaryCtaUrl, '_blank', 'noopener,noreferrer');
+    else openDetail(item);
+  };
+
+  const closePopup = async () => {
+    setPopupOpen(false);
+    if (data?.popup?._id) {
+      try {
+        await markAnnouncementPopupSeen(data.popup._id);
+        refresh();
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  if (!data) return null;
+  const hasContent = data.hero || data.carousel?.length || Object.values(data.highlights || {}).some(Boolean);
+  if (!hasContent) return null;
+
+  return (
+    <>
+      <div className={compact ? 'space-y-4' : 'grid grid-cols-1 gap-4 xl:grid-cols-12'}>
+        <div className={compact ? 'space-y-4' : 'space-y-4 xl:col-span-9'}>
+          <AnnouncementHero
+            announcement={data.hero}
+            onView={openDetail}
+            onParticipate={handleParticipate}
+            onDismiss={handleDismiss}
+            onRemind={handleRemind}
+          />
+          <AnnouncementCarousel items={data.carousel || []} onReadMore={openDetail} />
+        </div>
+        {!compact && (
+          <div className="xl:col-span-3">
+            <AnnouncementSidebar highlights={data.highlights || {}} onOpen={openDetail} />
+          </div>
+        )}
+      </div>
+
+      <AnnouncementPopup
+        announcement={data.popup}
+        open={popupOpen}
+        onClose={closePopup}
+        onView={(item) => {
+          closePopup();
+          openDetail(item);
+        }}
+      />
+
+      <AppModal open={!!detail} onClose={() => setDetail(null)} size="lg" className="p-6">
+        {detail && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold text-content-primary">{detail.title}</h3>
+            <p className="text-sm text-content-secondary whitespace-pre-wrap">{detail.description}</p>
+            {detail.bodyHtml ? (
+              <div
+                className="prose prose-sm dark:prose-invert max-w-none rounded-xl border border-subtle bg-surface-elevated/40 p-4"
+                dangerouslySetInnerHTML={{ __html: detail.bodyHtml }}
+              />
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              {(detail.tags || []).map((tag) => (
+                <span key={tag} className="rounded-full border border-subtle px-2.5 py-1 text-xs text-content-muted">
+                  {tag}
+                </span>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              {detail.ctaUrl && (
+                <Button
+                  onClick={() => window.open(detail.ctaUrl, '_blank', 'noopener,noreferrer')}
+                  className="rounded-xl"
+                >
+                  {detail.ctaText || 'Open'}
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => setDetail(null)} className="rounded-xl">
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
+      </AppModal>
+    </>
+  );
+}

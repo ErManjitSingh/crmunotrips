@@ -42,6 +42,7 @@ const whatsappTemplateRoutes = require('./whatsappTemplateRoutes');
 const emailTemplateRoutes = require('./emailTemplateRoutes');
 const emailRoutes = require('./emailRoutes');
 const salesTargetRoutes = require('./salesTargetRoutes');
+const announcementRoutes = require('./announcementRoutes');
 
 router.use('/auth', authRoutes);
 router.use('/invites', inviteRoutes);
@@ -65,6 +66,7 @@ router.use('/whatsapp-templates', whatsappTemplateRoutes);
 router.use('/email-templates', emailTemplateRoutes);
 router.use('/emails', emailRoutes);
 router.use('/sales-targets', salesTargetRoutes);
+router.use('/announcements', announcementRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/team', teamRoutes);
