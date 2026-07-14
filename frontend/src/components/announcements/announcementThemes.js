@@ -1,92 +1,103 @@
 /** Theme tokens by announcement type — used across hero/carousel/popup */
 export const ANNOUNCEMENT_THEMES = {
   offer: {
-    gradient: 'from-violet-600 via-fuchsia-500 to-pink-500',
+    gradient: 'from-[#7C3AED] via-[#A855F7] to-[#EC4899]',
     soft: 'from-violet-50 via-fuchsia-50 to-pink-50 dark:from-violet-950/50 dark:via-fuchsia-950/40 dark:to-pink-950/40',
-    border: 'border-fuchsia-400/40',
-    glow: 'shadow-fuchsia-500/25',
+    border: 'border-fuchsia-300/50',
+    glow: 'shadow-[0_20px_60px_-15px_rgba(168,85,247,0.45)]',
     badge: 'bg-white/20 text-white',
     accent: 'text-fuchsia-600',
+    label: 'Offer',
   },
   promotion: {
-    gradient: 'from-violet-600 via-purple-500 to-pink-500',
+    gradient: 'from-[#7C3AED] via-[#9333EA] to-[#DB2777]',
     soft: 'from-violet-50 via-purple-50 to-pink-50 dark:from-violet-950/50 dark:via-purple-950/40 dark:to-pink-950/40',
-    border: 'border-purple-400/40',
-    glow: 'shadow-purple-500/25',
+    border: 'border-purple-300/50',
+    glow: 'shadow-[0_20px_60px_-15px_rgba(147,51,234,0.45)]',
     badge: 'bg-white/20 text-white',
     accent: 'text-purple-600',
+    label: 'Offer',
   },
   contest: {
-    gradient: 'from-orange-500 via-rose-500 to-red-500',
+    gradient: 'from-[#7C3AED] via-[#C026D3] to-[#FB7185]',
     soft: 'from-orange-50 via-rose-50 to-red-50 dark:from-orange-950/40 dark:via-rose-950/40 dark:to-red-950/40',
-    border: 'border-orange-400/40',
-    glow: 'shadow-orange-500/25',
+    border: 'border-orange-300/50',
+    glow: 'shadow-[0_20px_60px_-15px_rgba(192,38,211,0.4)]',
     badge: 'bg-white/20 text-white',
     accent: 'text-orange-600',
+    label: 'Contest',
   },
   festival: {
     gradient: 'from-amber-400 via-orange-400 to-yellow-400',
     soft: 'from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950/40 dark:via-orange-950/40 dark:to-yellow-950/30',
-    border: 'border-amber-400/40',
-    glow: 'shadow-amber-500/25',
+    border: 'border-amber-300/50',
+    glow: 'shadow-[0_20px_60px_-15px_rgba(245,158,11,0.35)]',
     badge: 'bg-black/10 text-amber-950',
     accent: 'text-amber-700',
+    label: 'Festival',
   },
   holiday: {
     gradient: 'from-emerald-500 via-green-500 to-teal-500',
     soft: 'from-emerald-50 via-green-50 to-teal-50 dark:from-emerald-950/40 dark:via-green-950/40 dark:to-teal-950/40',
-    border: 'border-emerald-400/40',
-    glow: 'shadow-emerald-500/25',
+    border: 'border-emerald-300/50',
+    glow: 'shadow-[0_20px_60px_-15px_rgba(16,185,129,0.35)]',
     badge: 'bg-white/20 text-white',
     accent: 'text-emerald-600',
+    label: 'Holiday',
   },
   target: {
     gradient: 'from-blue-600 via-sky-500 to-cyan-400',
     soft: 'from-blue-50 via-sky-50 to-cyan-50 dark:from-blue-950/40 dark:via-sky-950/40 dark:to-cyan-950/40',
-    border: 'border-sky-400/40',
-    glow: 'shadow-sky-500/25',
+    border: 'border-sky-300/50',
+    glow: 'shadow-[0_20px_60px_-15px_rgba(14,165,233,0.35)]',
     badge: 'bg-white/20 text-white',
     accent: 'text-sky-600',
+    label: 'Target',
   },
   incentive: {
     gradient: 'from-violet-600 via-indigo-500 to-blue-500',
     soft: 'from-violet-50 via-indigo-50 to-blue-50 dark:from-violet-950/40 dark:via-indigo-950/40 dark:to-blue-950/40',
-    border: 'border-indigo-400/40',
-    glow: 'shadow-indigo-500/25',
+    border: 'border-indigo-300/50',
+    glow: 'shadow-[0_20px_60px_-15px_rgba(99,102,241,0.35)]',
     badge: 'bg-white/20 text-white',
     accent: 'text-indigo-600',
+    label: 'Incentive',
   },
   emergency: {
     gradient: 'from-red-600 via-rose-600 to-red-500',
     soft: 'from-red-50 via-rose-50 to-red-50 dark:from-red-950/50 dark:via-rose-950/40 dark:to-red-950/40',
-    border: 'border-red-400/40',
-    glow: 'shadow-red-500/30',
+    border: 'border-red-300/50',
+    glow: 'shadow-[0_20px_60px_-15px_rgba(239,68,68,0.35)]',
     badge: 'bg-white/20 text-white',
     accent: 'text-red-600',
+    label: 'Alert',
   },
   update: {
     gradient: 'from-indigo-600 via-violet-500 to-indigo-400',
     soft: 'from-indigo-50 via-violet-50 to-indigo-50 dark:from-indigo-950/40 dark:via-violet-950/40 dark:to-indigo-950/40',
-    border: 'border-indigo-400/40',
-    glow: 'shadow-indigo-500/25',
+    border: 'border-indigo-300/50',
+    glow: 'shadow-[0_20px_60px_-15px_rgba(99,102,241,0.3)]',
     badge: 'bg-white/20 text-white',
     accent: 'text-indigo-600',
+    label: 'Update',
   },
   policy: {
     gradient: 'from-slate-700 via-slate-600 to-indigo-600',
     soft: 'from-slate-50 via-slate-100 to-indigo-50 dark:from-slate-900/60 dark:via-slate-800/40 dark:to-indigo-950/40',
-    border: 'border-slate-400/40',
-    glow: 'shadow-slate-500/20',
+    border: 'border-slate-300/50',
+    glow: 'shadow-[0_20px_60px_-15px_rgba(100,116,139,0.3)]',
     badge: 'bg-white/15 text-white',
     accent: 'text-slate-700 dark:text-slate-200',
+    label: 'Policy',
   },
   maintenance: {
     gradient: 'from-slate-500 via-gray-500 to-zinc-500',
     soft: 'from-slate-50 via-gray-50 to-zinc-50 dark:from-slate-900/50 dark:via-gray-900/40 dark:to-zinc-900/40',
-    border: 'border-slate-400/40',
-    glow: 'shadow-slate-500/20',
+    border: 'border-slate-300/50',
+    glow: 'shadow-[0_20px_60px_-15px_rgba(100,116,139,0.25)]',
     badge: 'bg-white/15 text-white',
     accent: 'text-slate-600',
+    label: 'Update',
   },
 };
 
@@ -94,14 +105,16 @@ export function getAnnouncementTheme(type) {
   return ANNOUNCEMENT_THEMES[type] || ANNOUNCEMENT_THEMES.update;
 }
 
-export function getRemainingTime(expiresAt) {
+export function getRemainingTime(expiresAt, now = Date.now()) {
   if (!expiresAt) return null;
   const end = new Date(expiresAt).getTime();
-  const diff = end - Date.now();
-  if (diff <= 0) return { days: 0, hours: 0, ended: true };
+  const diff = end - now;
+  if (diff <= 0) return { days: 0, hours: 0, mins: 0, secs: 0, ended: true };
   const days = Math.floor(diff / (24 * 3600 * 1000));
   const hours = Math.floor((diff % (24 * 3600 * 1000)) / (3600 * 1000));
-  return { days, hours, ended: false };
+  const mins = Math.floor((diff % (3600 * 1000)) / (60 * 1000));
+  const secs = Math.floor((diff % (60 * 1000)) / 1000);
+  return { days, hours, mins, secs, ended: false };
 }
 
 export const ANNOUNCEMENT_TYPE_OPTIONS = [

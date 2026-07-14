@@ -8,12 +8,11 @@ import {
 } from '../../services/announcementApi';
 import AnnouncementHero from './AnnouncementHero';
 import AnnouncementCarousel from './AnnouncementCarousel';
-import AnnouncementSidebar from './AnnouncementSidebar';
 import AnnouncementPopup from './AnnouncementPopup';
 import AppModal from '../ui/AppModal';
 import { Button } from '../ui/button';
 
-export default function AnnouncementCenter({ compact = false }) {
+export default function AnnouncementCenter() {
   const queryClient = useQueryClient();
   const [popupOpen, setPopupOpen] = useState(false);
   const [detail, setDetail] = useState(null);
@@ -51,11 +50,6 @@ export default function AnnouncementCenter({ compact = false }) {
     refresh();
   };
 
-  const handleRemind = async (item) => {
-    await dismissAnnouncement(item._id, 24);
-    refresh();
-  };
-
   const handleParticipate = (item) => {
     if (item.secondaryCtaUrl) window.open(item.secondaryCtaUrl, '_blank', 'noopener,noreferrer');
     else openDetail(item);
@@ -74,27 +68,19 @@ export default function AnnouncementCenter({ compact = false }) {
   };
 
   if (!data) return null;
-  const hasContent = data.hero || data.carousel?.length || Object.values(data.highlights || {}).some(Boolean);
+  const hasContent = data.hero || data.carousel?.length;
   if (!hasContent) return null;
 
   return (
     <>
-      <div className={compact ? 'space-y-4' : 'grid grid-cols-1 gap-4 xl:grid-cols-12'}>
-        <div className={compact ? 'space-y-4' : 'space-y-4 xl:col-span-9'}>
-          <AnnouncementHero
-            announcement={data.hero}
-            onView={openDetail}
-            onParticipate={handleParticipate}
-            onDismiss={handleDismiss}
-            onRemind={handleRemind}
-          />
-          <AnnouncementCarousel items={data.carousel || []} onReadMore={openDetail} />
-        </div>
-        {!compact && (
-          <div className="xl:col-span-3">
-            <AnnouncementSidebar highlights={data.highlights || {}} onOpen={openDetail} />
-          </div>
-        )}
+      <div className="w-full space-y-4 sm:space-y-5">
+        <AnnouncementHero
+          announcement={data.hero}
+          onView={openDetail}
+          onParticipate={handleParticipate}
+          onDismiss={handleDismiss}
+        />
+        <AnnouncementCarousel items={data.carousel || []} onReadMore={openDetail} />
       </div>
 
       <AnnouncementPopup
@@ -107,11 +93,11 @@ export default function AnnouncementCenter({ compact = false }) {
         }}
       />
 
-      <AppModal open={!!detail} onClose={() => setDetail(null)} size="lg" className="p-6">
+      <AppModal open={!!detail} onClose={() => setDetail(null)} size="lg" className="p-5 sm:p-6">
         {detail && (
           <div className="space-y-4">
             <h3 className="text-lg font-bold text-content-primary">{detail.title}</h3>
-            <p className="text-sm text-content-secondary whitespace-pre-wrap">{detail.description}</p>
+            <p className="whitespace-pre-wrap text-sm text-content-secondary">{detail.description}</p>
             {detail.bodyHtml ? (
               <div
                 className="prose prose-sm dark:prose-invert max-w-none rounded-xl border border-subtle bg-surface-elevated/40 p-4"
@@ -125,18 +111,18 @@ export default function AnnouncementCenter({ compact = false }) {
                 </span>
               ))}
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={() => setDetail(null)} className="w-full rounded-xl sm:w-auto">
+                Close
+              </Button>
               {detail.ctaUrl && (
                 <Button
                   onClick={() => window.open(detail.ctaUrl, '_blank', 'noopener,noreferrer')}
-                  className="rounded-xl"
+                  className="w-full rounded-xl sm:w-auto"
                 >
                   {detail.ctaText || 'Open'}
                 </Button>
               )}
-              <Button variant="outline" onClick={() => setDetail(null)} className="rounded-xl">
-                Close
-              </Button>
             </div>
           </div>
         )}
