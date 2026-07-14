@@ -2,55 +2,86 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import Avatar from '../ui/Avatar';
 import DashboardPanel from './DashboardPanel';
+import { cn } from '../../lib/utils';
 
 const VISIBLE_ROWS = 5;
 
-export default function ExecutivePerformancePanel({ data, compact = false }) {
-  const executives = data?.executives || [];
+function rateColor(rate) {
+  if (rate >= 20) return 'from-emerald-500 to-emerald-400';
+  if (rate >= 12) return 'from-blue-500 to-blue-400';
+  if (rate >= 8) return 'from-amber-500 to-amber-400';
+  return 'from-orange-500 to-orange-400';
+}
 
-  const maxAssigned = Math.max(...executives.map((e) => e.assigned || 0), 1);
+export default function ExecutivePerformancePanel({ data, compact = false }) {
+  const executives = (data?.executives || []).slice(0, VISIBLE_ROWS);
 
   return (
     <DashboardPanel
       title="Top Performing Executives"
       subtitle="Lead assignment & conversion"
-      action={compact && executives.length > VISIBLE_ROWS ? (
-        <Link to="/leads/analytics" className="text-xs text-blue-600 hover:underline font-medium">View all</Link>
-      ) : null}
+      action={
+        <Link to="/leads/analytics" className="text-xs font-medium text-blue-600 hover:underline">
+          View all
+        </Link>
+      }
       className="h-full"
+      noPadding
     >
       {!executives.length ? (
-        <p className="text-sm text-content-muted py-6 text-center">No executive data</p>
+        <p className="px-5 py-8 text-center text-sm text-content-muted">No executive data</p>
       ) : (
-        <div
-          className="space-y-4 overflow-y-auto scrollbar-thin pr-1"
-          style={{ maxHeight: compact ? `${VISIBLE_ROWS * 4.75}rem` : undefined }}
-        >
-          {executives.map((exec, i) => (
-            <motion.div
-              key={exec._id}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-              className="flex items-center gap-3"
-            >
-              <Avatar name={exec.name} size="sm" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <p className="text-sm font-semibold text-content-primary truncate">{exec.name}</p>
-                  <span className="text-xs font-bold text-content-muted tabular-nums shrink-0">
-                    {exec.assigned || exec.converted * 3} leads
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all"
-                    style={{ width: `${((exec.assigned || exec.converted * 3) / maxAssigned) * 100}%` }}
-                  />
-                </div>
-              </div>
-            </motion.div>
-          ))}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[420px] text-left">
+            <thead>
+              <tr className="border-b border-subtle text-[11px] uppercase tracking-wide text-content-muted">
+                <th className="px-5 py-3 font-semibold">Executive</th>
+                <th className="px-3 py-3 font-semibold text-right">Leads</th>
+                <th className="px-3 py-3 font-semibold text-right">Conversions</th>
+                <th className="px-5 py-3 font-semibold">Conversion Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {executives.map((exec, i) => {
+                const rate = exec.conversionRate || 0;
+                return (
+                  <motion.tr
+                    key={exec._id || exec.name}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="border-b border-subtle/70 last:border-0"
+                  >
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar name={exec.name} size="sm" />
+                        <span className="text-sm font-semibold text-content-primary">{exec.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3.5 text-right text-sm font-medium text-content-secondary metric-tabular">
+                      {exec.assigned ?? 0}
+                    </td>
+                    <td className="px-3 py-3.5 text-right text-sm font-medium text-content-secondary metric-tabular">
+                      {exec.converted ?? 0}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                          <div
+                            className={cn('h-full rounded-full bg-gradient-to-r', rateColor(rate))}
+                            style={{ width: `${Math.min(rate, 100)}%` }}
+                          />
+                        </div>
+                        <span className="w-12 shrink-0 text-right text-sm font-bold text-content-primary metric-tabular">
+                          {rate}%
+                        </span>
+                      </div>
+                    </td>
+                  </motion.tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </DashboardPanel>

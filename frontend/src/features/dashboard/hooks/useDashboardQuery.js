@@ -2,11 +2,16 @@ import { useQuery } from '@tanstack/react-query';
 import API from '../../../api/axios';
 import { DASHBOARD_STALE_MS, GC_TIME_MS } from '../../../lib/queryConfig';
 
-export function useDashboardQuery(endpoint = '/dashboard/stats') {
+export function useDashboardQuery(endpoint = '/dashboard/stats', filters = {}) {
+  const params = {};
+  if (filters.dateFrom) params.dateFrom = filters.dateFrom;
+  if (filters.dateTo) params.dateTo = filters.dateTo;
+  if (filters.source) params.source = filters.source;
+
   return useQuery({
-    queryKey: ['dashboard', endpoint],
+    queryKey: ['dashboard', endpoint, params],
     queryFn: async () => {
-      const { data } = await API.get(endpoint, { skipSuccessToast: true });
+      const { data } = await API.get(endpoint, { params, skipSuccessToast: true });
       return data;
     },
     staleTime: DASHBOARD_STALE_MS,

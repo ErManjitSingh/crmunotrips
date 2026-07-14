@@ -5,6 +5,7 @@ const Payment = require('../models/Payment');
 const Package = require('../models/Package');
 const User = require('../models/User');
 const Team = require('../models/Team');
+const Booking = require('../models/Booking');
 const { startOfDay, endOfDay, enrichLead } = require('../utils/queryHelpers');
 const {
   sumConvertedPackageRevenue,
@@ -19,6 +20,75 @@ const { withBranch } = require('../utils/branchScope');
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DASHBOARD_NEW_LEADS_LIMIT = 5;
 
+const INTERESTED_STATUSES = ['contacted', 'working_progress', 'quotation_sent', 'reactivated'];
+const LOST_STATUSES = ['lost', 'booked_from_another_company'];
+
+function resolveReportPeriod(dateFrom, dateTo) {
+  const now = new Date();
+  const periodEnd = dateTo ? endOfDay(new Date(dateTo)) : endOfDay(now);
+  const periodStart = dateFrom
+    ? startOfDay(new Date(dateFrom))
+    : startOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
+  const durationMs = Math.max(periodEnd.getTime() - periodStart.getTime(), 24 * 60 * 60 * 1000);
+  const prevEnd = new Date(periodStart.getTime() - 1);
+  const prevStart = new Date(prevEnd.getTime() - durationMs);
+  return { periodStart, periodEnd, prevStart, prevEnd };
+}
+
+function monthKey(year, month) {
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+function buildLastNMonthBuckets(n, endDate = new Date()) {
+  const buckets = [];
+  const cursor = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+  for (let i = n - 1; i >= 0; i -= 1) {
+    const d = new Date(cursor.getFullYear(), cursor.getMonth() - i, 1);
+    buckets.push({
+      key: monthKey(d.getFullYear(), d.getMonth() + 1),
+      label: MONTH_LABELS[d.getMonth()],
+      year: d.getFullYear(),
+      month: d.getMonth() + 1,
+      start: startOfDay(d),
+      end: endOfDay(new Date(d.getFullYear(), d.getMonth() + 1, 0)),
+    });
+  }
+  return buckets;
+}
+
+async function sumRevenueInRange(branchId, start, end) {
+  const rows = await Payment.aggregate([
+    {
+      $match: withBranch(
+        { status: { $in: ['paid', 'partial'] }, paidAt: { $gte: start, $lte: end } },
+        branchId
+      ),
+    },
+    { $group: { _id: null, total: { $sum: '$paidAmount' } } },
+  ]);
+  return rows[0]?.total || 0;
+}
+
+function mapStatusBucket(statusCounts) {
+  const fresh = statusCounts.new || 0;
+  const followUpPending = statusCounts.follow_up || 0;
+  const interested = INTERESTED_STATUSES.reduce((s, k) => s + (statusCounts[k] || 0), 0);
+  const negotiation = statusCounts.negotiation || 0;
+  const lost = LOST_STATUSES.reduce((s, k) => s + (statusCounts[k] || 0), 0);
+  const conversions = statusCounts.converted || 0;
+  return { fresh, followUpPending, interested, negotiation, lost, conversions };
+}
+
+function changeMeta(current, previous) {
+  const change = pctChange(current, previous);
+  return {
+    value: current,
+    previous,
+    change,
+    changeType: change > 0 ? 'up' : change < 0 ? 'down' : 'neutral',
+  };
+}
+
 const SOURCE_LABELS = {
   website: 'Website',
   whatsapp: 'WhatsApp',
@@ -30,6 +100,7 @@ const SOURCE_LABELS = {
   google_ads: 'Google Ads',
   facebook_ads: 'Facebook Ads',
   organic: 'Organic',
+  instagram: 'Instagram',
 };
 
 const SOURCE_COLORS = ['#3B82F6', '#22C55E', '#8B5CF6', '#F59E0B', '#64748B', '#EC4899', '#06B6D4'];
@@ -106,9 +177,21 @@ async function aggregateRevenueByMonth(match = {}, branchId = null) {
 }
 
 async function buildAdminDashboard(options = {}) {
-  const { branchId } = options;
+  const { branchId, dateFrom, dateTo, source } = options;
   const todayStart = startOfDay();
   const todayEnd = endOfDay();
+  const { periodStart, periodEnd, prevStart, prevEnd } = resolveReportPeriod(dateFrom, dateTo);
+  const sourceFilter = source ? { source } : {};
+  const periodLeadScope = activeLeadScope(
+    { createdAt: { $gte: periodStart, $lte: periodEnd }, ...sourceFilter },
+    branchId
+  );
+  const prevLeadScope = activeLeadScope(
+    { createdAt: { $gte: prevStart, $lte: prevEnd }, ...sourceFilter },
+    branchId
+  );
+  const monthBuckets = buildLastNMonthBuckets(6, periodEnd);
+  const trendStart = monthBuckets[0].start;
 
   const [
     totalLeads,
@@ -131,11 +214,22 @@ async function buildAdminDashboard(options = {}) {
     leadsWithoutFollowup,
     hotLeadsCount,
     highBudgetLeadsCount,
+    periodTotalLeads,
+    prevTotalLeads,
+    periodStatusAgg,
+    prevStatusAgg,
+    periodRevenue,
+    prevRevenue,
+    periodSourceAgg,
+    monthlyLeadAgg,
+    monthlyConvertedAgg,
+    monthlyBookingAgg,
+    monthlyPaymentAgg,
   ] = await Promise.all([
     Lead.countDocuments(activeLeadScope({}, branchId)),
     Lead.countDocuments(activeLeadScope({ createdAt: { $gte: todayStart, $lte: todayEnd } }, branchId)),
     Lead.countDocuments(activeLeadScope({ status: 'converted' }, branchId)),
-    Lead.countDocuments(activeLeadScope({ status: { $in: ['lost', 'booked_from_another_company'] } }, branchId)),
+    Lead.countDocuments(activeLeadScope({ status: { $in: LOST_STATUSES } }, branchId)),
     FollowUp.countDocuments(withBranch({ status: 'pending' }, branchId)),
     FollowUp.countDocuments({
       ...(branchId ? { branchId } : {}),
@@ -188,6 +282,80 @@ async function buildAdminDashboard(options = {}) {
     Lead.countDocuments(activeLeadScope({ $or: [{ nextFollowUp: { $exists: false } }, { nextFollowUp: null }] }, branchId)),
     Lead.countDocuments(activeLeadScope({ $or: [{ isHot: true }, { leadScore: 'hot' }] }, branchId)),
     Lead.countDocuments(activeLeadScope({ budget: { $gte: 60000 } }, branchId)),
+    Lead.countDocuments(periodLeadScope),
+    Lead.countDocuments(prevLeadScope),
+    Lead.aggregate([{ $match: periodLeadScope }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
+    Lead.aggregate([{ $match: prevLeadScope }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
+    sumRevenueInRange(branchId, periodStart, periodEnd),
+    sumRevenueInRange(branchId, prevStart, prevEnd),
+    Lead.aggregate([{ $match: periodLeadScope }, { $group: { _id: '$source', count: { $sum: 1 } } }]),
+    Lead.aggregate([
+      {
+        $match: activeLeadScope(
+          { createdAt: { $gte: trendStart, $lte: periodEnd }, ...sourceFilter },
+          branchId
+        ),
+      },
+      {
+        $group: {
+          _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+    Lead.aggregate([
+      {
+        $match: activeLeadScope(
+          {
+            status: 'converted',
+            createdAt: { $gte: trendStart, $lte: periodEnd },
+            ...sourceFilter,
+          },
+          branchId
+        ),
+      },
+      {
+        $group: {
+          _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+    Booking.aggregate([
+      {
+        $match: withBranch(
+          {
+            archivedAt: null,
+            createdAt: { $gte: trendStart, $lte: periodEnd },
+            status: { $nin: ['cancelled'] },
+          },
+          branchId
+        ),
+      },
+      {
+        $group: {
+          _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+    Payment.aggregate([
+      {
+        $match: withBranch(
+          {
+            status: { $in: ['paid', 'partial'] },
+            paidAt: { $gte: trendStart, $lte: periodEnd },
+          },
+          branchId
+        ),
+      },
+      {
+        $group: {
+          _id: { year: { $year: '$paidAt' }, month: { $month: '$paidAt' } },
+          revenue: { $sum: '$paidAmount' },
+        },
+      },
+    ]),
   ]);
 
   const agentIds = topAgents.map((a) => a._id);
@@ -207,6 +375,109 @@ async function buildAdminDashboard(options = {}) {
   ]);
 
   const statusCounts = Object.fromEntries(leadsByStatus.map((s) => [s._id, s.count]));
+  const periodStatusCounts = Object.fromEntries(periodStatusAgg.map((s) => [s._id, s.count]));
+  const prevStatusCounts = Object.fromEntries(prevStatusAgg.map((s) => [s._id, s.count]));
+  const periodBuckets = mapStatusBucket(periodStatusCounts);
+  const prevBuckets = mapStatusBucket(prevStatusCounts);
+  const periodConversionRate = periodTotalLeads
+    ? Math.round((periodBuckets.conversions / periodTotalLeads) * 1000) / 10
+    : 0;
+  const prevConversionRate = prevTotalLeads
+    ? Math.round((prevBuckets.conversions / prevTotalLeads) * 1000) / 10
+    : 0;
+
+  const leadMap = Object.fromEntries(
+    monthlyLeadAgg.map((r) => [monthKey(r._id.year, r._id.month), r.count])
+  );
+  const convertedMap = Object.fromEntries(
+    monthlyConvertedAgg.map((r) => [monthKey(r._id.year, r._id.month), r.count])
+  );
+  const bookingMap = Object.fromEntries(
+    monthlyBookingAgg.map((r) => [monthKey(r._id.year, r._id.month), r.count])
+  );
+  const paymentMap = Object.fromEntries(
+    monthlyPaymentAgg.map((r) => [monthKey(r._id.year, r._id.month), r.revenue])
+  );
+
+  const monthlyLeadTrend = monthBuckets.map((b) => ({
+    label: b.label,
+    month: b.label,
+    leadsGenerated: leadMap[b.key] || 0,
+    convertedLeads: convertedMap[b.key] || 0,
+  }));
+
+  const conversionRateTrend = monthBuckets.map((b) => {
+    const leads = leadMap[b.key] || 0;
+    const converted = convertedMap[b.key] || 0;
+    return {
+      label: b.label,
+      month: b.label,
+      rate: leads ? Math.round((converted / leads) * 1000) / 10 : 0,
+    };
+  });
+
+  const revenueVsBookings = monthBuckets.map((b) => ({
+    label: b.label,
+    month: b.label,
+    bookings: bookingMap[b.key] || 0,
+    revenue: paymentMap[b.key] || 0,
+  }));
+
+  const periodSourceTotal = periodSourceAgg.reduce((s, r) => s + r.count, 0) || 1;
+  const leadsBySourcePeriod = periodSourceAgg
+    .map((s, i) => ({
+      name: formatSourceName(s._id),
+      key: s._id || 'other',
+      value: s.count,
+      pct: Math.round((s.count / periodSourceTotal) * 1000) / 10,
+      color: SOURCE_COLORS[i % SOURCE_COLORS.length],
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  const statusDistributionTotal =
+    periodBuckets.fresh +
+    periodBuckets.followUpPending +
+    periodBuckets.interested +
+    periodBuckets.negotiation +
+    periodBuckets.lost;
+  const statusDistribution = [
+    { name: 'Fresh Leads', key: 'fresh', value: periodBuckets.fresh, color: '#22C55E' },
+    { name: 'Follow Up Pending', key: 'followUp', value: periodBuckets.followUpPending, color: '#F59E0B' },
+    { name: 'Interested', key: 'interested', value: periodBuckets.interested, color: '#8B5CF6' },
+    { name: 'Negotiation', key: 'negotiation', value: periodBuckets.negotiation, color: '#F97316' },
+    { name: 'Lost Leads', key: 'lost', value: periodBuckets.lost, color: '#EF4444' },
+  ].map((item) => ({
+    ...item,
+    pct: statusDistributionTotal ? Math.round((item.value / statusDistributionTotal) * 1000) / 10 : 0,
+  }));
+
+  const prevPeriodLabel = prevEnd.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+  const reportKpis = {
+    totalLeads: changeMeta(periodTotalLeads, prevTotalLeads),
+    freshLeads: changeMeta(periodBuckets.fresh, prevBuckets.fresh),
+    followUpPending: changeMeta(periodBuckets.followUpPending, prevBuckets.followUpPending),
+    interested: changeMeta(periodBuckets.interested, prevBuckets.interested),
+    negotiation: changeMeta(periodBuckets.negotiation, prevBuckets.negotiation),
+    lostLeads: changeMeta(periodBuckets.lost, prevBuckets.lost),
+    conversions: changeMeta(periodBuckets.conversions, prevBuckets.conversions),
+    revenue: changeMeta(periodRevenue, prevRevenue),
+    conversionRate: changeMeta(periodConversionRate, prevConversionRate),
+  };
+
+  const topSource = leadsBySourcePeriod[0] || null;
+  const topExecutive = (executivePerformance?.executives || [])[0] || null;
+  const keyHighlights = {
+    periodLabel: periodEnd.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+    highestLeadsSource: topSource
+      ? { name: topSource.name, pct: topSource.pct }
+      : { name: '—', pct: 0 },
+    bestPerformingExecutive: topExecutive
+      ? { name: topExecutive.name, conversionRate: topExecutive.conversionRate }
+      : { name: '—', conversionRate: 0 },
+    conversionRate: periodConversionRate,
+    revenueGenerated: periodRevenue,
+  };
+
   const salesFunnel = [
     { stage: 'New Lead', count: statusCounts.new || 0 },
     { stage: 'Contacted', count: statusCounts.contacted || 0 },
@@ -224,22 +495,38 @@ async function buildAdminDashboard(options = {}) {
     .limit(10)
     .lean();
 
+  const sourceFilteredLeadSourceAnalytics = (periodSourceAgg.length ? periodSourceAgg : leadsBySource).map((s) => ({
+    name: s._id || 'Unknown',
+    value: s.count,
+    pct: (periodSourceAgg.length ? periodSourceTotal : totalLeads)
+      ? Math.round((s.count / (periodSourceAgg.length ? periodSourceTotal : totalLeads || 1)) * 100)
+      : 0,
+  }));
+
+  const usePeriodAsPrimary = Boolean(dateFrom || dateTo);
+  const primaryTotalLeads = usePeriodAsPrimary ? periodTotalLeads : totalLeads;
+  const primaryConverted = usePeriodAsPrimary ? periodBuckets.conversions : convertedLeads;
+  const primaryLost = usePeriodAsPrimary ? periodBuckets.lost : lostLeads;
+  const primaryConversionRate = usePeriodAsPrimary ? periodConversionRate : conversionRate;
+  const primaryRevenue = usePeriodAsPrimary ? periodRevenue : revenue;
+
   return {
-    totalLeads,
+    totalLeads: primaryTotalLeads,
+    allTimeTotalLeads: totalLeads,
     todayLeads,
     newLeadsToday: todayLeads,
     followUpsToday: todayFollowUps.length,
-    convertedLeads,
-    wonLeads: convertedLeads,
-    lostLeads,
+    convertedLeads: primaryConverted,
+    wonLeads: primaryConverted,
+    lostLeads: primaryLost,
     pendingFollowups,
     overdueFollowups,
-    conversionRate,
+    conversionRate: primaryConversionRate,
     totalBudget,
-    revenue,
-    revenueChange: 0,
-    leadsByStatus,
-    leadsBySource,
+    revenue: primaryRevenue,
+    revenueChange: reportKpis.revenue.change,
+    leadsByStatus: usePeriodAsPrimary ? periodStatusAgg : leadsByStatus,
+    leadsBySource: usePeriodAsPrimary && periodSourceAgg.length ? periodSourceAgg : leadsBySource,
     newLeads: newLeadsRaw.map(enrichLead),
     newLeadsTotal: todayLeads,
     unassignedLeads: unassignedLeadsRaw.map(enrichLead),
@@ -255,11 +542,7 @@ async function buildAdminDashboard(options = {}) {
     upcomingFollowups,
     salesFunnel,
     monthlyRevenue,
-    leadSourceAnalytics: leadsBySource.map((s) => ({
-      name: s._id || 'Unknown',
-      value: s.count,
-      pct: totalLeads ? Math.round((s.count / totalLeads) * 100) : 0,
-    })),
+    leadSourceAnalytics: sourceFilteredLeadSourceAnalytics,
     topAgents: topAgents.map((a, i) => ({
       name: agentMap[a._id?.toString()] || 'Unknown',
       conversions: a.conversions,
@@ -286,12 +569,29 @@ async function buildAdminDashboard(options = {}) {
     executivePerformance,
     emailStats,
     kpiSparklines: {
-      totalLeads: [totalLeads],
-      newLeads: [todayLeads],
-      followUps: [todayFollowUps.length],
-      converted: [convertedLeads],
-      conversionRate: [conversionRate],
-      revenue: [revenue],
+      totalLeads: monthlyLeadTrend.map((m) => m.leadsGenerated),
+      newLeads: monthlyLeadTrend.map((m) => m.leadsGenerated),
+      followUps: [pendingFollowups],
+      converted: monthlyLeadTrend.map((m) => m.convertedLeads),
+      conversionRate: conversionRateTrend.map((m) => m.rate),
+      revenue: revenueVsBookings.map((m) => m.revenue),
+    },
+    report: {
+      period: {
+        from: periodStart.toISOString(),
+        to: periodEnd.toISOString(),
+        label: `${periodStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} - ${periodEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+        compareLabel: prevPeriodLabel,
+        source: source || null,
+      },
+      generatedAt: new Date().toISOString(),
+      kpis: reportKpis,
+      statusDistribution,
+      leadsBySource: leadsBySourcePeriod,
+      monthlyLeadTrend,
+      conversionRateTrend,
+      revenueVsBookings,
+      keyHighlights,
     },
   };
 }

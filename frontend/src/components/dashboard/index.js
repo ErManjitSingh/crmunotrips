@@ -18,3 +18,8 @@ export { default as AgingChartPanel } from './AgingChartPanel';
 export { default as RemindersAlertsPanel } from './RemindersAlertsPanel';
 export { default as LeadTrendChart } from './LeadTrendChart';
 export { default as EmailStatsPanel } from './EmailStatsPanel';
+export { default as LeadStatusDonut } from './LeadStatusDonut';
+export { default as ConversionRateChart } from './ConversionRateChart';
+export { default as RevenueVsBookingsChart } from './RevenueVsBookingsChart';
+export { default as KeyHighlightsStrip } from './KeyHighlightsStrip';
+export { getDefaultDashboardFilters } from './DashboardHeader';

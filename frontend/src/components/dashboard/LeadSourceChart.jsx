@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import DashboardPanel from './DashboardPanel';
 
-const COLORS = ['#3B82F6', '#25D366', '#8B5CF6', '#F97316', '#94A3B8', '#22C55E', '#EC4899'];
+const COLORS = ['#3B82F6', '#EC4899', '#64748B', '#22C55E', '#8B5CF6', '#F59E0B', '#06B6D4'];
 
 const SOURCE_LABELS = {
   website: 'Website',
@@ -13,6 +13,9 @@ const SOURCE_LABELS = {
   phone: 'Phone',
   email: 'Email',
   social: 'Social Media',
+  google_ads: 'Google Ads',
+  facebook_ads: 'Facebook Ads',
+  organic: 'Organic',
   other: 'Other',
 };
 
@@ -25,60 +28,65 @@ function DonutTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const item = payload[0];
   return (
-    <div className="rounded-xl border border-subtle bg-surface px-3 py-2 shadow-lg text-sm">
+    <div className="rounded-xl border border-subtle bg-surface px-3 py-2 text-sm shadow-lg">
       <p className="font-semibold text-content-primary">{item.name}</p>
-      <p className="text-content-muted">{item.value} leads ({item.payload.pct}%)</p>
+      <p className="text-content-muted">
+        {item.value} leads ({item.payload.pct}%)
+      </p>
     </div>
   );
 }
 
-export default function LeadSourceChart({ data = [] }) {
-  const chartData = data.map((item) => ({
+export default function LeadSourceChart({ data = [], total }) {
+  const chartData = data.map((item, i) => ({
     name: formatSourceName(item.name),
     value: item.value,
     pct: item.pct,
+    color: item.color || COLORS[i % COLORS.length],
   }));
 
   if (!chartData.length) {
     return (
       <DashboardPanel title="Leads by Source" subtitle="Acquisition channels">
-        <p className="text-sm text-content-muted py-8 text-center">No source data yet</p>
+        <p className="py-8 text-center text-sm text-content-muted">No source data yet</p>
       </DashboardPanel>
     );
   }
 
-  const total = chartData.reduce((s, d) => s + d.value, 0);
+  const chartTotal = total || chartData.reduce((s, d) => s + d.value, 0);
 
   return (
     <DashboardPanel title="Leads by Source" subtitle="Where your leads come from" className="h-full">
-      <div className="flex flex-col sm:flex-row items-center gap-4">
-        <div className="w-full sm:w-[180px] h-[180px] shrink-0 relative">
+      <div className="flex flex-col items-center gap-4 sm:flex-row">
+        <div className="relative h-[180px] w-full shrink-0 sm:w-[180px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={chartData}
                 cx="50%"
                 cy="50%"
-                innerRadius={52}
+                innerRadius={54}
                 outerRadius={78}
-                paddingAngle={2}
+                paddingAngle={2.5}
                 dataKey="value"
                 strokeWidth={0}
               >
-                {chartData.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                {chartData.map((item, i) => (
+                  <Cell key={item.name} fill={item.color || COLORS[i % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip content={<DonutTooltip />} />
             </PieChart>
           </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <p className="text-2xl font-bold text-content-primary metric-tabular">{total}</p>
-            <p className="text-[10px] text-content-muted">Total</p>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            <p className="text-[10px] uppercase tracking-wide text-content-muted">Total</p>
+            <p className="text-2xl font-bold text-content-primary metric-tabular">
+              {chartTotal.toLocaleString('en-IN')}
+            </p>
           </div>
         </div>
 
-        <div className="flex-1 w-full space-y-2.5">
+        <div className="w-full flex-1 space-y-2.5">
           {chartData.map((item, i) => (
             <motion.div
               key={item.name}
@@ -87,8 +95,11 @@ export default function LeadSourceChart({ data = [] }) {
               transition={{ delay: i * 0.05 }}
               className="flex items-center gap-2.5"
             >
-              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
-              <span className="text-sm text-content-secondary flex-1 truncate">{item.name}</span>
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: item.color || COLORS[i % COLORS.length] }}
+              />
+              <span className="flex-1 truncate text-sm text-content-secondary">{item.name}</span>
               <span className="text-sm font-bold text-content-primary metric-tabular">{item.pct}%</span>
             </motion.div>
           ))}
