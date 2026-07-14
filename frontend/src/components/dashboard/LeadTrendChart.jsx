@@ -43,13 +43,13 @@ export default function LeadTrendChart({ stats }) {
       }
       className="h-full"
     >
-      <div className="h-[280px] -mx-1">
+      <div className="h-[220px] -mx-1 sm:h-[260px] lg:h-[280px]">
         {data.length ? (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 20, right: 12, left: -8, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 16, right: 8, left: -12, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
               <XAxis dataKey="label" tick={{ fill: tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: tick, fontSize: 10 }} axisLine={false} tickLine={false} width={40} />
+              <YAxis tick={{ fill: tick, fontSize: 10 }} axisLine={false} tickLine={false} width={36} />
               <Tooltip content={<ChartTooltip />} />
               <Legend
                 verticalAlign="top"
@@ -64,10 +64,15 @@ export default function LeadTrendChart({ stats }) {
                 name="Leads Generated"
                 stroke="#3B82F6"
                 strokeWidth={2.75}
-                dot={{ r: 4, fill: '#3B82F6', strokeWidth: 0 }}
+                dot={{ r: 3, fill: '#3B82F6', strokeWidth: 0 }}
                 activeDot={{ r: 5 }}
               >
-                <LabelList dataKey="leadsGenerated" position="top" style={{ fill: tick, fontSize: 10 }} />
+                <LabelList
+                  dataKey="leadsGenerated"
+                  position="top"
+                  className="hidden sm:block"
+                  style={{ fill: tick, fontSize: 10 }}
+                />
               </Line>
               <Line
                 type="monotone"
@@ -75,10 +80,15 @@ export default function LeadTrendChart({ stats }) {
                 name="Converted Leads"
                 stroke="#22C55E"
                 strokeWidth={2.75}
-                dot={{ r: 4, fill: '#22C55E', strokeWidth: 0 }}
+                dot={{ r: 3, fill: '#22C55E', strokeWidth: 0 }}
                 activeDot={{ r: 5 }}
               >
-                <LabelList dataKey="convertedLeads" position="top" style={{ fill: tick, fontSize: 10 }} />
+                <LabelList
+                  dataKey="convertedLeads"
+                  position="top"
+                  className="hidden sm:block"
+                  style={{ fill: tick, fontSize: 10 }}
+                />
               </Line>
             </LineChart>
           </ResponsiveContainer>

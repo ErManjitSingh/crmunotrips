@@ -24,8 +24,8 @@ export default function LeadStatusDonut({ data = [], total = 0 }) {
       {!chartData.length ? (
         <p className="py-10 text-center text-sm text-content-muted">No status data</p>
       ) : (
-        <div className="flex flex-col items-center gap-4 sm:flex-row">
-          <div className="relative h-[180px] w-full shrink-0 sm:w-[180px]">
+        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+          <div className="relative h-[160px] w-[160px] shrink-0 sm:h-[180px] sm:w-[180px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie

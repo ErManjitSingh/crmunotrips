@@ -25,14 +25,37 @@ const LOST_STATUSES = ['lost', 'booked_from_another_company'];
 
 function resolveReportPeriod(dateFrom, dateTo) {
   const now = new Date();
+  const isAllTime = !dateFrom && !dateTo;
+  const thisMonthStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
+  const prevMonthStart = startOfDay(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  const prevMonthEnd = endOfDay(new Date(now.getFullYear(), now.getMonth(), 0));
+
+  if (isAllTime) {
+    return {
+      isAllTime: true,
+      periodStart: startOfDay(new Date(2018, 0, 1)),
+      periodEnd: endOfDay(now),
+      prevStart: prevMonthStart,
+      prevEnd: prevMonthEnd,
+      momStart: thisMonthStart,
+      momEnd: endOfDay(now),
+    };
+  }
+
   const periodEnd = dateTo ? endOfDay(new Date(dateTo)) : endOfDay(now);
-  const periodStart = dateFrom
-    ? startOfDay(new Date(dateFrom))
-    : startOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
+  const periodStart = dateFrom ? startOfDay(new Date(dateFrom)) : thisMonthStart;
   const durationMs = Math.max(periodEnd.getTime() - periodStart.getTime(), 24 * 60 * 60 * 1000);
   const prevEnd = new Date(periodStart.getTime() - 1);
   const prevStart = new Date(prevEnd.getTime() - durationMs);
-  return { periodStart, periodEnd, prevStart, prevEnd };
+  return {
+    isAllTime: false,
+    periodStart,
+    periodEnd,
+    prevStart,
+    prevEnd,
+    momStart: periodStart,
+    momEnd: periodEnd,
+  };
 }
 
 function monthKey(year, month) {
@@ -180,7 +203,8 @@ async function buildAdminDashboard(options = {}) {
   const { branchId, dateFrom, dateTo, source } = options;
   const todayStart = startOfDay();
   const todayEnd = endOfDay();
-  const { periodStart, periodEnd, prevStart, prevEnd } = resolveReportPeriod(dateFrom, dateTo);
+  const { isAllTime, periodStart, periodEnd, prevStart, prevEnd, momStart, momEnd } =
+    resolveReportPeriod(dateFrom, dateTo);
   const sourceFilter = source ? { source } : {};
   const periodLeadScope = activeLeadScope(
     { createdAt: { $gte: periodStart, $lte: periodEnd }, ...sourceFilter },
@@ -190,6 +214,11 @@ async function buildAdminDashboard(options = {}) {
     { createdAt: { $gte: prevStart, $lte: prevEnd }, ...sourceFilter },
     branchId
   );
+  const momLeadScope = activeLeadScope(
+    { createdAt: { $gte: momStart, $lte: momEnd }, ...sourceFilter },
+    branchId
+  );
+  const liveLeadScope = activeLeadScope({ ...sourceFilter }, branchId);
   const monthBuckets = buildLastNMonthBuckets(6, periodEnd);
   const trendStart = monthBuckets[0].start;
 
@@ -221,6 +250,9 @@ async function buildAdminDashboard(options = {}) {
     periodRevenue,
     prevRevenue,
     periodSourceAgg,
+    momTotalLeads,
+    momStatusAgg,
+    momRevenue,
     monthlyLeadAgg,
     monthlyConvertedAgg,
     monthlyBookingAgg,
@@ -288,7 +320,10 @@ async function buildAdminDashboard(options = {}) {
     Lead.aggregate([{ $match: prevLeadScope }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
     sumRevenueInRange(branchId, periodStart, periodEnd),
     sumRevenueInRange(branchId, prevStart, prevEnd),
-    Lead.aggregate([{ $match: periodLeadScope }, { $group: { _id: '$source', count: { $sum: 1 } } }]),
+    Lead.aggregate([{ $match: isAllTime ? liveLeadScope : periodLeadScope }, { $group: { _id: '$source', count: { $sum: 1 } } }]),
+    Lead.countDocuments(momLeadScope),
+    Lead.aggregate([{ $match: momLeadScope }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
+    sumRevenueInRange(branchId, momStart, momEnd),
     Lead.aggregate([
       {
         $match: activeLeadScope(
@@ -377,13 +412,18 @@ async function buildAdminDashboard(options = {}) {
   const statusCounts = Object.fromEntries(leadsByStatus.map((s) => [s._id, s.count]));
   const periodStatusCounts = Object.fromEntries(periodStatusAgg.map((s) => [s._id, s.count]));
   const prevStatusCounts = Object.fromEntries(prevStatusAgg.map((s) => [s._id, s.count]));
+  const momStatusCounts = Object.fromEntries(momStatusAgg.map((s) => [s._id, s.count]));
   const periodBuckets = mapStatusBucket(periodStatusCounts);
   const prevBuckets = mapStatusBucket(prevStatusCounts);
+  const momBuckets = mapStatusBucket(momStatusCounts);
   const periodConversionRate = periodTotalLeads
     ? Math.round((periodBuckets.conversions / periodTotalLeads) * 1000) / 10
     : 0;
   const prevConversionRate = prevTotalLeads
     ? Math.round((prevBuckets.conversions / prevTotalLeads) * 1000) / 10
+    : 0;
+  const momConversionRate = momTotalLeads
+    ? Math.round((momBuckets.conversions / momTotalLeads) * 1000) / 10
     : 0;
 
   const leadMap = Object.fromEntries(
@@ -434,40 +474,57 @@ async function buildAdminDashboard(options = {}) {
     }))
     .sort((a, b) => b.value - a.value);
 
+  const valueBuckets = {
+    ...periodBuckets,
+    followUpPending: isAllTime
+      ? Math.max(periodBuckets.followUpPending, pendingFollowups)
+      : periodBuckets.followUpPending,
+  };
+  const changeBuckets = isAllTime ? momBuckets : periodBuckets;
+  const changeTotal = isAllTime ? momTotalLeads : periodTotalLeads;
+  const changeRevenue = isAllTime ? momRevenue : periodRevenue;
+  const changeConvRate = isAllTime ? momConversionRate : periodConversionRate;
+
   const statusDistributionTotal =
-    periodBuckets.fresh +
-    periodBuckets.followUpPending +
-    periodBuckets.interested +
-    periodBuckets.negotiation +
-    periodBuckets.lost;
+    valueBuckets.fresh +
+    valueBuckets.followUpPending +
+    valueBuckets.interested +
+    valueBuckets.negotiation +
+    valueBuckets.lost;
   const statusDistribution = [
-    { name: 'Fresh Leads', key: 'fresh', value: periodBuckets.fresh, color: '#22C55E' },
-    { name: 'Follow Up Pending', key: 'followUp', value: periodBuckets.followUpPending, color: '#F59E0B' },
-    { name: 'Interested', key: 'interested', value: periodBuckets.interested, color: '#8B5CF6' },
-    { name: 'Negotiation', key: 'negotiation', value: periodBuckets.negotiation, color: '#F97316' },
-    { name: 'Lost Leads', key: 'lost', value: periodBuckets.lost, color: '#EF4444' },
+    { name: 'Fresh Leads', key: 'fresh', value: valueBuckets.fresh, color: '#22C55E' },
+    { name: 'Follow Up Pending', key: 'followUp', value: valueBuckets.followUpPending, color: '#F59E0B' },
+    { name: 'Interested', key: 'interested', value: valueBuckets.interested, color: '#8B5CF6' },
+    { name: 'Negotiation', key: 'negotiation', value: valueBuckets.negotiation, color: '#F97316' },
+    { name: 'Lost Leads', key: 'lost', value: valueBuckets.lost, color: '#EF4444' },
   ].map((item) => ({
     ...item,
     pct: statusDistributionTotal ? Math.round((item.value / statusDistributionTotal) * 1000) / 10 : 0,
   }));
 
+  const withValue = (meta, value) => ({ ...meta, value });
   const prevPeriodLabel = prevEnd.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
   const reportKpis = {
-    totalLeads: changeMeta(periodTotalLeads, prevTotalLeads),
-    freshLeads: changeMeta(periodBuckets.fresh, prevBuckets.fresh),
-    followUpPending: changeMeta(periodBuckets.followUpPending, prevBuckets.followUpPending),
-    interested: changeMeta(periodBuckets.interested, prevBuckets.interested),
-    negotiation: changeMeta(periodBuckets.negotiation, prevBuckets.negotiation),
-    lostLeads: changeMeta(periodBuckets.lost, prevBuckets.lost),
-    conversions: changeMeta(periodBuckets.conversions, prevBuckets.conversions),
-    revenue: changeMeta(periodRevenue, prevRevenue),
-    conversionRate: changeMeta(periodConversionRate, prevConversionRate),
+    totalLeads: withValue(changeMeta(changeTotal, prevTotalLeads), periodTotalLeads),
+    freshLeads: withValue(changeMeta(changeBuckets.fresh, prevBuckets.fresh), valueBuckets.fresh),
+    followUpPending: withValue(
+      changeMeta(changeBuckets.followUpPending, prevBuckets.followUpPending),
+      valueBuckets.followUpPending
+    ),
+    interested: withValue(changeMeta(changeBuckets.interested, prevBuckets.interested), valueBuckets.interested),
+    negotiation: withValue(changeMeta(changeBuckets.negotiation, prevBuckets.negotiation), valueBuckets.negotiation),
+    lostLeads: withValue(changeMeta(changeBuckets.lost, prevBuckets.lost), valueBuckets.lost),
+    conversions: withValue(changeMeta(changeBuckets.conversions, prevBuckets.conversions), valueBuckets.conversions),
+    revenue: withValue(changeMeta(changeRevenue, prevRevenue), periodRevenue),
+    conversionRate: withValue(changeMeta(changeConvRate, prevConversionRate), periodConversionRate),
   };
 
   const topSource = leadsBySourcePeriod[0] || null;
   const topExecutive = (executivePerformance?.executives || [])[0] || null;
   const keyHighlights = {
-    periodLabel: periodEnd.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+    periodLabel: isAllTime
+      ? 'All Time'
+      : periodEnd.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
     highestLeadsSource: topSource
       ? { name: topSource.name, pct: topSource.pct }
       : { name: '—', pct: 0 },
@@ -578,10 +635,13 @@ async function buildAdminDashboard(options = {}) {
     },
     report: {
       period: {
-        from: periodStart.toISOString(),
+        from: isAllTime ? null : periodStart.toISOString(),
         to: periodEnd.toISOString(),
-        label: `${periodStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} - ${periodEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+        label: isAllTime
+          ? 'All Time'
+          : `${periodStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} - ${periodEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
         compareLabel: prevPeriodLabel,
+        isAllTime,
         source: source || null,
       },
       generatedAt: new Date().toISOString(),

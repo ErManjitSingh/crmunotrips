@@ -40,7 +40,7 @@ export default function ConversionRateChart({ data = [] }) {
       }
       className="h-full"
     >
-      <div className="h-[240px] -mx-1">
+      <div className="h-[200px] -mx-1 sm:h-[240px]">
         {data.length ? (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>

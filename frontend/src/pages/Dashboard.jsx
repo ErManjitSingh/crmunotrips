@@ -22,7 +22,7 @@ import RevenueVsBookingsChart from '../components/dashboard/RevenueVsBookingsCha
 import KeyHighlightsStrip from '../components/dashboard/KeyHighlightsStrip';
 
 function PanelSkeleton() {
-  return <div className="h-56 animate-pulse rounded-2xl border border-subtle bg-surface" />;
+  return <div className="h-52 animate-pulse rounded-2xl border border-subtle bg-surface sm:h-56" />;
 }
 
 export default function Dashboard() {
@@ -53,10 +53,12 @@ export default function Dashboard() {
   if (!stats) return null;
 
   const statusTotal = (report?.statusDistribution || []).reduce((s, d) => s + (d.value || 0), 0);
-  const sourceTotal = stats.totalLeads || (report?.leadsBySource || []).reduce((s, d) => s + (d.value || 0), 0);
+  const sourceTotal =
+    stats.totalLeads ||
+    (report?.leadsBySource || []).reduce((s, d) => s + (d.value || 0), 0);
 
   return (
-    <div className="space-y-5 pb-8">
+    <div className="mx-auto w-full max-w-[1600px] space-y-4 pb-8 sm:space-y-5">
       {isFetching && (
         <div className="h-0.5 w-full overflow-hidden rounded-full bg-blue-500/30">
           <div className="h-full w-1/3 animate-pulse bg-blue-500" />
@@ -75,35 +77,40 @@ export default function Dashboard() {
 
       <KeyHighlightsStrip highlights={report?.keyHighlights} />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-        <div className="xl:col-span-5">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-12">
+        <div className="min-w-0 xl:col-span-5">
           <LeadTrendChart stats={stats} />
         </div>
-        <div className="xl:col-span-3">
+        <div className="min-w-0 lg:col-span-1 xl:col-span-3">
           <Suspense fallback={<PanelSkeleton />}>
             <LeadStatusDonut data={report?.statusDistribution || []} total={statusTotal} />
           </Suspense>
         </div>
-        <div className="xl:col-span-4">
+        <div className="min-w-0 lg:col-span-2 xl:col-span-4">
           <Suspense fallback={<PanelSkeleton />}>
-            <LeadSourceChart data={report?.leadsBySource || stats.leadSourceAnalytics || []} total={sourceTotal} />
+            <LeadSourceChart
+              data={report?.leadsBySource || stats.leadSourceAnalytics || []}
+              total={sourceTotal}
+            />
           </Suspense>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Suspense fallback={<PanelSkeleton />}>
           <ConversionRateChart data={report?.conversionRateTrend || []} />
         </Suspense>
         <Suspense fallback={<PanelSkeleton />}>
           <ExecutivePerformancePanel data={stats.executivePerformance} />
         </Suspense>
-        <Suspense fallback={<PanelSkeleton />}>
-          <RevenueVsBookingsChart data={report?.revenueVsBookings || []} />
-        </Suspense>
+        <div className="md:col-span-2 xl:col-span-1">
+          <Suspense fallback={<PanelSkeleton />}>
+            <RevenueVsBookingsChart data={report?.revenueVsBookings || []} />
+          </Suspense>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Suspense fallback={<PanelSkeleton />}>
           <TodayFollowUps followups={stats.todayFollowUps || []} />
         </Suspense>
@@ -115,9 +122,9 @@ export default function Dashboard() {
       <div className="flex flex-col gap-2 border-t border-subtle pt-4 text-xs text-content-muted sm:flex-row sm:items-center sm:justify-between">
         <p className="inline-flex items-start gap-1.5 sm:items-center">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:mt-0" />
-          All metrics are compared with previous period. Currency in INR. L = Lakhs.
+          All metrics use live CRM data. % change compares with previous period. Currency in INR. L = Lakhs.
         </p>
-        <p>Report Generated on: {generatedAt}</p>
+        <p className="shrink-0">Report Generated on: {generatedAt}</p>
       </div>
     </div>
   );

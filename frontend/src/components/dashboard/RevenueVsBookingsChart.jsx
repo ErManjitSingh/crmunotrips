@@ -39,10 +39,10 @@ export default function RevenueVsBookingsChart({ data = [] }) {
 
   return (
     <DashboardPanel title="Revenue vs Bookings" subtitle="Monthly bookings & revenue" className="h-full">
-      <div className="h-[240px] -mx-1">
+      <div className="h-[200px] -mx-1 sm:h-[240px]">
         {data.length ? (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={data} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+            <ComposedChart data={data} margin={{ top: 8, right: 4, left: -8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
               <XAxis dataKey="label" tick={{ fill: tick, fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis

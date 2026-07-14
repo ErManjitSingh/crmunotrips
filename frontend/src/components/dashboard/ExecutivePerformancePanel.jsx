@@ -32,13 +32,13 @@ export default function ExecutivePerformancePanel({ data, compact = false }) {
         <p className="px-5 py-8 text-center text-sm text-content-muted">No executive data</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[420px] text-left">
+          <table className="w-full min-w-[360px] text-left sm:min-w-[420px]">
             <thead>
-              <tr className="border-b border-subtle text-[11px] uppercase tracking-wide text-content-muted">
-                <th className="px-5 py-3 font-semibold">Executive</th>
-                <th className="px-3 py-3 font-semibold text-right">Leads</th>
-                <th className="px-3 py-3 font-semibold text-right">Conversions</th>
-                <th className="px-5 py-3 font-semibold">Conversion Rate</th>
+              <tr className="border-b border-subtle text-[10px] uppercase tracking-wide text-content-muted sm:text-[11px]">
+                <th className="px-3 py-3 font-semibold sm:px-5">Executive</th>
+                <th className="px-2 py-3 font-semibold text-right sm:px-3">Leads</th>
+                <th className="px-2 py-3 font-semibold text-right sm:px-3">Conv.</th>
+                <th className="px-3 py-3 font-semibold sm:px-5">Rate</th>
               </tr>
             </thead>
             <tbody>
