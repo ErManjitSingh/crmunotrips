@@ -14,28 +14,28 @@ function formatCurrency(n) {
 const HIGHLIGHT_ITEMS = [
   {
     key: 'source',
-    label: 'Highest Leads Source',
+    label: 'Top Source',
     icon: Target,
     iconBg: 'bg-blue-500',
     getValue: (h) => `${h.highestLeadsSource?.name || '—'} (${h.highestLeadsSource?.pct || 0}%)`,
   },
   {
     key: 'exec',
-    label: 'Best Performing Executive',
+    label: 'Best Exec',
     icon: UserRound,
     iconBg: 'bg-violet-500',
     getValue: (h) => h.bestPerformingExecutive?.name || '—',
   },
   {
     key: 'conv',
-    label: 'Conversion Rate',
+    label: 'Conv. Rate',
     icon: TrendingUp,
     iconBg: 'bg-emerald-500',
     getValue: (h) => `${h.conversionRate ?? 0}%`,
   },
   {
     key: 'rev',
-    label: 'Revenue Generated',
+    label: 'Revenue',
     icon: IndianRupee,
     iconBg: 'bg-teal-500',
     getValue: (h) => formatCurrency(h.revenueGenerated),
@@ -45,32 +45,32 @@ const HIGHLIGHT_ITEMS = [
 function KeyHighlightsPanel({ highlights }) {
   if (!highlights) {
     return (
-      <div className="space-y-2 px-1 py-1">
+      <div className="grid grid-cols-2 gap-1">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-12 animate-pulse rounded-xl bg-white/[0.06]" />
+          <div key={i} className="h-9 animate-pulse rounded-lg bg-white/[0.06]" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-1.5">
+    <div className="grid grid-cols-2 gap-1">
       {HIGHLIGHT_ITEMS.map((item, i) => {
         const Icon = item.icon;
         return (
           <motion.div
             key={item.key}
-            initial={{ opacity: 0, x: -6 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.04 }}
-            className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.04] px-2.5 py-2"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.03 }}
+            className="flex min-w-0 items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.04] px-1.5 py-1.5"
           >
-            <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full', item.iconBg)}>
-              <Icon className="h-3.5 w-3.5 text-white" strokeWidth={2.2} />
+            <div className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full', item.iconBg)}>
+              <Icon className="h-2.5 w-2.5 text-white" strokeWidth={2.4} />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[10px] text-slate-400">{item.label}</p>
-              <p className="truncate text-[12px] font-semibold text-white">{item.getValue(highlights)}</p>
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="truncate text-[9px] text-slate-500">{item.label}</p>
+              <p className="truncate text-[10px] font-semibold text-white">{item.getValue(highlights)}</p>
             </div>
           </motion.div>
         );
@@ -115,20 +115,20 @@ export default function SidebarQuickActions({ actions }) {
 
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-2 pb-3">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-2 pb-2">
         <div
           className={cn(
-            'rounded-2xl border border-white/[0.08] p-3',
+            'rounded-xl border border-white/[0.08] p-2',
             'bg-gradient-to-br from-violet-900/60 via-indigo-900/50 to-slate-900/60',
-            'shadow-lg shadow-black/20'
+            'shadow-md shadow-black/15'
           )}
         >
-          <div className="mb-2 flex items-center justify-between gap-2 px-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               {showHighlights ? 'Key Highlights' : 'Quick Actions'}
             </p>
             {showHighlights && highlights?.periodLabel ? (
-              <span className="truncate text-[10px] text-slate-500">{highlights.periodLabel}</span>
+              <span className="truncate text-[9px] text-slate-500">{highlights.periodLabel}</span>
             ) : null}
           </div>
 
