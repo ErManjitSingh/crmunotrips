@@ -1,8 +1,13 @@
 import { Suspense, useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Info } from 'lucide-react';
+import API from '../api/axios';
 import { useDataRefresh } from '../hooks/useDataRefresh';
-import { useDashboardQuery } from '../features/dashboard/hooks/useDashboardQuery';
+import {
+  useDashboardQuery,
+  buildDashboardParams,
+  dashboardQueryKey,
+} from '../features/dashboard/hooks/useDashboardQuery';
 import { invalidateDashboard } from '../lib/queryInvalidation';
 import DashboardHeader, {
   getDefaultDashboardFilters,
@@ -28,12 +33,24 @@ function PanelSkeleton() {
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState(getDefaultDashboardFilters);
-  const { data: stats, isLoading, isFetching, refetch } = useDashboardQuery('/dashboard/stats', filters);
+  const { data: stats, isLoading, isFetching } = useDashboardQuery('/dashboard/stats', filters);
 
-  const refreshDashboard = useCallback(() => {
-    invalidateDashboard(queryClient);
-    refetch();
-  }, [queryClient, refetch]);
+  const refreshDashboard = useCallback(async () => {
+    const endpoint = '/dashboard/stats';
+    const key = dashboardQueryKey(endpoint, filters);
+    await invalidateDashboard(queryClient);
+    await queryClient.invalidateQueries({ queryKey: ['nav-counts'] });
+    await queryClient.fetchQuery({
+      queryKey: key,
+      queryFn: async () => {
+        const { data } = await API.get(endpoint, {
+          params: buildDashboardParams(filters, { fresh: true }),
+          skipSuccessToast: true,
+        });
+        return data;
+      },
+    });
+  }, [queryClient, filters]);
 
   useDataRefresh(['dashboard'], refreshDashboard);
 

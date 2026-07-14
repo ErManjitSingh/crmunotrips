@@ -1,5 +1,6 @@
-import { motion } from 'framer-motion';
-import { RefreshCw, Calendar, Filter, Megaphone } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { RefreshCw, Calendar, Filter, Megaphone, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const SOURCE_OPTIONS = [
@@ -78,6 +79,8 @@ export default function DashboardHeader({
   periodLabel,
 }) {
   const currentPreset = activePreset(filters);
+  const hasCustomFilters = Boolean(filters.dateFrom || filters.dateTo || filters.source);
+  const [showMore, setShowMore] = useState(hasCustomFilters && !currentPreset);
 
   return (
     <motion.div
@@ -120,15 +123,18 @@ export default function DashboardHeader({
           )}
         </div>
 
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-thin">
+        <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 scrollbar-thin">
           {PRESETS.map((preset) => (
             <button
               key={preset.key}
               type="button"
-              onClick={() => onFiltersChange({ ...filters, ...applyPreset(preset.key) })}
+              onClick={() => {
+                onFiltersChange({ ...filters, ...applyPreset(preset.key), source: filters.source });
+                setShowMore(false);
+              }}
               className={cn(
                 'shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
-                currentPreset === preset.key
+                currentPreset === preset.key && !showMore
                   ? 'border-blue-500 bg-blue-500 text-white shadow-sm'
                   : 'border-subtle bg-surface text-content-secondary hover:bg-surface-elevated'
               )}
@@ -136,48 +142,74 @@ export default function DashboardHeader({
               {preset.label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setShowMore((v) => !v)}
+            className={cn(
+              'inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+              showMore || (hasCustomFilters && !currentPreset)
+                ? 'border-violet-500 bg-violet-500 text-white shadow-sm'
+                : 'border-subtle bg-surface text-content-secondary hover:bg-surface-elevated'
+            )}
+          >
+            <SlidersHorizontal className="h-3 w-3" />
+            More
+            <ChevronDown className={cn('h-3 w-3 transition-transform', showMore && 'rotate-180')} />
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          <label className="flex min-w-0 flex-col gap-1">
-            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-content-muted">
-              <Calendar className="h-3 w-3" /> From
-            </span>
-            <input
-              type="date"
-              value={filters.dateFrom}
-              onChange={(e) => onFiltersChange({ ...filters, dateFrom: e.target.value })}
-              className="input-premium h-10 w-full rounded-xl text-sm"
-            />
-          </label>
-          <label className="flex min-w-0 flex-col gap-1">
-            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-content-muted">
-              <Calendar className="h-3 w-3" /> To
-            </span>
-            <input
-              type="date"
-              value={filters.dateTo}
-              onChange={(e) => onFiltersChange({ ...filters, dateTo: e.target.value })}
-              className="input-premium h-10 w-full rounded-xl text-sm"
-            />
-          </label>
-          <label className="flex min-w-0 flex-col gap-1 sm:col-span-2 lg:col-span-1">
-            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-content-muted">
-              <Filter className="h-3 w-3" /> Source
-            </span>
-            <select
-              value={filters.source}
-              onChange={(e) => onFiltersChange({ ...filters, source: e.target.value })}
-              className="input-premium h-10 w-full rounded-xl text-sm"
+        <AnimatePresence initial={false}>
+          {showMore && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.22 }}
+              className="overflow-hidden"
             >
-              {SOURCE_OPTIONS.map((opt) => (
-                <option key={opt.value || 'all'} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+              <div className="grid grid-cols-1 gap-2.5 rounded-xl border border-subtle bg-surface-elevated/40 p-3 sm:grid-cols-2 lg:grid-cols-3">
+                <label className="flex min-w-0 flex-col gap-1">
+                  <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-content-muted">
+                    <Calendar className="h-3 w-3" /> From
+                  </span>
+                  <input
+                    type="date"
+                    value={filters.dateFrom}
+                    onChange={(e) => onFiltersChange({ ...filters, dateFrom: e.target.value })}
+                    className="input-premium h-10 w-full rounded-xl text-sm"
+                  />
+                </label>
+                <label className="flex min-w-0 flex-col gap-1">
+                  <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-content-muted">
+                    <Calendar className="h-3 w-3" /> To
+                  </span>
+                  <input
+                    type="date"
+                    value={filters.dateTo}
+                    onChange={(e) => onFiltersChange({ ...filters, dateTo: e.target.value })}
+                    className="input-premium h-10 w-full rounded-xl text-sm"
+                  />
+                </label>
+                <label className="flex min-w-0 flex-col gap-1 sm:col-span-2 lg:col-span-1">
+                  <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-content-muted">
+                    <Filter className="h-3 w-3" /> Source
+                  </span>
+                  <select
+                    value={filters.source}
+                    onChange={(e) => onFiltersChange({ ...filters, source: e.target.value })}
+                    className="input-premium h-10 w-full rounded-xl text-sm"
+                  >
+                    {SOURCE_OPTIONS.map((opt) => (
+                      <option key={opt.value || 'all'} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );

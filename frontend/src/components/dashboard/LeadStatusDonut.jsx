@@ -9,7 +9,7 @@ function DonutTooltip({ active, payload }) {
     <div className="rounded-xl border border-subtle bg-surface px-3 py-2 text-sm shadow-lg">
       <p className="font-semibold text-content-primary">{item.name}</p>
       <p className="text-content-muted">
-        {item.value} ({item.payload.pct}%)
+        {Number(item.value).toLocaleString('en-IN')} ({item.payload.pct}%)
       </p>
     </div>
   );
@@ -24,16 +24,16 @@ export default function LeadStatusDonut({ data = [], total = 0 }) {
       {!chartData.length ? (
         <p className="py-10 text-center text-sm text-content-muted">No status data</p>
       ) : (
-        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
-          <div className="relative h-[160px] w-[160px] shrink-0 sm:h-[180px] sm:w-[180px]">
+        <div className="flex min-w-0 flex-col items-center gap-4 sm:flex-row sm:items-start">
+          <div className="relative h-[150px] w-[150px] shrink-0 sm:h-[170px] sm:w-[170px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={chartData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={54}
-                  outerRadius={78}
+                  innerRadius={48}
+                  outerRadius={70}
                   paddingAngle={2.5}
                   dataKey="value"
                   strokeWidth={0}
@@ -47,22 +47,31 @@ export default function LeadStatusDonut({ data = [], total = 0 }) {
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
               <p className="text-[10px] uppercase tracking-wide text-content-muted">Total</p>
-              <p className="text-2xl font-bold text-content-primary metric-tabular">{displayTotal.toLocaleString('en-IN')}</p>
+              <p className="text-xl font-bold text-content-primary metric-tabular sm:text-2xl">
+                {Number(displayTotal).toLocaleString('en-IN')}
+              </p>
             </div>
           </div>
 
-          <div className="w-full flex-1 space-y-2.5">
+          <div className="min-w-0 w-full flex-1 space-y-2 overflow-y-auto pr-1 max-h-[200px] scrollbar-thin">
             {data.map((item, i) => (
               <motion.div
                 key={item.key || item.name}
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.04 }}
-                className="flex items-center gap-2.5"
+                className="flex min-w-0 items-center gap-2"
               >
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: item.color }} />
-                <span className="flex-1 truncate text-sm text-content-secondary">{item.name}</span>
-                <span className="text-sm font-bold text-content-primary metric-tabular">{item.pct}%</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-content-secondary" title={item.name}>
+                  {item.name}
+                </span>
+                <span className="w-10 shrink-0 text-right text-xs font-semibold text-content-muted metric-tabular">
+                  {Number(item.value).toLocaleString('en-IN')}
+                </span>
+                <span className="w-12 shrink-0 text-right text-sm font-bold text-content-primary metric-tabular">
+                  {item.pct}%
+                </span>
               </motion.div>
             ))}
           </div>
