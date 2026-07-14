@@ -24,7 +24,6 @@ import {
 import LeadStatusDonut from '../components/dashboard/LeadStatusDonut';
 import ConversionRateChart from '../components/dashboard/ConversionRateChart';
 import RevenueVsBookingsChart from '../components/dashboard/RevenueVsBookingsChart';
-import KeyHighlightsStrip from '../components/dashboard/KeyHighlightsStrip';
 
 function PanelSkeleton() {
   return <div className="h-52 animate-pulse rounded-2xl border border-subtle bg-surface sm:h-56" />;
@@ -91,8 +90,6 @@ export default function Dashboard() {
       />
 
       <DashboardHero stats={stats} />
-
-      <KeyHighlightsStrip highlights={report?.keyHighlights} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-12">
         <div className="min-w-0 xl:col-span-5">

@@ -23,7 +23,8 @@ export function dashboardQueryKey(endpoint = '/dashboard/stats', filters = {}) {
   ];
 }
 
-export function useDashboardQuery(endpoint = '/dashboard/stats', filters = {}) {
+export function useDashboardQuery(endpoint = '/dashboard/stats', filters = {}, options = {}) {
+  const { enabled = true, ...rest } = options;
   return useQuery({
     queryKey: dashboardQueryKey(endpoint, filters),
     queryFn: async () => {
@@ -36,5 +37,7 @@ export function useDashboardQuery(endpoint = '/dashboard/stats', filters = {}) {
     staleTime: DASHBOARD_STALE_MS,
     gcTime: GC_TIME_MS,
     placeholderData: (prev) => prev,
+    enabled,
+    ...rest,
   });
 }
