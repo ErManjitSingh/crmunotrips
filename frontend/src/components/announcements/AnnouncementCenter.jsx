@@ -73,7 +73,7 @@ export default function AnnouncementCenter() {
 
   return (
     <>
-      <div className="w-full space-y-3">
+      <div className="w-full space-y-3.5">
         <AnnouncementHero
           announcement={data.hero}
           onView={openDetail}
