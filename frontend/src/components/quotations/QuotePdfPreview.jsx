@@ -140,7 +140,7 @@ const QuotePdfPreview = forwardRef(function QuotePdfPreview({ quote }, ref) {
     (pkg.routing || pkg.destination || '').split(/[,·]/)[0]?.trim() ||
     destImages[0]?.label ||
     'Your Trip';
-  const highlightThumbs = destImages.slice(0, 4);
+  const highlightThumbs = destImages.slice(0, 3);
   const welcomePara = QUOTE_WELCOME_TEXT.split('\n\n')[0];
 
   return (

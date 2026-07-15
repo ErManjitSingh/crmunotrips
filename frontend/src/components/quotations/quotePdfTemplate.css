@@ -282,7 +282,7 @@
 /* ── Destination highlight strip ── */
 .quote-ht-highlights {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   padding: 12px 18px 4px;
   page-break-inside: avoid;
