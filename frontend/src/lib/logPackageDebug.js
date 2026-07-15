@@ -99,6 +99,24 @@ export function logSelectedPackageDebug(pkg, meta = {}) {
       console.groupEnd();
     }
 
+    if (Array.isArray(dayOptions?.stays) && dayOptions.stays.length) {
+      console.group(`stays[] (${dayOptions.stays.length})`);
+      console.table(
+        dayOptions.stays.map((stay) => ({
+          city: stay.destination_city,
+          cin: stay.check_in_day,
+          cout: stay.check_out_day,
+          nights: stay.nights,
+          hotel: stay.default_hotel_name,
+          room: stay.default_room_type_name,
+          meal: stay.default_meal_plan,
+          options: Array.isArray(stay.hotel_options) ? stay.hotel_options.length : 0,
+        }))
+      );
+      console.log(dayOptions.stays);
+      console.groupEnd();
+    }
+
     console.log('Full day-options payload:', dayOptions);
     console.groupEnd();
   }

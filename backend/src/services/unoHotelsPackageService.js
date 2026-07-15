@@ -68,6 +68,18 @@ function formatMealsLabel(meals = {}) {
   return selected.join(', ');
 }
 
+function formatMealPlanCode(code = '') {
+  const key = String(code || '').trim().toLowerCase();
+  const map = {
+    ep: 'EP (Room only)',
+    cp: 'CP (Breakfast)',
+    map: 'MAP (Breakfast + Dinner)',
+    ap: 'AP (All meals)',
+    ai: 'AI (All inclusive)',
+  };
+  return map[key] || (code ? String(code).toUpperCase() : '');
+}
+
 function formatNamedList(items = []) {
   return items
     .map((item) => item?.name || item?.title || (typeof item === 'string' ? item : ''))
@@ -75,8 +87,61 @@ function formatNamedList(items = []) {
     .join(' · ');
 }
 
-function pickDefaultHotelOption(options = []) {
-  return options.find((option) => option.is_default || option.isDefault || option.is_selected) || options[0] || null;
+function stayCoversDay(stay = {}, dayNumber) {
+  const cin = Number(stay.check_in_day);
+  const cout = Number(stay.check_out_day);
+  const day = Number(dayNumber);
+  if (!Number.isFinite(cin) || !Number.isFinite(cout) || !Number.isFinite(day)) return false;
+  return day >= cin && day < cout;
+}
+
+function findStayForDay(stays = [], dayNumber) {
+  const list = Array.isArray(stays) ? stays.filter((s) => s?.is_active !== false) : [];
+  return list.find((stay) => stayCoversDay(stay, dayNumber)) || null;
+}
+
+/** Hotels live on day-options `stays[]` — build default + alternatives for a night. */
+function hotelOptionsFromStay(stay = {}) {
+  if (!stay || typeof stay !== 'object') return [];
+  const meals = formatMealPlanCode(stay.default_meal_plan);
+  const location = stay.destination_city || stay.destination_state || '';
+  const roomFallback = stay.default_room_type_name || '';
+  const options = [];
+  const defaultHotelId = stay.default_hotel_id || null;
+
+  if (stay.default_hotel_name || defaultHotelId) {
+    options.push({
+      id: defaultHotelId || stay.id || stay.default_hotel_name,
+      hotel_id: defaultHotelId,
+      hotel_name: stay.default_hotel_name,
+      name: stay.default_hotel_name,
+      room_type: stay.default_room_type_name || roomFallback,
+      tier_name: stay.default_room_type_name || roomFallback,
+      meals,
+      price_delta: Number(stay.default_upgrade_price || 0),
+      is_default: true,
+      location,
+    });
+  }
+
+  for (const opt of Array.isArray(stay.hotel_options) ? stay.hotel_options : []) {
+    if (defaultHotelId && opt.hotel_id && opt.hotel_id === defaultHotelId) continue;
+    const name = pickHotelLabel(opt);
+    if (!name) continue;
+    options.push({
+      ...opt,
+      name,
+      hotel_name: opt.hotel_name || name,
+      room_type: opt.default_room_type_name || roomFallback,
+      tier_name: opt.default_room_type_name || roomFallback,
+      meals,
+      price_delta: Number(opt.upgrade_price ?? opt.price_delta ?? 0),
+      is_default: false,
+      location,
+    });
+  }
+
+  return options;
 }
 
 function mapHotelMeta(option = {}) {
@@ -86,6 +151,9 @@ function mapHotelMeta(option = {}) {
   const image = sanitizeImageUrl(
     option.image_url || option.image || option.featured_image || option.thumbnail || option.cover_image
   );
+  const meals =
+    formatMealsLabel(option.meals) ||
+    formatMealPlanCode(option.meal_plan || option.default_meal_plan);
   return {
     id: option.id || option.hotel_id || name,
     name,
@@ -93,16 +161,18 @@ function mapHotelMeta(option = {}) {
     images: sanitizeImages(option.images || (image ? [image] : [])),
     starRating: Number(option.star_rating || option.stars || option.rating || 0),
     location: option.location || option.city || option.area || '',
-    meals: formatMealsLabel(option.meals),
-    priceDelta: Number(option.price_delta || option.price || 0),
-    tierName: option.tier_name || option.room_type || '',
+    meals,
+    priceDelta: Number(option.price_delta ?? option.upgrade_price ?? option.price ?? 0),
+    tierName: option.tier_name || option.room_type || option.default_room_type_name || '',
     isDefault: Boolean(option.is_default || option.isDefault || option.is_selected),
   };
 }
 
-function mergeDayItinerary(itineraryDay = {}, optionDay = {}) {
+function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
   const dayNumber = itineraryDay.day_number || optionDay.day_number;
-  const hotelOptionsRaw = Array.isArray(optionDay.hotel_options) ? optionDay.hotel_options : [];
+  const dayHotelOptions = Array.isArray(optionDay.hotel_options) ? optionDay.hotel_options : [];
+  const hotelOptionsRaw =
+    dayHotelOptions.length > 0 ? dayHotelOptions : hotelOptionsFromStay(stay || {});
   const hotelOptions = hotelOptionsRaw.map(mapHotelMeta).filter(Boolean);
   const defaultHotelMeta =
     hotelOptions.find((o) => o.isDefault) || hotelOptions[0] || null;
@@ -121,6 +191,7 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}) {
 
   const meals =
     defaultHotelMeta?.meals ||
+    formatMealPlanCode(stay?.default_meal_plan) ||
     (Array.isArray(itineraryDay.meals_selected) ? itineraryDay.meals_selected.join(', ') : '') ||
     itineraryDay.dinner ||
     '';
@@ -141,6 +212,8 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}) {
     accommodation: defaultHotelName,
     hotelMeta: defaultHotelMeta,
     hotelOptions,
+    stayId: stay?.id || null,
+    stayNights: stay ? Number(stay.nights) || 1 : null,
     activities: activities || sightseeing,
     sightseeing,
     meals,
@@ -150,7 +223,7 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}) {
   };
 }
 
-function buildMergedItinerary(itineraryDays = [], optionDays = []) {
+function buildMergedItinerary(itineraryDays = [], optionDays = [], stays = []) {
   const itineraryByDay = new Map(
     (Array.isArray(itineraryDays) ? itineraryDays : []).map((day) => [day.day_number, day])
   );
@@ -163,13 +236,19 @@ function buildMergedItinerary(itineraryDays = [], optionDays = []) {
 
   if (!dayNumbers.length) return [];
 
+  const stayList = Array.isArray(stays) ? stays : [];
+
   return dayNumbers.map((dayNumber) =>
-    mergeDayItinerary(itineraryByDay.get(dayNumber) || {}, optionByDay.get(dayNumber) || { day_number: dayNumber })
+    mergeDayItinerary(
+      itineraryByDay.get(dayNumber) || {},
+      optionByDay.get(dayNumber) || { day_number: dayNumber },
+      findStayForDay(stayList, dayNumber)
+    )
   );
 }
 
-function mapDayOptionsToItinerary(days = []) {
-  return buildMergedItinerary([], days);
+function mapDayOptionsToItinerary(days = [], stays = []) {
+  return buildMergedItinerary([], days, stays);
 }
 
 async function fetchUnoPackageDayOptionsPayload(slug) {
@@ -216,6 +295,7 @@ async function attachItineraryFromDayOptions(mapped, slug, itineraryDaysFromPack
     const payload = await fetchUnoPackageDayOptionsPayload(slug);
     mapped._apiRaw = { ...(mapped._apiRaw || {}), dayOptions: payload };
     const days = Array.isArray(payload?.days) ? payload.days : [];
+    const stays = Array.isArray(payload?.stays) ? payload.stays : [];
     const packageCabs = (Array.isArray(payload?.cabs) ? payload.cabs : [])
       .filter((cab) => cab.is_active !== false)
       .map(mapPackageCab)
@@ -226,8 +306,8 @@ async function attachItineraryFromDayOptions(mapped, slug, itineraryDaysFromPack
 
     if (packageCabs.length) mapped.packageCabs = packageCabs;
 
-    if (days.length > 0 || packageItineraryDays.length > 0) {
-      mapped.itinerary = buildMergedItinerary(packageItineraryDays, days);
+    if (days.length > 0 || packageItineraryDays.length > 0 || stays.length > 0) {
+      mapped.itinerary = buildMergedItinerary(packageItineraryDays, days, stays);
       return mapped;
     }
   } catch {
@@ -476,7 +556,7 @@ async function fetchUnoPackageById(packageId) {
 
 async function getUnoPackageById(packageId) {
   return cacheService.getOrSet(
-    `uno:packages:detail:v2:${packageId}`,
+    `uno:packages:detail:v3:${packageId}`,
     () => fetchUnoPackageById(packageId),
     DETAIL_CACHE_TTL_MS
   );

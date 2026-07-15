@@ -7,6 +7,19 @@ function formatMealsLabel(meals = {}) {
   return selected.join(', ');
 }
 
+/** UNO stay meal codes → display label. */
+function formatMealPlanCode(code = '') {
+  const key = String(code || '').trim().toLowerCase();
+  const map = {
+    ep: 'EP (Room only)',
+    cp: 'CP (Breakfast)',
+    map: 'MAP (Breakfast + Dinner)',
+    ap: 'AP (All meals)',
+    ai: 'AI (All inclusive)',
+  };
+  return map[key] || (code ? String(code).toUpperCase() : '');
+}
+
 function formatNamedList(items = []) {
   return items
     .map((item) => item?.name || item?.title || (typeof item === 'string' ? item : ''))
@@ -16,10 +29,6 @@ function formatNamedList(items = []) {
 
 function pickHotelLabel(option = {}) {
   return option.name || option.hotel_name || option.title || option.hotelName || option.tier_name || '';
-}
-
-function pickDefaultHotelOption(options = []) {
-  return options.find((option) => option.is_default || option.isDefault || option.is_selected) || options[0] || null;
 }
 
 function pickImage(option = {}) {
@@ -35,11 +44,75 @@ function pickImage(option = {}) {
   );
 }
 
-/** Normalize a UNO day-options hotel_option into itinerary hotelMeta. */
+/** Stay covers overnight for check_in_day … check_out_day - 1. */
+export function stayCoversDay(stay = {}, dayNumber) {
+  const cin = Number(stay.check_in_day);
+  const cout = Number(stay.check_out_day);
+  const day = Number(dayNumber);
+  if (!Number.isFinite(cin) || !Number.isFinite(cout) || !Number.isFinite(day)) return false;
+  return day >= cin && day < cout;
+}
+
+export function findStayForDay(stays = [], dayNumber) {
+  const list = Array.isArray(stays) ? stays.filter((s) => s?.is_active !== false) : [];
+  return list.find((stay) => stayCoversDay(stay, dayNumber)) || null;
+}
+
+/**
+ * UNO day-options put hotels on top-level `stays[]`, not on each day.
+ * Build hotel_options[] (default first) for a stay night.
+ */
+export function hotelOptionsFromStay(stay = {}) {
+  if (!stay || typeof stay !== 'object') return [];
+  const meals = formatMealPlanCode(stay.default_meal_plan);
+  const location = stay.destination_city || stay.destination_state || '';
+  const roomFallback = stay.default_room_type_name || '';
+  const options = [];
+  const defaultHotelId = stay.default_hotel_id || null;
+
+  if (stay.default_hotel_name || defaultHotelId) {
+    options.push({
+      id: defaultHotelId || stay.id || stay.default_hotel_name,
+      hotel_id: defaultHotelId,
+      hotel_name: stay.default_hotel_name,
+      name: stay.default_hotel_name,
+      room_type: stay.default_room_type_name || roomFallback,
+      tier_name: stay.default_room_type_name || roomFallback,
+      meals,
+      price_delta: Number(stay.default_upgrade_price || 0),
+      is_default: true,
+      location,
+    });
+  }
+
+  for (const opt of Array.isArray(stay.hotel_options) ? stay.hotel_options : []) {
+    if (defaultHotelId && opt.hotel_id && opt.hotel_id === defaultHotelId) continue;
+    const name = pickHotelLabel(opt);
+    if (!name) continue;
+    options.push({
+      ...opt,
+      name,
+      hotel_name: opt.hotel_name || name,
+      room_type: opt.default_room_type_name || roomFallback,
+      tier_name: opt.default_room_type_name || roomFallback,
+      meals,
+      price_delta: Number(opt.upgrade_price ?? opt.price_delta ?? 0),
+      is_default: false,
+      location,
+    });
+  }
+
+  return options;
+}
+
+/** Normalize a UNO hotel option / stay option into itinerary hotelMeta. */
 export function mapHotelOption(option = {}) {
   if (!option || typeof option !== 'object') return null;
   const name = pickHotelLabel(option);
   if (!name) return null;
+  const meals =
+    formatMealsLabel(option.meals) ||
+    formatMealPlanCode(option.meal_plan || option.default_meal_plan);
   return {
     id: option.id || option.hotel_id || option.hotelId || name,
     name,
@@ -47,18 +120,27 @@ export function mapHotelOption(option = {}) {
     images: Array.isArray(option.images) ? option.images.filter(Boolean) : [],
     starRating: Number(option.star_rating || option.stars || option.rating || option.starCategory || 0),
     location: option.location || option.city || option.area || '',
-    meals: formatMealsLabel(option.meals),
+    meals,
     mealsRaw: option.meals || null,
-    priceDelta: Number(option.price_delta ?? option.priceDelta ?? option.price ?? 0),
-    tierName: option.tier_name || option.room_type || option.roomType || '',
+    priceDelta: Number(
+      option.price_delta ?? option.priceDelta ?? option.upgrade_price ?? option.price ?? 0
+    ),
+    tierName:
+      option.tier_name ||
+      option.room_type ||
+      option.roomType ||
+      option.default_room_type_name ||
+      '',
     isDefault: Boolean(option.is_default || option.isDefault || option.is_selected),
     raw: option,
   };
 }
 
-function mergeDayItinerary(itineraryDay = {}, optionDay = {}) {
+function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
   const dayNumber = itineraryDay.day_number || optionDay.day_number;
-  const hotelOptionsRaw = Array.isArray(optionDay.hotel_options) ? optionDay.hotel_options : [];
+  const dayHotelOptions = Array.isArray(optionDay.hotel_options) ? optionDay.hotel_options : [];
+  const hotelOptionsRaw =
+    dayHotelOptions.length > 0 ? dayHotelOptions : hotelOptionsFromStay(stay || {});
   const hotelOptions = hotelOptionsRaw.map(mapHotelOption).filter(Boolean);
   const defaultHotelOption =
     hotelOptions.find((o) => o.isDefault) || hotelOptions[0] || null;
@@ -78,6 +160,7 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}) {
 
   const meals =
     defaultHotelOption?.meals ||
+    formatMealPlanCode(stay?.default_meal_plan) ||
     formatMealsLabel(hotelOptionsRaw.find((o) => o.is_default || o.isDefault)?.meals) ||
     (Array.isArray(itineraryDay.meals_selected) ? itineraryDay.meals_selected.join(', ') : '') ||
     itineraryDay.dinner ||
@@ -97,6 +180,8 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}) {
     accommodation: defaultHotelName,
     hotelMeta: defaultHotelOption,
     hotelOptions,
+    stayId: stay?.id || null,
+    stayNights: stay ? Number(stay.nights) || 1 : null,
     activities: activities || sightseeing,
     sightseeing,
     meals,
@@ -108,7 +193,7 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}) {
   };
 }
 
-export function buildMergedItinerary(itineraryDays = [], optionDays = []) {
+export function buildMergedItinerary(itineraryDays = [], optionDays = [], stays = []) {
   const itineraryByDay = new Map(
     (Array.isArray(itineraryDays) ? itineraryDays : []).map((day) => [day.day_number, day])
   );
@@ -121,8 +206,14 @@ export function buildMergedItinerary(itineraryDays = [], optionDays = []) {
 
   if (!dayNumbers.length) return [];
 
+  const stayList = Array.isArray(stays) ? stays : [];
+
   return dayNumbers.map((dayNumber) =>
-    mergeDayItinerary(itineraryByDay.get(dayNumber) || {}, optionByDay.get(dayNumber) || { day_number: dayNumber })
+    mergeDayItinerary(
+      itineraryByDay.get(dayNumber) || {},
+      optionByDay.get(dayNumber) || { day_number: dayNumber },
+      findStayForDay(stayList, dayNumber)
+    )
   );
 }
 
@@ -130,10 +221,11 @@ export function buildMergedItinerary(itineraryDays = [], optionDays = []) {
 export function resolvePackageItinerary(source = {}) {
   const itineraryDays = source._apiRaw?.package?.itinerary_days || source.itinerary_days || [];
   const optionDays = source._apiRaw?.dayOptions?.days || [];
+  const stays = source._apiRaw?.dayOptions?.stays || [];
 
-  // Always prefer day-options merge when available (rich hotel cards)
-  if (optionDays.length || itineraryDays.length) {
-    const merged = buildMergedItinerary(itineraryDays, optionDays);
+  // Always prefer day-options merge when available (hotels live on stays[])
+  if (optionDays.length || itineraryDays.length || stays.length) {
+    const merged = buildMergedItinerary(itineraryDays, optionDays, stays);
     if (merged.length) return merged;
   }
 
@@ -162,7 +254,7 @@ export function seedDayWiseHotelsFromItinerary(itinerary = []) {
         mealPlan: { label: meta.meals || day.meals || 'As per package' },
         perNight: Number(meta.priceDelta || 0),
         totalCost: Number(meta.priceDelta || 0),
-        nights: 1,
+        nights: day.stayNights || 1,
         fromPackage: true,
         hotelOptions: day.hotelOptions || [],
       };

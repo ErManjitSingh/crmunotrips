@@ -117,7 +117,11 @@ export function mapUnoPackage(raw = {}, { includeDetail = false } = {}) {
     mapped.itinerary = Array.isArray(raw.itinerary) && raw.itinerary.length
       ? raw.itinerary
       : Array.isArray(raw.itinerary_days) && raw.itinerary_days.length
-        ? buildMergedItinerary(raw.itinerary_days, raw._apiRaw?.dayOptions?.days || [])
+        ? buildMergedItinerary(
+            raw.itinerary_days,
+            raw._apiRaw?.dayOptions?.days || [],
+            raw._apiRaw?.dayOptions?.stays || []
+          )
         : [];
   }
 
