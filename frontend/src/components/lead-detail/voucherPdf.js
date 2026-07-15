@@ -12,7 +12,7 @@ export async function downloadVoucherPdf(html, filename = 'payment-voucher.pdf')
   const iframe = document.createElement('iframe');
   iframe.setAttribute('title', 'Voucher PDF');
   iframe.style.cssText =
-    'position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;opacity:0;pointer-events:none;';
+    'position:fixed;left:-10000px;top:0;width:680px;height:900px;border:0;opacity:0;pointer-events:none;';
   document.body.appendChild(iframe);
 
   const win = iframe.contentWindow;
@@ -33,9 +33,8 @@ export async function downloadVoucherPdf(html, filename = 'payment-voucher.pdf')
     });
 
     const target = doc.body;
-    // Compact page so voucher fits cleanly on A4
     target.style.margin = '0';
-    target.style.padding = '16px';
+    target.style.padding = '8px';
     target.style.background = '#ffffff';
 
     const canvas = await html2canvas(target, {
@@ -44,27 +43,28 @@ export async function downloadVoucherPdf(html, filename = 'payment-voucher.pdf')
       allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
-      windowWidth: 794,
+      windowWidth: 680,
     });
 
     const imgData = canvas.toDataURL('image/png', 1.0);
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 8;
-    const usableWidth = pageWidth - margin * 2;
+    const margin = 12;
+    const usableWidth = Math.min(pageWidth - margin * 2, 170);
     const imgHeight = (canvas.height * usableWidth) / canvas.width;
+    const x = (pageWidth - usableWidth) / 2;
 
     let heightLeft = imgHeight;
     let position = margin;
 
-    pdf.addImage(imgData, 'PNG', margin, position, usableWidth, imgHeight);
+    pdf.addImage(imgData, 'PNG', x, position, usableWidth, imgHeight);
     heightLeft -= pageHeight - margin * 2;
 
     while (heightLeft > 0) {
       position = margin - (imgHeight - heightLeft);
       pdf.addPage();
-      pdf.addImage(imgData, 'PNG', margin, position, usableWidth, imgHeight);
+      pdf.addImage(imgData, 'PNG', x, position, usableWidth, imgHeight);
       heightLeft -= pageHeight - margin * 2;
     }
 

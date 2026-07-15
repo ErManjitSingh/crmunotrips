@@ -84,15 +84,15 @@ export default function PaymentVoucherModal({
   };
 
   return (
-    <AppModal open={open} onClose={onClose} size="3xl" className="p-0 overflow-hidden bg-white" panelClassName="max-w-[820px]">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-white sticky top-0 z-10">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shrink-0">
-            <FileText className="w-5 h-5" />
+    <AppModal open={open} onClose={onClose} size="2xl" className="p-0 overflow-hidden bg-white" panelClassName="max-w-[680px]">
+      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-white sticky top-0 z-10">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shrink-0">
+            <FileText className="w-4 h-4" />
           </span>
           <div className="min-w-0">
-            <h3 className="text-base sm:text-lg font-bold text-slate-900">Tax Invoice / Voucher</h3>
-            <p className="text-xs text-slate-500 truncate">
+            <h3 className="text-sm sm:text-base font-bold text-slate-900">Tax Invoice / Voucher</h3>
+            <p className="text-[11px] text-slate-500 truncate">
               {v?.invoiceNumber ? `Invoice ${v.invoiceNumber}` : `Voucher ${receiptNo}`}
             </p>
           </div>
@@ -102,30 +102,30 @@ export default function PaymentVoucherModal({
             type="button"
             variant="outline"
             onClick={printVoucher}
-            className="rounded-xl h-9 gap-2 border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hidden sm:inline-flex"
+            className="rounded-xl h-8 gap-1.5 px-3 text-xs border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hidden sm:inline-flex"
           >
-            <Printer className="w-4 h-4" /> Print Voucher
+            <Printer className="w-3.5 h-3.5" /> Print
           </Button>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 transition-colors"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 transition-colors"
             aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      <div className="max-h-[min(72vh,820px)] overflow-y-auto bg-slate-100">
+      <div className="max-h-[min(62vh,560px)] overflow-y-auto bg-slate-100">
         {html ? (
           <iframe
             title="Payment tax invoice"
             srcDoc={html}
-            className="w-full min-h-[720px] border-0 bg-white"
+            className="w-full min-h-[480px] border-0 bg-white"
           />
         ) : (
-          <p className="p-10 text-center text-sm text-slate-500">No voucher data available</p>
+          <p className="p-8 text-center text-sm text-slate-500">No voucher data available</p>
         )}
       </div>
 

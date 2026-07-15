@@ -9,7 +9,7 @@ const { isEmailConfigured, normalizeRecipients } = require('./emailService');
 const { invalidateMailboxCache } = require('./emailMailboxCache');
 
 /** Bump when HTML layout changes so stored receipts regenerate. */
-const RECEIPT_TEMPLATE_VERSION = 3;
+const RECEIPT_TEMPLATE_VERSION = 4;
 
 const COMPANY = {
   name: 'UNO Trips',
@@ -174,39 +174,36 @@ function buildPaymentReceiptHtml({
 <meta name="receipt-template" content="v${RECEIPT_TEMPLATE_VERSION}"/>
 <style>
   *{box-sizing:border-box}
-  body{margin:0;padding:20px 12px;background:#eceff3;font-family:Arial,Helvetica,sans-serif;color:#000;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .sheet{max-width:760px;margin:0 auto;background:#fff;border:1.5px solid #000}
+  body{margin:0;padding:10px;background:#eceff3;font-family:Arial,Helvetica,sans-serif;color:#000;font-size:10px;line-height:1.3;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sheet{max-width:640px;margin:0 auto;background:#fff;border:1px solid #000}
   table{width:100%;border-collapse:collapse}
-  td,th{border:1px solid #000;padding:7px 8px;vertical-align:top}
-  .nob{border:none!important}
-  .b0{border:0!important}
+  td,th{border:1px solid #000;padding:4px 6px;vertical-align:top}
   .tal{text-align:left}.tar{text-align:right}.tac{text-align:center}
-  .fwb{font-weight:700}.fwi{font-style:italic}
-  .muted{color:#333}
-  .logo-wrap{display:flex;align-items:center;gap:10px}
-  .logo{width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fbbf24,#ea580c 55%,#9a3412);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;flex-shrink:0;border:2px solid #c2410c}
-  .brand{font-size:22px;font-weight:800;letter-spacing:.02em;margin:0;line-height:1.1}
-  .tag{margin:3px 0 0;font-size:11px;font-weight:600}
-  .co-box{font-size:11px;line-height:1.45}
-  .co-box strong{font-size:12px}
-  .title-row{font-size:14px;font-weight:800;letter-spacing:.04em;text-align:center;padding:8px}
-  .terms{background:#ffff00;padding:8px 10px;font-size:11px;line-height:1.45}
-  .terms ol{margin:0;padding-left:18px}
-  .terms li{margin:2px 0}
-  .bank{font-size:11px;font-weight:700;padding:8px}
+  .fwb{font-weight:700}
+  .logo-wrap{display:flex;align-items:center;gap:6px}
+  .logo{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fbbf24,#ea580c 55%,#9a3412);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px;flex-shrink:0;border:1.5px solid #c2410c}
+  .brand{font-size:15px;font-weight:800;margin:0;line-height:1.05}
+  .tag{margin:1px 0 0;font-size:9px;font-weight:600}
+  .co-box{font-size:9px;line-height:1.35}
+  .co-box strong{font-size:10px}
+  .title-row{font-size:11px;font-weight:800;letter-spacing:.03em;text-align:center;padding:4px}
+  .terms{background:#ffff00;padding:5px 7px;font-size:9px;line-height:1.3}
+  .terms ol{margin:0;padding-left:14px}
+  .terms li{margin:1px 0}
+  .bank{font-size:9px;font-weight:700;padding:5px 6px}
   .amt{font-variant-numeric:tabular-nums}
   .sum-label{text-align:right;font-weight:700;width:70%}
   .sum-val{text-align:right;font-weight:700;width:30%}
-  .grand td{font-size:13px;font-weight:800}
-  .spacer{height:18px}
-  @media print{body{background:#fff;padding:0}.sheet{max-width:none;border-width:1px}}
+  .grand td{font-size:11px;font-weight:800}
+  .foot{padding:4px 6px;font-size:8px;color:#444;border-top:1px solid #000;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}
+  @media print{body{background:#fff;padding:0}.sheet{max-width:none}}
 </style></head>
 <body>
 <!-- receipt-template-v${RECEIPT_TEMPLATE_VERSION} -->
 <div class="sheet">
   <table>
     <tr>
-      <td style="width:48%;border-right:1px solid #000">
+      <td style="width:46%">
         <div class="logo-wrap">
           <div class="logo">UT</div>
           <div>
@@ -215,65 +212,53 @@ function buildPaymentReceiptHtml({
           </div>
         </div>
       </td>
-      <td style="width:52%" class="co-box">
+      <td style="width:54%" class="co-box">
         <strong>${escapeHtml(COMPANY.name)}</strong><br/>
         <span class="fwb">ADDRESS:</span> ${escapeHtml(COMPANY.address)}<br/>
-        <span class="fwb">GST NO:</span> ${escapeHtml(COMPANY.gstin)}<br/>
-        <span class="fwb">PAN NO:</span> ${escapeHtml(COMPANY.pan)}<br/>
-        <span class="fwb">PHONE NO:</span> ${escapeHtml(phoneLine)}
+        <span class="fwb">GST:</span> ${escapeHtml(COMPANY.gstin)}
+        &nbsp;·&nbsp; <span class="fwb">PAN:</span> ${escapeHtml(COMPANY.pan)}
+        ${phoneLine ? `<br/><span class="fwb">PHONE:</span> ${escapeHtml(phoneLine)}` : ''}
       </td>
     </tr>
     <tr>
       <td colspan="2" class="title-row">TAX INVOICE</td>
     </tr>
     <tr>
-      <td colspan="2"><span class="fwb">HSN CODE :</span> ${escapeHtml(COMPANY.hsn)}</td>
-    </tr>
-    <tr>
       <td>
-        <div class="fwb">Original for Recipient</div>
-        <div style="margin-top:8px"><span class="fwb">VOUCHER :</span> ${escapeHtml(v.receiptNumber)}</div>
+        <span class="fwb">HSN:</span> ${escapeHtml(COMPANY.hsn)}
+        &nbsp;·&nbsp; Original for Recipient<br/>
+        <span class="fwb">VOUCHER:</span> ${escapeHtml(v.receiptNumber)}
       </td>
-      <td style="padding:0">
-        <table>
-          <tr>
-            <td class="fwb" style="width:42%">INVOICE NO:</td>
-            <td>${escapeHtml(v.invoiceNumber)}</td>
-          </tr>
-          <tr>
-            <td class="fwb">INVOICE DATE:</td>
-            <td>${escapeHtml(v.invoiceDate)}</td>
-          </tr>
-        </table>
+      <td>
+        <span class="fwb">INVOICE NO:</span> ${escapeHtml(v.invoiceNumber)}<br/>
+        <span class="fwb">INVOICE DATE:</span> ${escapeHtml(v.invoiceDate)}
       </td>
     </tr>
     <tr>
       <td colspan="2">
-        <span class="fwb">GUEST NAME:</span> ${escapeHtml(v.customerName)}
-        &nbsp;&nbsp;|&nbsp;&nbsp; <span class="fwb">PHONE:</span> ${escapeHtml(v.customerPhone)}
-        &nbsp;&nbsp;|&nbsp;&nbsp; <span class="fwb">${escapeHtml(v.leadBadge)}</span>
+        <span class="fwb">GUEST:</span> ${escapeHtml(v.customerName)}
+        &nbsp;·&nbsp; <span class="fwb">PHONE:</span> ${escapeHtml(v.customerPhone)}
+        &nbsp;·&nbsp; ${escapeHtml(v.leadBadge)}
+        &nbsp;·&nbsp; <span class="fwb">GSTIN:</span> ${escapeHtml(v.customerGstin || '—')}
       </td>
-    </tr>
-    <tr>
-      <td colspan="2"><span class="fwb">GSTIN :</span> ${escapeHtml(v.customerGstin || '')}</td>
     </tr>
     <tr>
       <td>
         <span class="fwb">DESTINATION:</span> ${escapeHtml(v.destination)}${v.destinationSub ? `, ${escapeHtml(v.destinationSub)}` : ''}<br/>
-        <span class="fwb">TRAVEL DATE:</span> ${escapeHtml(v.travelDate)}${v.travelWeekday ? ` (${escapeHtml(v.travelWeekday)})` : ''}
+        <span class="fwb">TRAVEL:</span> ${escapeHtml(v.travelDate)}${v.travelWeekday ? ` (${escapeHtml(v.travelWeekday)})` : ''}
       </td>
       <td>
         <span class="fwb">BOOKING / QUOTE:</span> ${escapeHtml(quoteOrBooking)}<br/>
-        <span class="fwb">PAYMENT MODE:</span> ${escapeHtml(v.paymentMethod)}${v.paymentRef ? ` · Ref: ${escapeHtml(v.paymentRef)}` : ''}
+        <span class="fwb">PAYMENT:</span> ${escapeHtml(v.paymentMethod)}${v.paymentRef ? ` · ${escapeHtml(v.paymentRef)}` : ''}
       </td>
     </tr>
     <tr>
       <td colspan="2" style="padding:0">
         <table>
           <tr>
-            <td class="tac fwb" style="width:33.33%">PACKAGE TOTAL<br/><span class="amt" style="font-size:14px">${escapeHtml(formatAmount(v.totalAmount))}</span></td>
-            <td class="tac fwb" style="width:33.33%">ADVANCE / TOKEN<br/><span class="amt" style="font-size:14px">${escapeHtml(formatAmount(v.advanceReceived))}</span></td>
-            <td class="tac fwb" style="width:33.33%">BALANCE DUE<br/><span class="amt" style="font-size:14px">${escapeHtml(formatAmount(v.balanceDue))}</span></td>
+            <td class="tac fwb" style="width:33.33%">PACKAGE TOTAL<br/><span class="amt" style="font-size:12px">${escapeHtml(formatAmount(v.totalAmount))}</span></td>
+            <td class="tac fwb" style="width:33.33%">ADVANCE / TOKEN<br/><span class="amt" style="font-size:12px">${escapeHtml(formatAmount(v.advanceReceived))}</span></td>
+            <td class="tac fwb" style="width:33.33%">BALANCE DUE<br/><span class="amt" style="font-size:12px">${escapeHtml(formatAmount(v.balanceDue))}</span></td>
           </tr>
         </table>
       </td>
@@ -282,15 +267,13 @@ function buildPaymentReceiptHtml({
 
   <table>
     <tr>
-      <th class="tal" style="width:70%">PARTICULARS</th>
-      <th class="tar" style="width:30%">RATE</th>
+      <th class="tal" style="width:70%;padding:3px 6px">PARTICULARS</th>
+      <th class="tar" style="width:30%;padding:3px 6px">RATE</th>
     </tr>
     <tr>
       <td class="fwb">TOKEN AMOUNT</td>
       <td class="tar amt">${escapeHtml(formatAmount(v.subTotal))}</td>
     </tr>
-    <tr><td class="spacer" colspan="2">&nbsp;</td></tr>
-    <tr><td class="spacer" colspan="2">&nbsp;</td></tr>
     <tr>
       <td class="sum-label">Sub Total</td>
       <td class="sum-val amt">${escapeHtml(formatAmount(v.subTotal, 0))}</td>
@@ -325,7 +308,7 @@ function buildPaymentReceiptHtml({
     &nbsp;&nbsp;IFSC CODE:- ${escapeHtml(COMPANY.ifsc)}
   </div>
 
-  <div style="padding:8px 10px;font-size:10px;color:#444;border-top:1px solid #000;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+  <div class="foot">
     <span>Prepared by ${escapeHtml(executive)}</span>
     <span>${escapeHtml(COMPANY.email)} · ${escapeHtml(COMPANY.website)}</span>
   </div>
