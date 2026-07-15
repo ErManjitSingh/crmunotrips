@@ -21,6 +21,7 @@ import { calculatePricing, defaultItineraryDay, defaultWizardState, formatINR, m
 import { buildSelectedHotelsSnapshot } from './quotePdfHelpers';
 import { unwrapList } from '../../utils/apiHelpers';
 import PackageBuilderWorkspace from './PackageBuilderWorkspace';
+import PackageBuilderOpeningOverlay from './PackageBuilderOpeningOverlay';
 import { cn } from '../../lib/utils';
 
 const ADMIN_CONFIG = {
@@ -114,6 +115,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const [selectedPkgDetail, setSelectedPkgDetail] = useState(null);
   const [dayWiseHotels, setDayWiseHotels] = useState([]);
   const [loadingPackageDetail, setLoadingPackageDetail] = useState(false);
+  const [openingPackageMeta, setOpeningPackageMeta] = useState({ name: '', destination: '' });
   const [loadingPackages, setLoadingPackages] = useState(false);
   const [packageSearch, setPackageSearch] = useState('');
   const debouncedPackageSearch = useDebouncedValue(packageSearch, 350);
@@ -391,6 +393,10 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setSelectedPkgDetail(null);
     setDayWiseHotels([]);
     setSelectedUnoCab(null);
+    setOpeningPackageMeta({
+      name: pkg.name || 'Your package',
+      destination: pkg.destination || pkg.routing || selectedLead?.destination || '',
+    });
     setLoadingPackageDetail(true);
     try {
       if (pkg.catalogSource === 'custom' || isMongoPackageId(id)) {
@@ -669,9 +675,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                   ))}
                 </div>
                 )}
-                {loadingPackageDetail && (
-                  <p className="text-xs text-amber-700">Opening package builder...</p>
-                )}
               </div>
             )}
           </motion.div>
@@ -689,6 +692,12 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         </div>
       </div>
       )}
+
+      <PackageBuilderOpeningOverlay
+        open={loadingPackageDetail}
+        packageName={openingPackageMeta.name}
+        destination={openingPackageMeta.destination}
+      />
     </div>
   );
 }
