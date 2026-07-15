@@ -22,15 +22,13 @@ export default function EmailActionButton({
 
   if (!canSendEmail) return null;
 
-  const disabled = !lead?.email;
   const sizeClass = size === 'lg' ? 'h-11 px-5 text-sm' : 'h-10 px-4 text-sm';
 
   return (
     <>
       <Button
         type="button"
-        disabled={disabled}
-        title={disabled ? 'No email on lead' : 'Send Email'}
+        title={lead?.email ? 'Send Email' : 'Compose email (add address in composer)'}
         onClick={() => setOpen(true)}
         variant="default"
         className={`rounded-xl gap-2 font-semibold text-white border-0 bg-green-800 hover:bg-green-700 shadow-sm shadow-green-900/20 ${sizeClass} ${className}`}

@@ -70,6 +70,7 @@ export default function LeadDetailLayout({
         onContactLogged={onContactLogged}
         onEmailSent={onEmailSent}
         onChangeStatus={onChangeStatus}
+        onLogCallNote={onLogCallNote}
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start mb-5">

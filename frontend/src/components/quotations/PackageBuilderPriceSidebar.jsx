@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { calculatePricing, formatINR } from './quotationUtils';
+import ActionTile from '../ui/ActionTile';
 
 export default function PackageBuilderPriceSidebar({
   lead,
@@ -60,10 +61,10 @@ export default function PackageBuilderPriceSidebar({
   ];
 
   const actions = [
-    { icon: Share2, label: 'Share', onClick: onShare, tone: 'hover:border-sky-300 hover:text-sky-600 hover:bg-sky-50' },
-    { icon: Mail, label: 'Mail', onClick: onMail, tone: 'hover:border-violet-300 hover:text-violet-600 hover:bg-violet-50' },
-    { icon: MessageCircle, label: 'WhatsApp', onClick: onWhatsApp, tone: 'hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50' },
-    { icon: Printer, label: 'Print', onClick: onPrint, tone: 'hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50' },
+    { icon: Share2, label: 'Share', description: 'Share quotation', onClick: onShare, tone: 'sky' },
+    { icon: Mail, label: 'Mail', description: 'Email customer', onClick: onMail, tone: 'violet' },
+    { icon: MessageCircle, label: 'WhatsApp', description: 'Send WhatsApp', onClick: onWhatsApp, tone: 'green' },
+    { icon: Printer, label: 'Print', description: 'Print / PDF', onClick: onPrint, tone: 'amber' },
   ];
 
   return (
@@ -153,28 +154,29 @@ export default function PackageBuilderPriceSidebar({
             <Save className="w-4 h-4" />
             {draftLabel}
           </button>
-
-          <div className="grid grid-cols-4 gap-1.5 pt-1">
-            {actions.map((a) => (
-              <button
-                key={a.label}
-                type="button"
-                onClick={a.onClick}
-                disabled={!a.onClick}
-                title={a.label}
-                className={`flex flex-col items-center gap-1 rounded-xl border border-violet-100 bg-white py-2 text-[9px] font-medium text-slate-500 disabled:opacity-40 disabled:cursor-not-allowed ${a.tone}`}
-              >
-                <a.icon className="w-4 h-4" />
-                {a.label}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
-      <p className="text-[11px] text-violet-700/60 text-center px-2 leading-relaxed font-medium">
-        Share, Mail, WhatsApp & Print send this quotation to the customer.
-      </p>
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3.5 space-y-2.5">
+        <div>
+          <p className="text-sm font-bold text-slate-900">Share Quotation</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Send this package to the customer</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {actions.map((a) => (
+            <ActionTile
+              key={a.label}
+              icon={a.icon}
+              label={a.label}
+              description={a.description}
+              tone={a.tone}
+              onClick={a.onClick}
+              disabled={!a.onClick}
+              className="!px-3 !py-3"
+            />
+          ))}
+        </div>
+      </div>
     </aside>
   );
 }

@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import AppModal from '../ui/AppModal';
 import { buildWhatsAppUrl, openWhatsApp, renderWhatsAppTemplate } from '../../lib/whatsappContact';
 import { fetchWhatsAppTemplates, logWhatsAppContact } from '../../services/whatsappTemplatesApi';
+import { toast } from '../../context/ToastContext';
 
 export default function WhatsAppActionButton({
   lead,
@@ -15,14 +16,26 @@ export default function WhatsAppActionButton({
   className = '',
   size = 'default',
   showLabel = true,
+  /** Controlled open state (optional) */
+  open: controlledOpen,
+  onOpenChange,
+  /** Hide default button — use with controlled open from a parent tile */
+  hideTrigger = false,
 }) {
   const { user } = useAuth();
   const { can } = usePermissions();
   const canUseWhatsApp = can('whatsapp', 'use');
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const isControlled = controlledOpen !== undefined;
+  const pickerOpen = isControlled ? controlledOpen : internalOpen;
+  const setPickerOpen = (next) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
 
   useEffect(() => {
     if (!pickerOpen || !canUseWhatsApp) return;
@@ -39,7 +52,10 @@ export default function WhatsAppActionButton({
   const disabled = !phone;
 
   const launch = async (template = null) => {
-    if (!leadId || !phone) return;
+    if (!leadId || !phone) {
+      toast.error('Lead phone number is missing');
+      return;
+    }
     setSubmitting(true);
     try {
       const message = template
@@ -50,8 +66,12 @@ export default function WhatsAppActionButton({
       onContactLogged?.();
 
       const opened = openWhatsApp(phone, message);
-      if (!opened) return;
+      if (!opened) {
+        toast.error('Could not open WhatsApp');
+        return;
+      }
 
+      toast.success('Opening WhatsApp for the customer');
       setPickerOpen(false);
     } finally {
       setSubmitting(false);
@@ -62,16 +82,18 @@ export default function WhatsAppActionButton({
 
   return (
     <>
-      <Button
-        type="button"
-        disabled={disabled || submitting}
-        title="Open WhatsApp"
-        onClick={() => setPickerOpen(true)}
-        className={`rounded-xl gap-2 font-semibold bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0 shadow-md shadow-green-600/25 ${sizeClass} ${className}`}
-      >
-        <MessageCircle className="w-4 h-4" />
-        {showLabel && 'WhatsApp'}
-      </Button>
+      {!hideTrigger && (
+        <Button
+          type="button"
+          disabled={disabled || submitting}
+          title="Open WhatsApp"
+          onClick={() => setPickerOpen(true)}
+          className={`rounded-xl gap-2 font-semibold bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0 shadow-md shadow-green-600/25 ${sizeClass} ${className}`}
+        >
+          <MessageCircle className="w-4 h-4" />
+          {showLabel && 'WhatsApp'}
+        </Button>
+      )}
 
       <AppModal open={pickerOpen} onClose={() => !submitting && setPickerOpen(false)} size="md" className="p-0 overflow-hidden">
         <div className="p-5 border-b border-subtle bg-gradient-to-r from-green-500/10 to-emerald-500/5">
