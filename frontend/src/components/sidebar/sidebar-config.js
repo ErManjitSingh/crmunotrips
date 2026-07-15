@@ -141,6 +141,7 @@ export const mainNavItems = [
     label: 'Payments',
     icon: CreditCard,
     roles: ['admin', 'accountant'],
+    permission: { module: 'payments', action: 'view' },
   },
   {
     path: '/email-activity',

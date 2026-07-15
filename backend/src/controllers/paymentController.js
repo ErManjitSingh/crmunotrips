@@ -13,7 +13,9 @@ const PAYMENT_POPULATE = [
 
 const listPayments = asyncHandler(async (req, res) => {
   const { status, search } = req.query;
-  const filter = {};
+  const filter = {
+    ...(req.branchId ? { branchId: req.branchId } : {}),
+  };
   if (status) filter.status = status;
 
   let payments = await Payment.find(filter)
@@ -42,6 +44,7 @@ const getPayment = asyncHandler(async (req, res) => {
 const createPayment = asyncHandler(async (req, res) => {
   const payment = await Payment.create({
     ...req.body,
+    branchId: req.body.branchId || req.branchId || req.user.branchId || null,
     createdBy: req.user._id,
   });
 
