@@ -135,7 +135,12 @@ export default function SidebarQuickActions({ actions }) {
           {showHighlights ? (
             <KeyHighlightsPanel highlights={highlights} />
           ) : (
-            <ActionLinks actions={actions} onNavigate={() => setMobileOpen(false)} />
+            <ActionLinks
+              actions={actions}
+              onNavigate={() => {
+                window.setTimeout(() => setMobileOpen(false), 0);
+              }}
+            />
           )}
         </div>
       </motion.div>

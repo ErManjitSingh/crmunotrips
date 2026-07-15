@@ -5,7 +5,8 @@ import AppSidebar from './AppSidebar';
 import { cn } from '../../lib/utils';
 
 /**
- * Mobile sidebar overlay. Instant unmount on close (no exit animation ghosts).
+ * Mobile sidebar overlay. Closes after route change (SidebarContext),
+ * not mid-click — so Link navigation is never cancelled.
  */
 export default function MobileSidebarDrawer({ sidebarProps, panelClassName = '' }) {
   const { mobileOpen, setMobileOpen } = useSidebar();
@@ -18,20 +19,6 @@ export default function MobileSidebarDrawer({ sidebarProps, panelClassName = '' 
       document.body.style.overflow = prev;
     };
   }, [mobileOpen]);
-
-  // Capture any in-drawer navigation (Link / <a>) and force-close before paint settle.
-  useEffect(() => {
-    if (!mobileOpen) return undefined;
-    const onNav = (e) => {
-      const a = e.target?.closest?.('a[href]');
-      if (!a) return;
-      const href = a.getAttribute('href') || '';
-      if (!href || href.startsWith('#') || href.startsWith('tel:') || href.startsWith('mailto:')) return;
-      setMobileOpen(false);
-    };
-    document.addEventListener('click', onNav, true);
-    return () => document.removeEventListener('click', onNav, true);
-  }, [mobileOpen, setMobileOpen]);
 
   if (!mobileOpen || typeof document === 'undefined') return null;
 

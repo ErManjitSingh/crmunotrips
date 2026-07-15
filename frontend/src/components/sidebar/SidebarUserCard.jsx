@@ -24,8 +24,9 @@ export default function SidebarUserCard({ user }) {
   const profileCard = (
     <Link
       to={profilePath}
-      onClick={() => setMobileOpen(false)}
-      onPointerDown={() => setMobileOpen(false)}
+      onClick={() => {
+        window.setTimeout(() => setMobileOpen(false), 0);
+      }}
       className={cn(
         'flex items-center gap-3 min-w-0 rounded-2xl border border-sidebar-border/80 bg-white/50 backdrop-blur-md p-2.5 transition-colors hover:bg-white/70 dark:bg-slate-900/45 dark:hover:bg-slate-900/60',
         collapsed && 'p-2 justify-center'

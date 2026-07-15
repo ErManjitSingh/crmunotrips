@@ -68,7 +68,9 @@ export default function SidebarCollectionTarget() {
 
         <Link
           to="/payments"
-          onClick={() => setMobileOpen(false)}
+          onClick={() => {
+            window.setTimeout(() => setMobileOpen(false), 0);
+          }}
           className="flex items-center justify-center h-8 rounded-xl text-[11px] font-semibold text-white bg-white/10 hover:bg-white/15 border border-white/10 transition-colors"
         >
           View Details
