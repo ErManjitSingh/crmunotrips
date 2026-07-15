@@ -48,6 +48,7 @@ export default function SidebarNavItem({ item, isActive, nested = false }) {
       onMouseEnter={() => prefetchRoute(item.path)}
       onFocus={() => prefetchRoute(item.path)}
       onClick={() => setMobileOpen(false)}
+      onPointerDown={() => setMobileOpen(false)}
       className={cn(
         'group relative flex items-center gap-3 rounded-lg text-[13px] font-medium transition-all duration-200',
         nested ? 'px-3 py-2 ml-0.5' : 'px-3 py-2.5',

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useLayoutEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const SidebarContext = createContext(null);
@@ -10,18 +10,28 @@ export function SidebarProvider({ children }) {
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem(STORAGE_KEY) === 'true';
   });
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpen, setMobileOpenState] = useState(false);
 
-  useEffect(() => {
+  const setMobileOpen = useCallback((next) => {
+    setMobileOpenState((prev) => {
+      const value = typeof next === 'function' ? next(prev) : next;
+      return Boolean(value);
+    });
+  }, []);
+
+  useLayoutEffect(() => {
     localStorage.setItem(STORAGE_KEY, String(collapsed));
   }, [collapsed]);
 
-  // Close mobile drawer after every navigation (link click, bottom nav, programmatic).
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [location.pathname, location.search]);
+  // Close drawer on every navigation (including same-path pushes with new key).
+  useLayoutEffect(() => {
+    setMobileOpenState(false);
+  }, [location.key]);
 
   const toggleCollapsed = () => setCollapsed((prev) => !prev);
+  const toggleMobileOpen = useCallback(() => {
+    setMobileOpenState((prev) => !prev);
+  }, []);
   const effectiveCollapsed = mobileOpen ? false : collapsed;
 
   return (
@@ -33,6 +43,7 @@ export function SidebarProvider({ children }) {
         toggleCollapsed,
         mobileOpen,
         setMobileOpen,
+        toggleMobileOpen,
         expandedWidth: 240,
         collapsedWidth: 72,
       }}

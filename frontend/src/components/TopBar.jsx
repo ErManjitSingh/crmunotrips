@@ -76,7 +76,7 @@ function IconButton({ children, className, accent, ...props }) {
 }
 
 export default function TopBar({ onMenuClick }) {
-  const { mobileOpen, setMobileOpen } = useSidebar();
+  const { mobileOpen, toggleMobileOpen } = useSidebar();
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
   const { toggleTheme, isDark } = useTheme();
@@ -188,16 +188,14 @@ export default function TopBar({ onMenuClick }) {
         {/* Mobile menu */}
         <button
           type="button"
-          onClick={() => {
-            if (mobileOpen) setMobileOpen(false);
-            else onMenuClick?.();
-          }}
+          onClick={() => toggleMobileOpen()}
           className={cn(
             'lg:hidden flex items-center justify-center w-10 h-10 rounded-xl',
             'border border-subtle bg-surface/90 text-content-secondary shadow-sm transition-colors',
             accent.iconHover
           )}
           aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={mobileOpen}
         >
           {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
