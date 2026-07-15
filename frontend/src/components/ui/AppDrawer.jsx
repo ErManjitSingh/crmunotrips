@@ -52,8 +52,9 @@ export default function AppDrawer({
             exit={{ x: slideFrom }}
             transition={{ type: 'spring', stiffness: 380, damping: 36 }}
             className={cn(
-              'fixed inset-y-0 z-10 flex flex-col w-full max-w-md bg-surface border-subtle shadow-2xl shadow-black/40',
+              'fixed inset-y-0 z-10 flex flex-col w-full bg-surface border-subtle shadow-2xl shadow-black/40',
               side === 'right' ? 'right-0 border-l' : 'left-0 border-r',
+              !className?.includes('max-w-') && 'max-w-md',
               className,
             )}
             onClick={(e) => e.stopPropagation()}
