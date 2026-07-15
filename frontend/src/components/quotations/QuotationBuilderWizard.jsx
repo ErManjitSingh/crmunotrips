@@ -93,6 +93,11 @@ const CONFIG_BY_MODE = {
   admin: ADMIN_CONFIG,
 };
 
+function emailEndpointForMode(mode) {
+  if (mode === 'executive') return '/sales-executive/leads';
+  return '/leads';
+}
+
 export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const config = CONFIG_BY_MODE[mode] || EXECUTIVE_CONFIG;
   const navigate = useNavigate();
@@ -548,6 +553,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           saving={saving}
           draftLabel={config.draftLabel}
           submitLabel={config.submitLabel}
+          emailEndpoint={emailEndpointForMode(mode)}
         />
       ) : (
       <div className="rounded-2xl border border-subtle bg-surface shadow-lg p-6 sm:p-8 min-h-[400px]">

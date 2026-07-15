@@ -53,8 +53,14 @@ export function buildQuotationHtmlAttachment(quote, lead = {}) {
   if (!quote) return null;
   const customer = quote.lead?.name || quote.customerName || lead.name || 'Customer';
   const destination = quote.destination || quote.lead?.destination || lead.destination || '';
-  const amount = quote.totalAmount ?? quote.grandTotal ?? 0;
+  const amount = quote.totalAmount ?? quote.grandTotal ?? quote.pricing?.total ?? 0;
   const travelDate = quote.travelDate || lead.travelDate;
+  const destination =
+    quote.destination ||
+    quote.package?.destination ||
+    quote.lead?.destination ||
+    lead.destination ||
+    '';
 
   const body = `Thank you for choosing UNO Trips. Your personalised quotation is ready for review.
 

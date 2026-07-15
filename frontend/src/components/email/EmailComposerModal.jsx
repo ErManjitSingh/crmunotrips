@@ -99,14 +99,46 @@ export default function EmailComposerModal({
     setCategory(defaultCategory);
     setAttachQuotation(!!quotation);
     setTemplateId('');
-    setSubject('');
-    setMessage('');
     setLoading(true);
+
+    const amount = quotation?.totalAmount ?? quotation?.grandTotal ?? lead?.budget;
+    const amountLabel =
+      amount != null && amount !== ''
+        ? `₹${Number(amount).toLocaleString('en-IN')}`
+        : '';
+    const destination =
+      quotation?.destination || lead?.destination || 'your destination';
+
+    if (quotation || defaultCategory === 'quotation') {
+      setSubject(
+        `Your UNO Trips quotation${quotation?.quoteNumber ? ` (${quotation.quoteNumber})` : ''} — ${destination}`
+      );
+      setMessage(
+        [
+          `Dear ${lead?.name || 'Guest'},`,
+          '',
+          `Thank you for choosing UNO Trips. Your personalised quotation for ${destination} is ready.`,
+          quotation?.quoteNumber ? `Quotation reference: ${quotation.quoteNumber}` : null,
+          amountLabel ? `Package amount: ${amountLabel}` : null,
+          '',
+          'Please review the details and reply to this email to confirm or request changes. Our team is happy to customise hotels, transfers and sightseeing for you.',
+          '',
+          'Warm regards,',
+          user?.name || 'UNO Trips Sales Team',
+        ]
+          .filter(Boolean)
+          .join('\n')
+      );
+    } else {
+      setSubject('');
+      setMessage('');
+    }
+
     fetchEmailTemplates()
       .then((rows) => setTemplates((rows || []).filter((t) => t.enabled !== false)))
       .catch(() => setTemplates([]))
       .finally(() => setLoading(false));
-  }, [open, lead?.email, defaultCategory, quotation]);
+  }, [open, lead?.email, lead?.name, lead?.destination, lead?.budget, defaultCategory, quotation, user?.name]);
 
   const applyTemplate = (template) => {
     if (!template) return;

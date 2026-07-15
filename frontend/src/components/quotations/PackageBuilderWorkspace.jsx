@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   ArrowLeft,
   Car,
@@ -15,14 +15,44 @@ import {
   Route,
   ListChecks,
 } from 'lucide-react';
-import { getPackageTypeConfig } from './quotationUtils';
+import { getPackageTypeConfig, formatINR } from './quotationUtils';
 import PackageDestinationFlow from './PackageDestinationFlow';
 import PackageBuilderDayTimeline from './PackageBuilderDayTimeline';
 import PackageBuilderPriceSidebar from './PackageBuilderPriceSidebar';
 import InclusionExclusionEditor from './InclusionExclusionEditor';
 import QuotationPdfOverlay from './QuotationPdfOverlay';
 import PackageResourcePickerDrawer from './PackageResourcePickerDrawer';
+import EmailComposerModal from '../email/EmailComposerModal';
+import { openWhatsApp } from '../../lib/whatsappContact';
+import { toast } from '../../context/ToastContext';
 import { cn } from '../../lib/utils';
+
+function buildQuotationShareText({ lead, pkg, pricing, nights, daysCount, quoteNumber }) {
+  const total = formatINR(pricing?.total || 0);
+  const guest = lead?.name || 'Guest';
+  const destination = pkg?.routing || pkg?.destination || lead?.destination || '';
+  const duration =
+    nights != null || daysCount
+      ? `${nights ?? Math.max(0, (daysCount || 1) - 1)}N / ${daysCount || (nights || 0) + 1}D`
+      : '';
+
+  return [
+    `Hello ${guest},`,
+    '',
+    'Your customised travel quotation from UNO Trips is ready:',
+    '',
+    pkg?.name ? `📦 Package: ${pkg.name}` : null,
+    destination ? `📍 Destination: ${destination}` : null,
+    duration ? `🗓️ Duration: ${duration}` : null,
+    `💰 Total: ${total}`,
+    quoteNumber ? `🔖 Ref: ${quoteNumber}` : null,
+    '',
+    'Please reply to confirm or request any changes.',
+    'Thank you — UNO Trips',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
 
 function parseDestinationStops(pkg, lead) {
   const raw =
@@ -215,11 +245,106 @@ export default function PackageBuilderWorkspace({
   saving,
   draftLabel,
   submitLabel,
+  emailEndpoint = '/leads',
 }) {
   const [destinations, setDestinations] = useState(() => parseDestinationStops(pkg, lead));
   const [showPreview, setShowPreview] = useState(false);
+  const [autoPrint, setAutoPrint] = useState(false);
+  const [showEmailComposer, setShowEmailComposer] = useState(false);
   const [picker, setPicker] = useState(null);
   const typeCfg = getPackageTypeConfig(pkg?.type || pkg?.category || 'family');
+
+  const emailQuotation = useMemo(() => {
+    if (!draftQuote) return null;
+    return {
+      ...draftQuote,
+      quoteNumber: draftQuote.quoteNumber,
+      totalAmount: draftQuote.pricing?.total,
+      grandTotal: draftQuote.pricing?.total,
+      destination: draftQuote.package?.destination || pkg?.destination || lead?.destination,
+      travelDate: lead?.travelDate,
+    };
+  }, [draftQuote, pkg?.destination, lead?.destination, lead?.travelDate]);
+
+  const shareText = useMemo(
+    () =>
+      buildQuotationShareText({
+        lead,
+        pkg,
+        pricing,
+        nights,
+        daysCount: itinerary?.length,
+        quoteNumber: draftQuote?.quoteNumber,
+      }),
+    [lead, pkg, pricing, nights, itinerary?.length, draftQuote?.quoteNumber]
+  );
+
+  const handleShare = useCallback(async () => {
+    if (!draftQuote) {
+      toast.error('Build the package first, then share.');
+      return;
+    }
+    const payload = {
+      title: `UNO Trips quotation — ${pkg?.name || 'Package'}`,
+      text: shareText,
+    };
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share(payload);
+        toast.success('Quotation shared');
+        return;
+      }
+    } catch (err) {
+      if (err?.name === 'AbortError') return;
+    }
+    try {
+      await navigator.clipboard.writeText(shareText);
+      toast.success('Quotation copied — paste anywhere to share');
+    } catch {
+      toast.error('Unable to share. Please copy manually from Print preview.');
+    }
+  }, [draftQuote, pkg?.name, shareText]);
+
+  const handleMail = useCallback(() => {
+    if (!lead?._id) {
+      toast.error('Select a lead first');
+      return;
+    }
+    if (!draftQuote) {
+      toast.error('Build the package first, then email.');
+      return;
+    }
+    if (!lead.email) {
+      toast.info('Lead has no email — you can type one in the composer');
+    }
+    setShowEmailComposer(true);
+  }, [lead, draftQuote]);
+
+  const handleWhatsApp = useCallback(() => {
+    if (!lead?.phone) {
+      toast.error('Lead phone number is missing');
+      return;
+    }
+    if (!draftQuote) {
+      toast.error('Build the package first, then send on WhatsApp.');
+      return;
+    }
+    const opened = openWhatsApp(lead.phone, shareText);
+    if (opened) {
+      toast.success('Opening WhatsApp for the customer');
+    } else {
+      toast.error('Could not open WhatsApp');
+    }
+  }, [lead, draftQuote, shareText]);
+
+  const handlePrint = useCallback(() => {
+    if (!draftQuote) {
+      toast.error('Build the package first, then print.');
+      return;
+    }
+    setAutoPrint(true);
+    setShowPreview(true);
+  }, [draftQuote]);
 
   const durationLabel = useMemo(() => {
     if (pkg?.durationLabel) return pkg.durationLabel;
@@ -598,8 +723,10 @@ export default function PackageBuilderWorkspace({
           daysCount={itinerary?.length}
           onSaveDraft={onSaveDraft}
           onSubmit={onSubmit}
-          onPreview={() => setShowPreview(true)}
-          onPrint={() => setShowPreview(true)}
+          onShare={handleShare}
+          onMail={handleMail}
+          onWhatsApp={handleWhatsApp}
+          onPrint={handlePrint}
           saving={saving}
           draftLabel={draftLabel}
           submitLabel={submitLabel}
@@ -609,7 +736,23 @@ export default function PackageBuilderWorkspace({
       <QuotationPdfOverlay
         quote={draftQuote}
         open={showPreview && !!draftQuote}
-        onClose={() => setShowPreview(false)}
+        autoPrint={autoPrint}
+        onAutoPrintDone={() => setAutoPrint(false)}
+        onClose={() => {
+          setShowPreview(false);
+          setAutoPrint(false);
+        }}
+      />
+
+      <EmailComposerModal
+        open={showEmailComposer}
+        onClose={() => setShowEmailComposer(false)}
+        lead={lead}
+        leadId={lead?._id}
+        emailEndpoint={emailEndpoint}
+        quotation={emailQuotation}
+        defaultCategory="quotation"
+        onSent={() => toast.success('Quotation email queued for the customer')}
       />
 
       <PackageResourcePickerDrawer

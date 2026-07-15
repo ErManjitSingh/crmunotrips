@@ -18,7 +18,9 @@ export default function PackageBuilderPriceSidebar({
   daysCount,
   onSaveDraft,
   onSubmit,
-  onPreview,
+  onShare,
+  onMail,
+  onWhatsApp,
   onPrint,
   saving,
   draftLabel = 'Save as Draft',
@@ -55,6 +57,13 @@ export default function PackageBuilderPriceSidebar({
     { key: 'taxes', label: 'Taxes & Fees' },
     { key: 'discount', label: 'Discount', negative: true },
     { key: 'markup', label: 'Markup' },
+  ];
+
+  const actions = [
+    { icon: Share2, label: 'Share', onClick: onShare, tone: 'hover:border-sky-300 hover:text-sky-600 hover:bg-sky-50' },
+    { icon: Mail, label: 'Mail', onClick: onMail, tone: 'hover:border-violet-300 hover:text-violet-600 hover:bg-violet-50' },
+    { icon: MessageCircle, label: 'WhatsApp', onClick: onWhatsApp, tone: 'hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50' },
+    { icon: Printer, label: 'Print', onClick: onPrint, tone: 'hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50' },
   ];
 
   return (
@@ -146,18 +155,14 @@ export default function PackageBuilderPriceSidebar({
           </button>
 
           <div className="grid grid-cols-4 gap-1.5 pt-1">
-            {[
-              { icon: Share2, label: 'Share', onClick: onPreview, tone: 'hover:border-sky-300 hover:text-sky-600 hover:bg-sky-50' },
-              { icon: Mail, label: 'Mail', onClick: onPreview, tone: 'hover:border-violet-300 hover:text-violet-600 hover:bg-violet-50' },
-              { icon: MessageCircle, label: 'WhatsApp', onClick: onPreview, tone: 'hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50' },
-              { icon: Printer, label: 'Print', onClick: onPrint || onPreview, tone: 'hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50' },
-            ].map((a) => (
+            {actions.map((a) => (
               <button
                 key={a.label}
                 type="button"
                 onClick={a.onClick}
+                disabled={!a.onClick}
                 title={a.label}
-                className={`flex flex-col items-center gap-1 rounded-xl border border-violet-100 bg-white py-2 text-[9px] font-medium text-slate-500 ${a.tone}`}
+                className={`flex flex-col items-center gap-1 rounded-xl border border-violet-100 bg-white py-2 text-[9px] font-medium text-slate-500 disabled:opacity-40 disabled:cursor-not-allowed ${a.tone}`}
               >
                 <a.icon className="w-4 h-4" />
                 {a.label}
@@ -168,7 +173,7 @@ export default function PackageBuilderPriceSidebar({
       </div>
 
       <p className="text-[11px] text-violet-700/60 text-center px-2 leading-relaxed font-medium">
-        Live pricing — hotel, cab and activity costs update as you customize.
+        Share, Mail, WhatsApp & Print send this quotation to the customer.
       </p>
     </aside>
   );
