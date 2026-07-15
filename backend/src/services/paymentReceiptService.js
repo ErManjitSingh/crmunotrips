@@ -9,7 +9,7 @@ const { isEmailConfigured, normalizeRecipients } = require('./emailService');
 const { invalidateMailboxCache } = require('./emailMailboxCache');
 
 /** Bump when HTML layout changes so stored receipts regenerate. */
-const RECEIPT_TEMPLATE_VERSION = 4;
+const RECEIPT_TEMPLATE_VERSION = 5;
 
 const COMPANY = {
   name: 'UNO Trips',
@@ -31,7 +31,7 @@ const COMPANY = {
 
 function formatINR(amount) {
   const n = Number(amount) || 0;
-  return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 1 })}`;
 }
 
 function formatAmount(amount, decimals = 2) {
@@ -155,7 +155,7 @@ function buildVoucherPayload({ lead, payment, booking, quotation }) {
 }
 
 /**
- * Tax Invoice style payment voucher (UNO Trips formal receipt).
+ * Advance / Token Receipt — card layout matching CRM voucher modal.
  */
 function buildPaymentReceiptHtml({
   lead,
@@ -167,150 +167,189 @@ function buildPaymentReceiptHtml({
   const v = buildVoucherPayload({ lead, payment, booking, quotation });
   const executive = actor?.name || booking?.executiveName || 'UNO Trips Sales';
   const quoteOrBooking = v.quoteNumber !== '—' ? v.quoteNumber : v.bookingNumber;
-  const phoneLine = COMPANY.phone || v.customerPhone ? (COMPANY.phone || '') : '';
+  const refLine = v.paymentRef ? `Ref: ${escapeHtml(v.paymentRef)}` : 'Confirmed';
 
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"/><title>Tax Invoice ${escapeHtml(v.invoiceNumber)}</title>
+<html><head><meta charset="utf-8"/><title>Payment Voucher ${escapeHtml(v.receiptNumber)}</title>
 <meta name="receipt-template" content="v${RECEIPT_TEMPLATE_VERSION}"/>
 <style>
   *{box-sizing:border-box}
-  body{margin:0;padding:10px;background:#eceff3;font-family:Arial,Helvetica,sans-serif;color:#000;font-size:10px;line-height:1.3;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .sheet{max-width:640px;margin:0 auto;background:#fff;border:1px solid #000}
-  table{width:100%;border-collapse:collapse}
-  td,th{border:1px solid #000;padding:4px 6px;vertical-align:top}
-  .tal{text-align:left}.tar{text-align:right}.tac{text-align:center}
-  .fwb{font-weight:700}
-  .logo-wrap{display:flex;align-items:center;gap:6px}
-  .logo{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fbbf24,#ea580c 55%,#9a3412);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px;flex-shrink:0;border:1.5px solid #c2410c}
-  .brand{font-size:15px;font-weight:800;margin:0;line-height:1.05}
-  .tag{margin:1px 0 0;font-size:9px;font-weight:600}
-  .co-box{font-size:9px;line-height:1.35}
-  .co-box strong{font-size:10px}
-  .title-row{font-size:11px;font-weight:800;letter-spacing:.03em;text-align:center;padding:4px}
-  .terms{background:#ffff00;padding:5px 7px;font-size:9px;line-height:1.3}
-  .terms ol{margin:0;padding-left:14px}
-  .terms li{margin:1px 0}
-  .bank{font-size:9px;font-weight:700;padding:5px 6px}
-  .amt{font-variant-numeric:tabular-nums}
-  .sum-label{text-align:right;font-weight:700;width:70%}
-  .sum-val{text-align:right;font-weight:700;width:30%}
-  .grand td{font-size:11px;font-weight:800}
-  .foot{padding:4px 6px;font-size:8px;color:#444;border-top:1px solid #000;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}
-  @media print{body{background:#fff;padding:0}.sheet{max-width:none}}
+  body{margin:0;padding:28px 16px;background:#e8eef3;font-family:Inter,Segoe UI,Arial,Helvetica,sans-serif;color:#0f172a;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sheet{max-width:720px;margin:0 auto;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 20px 50px rgba(15,23,42,.14)}
+  .hero{position:relative;background:linear-gradient(135deg,#059669 0%,#047857 55%,#0f766e 100%);color:#fff;padding:28px 28px 26px;overflow:hidden}
+  .hero:before,.hero:after{content:"";position:absolute;border-radius:50%;pointer-events:none}
+  .hero:before{width:280px;height:280px;right:-60px;top:-120px;background:rgba(255,255,255,.08)}
+  .hero:after{width:220px;height:220px;left:-80px;bottom:-100px;background:rgba(0,0,0,.08)}
+  .hero-inner{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .brand{font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.88;font-weight:700;margin:0}
+  .title{margin:8px 0 0;font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+  .sub{margin:8px 0 0;font-size:13px;opacity:.92}
+  .status{background:#fff;border-radius:16px;padding:14px 16px;min-width:168px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+  .status-row{display:flex;align-items:center;gap:10px}
+  .check{width:28px;height:28px;border-radius:50%;background:#10b981;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .check svg{display:block}
+  .status strong{display:block;color:#059669;font-size:14px;font-weight:800}
+  .status span{display:block;color:#64748b;font-size:11px;margin-top:2px}
+  .body{padding:8px 28px 28px}
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid #e8eef3;border-radius:16px;overflow:hidden;margin-top:20px}
+  .cell{padding:16px 14px;border-right:1px solid #eef2f6;border-bottom:1px solid #eef2f6;min-height:92px}
+  .cell:nth-child(3n){border-right:none}
+  .cell:nth-child(n+4){border-bottom:none}
+  .cell-top{display:flex;align-items:flex-start;gap:10px}
+  .ico{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .ico svg{width:16px;height:16px}
+  .lbl{font-size:11px;color:#94a3b8;font-weight:600;margin:0 0 4px}
+  .val{font-size:15px;font-weight:800;color:#0f172a;margin:0;line-height:1.25}
+  .meta{font-size:12px;color:#64748b;margin:4px 0 0;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+  .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#d1fae5;color:#047857;font-size:10px;font-weight:700}
+  .amounts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:18px 0 16px}
+  .amt{border-radius:16px;padding:16px 14px;position:relative;overflow:hidden}
+  .amt .ai{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+  .amt span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:6px}
+  .amt strong{display:block;font-size:22px;font-weight:800;letter-spacing:-.02em}
+  .total{background:#ecfdf5}.total span{color:#047857}.total strong{color:#064e3b}.total .ai{background:#a7f3d0;color:#047857}
+  .advance{background:#d1fae5}.advance span{color:#047857}.advance strong{color:#064e3b}.advance .ai{background:#6ee7b7;color:#047857}
+  .balance{background:#ffedd5}.balance span{color:#c2410c}.balance strong{color:#9a3412}.balance .ai{background:#fdba74;color:#c2410c}
+  .note{display:flex;gap:12px;align-items:flex-start;background:#eff6ff;border-radius:14px;padding:14px 16px}
+  .note-ico{width:22px;height:22px;border-radius:50%;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:800;margin-top:1px}
+  .note strong{display:block;color:#1d4ed8;font-size:13px;margin-bottom:3px}
+  .note p{margin:0;font-size:12px;line-height:1.55;color:#475569}
+  .foot{margin-top:18px;padding-top:14px;border-top:1px solid #e8eef3;font-size:11px;color:#94a3b8;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  @media (max-width:640px){
+    .grid,.amounts{grid-template-columns:1fr}
+    .cell{border-right:none!important}
+    .cell:nth-child(n+4){border-bottom:1px solid #eef2f6}
+    .cell:last-child{border-bottom:none}
+  }
+  @media print{body{background:#fff;padding:0}.sheet{box-shadow:none;border-radius:0;max-width:none}}
 </style></head>
 <body>
 <!-- receipt-template-v${RECEIPT_TEMPLATE_VERSION} -->
 <div class="sheet">
-  <table>
-    <tr>
-      <td style="width:46%">
-        <div class="logo-wrap">
-          <div class="logo">UT</div>
+  <div class="hero">
+    <div class="hero-inner">
+      <div>
+        <p class="brand">UNO TRIPS</p>
+        <h1 class="title">Advance / Token Receipt</h1>
+        <p class="sub">Voucher ID: ${escapeHtml(v.receiptNumber)} · ${escapeHtml(v.paidAtLabel)}</p>
+      </div>
+      <div class="status">
+        <div class="status-row">
+          <div class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
           <div>
-            <p class="brand">${escapeHtml(COMPANY.brand)}</p>
-            <p class="tag">${escapeHtml(COMPANY.tagline)}</p>
+            <strong>Payment Received</strong>
+            <span>Thank you for your payment</span>
           </div>
         </div>
-      </td>
-      <td style="width:54%" class="co-box">
-        <strong>${escapeHtml(COMPANY.name)}</strong><br/>
-        <span class="fwb">ADDRESS:</span> ${escapeHtml(COMPANY.address)}<br/>
-        <span class="fwb">GST:</span> ${escapeHtml(COMPANY.gstin)}
-        &nbsp;·&nbsp; <span class="fwb">PAN:</span> ${escapeHtml(COMPANY.pan)}
-        ${phoneLine ? `<br/><span class="fwb">PHONE:</span> ${escapeHtml(phoneLine)}` : ''}
-      </td>
-    </tr>
-    <tr>
-      <td colspan="2" class="title-row">TAX INVOICE</td>
-    </tr>
-    <tr>
-      <td>
-        <span class="fwb">HSN:</span> ${escapeHtml(COMPANY.hsn)}
-        &nbsp;·&nbsp; Original for Recipient<br/>
-        <span class="fwb">VOUCHER:</span> ${escapeHtml(v.receiptNumber)}
-      </td>
-      <td>
-        <span class="fwb">INVOICE NO:</span> ${escapeHtml(v.invoiceNumber)}<br/>
-        <span class="fwb">INVOICE DATE:</span> ${escapeHtml(v.invoiceDate)}
-      </td>
-    </tr>
-    <tr>
-      <td colspan="2">
-        <span class="fwb">GUEST:</span> ${escapeHtml(v.customerName)}
-        &nbsp;·&nbsp; <span class="fwb">PHONE:</span> ${escapeHtml(v.customerPhone)}
-        &nbsp;·&nbsp; ${escapeHtml(v.leadBadge)}
-        &nbsp;·&nbsp; <span class="fwb">GSTIN:</span> ${escapeHtml(v.customerGstin || '—')}
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <span class="fwb">DESTINATION:</span> ${escapeHtml(v.destination)}${v.destinationSub ? `, ${escapeHtml(v.destinationSub)}` : ''}<br/>
-        <span class="fwb">TRAVEL:</span> ${escapeHtml(v.travelDate)}${v.travelWeekday ? ` (${escapeHtml(v.travelWeekday)})` : ''}
-      </td>
-      <td>
-        <span class="fwb">BOOKING / QUOTE:</span> ${escapeHtml(quoteOrBooking)}<br/>
-        <span class="fwb">PAYMENT:</span> ${escapeHtml(v.paymentMethod)}${v.paymentRef ? ` · ${escapeHtml(v.paymentRef)}` : ''}
-      </td>
-    </tr>
-    <tr>
-      <td colspan="2" style="padding:0">
-        <table>
-          <tr>
-            <td class="tac fwb" style="width:33.33%">PACKAGE TOTAL<br/><span class="amt" style="font-size:12px">${escapeHtml(formatAmount(v.totalAmount))}</span></td>
-            <td class="tac fwb" style="width:33.33%">ADVANCE / TOKEN<br/><span class="amt" style="font-size:12px">${escapeHtml(formatAmount(v.advanceReceived))}</span></td>
-            <td class="tac fwb" style="width:33.33%">BALANCE DUE<br/><span class="amt" style="font-size:12px">${escapeHtml(formatAmount(v.balanceDue))}</span></td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-
-  <table>
-    <tr>
-      <th class="tal" style="width:70%;padding:3px 6px">PARTICULARS</th>
-      <th class="tar" style="width:30%;padding:3px 6px">RATE</th>
-    </tr>
-    <tr>
-      <td class="fwb">TOKEN AMOUNT</td>
-      <td class="tar amt">${escapeHtml(formatAmount(v.subTotal))}</td>
-    </tr>
-    <tr>
-      <td class="sum-label">Sub Total</td>
-      <td class="sum-val amt">${escapeHtml(formatAmount(v.subTotal, 0))}</td>
-    </tr>
-    <tr>
-      <td class="sum-label">CGST ${COMPANY.cgstRate}%</td>
-      <td class="sum-val amt">${escapeHtml(formatAmount(v.cgst, 0))}</td>
-    </tr>
-    <tr>
-      <td class="sum-label">SGST ${COMPANY.sgstRate}%</td>
-      <td class="sum-val amt">${escapeHtml(formatAmount(v.sgst, 0))}</td>
-    </tr>
-    <tr class="grand">
-      <td class="sum-label">Grand Total</td>
-      <td class="sum-val amt">${escapeHtml(formatAmount(v.grandTotal))}</td>
-    </tr>
-  </table>
-
-  <div class="terms">
-    <ol>
-      <li>All payments to be made against the receipt of UNO Trips</li>
-      <li>Interest will be charged @ 18% if not paid to us on presentation.</li>
-      <li>No claim and discrepancy shall be considered if not send to us in writing only acknowledged by us within three days.</li>
-      <li>Please Credit the Amount in our Bank Account as mentioned below:-</li>
-      <li>Computer generated Signature are not required.</li>
-      <li>All Disputes are subject to HO Shimla</li>
-    </ol>
+      </div>
+    </div>
   </div>
 
-  <div class="bank">
-    BANK DETAILS: ${escapeHtml(COMPANY.bankName)} A/C NO:- ${escapeHtml(COMPANY.accountNo)}
-    &nbsp;&nbsp;IFSC CODE:- ${escapeHtml(COMPANY.ifsc)}
-  </div>
+  <div class="body">
+    <div class="grid">
+      <div class="cell">
+        <div class="cell-top">
+          <div class="ico" style="background:#d1fae5;color:#059669">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div>
+            <p class="lbl">Customer</p>
+            <p class="val">${escapeHtml(v.customerName)} <span class="badge">${escapeHtml(v.leadBadge)}</span></p>
+            <p class="meta"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${escapeHtml(v.customerPhone)}</p>
+          </div>
+        </div>
+      </div>
+      <div class="cell">
+        <div class="cell-top">
+          <div class="ico" style="background:#ede9fe;color:#7c3aed">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>
+          <div>
+            <p class="lbl">Destination</p>
+            <p class="val">${escapeHtml(v.destination)}</p>
+            ${v.destinationSub ? `<p class="meta">${escapeHtml(v.destinationSub)}</p>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="cell">
+        <div class="cell-top">
+          <div class="ico" style="background:#dbeafe;color:#2563eb">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          </div>
+          <div>
+            <p class="lbl">Travel Date</p>
+            <p class="val">${escapeHtml(v.travelDate)}</p>
+            ${v.travelWeekday ? `<p class="meta">${escapeHtml(v.travelWeekday)}</p>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="cell">
+        <div class="cell-top">
+          <div class="ico" style="background:#fef3c7;color:#d97706">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg>
+          </div>
+          <div>
+            <p class="lbl">Booking / Quote</p>
+            <p class="val">${escapeHtml(quoteOrBooking)}</p>
+          </div>
+        </div>
+      </div>
+      <div class="cell">
+        <div class="cell-top">
+          <div class="ico" style="background:#e0e7ff;color:#4f46e5">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+          </div>
+          <div>
+            <p class="lbl">Invoice No.</p>
+            <p class="val">${escapeHtml(v.invoiceNumber)}</p>
+            <p class="meta">Generated on ${escapeHtml(v.invoiceGeneratedOn)}</p>
+          </div>
+        </div>
+      </div>
+      <div class="cell">
+        <div class="cell-top">
+          <div class="ico" style="background:#fce7f3;color:#db2777">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          </div>
+          <div>
+            <p class="lbl">Payment Mode</p>
+            <p class="val">${escapeHtml(v.paymentMethod)}</p>
+            <p class="meta">${refLine}</p>
+          </div>
+        </div>
+      </div>
+    </div>
 
-  <div class="foot">
-    <span>Prepared by ${escapeHtml(executive)}</span>
-    <span>${escapeHtml(COMPANY.email)} · ${escapeHtml(COMPANY.website)}</span>
+    <div class="amounts">
+      <div class="amt total">
+        <div class="ai"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+        <span>Package Total</span>
+        <strong>${escapeHtml(v.totalLabel)}</strong>
+      </div>
+      <div class="amt advance">
+        <div class="ai"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7 7 7-7"/></svg></div>
+        <span>Advance Received</span>
+        <strong>${escapeHtml(v.advanceLabel)}</strong>
+      </div>
+      <div class="amt balance">
+        <div class="ai"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+        <span>Balance Due</span>
+        <strong>${escapeHtml(v.balanceLabel)}</strong>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-ico">i</div>
+      <div>
+        <strong>Important Note</strong>
+        <p>This is an advance receipt for the above booking. Balance payment is required before the travel date.</p>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>Prepared by ${escapeHtml(executive)}</span>
+      <span>${escapeHtml(COMPANY.email)} · ${escapeHtml(COMPANY.website)}</span>
+    </div>
   </div>
 </div>
 </body></html>`;
@@ -357,7 +396,7 @@ async function sendReceiptToCustomer({ lead, payment, actor }) {
   const total = Number(payment.amount) || 0;
   const advance = Number(payment.paidAmount) || 0;
   const balance = Math.max(0, total - advance);
-  const subject = `UNO Trips — Tax Invoice / Payment Voucher ${payment.receiptNumber || ''}`.trim();
+  const subject = `UNO Trips — Payment voucher ${payment.receiptNumber || ''}`.trim();
   const text = [
     `Dear ${lead?.name || payment.customerName || 'Customer'},`,
     '',
@@ -367,7 +406,7 @@ async function sendReceiptToCustomer({ lead, payment, actor }) {
     `Advance / token received: ${formatINR(advance)}`,
     `Balance still due: ${formatINR(balance)}`,
     '',
-    'Please find your tax invoice / payment voucher in this email.',
+    'Please find your advance / token receipt in this email.',
     '',
     `Warm regards,`,
     actor?.name || 'UNO Trips Sales Team',
