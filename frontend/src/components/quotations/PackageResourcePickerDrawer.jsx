@@ -46,7 +46,12 @@ const BADGE_STYLES = [
 
 /** Price of an option relative to currently selected stay/cab. */
 function getOptionAmount(opt = {}) {
-  return Number(opt.perNight ?? opt.priceDelta ?? opt.cost ?? opt.totalAmount ?? 0) || 0;
+  const explicit =
+    Number(opt.perNight ?? opt.priceDelta ?? opt.cost ?? opt.totalAmount ?? 0) || 0;
+  const start = Number(opt.startingPrice ?? opt.starting_price ?? 0) || 0;
+  // Package upgrade_price is often null — fall back to catalog starting price.
+  if (explicit !== 0) return explicit;
+  return start;
 }
 
 function formatRelativePrice(amount, basePrice, { isCurrent = false } = {}) {

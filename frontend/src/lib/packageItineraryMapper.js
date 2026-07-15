@@ -113,6 +113,11 @@ export function mapHotelOption(option = {}) {
   const meals =
     formatMealsLabel(option.meals) ||
     formatMealPlanCode(option.meal_plan || option.default_meal_plan);
+  const startingPrice = Number(option.starting_price ?? option.startingPrice ?? 0);
+  const upgradeOrDelta = Number(
+    option.price_delta ?? option.priceDelta ?? option.upgrade_price ?? option.price ?? 0
+  );
+  const priceDelta = upgradeOrDelta > 0 ? upgradeOrDelta : startingPrice > 0 ? startingPrice : 0;
   return {
     id: option.id || option.hotel_id || option.hotelId || name,
     name,
@@ -122,9 +127,8 @@ export function mapHotelOption(option = {}) {
     location: option.location || option.city || option.area || '',
     meals,
     mealsRaw: option.meals || null,
-    priceDelta: Number(
-      option.price_delta ?? option.priceDelta ?? option.upgrade_price ?? option.price ?? 0
-    ),
+    startingPrice,
+    priceDelta,
     tierName:
       option.tier_name ||
       option.room_type ||
@@ -348,11 +352,12 @@ export function seedDayWiseHotelsFromItinerary(itinerary = []) {
           starCategory: meta.starRating || 0,
           starRating: meta.starRating || 0,
           location: meta.location || '',
+          startingPrice: meta.startingPrice || 0,
         },
         room: { name: meta.tierName || 'Standard Room' },
         mealPlan: { label: meta.meals || day.meals || 'As per package' },
-        perNight: Number(meta.priceDelta || 0),
-        totalCost: Number(meta.priceDelta || 0),
+        perNight: Number(meta.priceDelta || meta.startingPrice || 0),
+        totalCost: Number(meta.priceDelta || meta.startingPrice || 0),
         nights: day.stayNights || 1,
         fromPackage: true,
         hotelOptions: day.hotelOptions || [],

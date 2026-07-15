@@ -334,6 +334,7 @@ export default function PackageBuilderWorkspace({
         location: option.location || '',
         city: option.city || '',
         slug: option.slug || '',
+        startingPrice: option.startingPrice || 0,
       },
       room: option.room || { name: roomName },
       mealPlan: option.mealPlan || { label: mealLabel },
@@ -382,18 +383,22 @@ export default function PackageBuilderWorkspace({
   }, [picker, itinerary]);
 
   const hotelBasePrice = useMemo(() => {
+    const pickAmount = (meta, dayHotel) => {
+      const perNight = Number(dayHotel?.perNight ?? meta?.perNight ?? 0) || 0;
+      const delta = Number(meta?.priceDelta ?? 0) || 0;
+      const start = Number(meta?.startingPrice ?? dayHotel?.hotel?.startingPrice ?? 0) || 0;
+      if (perNight !== 0) return perNight;
+      if (delta !== 0) return delta;
+      return start;
+    };
     if (picker?.type === 'hotel' && picker.day) {
       const meta = picker.day.hotelMeta;
       const dayHotel = (dayWiseHotels || []).find((h) => h.day === picker.day.day);
-      return Number(
-        dayHotel?.perNight ?? meta?.priceDelta ?? meta?.perNight ?? 0
-      ) || 0;
+      return pickAmount(meta, dayHotel);
     }
     const firstMeta = itinerary?.find((d) => d.hotelMeta)?.hotelMeta;
     const firstDayHotel = (dayWiseHotels || [])[0];
-    return Number(
-      firstDayHotel?.perNight ?? firstMeta?.priceDelta ?? firstMeta?.perNight ?? 0
-    ) || 0;
+    return pickAmount(firstMeta, firstDayHotel);
   }, [picker, itinerary, dayWiseHotels]);
 
   const cabBasePrice = Number(

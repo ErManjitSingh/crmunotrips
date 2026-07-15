@@ -204,6 +204,15 @@ function applyCatalogToOption(option = {}, catalog = null, stay = null) {
     stay?.destination_city ||
     '';
 
+  const startingPrice = Number(
+    hotel.starting_price ?? hotel.startingPrice ?? option.starting_price ?? option.startingPrice ?? 0
+  );
+  const upgradePrice = Number(
+    option.price_delta ?? option.upgrade_price ?? option.price ?? 0
+  );
+  // Package day-options often ship upgrade_price=null; use catalog rate so diffs work.
+  const priceDelta = upgradePrice > 0 ? upgradePrice : startingPrice > 0 ? startingPrice : 0;
+
   return {
     ...option,
     hotel_id: hotelId || option.hotel_id,
@@ -220,6 +229,10 @@ function applyCatalogToOption(option = {}, catalog = null, stay = null) {
     slug: hotel.slug || option.slug,
     amenities: hotel.amenities || option.amenities,
     address: hotel.address || option.address,
+    starting_price: startingPrice,
+    startingPrice,
+    price_delta: priceDelta,
+    upgrade_price: option.upgrade_price ?? upgradePrice,
   };
 }
 
@@ -296,6 +309,13 @@ function mapHotelMeta(option = {}) {
   const meals =
     formatMealsLabel(option.meals) ||
     formatMealPlanCode(option.meal_plan || option.default_meal_plan);
+  const startingPrice = Number(
+    option.starting_price ?? option.startingPrice ?? 0
+  );
+  const upgradeOrDelta = Number(
+    option.price_delta ?? option.upgrade_price ?? option.price ?? 0
+  );
+  const priceDelta = upgradeOrDelta > 0 ? upgradeOrDelta : startingPrice > 0 ? startingPrice : 0;
   return {
     id: option.hotel_id || option.id || name,
     hotelId: option.hotel_id || option.id || null,
@@ -309,7 +329,8 @@ function mapHotelMeta(option = {}) {
     city: option.city || '',
     slug: option.slug || '',
     meals,
-    priceDelta: Number(option.price_delta ?? option.upgrade_price ?? option.price ?? 0),
+    startingPrice,
+    priceDelta,
     tierName: option.tier_name || option.room_type || option.default_room_type_name || '',
     roomTypeId: option.room_type_id || option.default_room_type_id || null,
     isDefault: Boolean(option.is_default || option.isDefault || option.is_selected),
