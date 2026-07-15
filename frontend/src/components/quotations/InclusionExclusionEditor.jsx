@@ -89,7 +89,7 @@ export default function InclusionExclusionEditor({
   return (
     <div className="space-y-4">
       {mode === 'both' && (
-        <div className="flex gap-1 p-1 rounded-2xl bg-surface-elevated/80 border border-subtle">
+        <div className="flex gap-1 p-1 rounded-2xl bg-white border border-emerald-100 shadow-sm">
           {TABS.map(({ key, label, icon: Icon }) => {
             const active = tab === key;
             const count = cleanInclusionExclusionLines(key === 'inclusions' ? inclusions : exclusions).length;
@@ -100,9 +100,9 @@ export default function InclusionExclusionEditor({
                 onClick={() => setTab(key)}
                 className={cn(
                   'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all',
-                  active && key === 'inclusions' && 'bg-emerald-500 text-white shadow-sm',
-                  active && key === 'exclusions' && 'bg-rose-500 text-white shadow-sm',
-                  !active && 'text-content-muted hover:bg-surface-base'
+                  active && key === 'inclusions' && 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25',
+                  active && key === 'exclusions' && 'bg-rose-500 text-white shadow-md shadow-rose-500/25',
+                  !active && 'text-slate-500 hover:bg-slate-50'
                 )}
               >
                 <Icon className="w-4 h-4 shrink-0" />
@@ -110,7 +110,7 @@ export default function InclusionExclusionEditor({
                 {count > 0 && (
                   <span className={cn(
                     'text-[10px] px-1.5 py-0.5 rounded-full font-bold',
-                    active ? 'bg-white/20 text-white' : 'bg-surface-elevated text-content-muted'
+                    active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
                   )}>
                     {count}
                   </span>
@@ -121,8 +121,13 @@ export default function InclusionExclusionEditor({
         </div>
       )}
 
-      <div className={cn(mode === 'both' && 'rounded-2xl border border-subtle bg-surface-base p-4 sm:p-5')}>
-        {activeTab === 'inclusions' ? (
+      <div
+        className={cn(
+          mode === 'both' && 'rounded-2xl border p-4 sm:p-5',
+          mode === 'both' && activeTab === 'inclusions' && 'border-emerald-200 bg-emerald-50/50',
+          mode === 'both' && activeTab === 'exclusions' && 'border-rose-200 bg-rose-50/50'
+        )}
+      >        {activeTab === 'inclusions' ? (
           <LineEditor
             title="Package Inclusions"
             description="What is included in this quotation — add or edit each point."

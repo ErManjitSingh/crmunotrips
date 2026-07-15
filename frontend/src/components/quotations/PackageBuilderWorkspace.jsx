@@ -12,6 +12,8 @@ import {
   CalendarDays,
   MapPin,
   Leaf,
+  Route,
+  ListChecks,
 } from 'lucide-react';
 import { getPackageTypeConfig } from './quotationUtils';
 import PackageDestinationFlow from './PackageDestinationFlow';
@@ -58,6 +60,99 @@ export function stripHtml(input = '') {
     .trim();
 }
 
+const SECTION_TONES = {
+  package: {
+    wrap: 'border-indigo-200/90 bg-gradient-to-br from-indigo-50 via-white to-sky-50 shadow-indigo-100/60',
+    bar: 'from-indigo-500 to-sky-500',
+    badge: 'bg-indigo-600 text-white',
+    iconWrap: 'bg-indigo-100 text-indigo-600',
+  },
+  route: {
+    wrap: 'border-amber-200/90 bg-gradient-to-br from-amber-50 via-white to-orange-50 shadow-amber-100/60',
+    bar: 'from-amber-500 to-orange-500',
+    badge: 'bg-amber-500 text-white',
+    iconWrap: 'bg-amber-100 text-amber-700',
+  },
+  travel: {
+    wrap: 'border-sky-200/90 bg-gradient-to-br from-sky-50 via-white to-cyan-50 shadow-sky-100/60',
+    bar: 'from-sky-500 to-cyan-500',
+    badge: 'bg-sky-600 text-white',
+    iconWrap: 'bg-sky-100 text-sky-700',
+  },
+  stay: {
+    wrap: 'border-violet-200/90 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 shadow-violet-100/60',
+    bar: 'from-violet-500 to-fuchsia-500',
+    badge: 'bg-violet-600 text-white',
+    iconWrap: 'bg-violet-100 text-violet-700',
+  },
+  itinerary: {
+    wrap: 'border-teal-200/90 bg-gradient-to-br from-teal-50 via-cyan-50/40 to-white shadow-teal-100/60',
+    bar: 'from-teal-500 to-emerald-500',
+    badge: 'bg-teal-600 text-white',
+    iconWrap: 'bg-teal-100 text-teal-700',
+  },
+  policy: {
+    wrap: 'border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-white to-rose-50 shadow-emerald-100/50',
+    bar: 'from-emerald-500 to-rose-400',
+    badge: 'bg-emerald-600 text-white',
+    iconWrap: 'bg-emerald-100 text-emerald-700',
+  },
+  preview: {
+    wrap: 'border-slate-300 bg-gradient-to-br from-slate-100 via-white to-violet-50 shadow-slate-200/50',
+    bar: 'from-slate-600 to-violet-500',
+    badge: 'bg-slate-800 text-white',
+    iconWrap: 'bg-slate-200 text-slate-700',
+  },
+};
+
+function SectionShell({
+  tone = 'package',
+  step,
+  title,
+  subtitle,
+  icon: Icon,
+  children,
+  className,
+  action,
+}) {
+  const t = SECTION_TONES[tone] || SECTION_TONES.package;
+  return (
+    <section
+      className={cn(
+        'rounded-2xl border overflow-hidden shadow-md relative',
+        t.wrap,
+        className
+      )}
+    >
+      <div className={cn('h-1.5 w-full bg-gradient-to-r', t.bar)} />
+      {(title || step) && (
+        <div className="px-4 sm:px-5 pt-4 pb-3 flex flex-wrap items-start justify-between gap-3 border-b border-black/5">
+          <div className="flex items-start gap-3 min-w-0">
+            {Icon && (
+              <span className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', t.iconWrap)}>
+                <Icon className="w-5 h-5" />
+              </span>
+            )}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                {step != null && (
+                  <span className={cn('text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md', t.badge)}>
+                    Step {step}
+                  </span>
+                )}
+                {title && <h3 className="text-base font-bold text-slate-900">{title}</h3>}
+              </div>
+              {subtitle && <p className="text-xs text-slate-600 mt-0.5">{subtitle}</p>}
+            </div>
+          </div>
+          {action}
+        </div>
+      )}
+      <div className="p-4 sm:p-5">{children}</div>
+    </section>
+  );
+}
+
 function PackageDescription({ text, fallback }) {
   const [expanded, setExpanded] = useState(false);
   const plain = stripHtml(text) || fallback || '';
@@ -65,15 +160,15 @@ function PackageDescription({ text, fallback }) {
   const needsMore = plain.length > 160 || plain.split(/\n/).length > 2;
 
   return (
-    <div className="space-y-1">
-      <p className={cn('text-sm text-slate-600 leading-relaxed whitespace-pre-line', !expanded && 'line-clamp-2')}>
+    <div className="space-y-1 rounded-xl bg-white/70 border border-indigo-100/80 px-3.5 py-3">
+      <p className={cn('text-sm text-slate-700 leading-relaxed whitespace-pre-line', !expanded && 'line-clamp-2')}>
         {plain}
       </p>
       {needsMore && (
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="text-sm font-semibold text-sky-600 hover:text-sky-700"
+          className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
         >
           {expanded ? 'Show less' : 'Read more >'}
         </button>
@@ -87,7 +182,7 @@ function ChangeBtn({ onClick, label = 'Change' }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-emerald-300 bg-white text-xs font-bold text-emerald-600 hover:bg-emerald-50 shrink-0"
+      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-emerald-400/70 bg-emerald-50 text-xs font-bold text-emerald-700 hover:bg-emerald-100 shrink-0 shadow-sm shadow-emerald-200/50"
     >
       <RefreshCw className="w-3.5 h-3.5" />
       {label}
@@ -174,16 +269,18 @@ export default function PackageBuilderWorkspace({
   }, [itinerary]);
 
   const metaRow = [
-    { icon: Leaf, label: 'Trip Type', value: typeCfg.label || pkg?.packageType || 'Leisure' },
+    { icon: Leaf, label: 'Trip Type', value: typeCfg.label || pkg?.packageType || 'Leisure', tone: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
     {
       icon: Users,
       label: 'Suitable For',
       value: lead ? `${lead.adults || 0}A / ${lead.children || 0}C` : 'Family, Couple',
+      tone: 'bg-sky-50 border-sky-200 text-sky-700',
     },
     {
       icon: CalendarDays,
       label: 'Best Season',
       value: pkg?.bestSeason || 'Mar–Jun, Sep–Feb',
+      tone: 'bg-amber-50 border-amber-200 text-amber-700',
     },
     {
       icon: MapPin,
@@ -191,6 +288,7 @@ export default function PackageBuilderWorkspace({
       value: destinations[0]?.name && destinations[destinations.length - 1]?.name
         ? `${destinations[0].name} → ${destinations[destinations.length - 1].name}`
         : pkg?.destination || 'Delhi',
+      tone: 'bg-violet-50 border-violet-200 text-violet-700',
     },
   ];
 
@@ -250,9 +348,7 @@ export default function PackageBuilderWorkspace({
   };
 
   const openCabPicker = () => setPicker({ type: 'cab' });
-
   const openStayPicker = () => setPicker({ type: 'hotel' });
-
   const openDayHotelPicker = (day) => setPicker({ type: 'hotel', day });
 
   const selectCab = (cab) => {
@@ -271,9 +367,7 @@ export default function PackageBuilderWorkspace({
 
   const hotelDrawerOptions = useMemo(() => {
     if (picker?.type !== 'hotel') return [];
-    if (picker.day) {
-      return picker.day.hotelOptions || [];
-    }
+    if (picker.day) return picker.day.hotelOptions || [];
     return stayOptions;
   }, [picker, stayOptions]);
 
@@ -291,20 +385,20 @@ export default function PackageBuilderWorkspace({
     selectedUnoCab?.id || selectedUnoCab?.packageCabId || selectedUnoCab?.name || null;
 
   return (
-    <div className="space-y-5">
-      {/* Page header — mockup style */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-5 rounded-3xl bg-gradient-to-b from-slate-100 via-indigo-50/40 to-amber-50/30 p-3 sm:p-4 -mx-1">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-indigo-200/70 bg-white/90 px-4 py-4 shadow-sm shadow-indigo-100/50">
         <div>
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-violet-600 mb-2"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 mb-2"
           >
             <ArrowLeft className="w-4 h-4" /> Back to Packages
           </button>
           <h1 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">Create Quotation</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Build and customize the perfect package for {lead?.name || 'your customer'}.
+          <p className="text-sm text-slate-600 mt-1">
+            Build and customize the perfect package for{' '}
+            <span className="font-semibold text-indigo-700">{lead?.name || 'your customer'}</span>.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -312,7 +406,7 @@ export default function PackageBuilderWorkspace({
             type="button"
             disabled={saving}
             onClick={onSaveDraft}
-            className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            className="h-10 px-4 rounded-xl border border-indigo-200 bg-indigo-50 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60"
           >
             {draftLabel || 'Save as Draft'}
           </button>
@@ -329,134 +423,151 @@ export default function PackageBuilderWorkspace({
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
         <div className="space-y-5 min-w-0">
-          {/* Hero package card */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
-            <div className="relative h-52 sm:h-64 overflow-hidden bg-slate-200">
-              {pkg?.coverImage ? (
-                <img src={pkg.coverImage} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-sky-400 via-indigo-400 to-violet-500" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/25 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 space-y-3">
-                <span className="inline-flex text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-white/20 text-white backdrop-blur border border-white/20">
-                  Package Preview
-                </span>
-                <h2 className="text-xl sm:text-2xl font-bold text-white drop-shadow-sm leading-snug">
-                  {pkg?.name}
-                  {durationLabel ? ` — ${durationLabel}` : ''}
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {heroTags.map(({ icon: Icon, label }) => (
-                    <span
-                      key={label}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 backdrop-blur border border-white/20 px-2.5 py-1 text-[11px] font-semibold text-white"
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {label}
-                    </span>
+          <SectionShell
+            tone="package"
+            step={1}
+            title="Package Overview"
+            subtitle="Cover, highlights and trip meta"
+            icon={Sparkles}
+          >
+            <div className="rounded-xl overflow-hidden border border-indigo-100 bg-white shadow-sm">
+              <div className="relative h-48 sm:h-56 overflow-hidden bg-slate-200">
+                {pkg?.coverImage ? (
+                  <img src={pkg.coverImage} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-sky-400 via-indigo-400 to-violet-500" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/25 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 space-y-2.5">
+                  <span className="inline-flex text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-indigo-500 text-white shadow-sm">
+                    Package Preview
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white drop-shadow-sm leading-snug">
+                    {pkg?.name}
+                    {durationLabel ? ` — ${durationLabel}` : ''}
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    {heroTags.map(({ icon: Icon, label }) => (
+                      <span
+                        key={label}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-white/20 backdrop-blur border border-white/25 px-2.5 py-1 text-[11px] font-semibold text-white"
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-4 sm:px-5 py-4 space-y-4 bg-gradient-to-b from-indigo-50/50 to-white">
+                <PackageDescription
+                  text={pkg?.description || pkg?.shortDescription}
+                  fallback={`Experience ${pkg?.destination || 'the hills'} with curated stays, private transfers and handpicked sightseeing — fully customisable for your guest.`}
+                />
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  {metaRow.map(({ icon: Icon, label, value, tone }) => (
+                    <div key={label} className={cn('rounded-xl border px-3 py-2.5', tone)}>
+                      <p className="text-[10px] font-bold uppercase tracking-wide opacity-80 inline-flex items-center gap-1">
+                        <Icon className="w-3 h-3" />
+                        {label}
+                      </p>
+                      <p className="text-sm font-bold text-slate-900 mt-1 truncate">{value}</p>
+                    </div>
                   ))}
                 </div>
               </div>
             </div>
+          </SectionShell>
 
-            <div className="px-5 sm:px-6 py-5 space-y-5">
-              <PackageDescription
-                text={pkg?.description || pkg?.shortDescription}
-                fallback={`Experience ${pkg?.destination || 'the hills'} with curated stays, private transfers and handpicked sightseeing — fully customisable for your guest.`}
-              />
+          <SectionShell
+            tone="route"
+            step={2}
+            title="Destination Flow"
+            subtitle="Pickup → stops → drop — drag to reorder"
+            icon={Route}
+          >
+            <PackageDestinationFlow destinations={destinations} onChange={setDestinations} embedded />
+          </SectionShell>
 
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {metaRow.map(({ icon: Icon, label, value }) => (
-                  <div
-                    key={label}
-                    className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5"
-                  >
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 inline-flex items-center gap-1">
-                      <Icon className="w-3 h-3 text-violet-500" />
-                      {label}
-                    </p>
-                    <p className="text-sm font-semibold text-slate-800 mt-1 truncate">{value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <PackageDestinationFlow destinations={destinations} onChange={setDestinations} />
-
-          {/* Transport & Stay twin cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
-                    <Car className="w-4 h-4" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900">Transport</p>
-                    <p className="text-[11px] text-slate-500">Private vehicle for the trip</p>
-                  </div>
-                </div>
-                {packageCabs.length > 0 && <ChangeBtn onClick={openCabPicker} />}
+            <SectionShell
+              tone="travel"
+              step={3}
+              title="Transport"
+              subtitle="Private vehicle for the trip"
+              icon={Car}
+              action={packageCabs.length > 0 ? <ChangeBtn onClick={openCabPicker} /> : null}
+              className="h-full"
+            >
+              <div className="rounded-xl border border-sky-200 bg-white/80 px-3.5 py-3">
+                <p className="text-sm font-bold text-slate-900">
+                  {selectedUnoCab?.name || 'Sedan (Dzire / Etios)'}
+                </p>
+                <p className="text-xs text-sky-700/80 mt-1 font-medium">
+                  {[
+                    'AC Vehicle',
+                    selectedUnoCab?.seatingCapacity ? `${selectedUnoCab.seatingCapacity} Seats` : '4 Seats',
+                  ].join(' · ')}
+                </p>
               </div>
-              <p className="text-sm font-semibold text-slate-900">
-                {selectedUnoCab?.name || 'Sedan (Dzire / Etios)'}
-              </p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {[
-                  'AC Vehicle',
-                  selectedUnoCab?.seatingCapacity ? `${selectedUnoCab.seatingCapacity} Seats` : '4 Seats',
-                ].join(' · ')}
-              </p>
-            </div>
+            </SectionShell>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
-                    <Hotel className="w-4 h-4" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900">Stay</p>
-                    <p className="text-[11px] text-slate-500">Day-wise hotels from package</p>
-                  </div>
-                </div>
-                {stayOptions.length > 0 && <ChangeBtn onClick={openStayPicker} />}
+            <SectionShell
+              tone="stay"
+              step={3}
+              title="Stay"
+              subtitle="Hotels linked to this package"
+              icon={Hotel}
+              action={stayOptions.length > 0 ? <ChangeBtn onClick={openStayPicker} /> : null}
+              className="h-full"
+            >
+              <div className="rounded-xl border border-violet-200 bg-white/80 px-3.5 py-3">
+                <p className="text-sm font-bold text-slate-900">{staySummary.name}</p>
+                <p className="text-xs text-violet-700/80 mt-1 font-medium">{staySummary.detail}</p>
               </div>
-              <p className="text-sm font-semibold text-slate-900">{staySummary.name}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{staySummary.detail}</p>
-            </div>
+            </SectionShell>
           </div>
 
-          <PackageBuilderDayTimeline
-            itinerary={itinerary}
-            dayWiseHotels={dayWiseHotels}
-            packageCab={selectedUnoCab}
-            onChange={onItineraryChange}
-            onOpenHotelPicker={openDayHotelPicker}
-            onChangeCab={openCabPicker}
-            destination={hotelDestination || pkg?.destination || 'Destination'}
-          />
+          <SectionShell
+            tone="itinerary"
+            step={4}
+            title="Day-wise Itinerary"
+            subtitle="Each day has its own color strip — hotels, cab & activities"
+            icon={CalendarDays}
+          >
+            <PackageBuilderDayTimeline
+              itinerary={itinerary}
+              dayWiseHotels={dayWiseHotels}
+              packageCab={selectedUnoCab}
+              onChange={onItineraryChange}
+              onOpenHotelPicker={openDayHotelPicker}
+              onChangeCab={openCabPicker}
+              destination={hotelDestination || pkg?.destination || 'Destination'}
+              embedded
+            />
+          </SectionShell>
 
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-5">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Inclusions & Exclusions</h3>
-              <p className="text-xs text-slate-500">Edit what is included in this quotation</p>
-            </div>
+          <SectionShell
+            tone="policy"
+            step={5}
+            title="Inclusions & Exclusions"
+            subtitle="Green = included · Rose = not included"
+            icon={ListChecks}
+          >
             <InclusionExclusionEditor
               inclusions={inclusions}
               exclusions={exclusions}
               onChangeInclusions={onInclusionsChange}
               onChangeExclusions={onExclusionsChange}
             />
-          </div>
+          </SectionShell>
 
           {showPreview && draftQuote && (
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-              <h3 className="text-base font-bold text-slate-900 mb-4">Live PDF Preview</h3>
+            <SectionShell tone="preview" step={6} title="Live PDF Preview" subtitle="What the guest will see" icon={FileText}>
               <QuotePdfPreview quote={draftQuote} />
-            </div>
+            </SectionShell>
           )}
         </div>
 
