@@ -309,19 +309,27 @@ function HotelListRow({ option, selected, loading, onSelect, showDay, index, bas
 
           <div className="sm:text-right shrink-0 space-y-2 sm:min-w-[148px]">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">vs current hotel</p>
-              <p className={cn('text-lg font-black leading-none mt-0.5', rel.tone)}>{rel.primary}</p>
-              <p className="text-[10px] font-medium text-slate-400 mt-1">{rel.hint}</p>
-              {rel.secondary && (
-                <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
-                  Rate {rel.secondary}
-                  <span className="text-slate-400 font-medium"> /night</span>
-                </p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                {amount > 0 ? 'From' : 'Package'}
+              </p>
+              <p className="text-lg font-black text-violet-700 leading-none mt-0.5">
+                {amount > 0 ? formatINR(amount) : 'Included'}
+              </p>
+              {amount > 0 && (
+                <p className="text-[10px] font-medium text-slate-400 mt-0.5">Per night</p>
               )}
+              <p className={cn('text-sm font-black mt-1.5 leading-none', rel.tone)}>
+                {selected ? 'Current hotel' : rel.primary}
+              </p>
+              <p className="text-[10px] font-medium text-slate-400 mt-1">
+                {selected ? 'Your selection' : rel.hint}
+              </p>
             </div>
-            <span className={cn('inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-bold', rel.chip)}>
-              {selected ? 'Current selection' : rel.primary}
-            </span>
+            {!selected && (
+              <span className={cn('inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-bold', rel.chip)}>
+                vs current · {rel.primary}
+              </span>
+            )}
             <button
               type="button"
               disabled={loading}
