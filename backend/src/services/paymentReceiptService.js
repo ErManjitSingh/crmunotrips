@@ -9,7 +9,7 @@ const { isEmailConfigured, normalizeRecipients } = require('./emailService');
 const { invalidateMailboxCache } = require('./emailMailboxCache');
 
 /** Bump when HTML layout changes so stored receipts regenerate. */
-const RECEIPT_TEMPLATE_VERSION = 5;
+const RECEIPT_TEMPLATE_VERSION = 6;
 
 const COMPANY = {
   name: 'UNO Trips',
@@ -202,7 +202,7 @@ function buildPaymentReceiptHtml({
   .val{font-size:15px;font-weight:800;color:#0f172a;margin:0;line-height:1.25}
   .meta{font-size:12px;color:#64748b;margin:4px 0 0;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
   .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#d1fae5;color:#047857;font-size:10px;font-weight:700}
-  .amounts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:18px 0 16px}
+  .amounts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:18px 0 14px}
   .amt{border-radius:16px;padding:16px 14px;position:relative;overflow:hidden}
   .amt .ai{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
   .amt span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:6px}
@@ -210,13 +210,31 @@ function buildPaymentReceiptHtml({
   .total{background:#ecfdf5}.total span{color:#047857}.total strong{color:#064e3b}.total .ai{background:#a7f3d0;color:#047857}
   .advance{background:#d1fae5}.advance span{color:#047857}.advance strong{color:#064e3b}.advance .ai{background:#6ee7b7;color:#047857}
   .balance{background:#ffedd5}.balance span{color:#c2410c}.balance strong{color:#9a3412}.balance .ai{background:#fdba74;color:#c2410c}
-  .note{display:flex;gap:12px;align-items:flex-start;background:#eff6ff;border-radius:14px;padding:14px 16px}
+  .company{margin-top:16px;display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
+  .panel{border:1px solid #e8eef3;border-radius:14px;padding:14px 16px;background:#f8fafc}
+  .panel h3{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;font-weight:800}
+  .panel p{margin:0 0 4px;font-size:12px;line-height:1.45;color:#334155}
+  .panel strong{color:#0f172a}
+  .tax{margin-top:14px;border:1px solid #e8eef3;border-radius:14px;overflow:hidden}
+  .tax table{width:100%;border-collapse:collapse;font-size:12px}
+  .tax th,.tax td{padding:9px 14px;border-bottom:1px solid #eef2f6}
+  .tax th{text-align:left;background:#f8fafc;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+  .tax td.tar{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+  .tax tr:last-child td{border-bottom:none;background:#ecfdf5;font-weight:800;font-size:13px;color:#064e3b}
+  .bank{margin-top:14px;border-radius:14px;padding:14px 16px;background:#fefce8;border:1px solid #fde68a}
+  .bank h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#a16207;font-weight:800}
+  .bank p{margin:0;font-size:12px;line-height:1.5;color:#713f12;font-weight:600}
+  .terms{margin-top:14px;border-radius:14px;padding:14px 16px;background:#fffbeb;border:1px solid #fde68a}
+  .terms h3{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#a16207;font-weight:800}
+  .terms ol{margin:0;padding-left:18px}
+  .terms li{margin:3px 0;font-size:11px;line-height:1.45;color:#57534e}
+  .note{display:flex;gap:12px;align-items:flex-start;background:#eff6ff;border-radius:14px;padding:14px 16px;margin-top:14px}
   .note-ico{width:22px;height:22px;border-radius:50%;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:800;margin-top:1px}
   .note strong{display:block;color:#1d4ed8;font-size:13px;margin-bottom:3px}
   .note p{margin:0;font-size:12px;line-height:1.55;color:#475569}
   .foot{margin-top:18px;padding-top:14px;border-top:1px solid #e8eef3;font-size:11px;color:#94a3b8;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
   @media (max-width:640px){
-    .grid,.amounts{grid-template-columns:1fr}
+    .grid,.amounts,.company{grid-template-columns:1fr}
     .cell{border-right:none!important}
     .cell:nth-child(n+4){border-bottom:1px solid #eef2f6}
     .cell:last-child{border-bottom:none}
@@ -246,6 +264,24 @@ function buildPaymentReceiptHtml({
   </div>
 
   <div class="body">
+    <div class="company">
+      <div class="panel">
+        <h3>Company</h3>
+        <p><strong>${escapeHtml(COMPANY.name)}</strong> · ${escapeHtml(COMPANY.tagline)}</p>
+        <p>${escapeHtml(COMPANY.address)}</p>
+        <p><strong>GSTIN:</strong> ${escapeHtml(COMPANY.gstin)} &nbsp;·&nbsp; <strong>PAN:</strong> ${escapeHtml(COMPANY.pan)}</p>
+        <p><strong>HSN:</strong> ${escapeHtml(COMPANY.hsn)} &nbsp;·&nbsp; Original for Recipient</p>
+        ${COMPANY.phone ? `<p><strong>Phone:</strong> ${escapeHtml(COMPANY.phone)}</p>` : ''}
+      </div>
+      <div class="panel">
+        <h3>Guest</h3>
+        <p><strong>${escapeHtml(v.customerName)}</strong> · ${escapeHtml(v.leadBadge)}</p>
+        <p><strong>Phone:</strong> ${escapeHtml(v.customerPhone)}</p>
+        ${v.customerEmail ? `<p><strong>Email:</strong> ${escapeHtml(v.customerEmail)}</p>` : ''}
+        <p><strong>GSTIN:</strong> ${escapeHtml(v.customerGstin || '—')}</p>
+      </div>
+    </div>
+
     <div class="grid">
       <div class="cell">
         <div class="cell-top">
@@ -336,6 +372,34 @@ function buildPaymentReceiptHtml({
         <span>Balance Due</span>
         <strong>${escapeHtml(v.balanceLabel)}</strong>
       </div>
+    </div>
+
+    <div class="tax">
+      <table>
+        <tr><th style="width:70%">Particulars</th><th class="tar" style="text-align:right;width:30%">Amount (₹)</th></tr>
+        <tr><td>Token Amount</td><td class="tar">${escapeHtml(formatAmount(v.subTotal))}</td></tr>
+        <tr><td>Sub Total</td><td class="tar">${escapeHtml(formatAmount(v.subTotal, 0))}</td></tr>
+        <tr><td>CGST ${COMPANY.cgstRate}%</td><td class="tar">${escapeHtml(formatAmount(v.cgst, 0))}</td></tr>
+        <tr><td>SGST ${COMPANY.sgstRate}%</td><td class="tar">${escapeHtml(formatAmount(v.sgst, 0))}</td></tr>
+        <tr><td>Grand Total</td><td class="tar">${escapeHtml(formatAmount(v.grandTotal))}</td></tr>
+      </table>
+    </div>
+
+    <div class="bank">
+      <h3>Bank Details</h3>
+      <p>${escapeHtml(COMPANY.bankName)} &nbsp;·&nbsp; A/C: ${escapeHtml(COMPANY.accountNo)} &nbsp;·&nbsp; IFSC: ${escapeHtml(COMPANY.ifsc)}</p>
+    </div>
+
+    <div class="terms">
+      <h3>Terms &amp; Conditions</h3>
+      <ol>
+        <li>All payments to be made against the receipt of UNO Trips.</li>
+        <li>Interest will be charged @ 18% if not paid to us on presentation.</li>
+        <li>No claim and discrepancy shall be considered if not sent to us in writing and acknowledged by us within three days.</li>
+        <li>Please credit the amount in our bank account as mentioned above.</li>
+        <li>Computer generated signature is not required.</li>
+        <li>All disputes are subject to HO Shimla.</li>
+      </ol>
     </div>
 
     <div class="note">

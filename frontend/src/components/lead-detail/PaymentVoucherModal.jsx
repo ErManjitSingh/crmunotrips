@@ -215,6 +215,50 @@ export default function PaymentVoucherModal({
               </div>
             </div>
 
+            {v.company ? (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-[1.2fr_.8fr] gap-3">
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3.5">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 mb-2">Company</p>
+                  <p className="text-xs text-slate-700 leading-relaxed">
+                    <span className="font-bold text-slate-900">{v.company.name}</span>
+                    {v.company.tagline ? ` · ${v.company.tagline}` : ''}
+                  </p>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">{v.company.address}</p>
+                  <p className="text-xs text-slate-600 mt-1">
+                    <span className="font-semibold text-slate-800">GSTIN:</span> {v.company.gstin}
+                    {' · '}
+                    <span className="font-semibold text-slate-800">PAN:</span> {v.company.pan}
+                  </p>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    <span className="font-semibold text-slate-800">HSN:</span> {v.company.hsn || v.hsn}
+                    {' · '}Original for Recipient
+                  </p>
+                  {v.company.phone ? (
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      <span className="font-semibold text-slate-800">Phone:</span> {v.company.phone}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3.5">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 mb-2">Guest</p>
+                  <p className="text-xs text-slate-700">
+                    <span className="font-bold text-slate-900">{v.customerName}</span> · {v.leadBadge}
+                  </p>
+                  <p className="text-xs text-slate-600 mt-1">
+                    <span className="font-semibold text-slate-800">Phone:</span> {v.customerPhone}
+                  </p>
+                  {v.customerEmail ? (
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      <span className="font-semibold text-slate-800">Email:</span> {v.customerEmail}
+                    </p>
+                  ) : null}
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    <span className="font-semibold text-slate-800">GSTIN:</span> {v.customerGstin || '—'}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 rounded-2xl border border-slate-100 overflow-hidden divide-y sm:divide-y-0 sm:[&>*]:border-r sm:[&>*:nth-child(3n)]:border-r-0 sm:[&>*:nth-child(n+4)]:border-t border-slate-100 [&>*]:border-slate-100">
               <InfoCell
                 icon={User}
@@ -284,6 +328,61 @@ export default function PaymentVoucherModal({
               <MoneyCard icon={Wallet} label="Package Total" value={v.totalAmount} tone="total" />
               <MoneyCard icon={ArrowDownToLine} label="Advance Received" value={v.advanceReceived} tone="advance" />
               <MoneyCard icon={FileText} label="Balance Due" value={v.balanceDue} tone="balance" />
+            </div>
+
+            {v.grandTotal != null ? (
+              <div className="mt-4 rounded-2xl border border-slate-100 overflow-hidden">
+                <div className="grid grid-cols-[1fr_auto] gap-x-4 px-4 py-2 bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                  <span>Particulars</span>
+                  <span>Amount (₹)</span>
+                </div>
+                {[
+                  { label: 'Token Amount', value: v.subTotal },
+                  { label: 'Sub Total', value: v.subTotal, decimals: 0 },
+                  { label: `CGST ${v.cgstRate ?? 2.5}%`, value: v.cgst, decimals: 0 },
+                  { label: `SGST ${v.sgstRate ?? 2.5}%`, value: v.sgst, decimals: 0 },
+                ].map((row) => (
+                  <div key={row.label} className="grid grid-cols-[1fr_auto] gap-x-4 px-4 py-2.5 border-t border-slate-100 text-xs">
+                    <span className="text-slate-700">{row.label}</span>
+                    <span className="font-bold text-slate-900 metric-tabular">
+                      {Number(row.value || 0).toLocaleString('en-IN', {
+                        minimumFractionDigits: row.decimals ?? 2,
+                        maximumFractionDigits: row.decimals ?? 2,
+                      })}
+                    </span>
+                  </div>
+                ))}
+                <div className="grid grid-cols-[1fr_auto] gap-x-4 px-4 py-3 border-t border-emerald-100 bg-emerald-50 text-sm font-extrabold text-emerald-950">
+                  <span>Grand Total</span>
+                  <span className="metric-tabular">
+                    {Number(v.grandTotal || 0).toLocaleString('en-IN', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+              </div>
+            ) : null}
+
+            {v.company?.bankName ? (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5">
+                <p className="text-[10px] font-extrabold uppercase tracking-wide text-amber-800 mb-1">Bank Details</p>
+                <p className="text-xs font-semibold text-amber-950 leading-relaxed">
+                  {v.company.bankName} · A/C: {v.company.accountNo} · IFSC: {v.company.ifsc}
+                </p>
+              </div>
+            ) : null}
+
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3.5">
+              <p className="text-[10px] font-extrabold uppercase tracking-wide text-amber-800 mb-2">Terms &amp; Conditions</p>
+              <ol className="list-decimal pl-4 space-y-1 text-[11px] leading-relaxed text-stone-600">
+                <li>All payments to be made against the receipt of UNO Trips.</li>
+                <li>Interest will be charged @ 18% if not paid to us on presentation.</li>
+                <li>No claim and discrepancy shall be considered if not sent to us in writing and acknowledged by us within three days.</li>
+                <li>Please credit the amount in our bank account as mentioned above.</li>
+                <li>Computer generated signature is not required.</li>
+                <li>All disputes are subject to HO Shimla.</li>
+              </ol>
             </div>
 
             <div className="mt-4 flex gap-3 rounded-2xl bg-sky-50 px-4 py-3.5">
