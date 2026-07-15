@@ -70,7 +70,7 @@ export default function LeadContactActions({
         <ActionTile
           icon={Phone}
           label="Call"
-          description="Call this lead"
+          description="Make a call"
           tone="emerald"
           disabled={!phone}
           onClick={handleCall}

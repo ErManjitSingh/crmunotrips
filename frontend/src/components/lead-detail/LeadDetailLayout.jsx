@@ -62,10 +62,21 @@ export default function LeadDetailLayout({
 
   return (
     <>
-      <LeadDetailHeader lead={lead} backHref={backHref} backLabel={backLabel} />
+      <LeadDetailHeader
+        lead={lead}
+        backHref={backHref}
+        backLabel={backLabel}
+        editHref={canEditLead ? editHref : undefined}
+      />
       {headerExtra}
       <LeadStatusPipeline status={lead.status} />
-      <LeadConvertedBanner status={lead.status} />
+      <LeadConvertedBanner
+        status={lead.status}
+        bookingNumber={lead.paymentSummary?.bookingNumber}
+        onViewBooking={() =>
+          document.getElementById('payment-advance')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      />
       <LeadPaymentVoucherPanel
         lead={lead}
         paymentSummary={lead.paymentSummary}
@@ -85,7 +96,7 @@ export default function LeadDetailLayout({
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start mb-5">
-        <aside className="xl:col-span-3 space-y-4 order-2 xl:order-1">
+        <aside id="lead-customer-panel" className="xl:col-span-3 space-y-4 order-2 xl:order-1 scroll-mt-24">
           <LeadCustomerPanel lead={lead} />
         </aside>
 

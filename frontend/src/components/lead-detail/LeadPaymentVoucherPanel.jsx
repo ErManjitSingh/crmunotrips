@@ -1,13 +1,59 @@
 import { useState } from 'react';
-import { Eye, Printer, Wallet } from 'lucide-react';
+import {
+  Eye,
+  Printer,
+  Wallet,
+  ArrowDownCircle,
+  CreditCard,
+} from 'lucide-react';
 import API from '../../api/axios';
 import AppModal from '../ui/AppModal';
 import { Button } from '../ui/button';
 import { DETAIL_CARD } from './leadDetailUtils';
 import { toast } from '../../context/ToastContext';
+import { cn } from '../../lib/utils';
 
 function formatINR(n) {
-  return `₹${Number(n || 0).toLocaleString('en-IN')}`;
+  const num = Number(n || 0);
+  return `₹${num.toLocaleString('en-IN', { maximumFractionDigits: 1 })}`;
+}
+
+function MetricCard({ icon: Icon, label, value, tone }) {
+  const tones = {
+    violet: {
+      card: 'bg-[#f5f3ff] border-[#ddd6fe]',
+      icon: 'bg-violet-100 text-violet-600',
+      label: 'text-violet-700/80',
+      value: 'text-violet-950',
+    },
+    emerald: {
+      card: 'bg-[#ecfdf5] border-[#a7f3d0]',
+      icon: 'bg-emerald-100 text-emerald-600',
+      label: 'text-emerald-700/80',
+      value: 'text-emerald-950',
+    },
+    amber: {
+      card: 'bg-[#fff7ed] border-[#fed7aa]',
+      icon: 'bg-amber-100 text-amber-600',
+      label: 'text-amber-700/80',
+      value: 'text-amber-950',
+    },
+  };
+  const t = tones[tone] || tones.violet;
+
+  return (
+    <div className={cn('rounded-2xl border px-4 py-4 sm:px-5 sm:py-5', t.card)}>
+      <div className="flex items-center gap-2.5 mb-3">
+        <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', t.icon)}>
+          <Icon className="w-4 h-4" />
+        </span>
+        <p className={cn('text-[11px] font-bold uppercase tracking-wide', t.label)}>{label}</p>
+      </div>
+      <p className={cn('text-2xl sm:text-[28px] font-black tracking-tight metric-tabular leading-none', t.value)}>
+        {formatINR(value)}
+      </p>
+    </div>
+  );
 }
 
 export default function LeadPaymentVoucherPanel({
@@ -26,6 +72,12 @@ export default function LeadPaymentVoucherPanel({
   const endpoint =
     receiptEndpoint ||
     (lead?._id ? `/leads/${lead._id}/payment-receipt` : null);
+
+  const voucherLabel = summary.receiptNumber
+    ? `Voucher ${summary.receiptNumber}`
+    : summary.invoiceNumber
+      ? `Invoice ${summary.invoiceNumber}`
+      : 'Payment voucher';
 
   const openVoucher = async () => {
     if (!endpoint) return;
@@ -56,72 +108,46 @@ export default function LeadPaymentVoucherPanel({
 
   return (
     <>
-      <div className={`${DETAIL_CARD} overflow-hidden mb-6`}>
-        <div className="px-5 py-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 dark:border-emerald-800/40">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white">
-              <Wallet className="w-4 h-4" />
-            </span>
-            <div>
-              <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-100">Payment & Advance</h3>
-              <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80">
-                {summary.receiptNumber
-                  ? `Voucher ${summary.receiptNumber}`
-                  : summary.invoiceNumber
-                    ? `Invoice ${summary.invoiceNumber}`
-                    : 'Conversion payment summary'}
-              </p>
-            </div>
+      <div id="payment-advance" className={cn(DETAIL_CARD, 'overflow-hidden mb-6 scroll-mt-24')}>
+        <div className="px-5 pt-5 pb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Payment &amp; Advance</h3>
+            <p className="text-xs text-slate-500 mt-0.5">{voucherLabel}</p>
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={openVoucher}
+            disabled={loading}
+            className="rounded-xl h-10 px-4 gap-2 border-slate-200 text-slate-700 font-semibold bg-white hover:bg-slate-50 shrink-0"
+          >
+            <Eye className="w-4 h-4" />
+            {loading ? 'Loading…' : 'View Voucher'}
+          </Button>
         </div>
 
-        <div className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Package Total</p>
-            <p className="text-lg font-black text-slate-900 metric-tabular mt-1">{formatINR(summary.totalAmount)}</p>
-          </div>
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">Advance Received</p>
-            <p className="text-lg font-black text-emerald-800 metric-tabular mt-1">{formatINR(summary.advanceReceived)}</p>
-          </div>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Balance Due</p>
-            <p className="text-lg font-black text-amber-800 metric-tabular mt-1">{formatINR(summary.balanceDue)}</p>
-          </div>
+        <div className="px-5 pb-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <MetricCard icon={Wallet} label="Package Total" value={summary.totalAmount} tone="violet" />
+          <MetricCard icon={ArrowDownCircle} label="Advance Received" value={summary.advanceReceived} tone="emerald" />
+          <MetricCard icon={CreditCard} label="Balance Due" value={summary.balanceDue} tone="amber" />
         </div>
 
-        <div className="px-5 pb-5 flex flex-wrap items-center gap-2">
-          {(summary.hasReceipt || summary.receiptNumber || summary.paymentId) && (
-            <Button
-              type="button"
-              onClick={openVoucher}
-              disabled={loading}
-              className="rounded-xl gap-2 bg-emerald-600 hover:bg-emerald-500 text-white border-0"
-            >
-              <Eye className="w-4 h-4" />
-              {loading ? 'Loading…' : 'View Voucher'}
-            </Button>
-          )}
-          {summary.receiptSentAt ? (
-            <p className="text-[11px] text-slate-500 ml-auto">
-              Sent to customer{summary.receiptSentTo ? ` (${summary.receiptSentTo})` : ''} ·{' '}
+        {summary.receiptSentAt ? (
+          <div className="px-5 pb-4 -mt-1">
+            <p className="text-[11px] text-slate-500">
+              Voucher emailed to customer
+              {summary.receiptSentTo ? ` · ${summary.receiptSentTo}` : ''} ·{' '}
               {new Date(summary.receiptSentAt).toLocaleString('en-IN')}
             </p>
-          ) : (
-            <p className="text-[11px] text-amber-700/80">
-              Customer email is sent automatically when lead is converted (if email exists).
-            </p>
-          )}
-        </div>
+          </div>
+        ) : null}
       </div>
 
       <AppModal open={open} onClose={() => setOpen(false)} size="lg" className="p-0 overflow-hidden">
-        <div className="px-5 py-4 border-b border-subtle flex items-center justify-between gap-3 bg-emerald-50/80">
+        <div className="px-5 py-4 border-b border-subtle flex items-center justify-between gap-3 bg-white">
           <div>
             <h3 className="text-lg font-bold text-content-primary">Payment Voucher</h3>
-            <p className="text-xs text-content-muted mt-0.5">
-              Advance {formatINR(summary.advanceReceived)} · Balance {formatINR(summary.balanceDue)}
-            </p>
+            <p className="text-xs text-content-muted mt-0.5">{voucherLabel}</p>
           </div>
           <div className="flex gap-2">
             <Button type="button" variant="outline" className="rounded-xl gap-2" onClick={printVoucher}>
