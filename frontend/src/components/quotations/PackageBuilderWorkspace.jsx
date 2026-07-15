@@ -381,6 +381,25 @@ export default function PackageBuilderWorkspace({
     return firstMeta?.id || firstMeta?.hotelId || firstMeta?.name || null;
   }, [picker, itinerary]);
 
+  const hotelBasePrice = useMemo(() => {
+    if (picker?.type === 'hotel' && picker.day) {
+      const meta = picker.day.hotelMeta;
+      const dayHotel = (dayWiseHotels || []).find((h) => h.day === picker.day.day);
+      return Number(
+        dayHotel?.perNight ?? meta?.priceDelta ?? meta?.perNight ?? 0
+      ) || 0;
+    }
+    const firstMeta = itinerary?.find((d) => d.hotelMeta)?.hotelMeta;
+    const firstDayHotel = (dayWiseHotels || [])[0];
+    return Number(
+      firstDayHotel?.perNight ?? firstMeta?.priceDelta ?? firstMeta?.perNight ?? 0
+    ) || 0;
+  }, [picker, itinerary, dayWiseHotels]);
+
+  const cabBasePrice = Number(
+    selectedUnoCab?.cost ?? selectedUnoCab?.priceDelta ?? selectedUnoCab?.totalAmount ?? 0
+  ) || 0;
+
   const cabSelectedId =
     selectedUnoCab?.id || selectedUnoCab?.packageCabId || selectedUnoCab?.name || null;
 
@@ -592,10 +611,11 @@ export default function PackageBuilderWorkspace({
         onClose={() => setPicker(null)}
         mode="cab"
         title="Choose your cab"
-        subtitle="Private transfer options for this package"
+        subtitle="Prices show +extra or −savings vs your current cab"
         options={packageCabs}
         selectedId={cabSelectedId}
         onSelect={selectCab}
+        basePrice={cabBasePrice}
       />
 
       <PackageResourcePickerDrawer
@@ -618,6 +638,7 @@ export default function PackageBuilderWorkspace({
         showDayBadge={!picker?.day}
         nights={picker?.day?.stayNights || nights || 1}
         destination={hotelDestination || pkg?.destination || ''}
+        basePrice={hotelBasePrice}
       />
     </div>
   );
