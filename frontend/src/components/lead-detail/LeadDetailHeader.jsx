@@ -1,8 +1,25 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Phone, Mail, MapPin, Star, Flame, Pencil, ChevronRight } from 'lucide-react';
+import {
+  Phone,
+  Mail,
+  MapPin,
+  Star,
+  Flame,
+  Pencil,
+  ChevronRight,
+  Eye,
+  Printer,
+  Wallet,
+  ArrowDownCircle,
+  CreditCard,
+} from 'lucide-react';
 import { formatLeadId } from '../leads/constants';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
 import Avatar from '../ui/Avatar';
+import API from '../../api/axios';
+import AppModal from '../ui/AppModal';
+import { Button } from '../ui/button';
 import { normalizeLeadStatus } from '../../utils/leadUtils';
 import {
   getInitials,
@@ -10,6 +27,7 @@ import {
   computeLeadScores,
   DETAIL_CARD,
 } from './leadDetailUtils';
+import { toast } from '../../context/ToastContext';
 import { cn } from '../../lib/utils';
 
 function formatTravelRange(lead) {
@@ -57,6 +75,11 @@ function formatRelativeActivity(lead) {
   return `${days} day${days === 1 ? '' : 's'} ago`;
 }
 
+function formatINR(n) {
+  const num = Number(n || 0);
+  return `₹${num.toLocaleString('en-IN', { maximumFractionDigits: 1 })}`;
+}
+
 function ContactChip({ icon: Icon, children, href }) {
   const Comp = href ? 'a' : 'div';
   return (
@@ -82,11 +105,51 @@ function OverviewRow({ label, value, valueClass = '' }) {
   );
 }
 
+function PaymentMetric({ icon: Icon, label, value, tone }) {
+  const tones = {
+    violet: {
+      card: 'bg-[#f5f3ff] border-[#ddd6fe]',
+      icon: 'bg-violet-100 text-violet-600',
+      label: 'text-violet-700/80',
+      value: 'text-violet-950',
+    },
+    emerald: {
+      card: 'bg-[#ecfdf5] border-[#a7f3d0]',
+      icon: 'bg-emerald-100 text-emerald-600',
+      label: 'text-emerald-700/80',
+      value: 'text-emerald-950',
+    },
+    amber: {
+      card: 'bg-[#fff7ed] border-[#fed7aa]',
+      icon: 'bg-amber-100 text-amber-600',
+      label: 'text-amber-700/80',
+      value: 'text-amber-950',
+    },
+  };
+  const t = tones[tone] || tones.violet;
+
+  return (
+    <div className={cn('rounded-2xl border px-3.5 py-3.5 sm:px-4 sm:py-4', t.card)}>
+      <div className="flex items-center gap-2 mb-2.5">
+        <span className={cn('inline-flex h-8 w-8 items-center justify-center rounded-xl', t.icon)}>
+          <Icon className="w-3.5 h-3.5" />
+        </span>
+        <p className={cn('text-[10px] font-bold uppercase tracking-wide', t.label)}>{label}</p>
+      </div>
+      <p className={cn('text-xl sm:text-2xl font-black tracking-tight metric-tabular leading-none', t.value)}>
+        {formatINR(value)}
+      </p>
+    </div>
+  );
+}
+
 export default function LeadDetailHeader({
   lead,
   backHref = '/leads',
   backLabel = 'Back to Leads',
   editHref,
+  paymentSummary: summaryProp,
+  receiptEndpoint,
 }) {
   const status = normalizeLeadStatus(lead.status);
   const scores = computeLeadScores(lead);
@@ -94,6 +157,49 @@ export default function LeadDetailHeader({
   const tempCapitalized = temperature.charAt(0).toUpperCase() + temperature.slice(1);
   const isConverted = status === 'converted';
   const scorePct = Math.max(0, Math.min(100, Number(scores.overall) || 0));
+  const summary = summaryProp || lead?.paymentSummary;
+  const showPayment = Boolean(summary);
+
+  const [voucherOpen, setVoucherOpen] = useState(false);
+  const [voucherHtml, setVoucherHtml] = useState('');
+  const [voucherLoading, setVoucherLoading] = useState(false);
+
+  const endpoint =
+    receiptEndpoint ||
+    (lead?._id ? `/leads/${lead._id}/payment-receipt` : null);
+
+  const voucherLabel = summary?.receiptNumber
+    ? `Voucher ${summary.receiptNumber}`
+    : summary?.invoiceNumber
+      ? `Invoice ${summary.invoiceNumber}`
+      : 'Payment voucher';
+
+  const openVoucher = async () => {
+    if (!endpoint) return;
+    setVoucherLoading(true);
+    try {
+      const { data } = await API.get(endpoint, { skipSuccessToast: true });
+      setVoucherHtml(data.html || '');
+      setVoucherOpen(true);
+    } catch {
+      toast.error('Unable to load payment voucher');
+    } finally {
+      setVoucherLoading(false);
+    }
+  };
+
+  const printVoucher = () => {
+    if (!voucherHtml) return;
+    const w = window.open('', '_blank', 'noopener,noreferrer,width=800,height=900');
+    if (!w) {
+      toast.error('Popup blocked — allow popups to print voucher');
+      return;
+    }
+    w.document.write(voucherHtml);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
+  };
 
   return (
     <div className="mb-5">
@@ -115,16 +221,14 @@ export default function LeadDetailHeader({
         ) : null}
       </div>
 
-      <div className={cn(DETAIL_CARD, 'overflow-hidden')}>
-        <div className="p-5 sm:p-6 flex flex-col xl:flex-row xl:items-stretch gap-5">
+      <div id="payment-advance" className={cn(DETAIL_CARD, 'overflow-hidden scroll-mt-24')}>
+        <div className="p-5 sm:p-6 flex flex-col xl:flex-row min-w-0 xl:items-stretch gap-5">
           <div className="flex-1 min-w-0 space-y-4">
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-5">
               <div
                 className={cn(
                   'w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-full flex items-center justify-center text-2xl font-bold text-white shrink-0 shadow-md',
-                  isConverted
-                    ? 'bg-gradient-to-br from-violet-500 to-indigo-600'
-                    : 'bg-gradient-to-br from-violet-500 to-indigo-600'
+                  'bg-gradient-to-br from-violet-500 to-indigo-600'
                 )}
               >
                 {getInitials(lead.name)}
@@ -196,6 +300,39 @@ export default function LeadDetailHeader({
                 </div>
               </div>
             </div>
+
+            {showPayment ? (
+              <div className="pt-3 border-t border-slate-100 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Payment &amp; Advance</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{voucherLabel}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={openVoucher}
+                    disabled={voucherLoading}
+                    className="rounded-xl h-9 px-3.5 gap-2 border-slate-200 text-slate-700 font-semibold bg-white hover:bg-slate-50 shrink-0 self-start"
+                  >
+                    <Eye className="w-4 h-4" />
+                    {voucherLoading ? 'Loading…' : 'View Voucher'}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <PaymentMetric icon={Wallet} label="Package Total" value={summary.totalAmount} tone="violet" />
+                  <PaymentMetric icon={ArrowDownCircle} label="Advance Received" value={summary.advanceReceived} tone="emerald" />
+                  <PaymentMetric icon={CreditCard} label="Balance Due" value={summary.balanceDue} tone="amber" />
+                </div>
+                {summary.receiptSentAt ? (
+                  <p className="text-[11px] text-slate-500">
+                    Voucher emailed
+                    {summary.receiptSentTo ? ` · ${summary.receiptSentTo}` : ''} ·{' '}
+                    {new Date(summary.receiptSentAt).toLocaleString('en-IN')}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <div className="xl:w-[300px] shrink-0 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 flex flex-col">
@@ -235,6 +372,30 @@ export default function LeadDetailHeader({
           </div>
         </div>
       </div>
+
+      <AppModal open={voucherOpen} onClose={() => setVoucherOpen(false)} size="lg" className="p-0 overflow-hidden">
+        <div className="px-5 py-4 border-b border-subtle flex items-center justify-between gap-3 bg-white">
+          <div>
+            <h3 className="text-lg font-bold text-content-primary">Payment Voucher</h3>
+            <p className="text-xs text-content-muted mt-0.5">{voucherLabel}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" className="rounded-xl gap-2" onClick={printVoucher}>
+              <Printer className="w-4 h-4" /> Print
+            </Button>
+            <Button type="button" variant="secondary" className="rounded-xl" onClick={() => setVoucherOpen(false)}>
+              Close
+            </Button>
+          </div>
+        </div>
+        <div className="max-h-[70vh] overflow-auto bg-slate-100">
+          {voucherHtml ? (
+            <iframe title="Payment voucher" srcDoc={voucherHtml} className="w-full min-h-[70vh] border-0 bg-white" />
+          ) : (
+            <p className="p-8 text-center text-sm text-slate-500">No voucher HTML available</p>
+          )}
+        </div>
+      </AppModal>
     </div>
   );
 }

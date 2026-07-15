@@ -1,7 +1,6 @@
 import LeadDetailHeader from './LeadDetailHeader';
 import LeadStatusPipeline from './LeadStatusPipeline';
 import LeadConvertedBanner from './LeadConvertedBanner';
-import LeadPaymentVoucherPanel from './LeadPaymentVoucherPanel';
 import LeadContactActions from '../whatsapp-contact/LeadContactActions';
 import LeadCustomerPanel from './LeadCustomerPanel';
 import LeadActivityTimeline from './LeadActivityTimeline';
@@ -67,6 +66,8 @@ export default function LeadDetailLayout({
         backHref={backHref}
         backLabel={backLabel}
         editHref={canEditLead ? editHref : undefined}
+        paymentSummary={lead.paymentSummary}
+        receiptEndpoint={paymentReceiptEndpoint}
       />
       {headerExtra}
       <LeadStatusPipeline status={lead.status} />
@@ -76,11 +77,6 @@ export default function LeadDetailLayout({
         onViewBooking={() =>
           document.getElementById('payment-advance')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
-      />
-      <LeadPaymentVoucherPanel
-        lead={lead}
-        paymentSummary={lead.paymentSummary}
-        receiptEndpoint={paymentReceiptEndpoint}
       />
 
       <LeadContactActions
