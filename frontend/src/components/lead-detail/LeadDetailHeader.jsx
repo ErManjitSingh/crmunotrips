@@ -300,10 +300,10 @@ export default function LeadDetailHeader({
                   </div>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="emerald"
                     onClick={openVoucher}
                     disabled={voucherLoading}
-                    className="rounded-xl h-9 px-3.5 gap-2 border-slate-200 text-slate-700 font-semibold bg-white hover:bg-slate-50 shrink-0 self-start"
+                    className="rounded-xl h-9 px-4 gap-2 font-bold shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400/40 shrink-0 self-start"
                   >
                     <Eye className="w-4 h-4" />
                     {voucherLoading ? 'Loading…' : 'View Voucher'}
