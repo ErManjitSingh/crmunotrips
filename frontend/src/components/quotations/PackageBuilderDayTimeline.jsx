@@ -25,7 +25,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { defaultItineraryDay } from './quotationUtils';
+import { defaultItineraryDay, formatINR } from './quotationUtils';
 
 function Chip({ children }) {
   return (
@@ -80,6 +80,9 @@ function HotelCard({ meta, options = [], onOpenPicker, emptyLabel }) {
             )}
             {meta?.tierName && <span>{meta.tierName}</span>}
             {meta?.meals && <span>· {meta.meals}</span>}
+            {Number(meta?.priceDelta) > 0 && (
+              <span className="font-semibold text-emerald-600">· {formatINR(meta.priceDelta)}/night</span>
+            )}
           </div>
         </div>
       </div>

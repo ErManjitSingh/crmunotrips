@@ -196,14 +196,28 @@ export default function PackageBuilderWorkspace({
 
   const handleReplaceHotel = (day, option) => {
     if (!day || !option) return;
+    const roomName = option.room?.name || option.tierName || 'Standard Room';
+    const mealLabel = option.mealPlan?.label || option.meals || day.meals || 'As per package';
+    const perNight = Number(option.perNight ?? option.priceDelta ?? 0);
+    const stayNights = Math.max(1, Number(option.nights || day.stayNights || 1));
+    const totalCost = Number(option.totalCost ?? perNight * stayNights);
+    const hotelMeta = {
+      ...option,
+      tierName: roomName,
+      meals: mealLabel,
+      priceDelta: perNight,
+      room: option.room || { name: roomName },
+      mealPlan: option.mealPlan || { label: mealLabel },
+    };
+
     const nextItinerary = itinerary.map((d) => {
       if (d.id !== day.id && d.day !== day.day) return d;
       return {
         ...d,
         hotel: option.name,
         accommodation: option.name,
-        meals: option.meals || d.meals,
-        hotelMeta: option,
+        meals: mealLabel,
+        hotelMeta,
         hotelOptions: d.hotelOptions || [],
       };
     });
@@ -213,19 +227,21 @@ export default function PackageBuilderWorkspace({
     nextHotels.push({
       day: day.day,
       hotel: {
-        id: option.id,
+        id: option.id || option.hotelId,
         name: option.name,
         image: option.image || '',
         images: option.images || [],
         starCategory: option.starRating || 0,
         starRating: option.starRating || 0,
         location: option.location || '',
+        city: option.city || '',
+        slug: option.slug || '',
       },
-      room: { name: option.tierName || 'Standard Room' },
-      mealPlan: { label: option.meals || day.meals || 'As per package' },
-      perNight: Number(option.priceDelta || 0),
-      totalCost: Number(option.priceDelta || 0),
-      nights: day.stayNights || 1,
+      room: option.room || { name: roomName },
+      mealPlan: option.mealPlan || { label: mealLabel },
+      perNight,
+      totalCost,
+      nights: stayNights,
       fromPackage: true,
       hotelOptions: day.hotelOptions || [],
     });
@@ -482,13 +498,15 @@ export default function PackageBuilderWorkspace({
         }
         subtitle={
           picker?.day
-            ? 'Alternate stays available for this night'
-            : 'Tap an option to update the matching stay night'
+            ? 'Hotel → Room → Meal plan for this night'
+            : 'Select hotel, then room & meal plan with prices'
         }
         options={hotelDrawerOptions}
         selectedId={hotelSelectedId}
         onSelect={applyStayOption}
         showDayBadge={!picker?.day}
+        nights={picker?.day?.stayNights || nights || 1}
+        destination={hotelDestination || pkg?.destination || ''}
       />
     </div>
   );
