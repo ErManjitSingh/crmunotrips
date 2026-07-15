@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -37,10 +38,12 @@ function Chip({ icon: Icon, children }) {
   );
 }
 
-function HotelCard({ meta, options = [], onReplace }) {
-  if (!meta?.name) return null;
-  const image = meta.image || meta.images?.[0];
-  const stars = Math.min(5, Math.round(Number(meta.starRating || 0)));
+function HotelCard({ meta, options = [], onReplace, emptyLabel = 'No hotel for this night' }) {
+  const [picking, setPicking] = useState(false);
+  const image = meta?.image || meta?.images?.[0];
+  const stars = Math.min(5, Math.round(Number(meta?.starRating || 0)));
+  const hasOptions = options.length > 0;
+  const showPicker = picking || (!meta?.name && hasOptions);
 
   return (
     <div className="mb-3 rounded-2xl border border-slate-100 bg-slate-50/90 overflow-hidden">
@@ -56,13 +59,27 @@ function HotelCard({ meta, options = [], onReplace }) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500">Stay Included</p>
-              <p className="text-sm font-semibold text-slate-900 truncate">{meta.name}</p>
+              <p className="text-sm font-semibold text-slate-900 truncate">
+                {meta?.name || emptyLabel}
+              </p>
             </div>
-            {Number(meta.priceDelta) > 0 && (
-              <span className="text-xs font-bold text-emerald-600 metric-tabular shrink-0">
-                +{formatINR(meta.priceDelta)}
-              </span>
-            )}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {Number(meta?.priceDelta) > 0 && (
+                <span className="text-xs font-bold text-emerald-600 metric-tabular">
+                  +{formatINR(meta.priceDelta)}
+                </span>
+              )}
+              {hasOptions && (
+                <button
+                  type="button"
+                  onClick={() => setPicking((v) => !v)}
+                  className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg border border-violet-200 bg-white text-[10px] font-bold text-violet-700 hover:bg-violet-50"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  {picking ? 'Close' : 'Change Hotel'}
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-slate-500">
             {stars > 0 && (
@@ -71,36 +88,88 @@ function HotelCard({ meta, options = [], onReplace }) {
                 {stars}★
               </span>
             )}
-            {meta.tierName && <span>{meta.tierName}</span>}
-            {meta.meals && <span>· {meta.meals}</span>}
-            {meta.location && <span className="truncate">· {meta.location}</span>}
+            {meta?.tierName && <span>{meta.tierName}</span>}
+            {meta?.meals && <span>· {meta.meals}</span>}
+            {meta?.location && <span className="truncate">· {meta.location}</span>}
           </div>
         </div>
       </div>
 
-      {options.length > 1 && (
-        <div className="px-3 pb-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-2">
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 mr-1">
-            <RefreshCw className="w-3 h-3" /> Replace
-          </span>
-          {options.map((opt) => (
-            <button
-              key={opt.id || opt.name}
-              type="button"
-              onClick={() => onReplace?.(opt)}
-              className={cn(
-                'text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors',
-                (opt.id || opt.name) === (meta.id || meta.name)
-                  ? 'border-violet-400 bg-violet-50 text-violet-700'
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-violet-300'
-              )}
-            >
-              {opt.name}
-              {Number(opt.priceDelta) > 0 ? ` (+${formatINR(opt.priceDelta)})` : ''}
-            </button>
-          ))}
+      {showPicker && hasOptions && (
+        <div className="px-3 pb-3 border-t border-slate-100 pt-2 space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            Choose hotel for this night
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
+            {options.map((opt) => {
+              const active = (opt.id || opt.name) === (meta?.id || meta?.name);
+              return (
+                <button
+                  key={opt.id || opt.name}
+                  type="button"
+                  onClick={() => {
+                    onReplace?.(opt);
+                    setPicking(false);
+                  }}
+                  className={cn(
+                    'text-left text-[11px] font-semibold px-2.5 py-2 rounded-xl border transition-colors',
+                    active
+                      ? 'border-violet-400 bg-violet-50 text-violet-700'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-violet-300'
+                  )}
+                >
+                  <span className="block truncate">{opt.name}</span>
+                  {Number(opt.priceDelta) > 0 && (
+                    <span className="text-[10px] text-emerald-600">+{formatINR(opt.priceDelta)}</span>
+                  )}
+                  {opt.tierName && (
+                    <span className="block text-[10px] font-medium text-slate-400 mt-0.5">{opt.tierName}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function CabCard({ packageCab, onChangeCab }) {
+  if (!packageCab) return null;
+
+  return (
+    <div className="mb-3 flex gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3">
+      <div className="w-16 h-16 rounded-xl bg-white border border-emerald-100 flex items-center justify-center shrink-0 overflow-hidden">
+        {packageCab.featuredImage ? (
+          <img src={packageCab.featuredImage} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <Car className="w-6 h-6 text-emerald-600" />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">Cab Included</p>
+            <p className="text-sm font-semibold text-slate-900 truncate">{packageCab.name}</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {[packageCab.seatingCapacity ? `${packageCab.seatingCapacity} seats` : null, packageCab.cabCategory]
+                .filter(Boolean)
+                .join(' · ') || 'Package cab'}
+            </p>
+          </div>
+          {onChangeCab && (
+            <button
+              type="button"
+              onClick={onChangeCab}
+              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg border border-emerald-200 bg-white text-[10px] font-bold text-emerald-700 hover:bg-emerald-50 shrink-0"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Change Cab
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -113,7 +182,9 @@ function SortableDayCard({
   onRemove,
   onDuplicate,
   onReplaceHotel,
+  onChangeCab,
   canRemove,
+  isLastDay,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: day.id });
   const style = {
@@ -199,27 +270,11 @@ function SortableDayCard({
         meta={hotelMeta}
         options={hotelOptions}
         onReplace={(opt) => onReplaceHotel?.(day, opt)}
+        emptyLabel={isLastDay ? 'Departure day · no overnight stay' : 'Hotel not linked'}
       />
 
       {packageCab && day.day === 1 && (
-        <div className="mb-3 flex gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3">
-          <div className="w-16 h-16 rounded-xl bg-white border border-emerald-100 flex items-center justify-center shrink-0 overflow-hidden">
-            {packageCab.featuredImage ? (
-              <img src={packageCab.featuredImage} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <Car className="w-6 h-6 text-emerald-600" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">Cab Included</p>
-            <p className="text-sm font-semibold text-slate-900 truncate">{packageCab.name}</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              {[packageCab.seatingCapacity ? `${packageCab.seatingCapacity} seats` : null, packageCab.cabCategory]
-                .filter(Boolean)
-                .join(' · ') || 'Package cab'}
-            </p>
-          </div>
-        </div>
+        <CabCard packageCab={packageCab} onChangeCab={onChangeCab} />
       )}
 
       <textarea
@@ -259,6 +314,7 @@ export default function PackageBuilderDayTimeline({
   packageCab = null,
   onChange,
   onReplaceHotel,
+  onChangeCab,
   destination = 'Destination',
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -301,7 +357,7 @@ export default function PackageBuilderDayTimeline({
         <div>
           <h3 className="text-base font-bold text-slate-900">Day-wise Itinerary</h3>
           <p className="text-xs text-slate-500">
-            Hotels & cab from package API · drag to reorder · replace hotel options per day
+            Hotels & cab from package API · drag to reorder · change hotel / cab anytime
           </p>
         </div>
         <button
@@ -328,7 +384,9 @@ export default function PackageBuilderDayTimeline({
                   onRemove={() => removeDay(idx)}
                   onDuplicate={() => duplicateDay(idx)}
                   onReplaceHotel={onReplaceHotel}
+                  onChangeCab={onChangeCab}
                   canRemove={itinerary.length > 1}
+                  isLastDay={idx === itinerary.length - 1}
                 />
               );
             })}

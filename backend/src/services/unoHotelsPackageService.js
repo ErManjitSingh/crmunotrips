@@ -223,14 +223,77 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
   };
 }
 
+function dayKey(day = {}) {
+  return Number(day.day_number ?? day.day) || null;
+}
+
+function stayNightNumbers(stays = []) {
+  const nums = [];
+  for (const stay of Array.isArray(stays) ? stays : []) {
+    const cin = Number(stay.check_in_day);
+    const cout = Number(stay.check_out_day);
+    if (!Number.isFinite(cin) || !Number.isFinite(cout)) continue;
+    for (let d = cin; d < cout; d += 1) nums.push(d);
+  }
+  return nums;
+}
+
+function enrichItineraryWithStays(itinerary = [], stays = []) {
+  if (!Array.isArray(itinerary) || !itinerary.length) return [];
+  if (!Array.isArray(stays) || !stays.length) return itinerary;
+
+  return itinerary.map((day) => {
+    const dayNum = dayKey(day);
+    const stay = findStayForDay(stays, dayNum);
+    if (!stay) return day;
+
+    const hasHotel = Boolean(day.hotelMeta?.name || day.hotel);
+    const hasOptions = Array.isArray(day.hotelOptions) && day.hotelOptions.length > 0;
+    if (hasHotel && hasOptions) {
+      return {
+        ...day,
+        stayId: day.stayId || stay.id || null,
+        stayNights: day.stayNights || Number(stay.nights) || 1,
+      };
+    }
+
+    const hotelOptions = hotelOptionsFromStay(stay).map(mapHotelMeta).filter(Boolean);
+    const defaultHotel = hotelOptions.find((o) => o.isDefault) || hotelOptions[0] || null;
+    const hotelName = hasHotel
+      ? day.hotelMeta?.name || day.hotel
+      : defaultHotel?.name || '';
+
+    return {
+      ...day,
+      hotel: hotelName,
+      accommodation: hotelName || day.accommodation || '',
+      hotelMeta: day.hotelMeta?.name ? day.hotelMeta : defaultHotel,
+      hotelOptions: hasOptions ? day.hotelOptions : hotelOptions,
+      meals: day.meals || defaultHotel?.meals || formatMealPlanCode(stay.default_meal_plan),
+      stayId: day.stayId || stay.id || null,
+      stayNights: day.stayNights || Number(stay.nights) || 1,
+    };
+  });
+}
+
 function buildMergedItinerary(itineraryDays = [], optionDays = [], stays = []) {
   const itineraryByDay = new Map(
-    (Array.isArray(itineraryDays) ? itineraryDays : []).map((day) => [day.day_number, day])
+    (Array.isArray(itineraryDays) ? itineraryDays : [])
+      .map((day) => [dayKey(day), day])
+      .filter(([key]) => key)
   );
   const optionByDay = new Map(
-    (Array.isArray(optionDays) ? optionDays : []).map((day) => [day.day_number, day])
+    (Array.isArray(optionDays) ? optionDays : [])
+      .map((day) => [dayKey(day), day])
+      .filter(([key]) => key)
   );
-  const dayNumbers = [...new Set([...itineraryByDay.keys(), ...optionByDay.keys()])]
+  const dayNumbers = [
+    ...new Set([
+      ...itineraryByDay.keys(),
+      ...optionByDay.keys(),
+      ...stayNightNumbers(stays),
+    ]),
+  ]
     .filter(Boolean)
     .sort((a, b) => a - b);
 
@@ -307,7 +370,10 @@ async function attachItineraryFromDayOptions(mapped, slug, itineraryDaysFromPack
     if (packageCabs.length) mapped.packageCabs = packageCabs;
 
     if (days.length > 0 || packageItineraryDays.length > 0 || stays.length > 0) {
-      mapped.itinerary = buildMergedItinerary(packageItineraryDays, days, stays);
+      mapped.itinerary = enrichItineraryWithStays(
+        buildMergedItinerary(packageItineraryDays, days, stays),
+        stays
+      );
       return mapped;
     }
   } catch {
@@ -556,7 +622,7 @@ async function fetchUnoPackageById(packageId) {
 
 async function getUnoPackageById(packageId) {
   return cacheService.getOrSet(
-    `uno:packages:detail:v3:${packageId}`,
+    `uno:packages:detail:v4:${packageId}`,
     () => fetchUnoPackageById(packageId),
     DETAIL_CACHE_TTL_MS
   );

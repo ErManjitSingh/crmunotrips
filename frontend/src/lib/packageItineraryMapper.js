@@ -193,14 +193,78 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
   };
 }
 
+function dayKey(day = {}) {
+  return Number(day.day_number ?? day.day) || null;
+}
+
+function stayNightNumbers(stays = []) {
+  const nums = [];
+  for (const stay of Array.isArray(stays) ? stays : []) {
+    const cin = Number(stay.check_in_day);
+    const cout = Number(stay.check_out_day);
+    if (!Number.isFinite(cin) || !Number.isFinite(cout)) continue;
+    for (let d = cin; d < cout; d += 1) nums.push(d);
+  }
+  return nums;
+}
+
+/** Fill missing hotel / options on an existing itinerary from day-options stays[]. */
+export function enrichItineraryWithStays(itinerary = [], stays = []) {
+  if (!Array.isArray(itinerary) || !itinerary.length) return [];
+  if (!Array.isArray(stays) || !stays.length) return itinerary;
+
+  return itinerary.map((day) => {
+    const dayNum = dayKey(day);
+    const stay = findStayForDay(stays, dayNum);
+    if (!stay) return day;
+
+    const hasHotel = Boolean(day.hotelMeta?.name || day.hotel);
+    const hasOptions = Array.isArray(day.hotelOptions) && day.hotelOptions.length > 0;
+    if (hasHotel && hasOptions) {
+      return {
+        ...day,
+        stayId: day.stayId || stay.id || null,
+        stayNights: day.stayNights || Number(stay.nights) || 1,
+      };
+    }
+
+    const hotelOptions = hotelOptionsFromStay(stay).map(mapHotelOption).filter(Boolean);
+    const defaultHotel = hotelOptions.find((o) => o.isDefault) || hotelOptions[0] || null;
+    const hotelName = hasHotel
+      ? day.hotelMeta?.name || day.hotel
+      : defaultHotel?.name || '';
+
+    return {
+      ...day,
+      hotel: hotelName,
+      accommodation: hotelName || day.accommodation || '',
+      hotelMeta: day.hotelMeta?.name ? day.hotelMeta : defaultHotel,
+      hotelOptions: hasOptions ? day.hotelOptions : hotelOptions,
+      meals: day.meals || defaultHotel?.meals || formatMealPlanCode(stay.default_meal_plan),
+      stayId: day.stayId || stay.id || null,
+      stayNights: day.stayNights || Number(stay.nights) || 1,
+    };
+  });
+}
+
 export function buildMergedItinerary(itineraryDays = [], optionDays = [], stays = []) {
   const itineraryByDay = new Map(
-    (Array.isArray(itineraryDays) ? itineraryDays : []).map((day) => [day.day_number, day])
+    (Array.isArray(itineraryDays) ? itineraryDays : [])
+      .map((day) => [dayKey(day), day])
+      .filter(([key]) => key)
   );
   const optionByDay = new Map(
-    (Array.isArray(optionDays) ? optionDays : []).map((day) => [day.day_number, day])
+    (Array.isArray(optionDays) ? optionDays : [])
+      .map((day) => [dayKey(day), day])
+      .filter(([key]) => key)
   );
-  const dayNumbers = [...new Set([...itineraryByDay.keys(), ...optionByDay.keys()])]
+  const dayNumbers = [
+    ...new Set([
+      ...itineraryByDay.keys(),
+      ...optionByDay.keys(),
+      ...stayNightNumbers(stays),
+    ]),
+  ]
     .filter(Boolean)
     .sort((a, b) => a - b);
 
@@ -221,16 +285,29 @@ export function buildMergedItinerary(itineraryDays = [], optionDays = [], stays 
 export function resolvePackageItinerary(source = {}) {
   const itineraryDays = source._apiRaw?.package?.itinerary_days || source.itinerary_days || [];
   const optionDays = source._apiRaw?.dayOptions?.days || [];
-  const stays = source._apiRaw?.dayOptions?.stays || [];
+  const stays = source._apiRaw?.dayOptions?.stays || source.stays || [];
 
-  // Always prefer day-options merge when available (hotels live on stays[])
+  let merged = [];
   if (optionDays.length || itineraryDays.length || stays.length) {
-    const merged = buildMergedItinerary(itineraryDays, optionDays, stays);
-    if (merged.length) return merged;
+    merged = buildMergedItinerary(itineraryDays, optionDays, stays);
   }
 
-  const mappedItinerary = Array.isArray(source.itinerary) ? source.itinerary : [];
-  return mappedItinerary;
+  const existing = Array.isArray(source.itinerary) ? source.itinerary : [];
+  const mergedHasHotels = merged.some((d) => d.hotelMeta?.name || d.hotel);
+  const existingHasHotels = existing.some((d) => d.hotelMeta?.name || d.hotel);
+
+  // Prefer longer/hotel-rich itinerary, then always re-apply stays for missing nights
+  if (!merged.length) {
+    return enrichItineraryWithStays(existing, stays);
+  }
+  if (existing.length && existingHasHotels && !mergedHasHotels) {
+    return enrichItineraryWithStays(existing, stays);
+  }
+  if (existing.length > merged.length && !mergedHasHotels) {
+    return enrichItineraryWithStays(existing, stays);
+  }
+
+  return enrichItineraryWithStays(merged, stays);
 }
 
 /** Seed DayWiseHotelSelector / snapshot shape from itinerary hotelMeta. */

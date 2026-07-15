@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { ArrowLeft, Check, Car, Eye, EyeOff } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Check, Car, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { formatINR, getPackageTypeConfig } from './quotationUtils';
 import PackageDestinationFlow from './PackageDestinationFlow';
 import PackageBuilderDayTimeline from './PackageBuilderDayTimeline';
@@ -21,6 +21,58 @@ function parseDestinationStops(pkg, lead) {
     id: `dest-${i}-${typeof item === 'string' ? item : item.name || item}`,
     name: typeof item === 'string' ? item : item.name || String(item),
   }));
+}
+
+/** Strip HTML tags / entities so package descriptions render as plain text. */
+export function stripHtml(input = '') {
+  return String(input || '')
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\/\s*p\s*>/gi, '\n')
+    .replace(/<\/\s*div\s*>/gi, '\n')
+    .replace(/<\s*li[^>]*>/gi, '• ')
+    .replace(/<\/\s*li\s*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
+function PackageDescription({ text, fallback }) {
+  const [expanded, setExpanded] = useState(false);
+  const plain = stripHtml(text) || fallback || '';
+  if (!plain) return null;
+
+  const needsMore = plain.length > 140 || plain.split(/\n/).length > 2;
+
+  return (
+    <div className="space-y-1.5">
+      <p
+        className={cn(
+          'text-sm text-slate-600 leading-relaxed whitespace-pre-line',
+          !expanded && 'line-clamp-2'
+        )}
+      >
+        {plain}
+      </p>
+      {needsMore && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-xs font-bold text-violet-600 hover:text-violet-700"
+        >
+          {expanded ? 'Show less' : 'Read more'}
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function PackageBuilderWorkspace({
@@ -51,6 +103,8 @@ export default function PackageBuilderWorkspace({
 }) {
   const [destinations, setDestinations] = useState(() => parseDestinationStops(pkg, lead));
   const [showPreview, setShowPreview] = useState(false);
+  const [cabPickerOpen, setCabPickerOpen] = useState(false);
+  const cabSectionRef = useRef(null);
   const typeCfg = getPackageTypeConfig(pkg?.type || pkg?.category || 'family');
 
   const highlights = useMemo(() => {
@@ -74,6 +128,7 @@ export default function PackageBuilderWorkspace({
         accommodation: option.name,
         meals: option.meals || d.meals,
         hotelMeta: option,
+        hotelOptions: d.hotelOptions || [],
       };
     });
     onItineraryChange?.(nextItinerary);
@@ -94,11 +149,23 @@ export default function PackageBuilderWorkspace({
       mealPlan: { label: option.meals || day.meals || 'As per package' },
       perNight: Number(option.priceDelta || 0),
       totalCost: Number(option.priceDelta || 0),
-      nights: 1,
+      nights: day.stayNights || 1,
       fromPackage: true,
       hotelOptions: day.hotelOptions || [],
     });
     onDayWiseHotelsChange?.(nextHotels.sort((a, b) => a.day - b.day));
+  };
+
+  const openCabPicker = () => {
+    setCabPickerOpen(true);
+    requestAnimationFrame(() => {
+      cabSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
+
+  const selectCab = (cab) => {
+    onCabChange?.(cab);
+    setCabPickerOpen(false);
   };
 
   return (
@@ -145,10 +212,10 @@ export default function PackageBuilderWorkspace({
             )}
 
             <div className="px-6 py-5 space-y-4">
-              <p className="text-sm text-slate-600 leading-relaxed">
-                {pkg?.description ||
-                  `Customisable ${pkg?.destination || 'tour'} package for ${lead?.name || 'your guest'} — day-wise hotels and cabs loaded from package API.`}
-              </p>
+              <PackageDescription
+                text={pkg?.description || pkg?.shortDescription}
+                fallback={`Customisable ${pkg?.destination || 'tour'} package for ${lead?.name || 'your guest'} — day-wise hotels and cabs loaded from package API.`}
+              />
 
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {highlights.map((h) => (
@@ -188,52 +255,99 @@ export default function PackageBuilderWorkspace({
 
           <PackageDestinationFlow destinations={destinations} onChange={setDestinations} />
 
-          {/* Package cab picker — inline, not a separate tab */}
           {packageCabs.length > 0 && (
-            <div className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <Car className="w-4 h-4 text-emerald-600" />
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">Package Cab</p>
-                  <p className="text-xs text-slate-500">From day-options API · shown on Day 1</p>
+            <div
+              ref={cabSectionRef}
+              className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-sm"
+            >
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Car className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">Package Cab</p>
+                    <p className="text-xs text-slate-500 truncate">
+                      {selectedUnoCab
+                        ? `${selectedUnoCab.name}${selectedUnoCab.seatingCapacity ? ` · ${selectedUnoCab.seatingCapacity} seats` : ''}`
+                        : 'Pick a cab from package day-options'}
+                    </p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => (cabPickerOpen ? setCabPickerOpen(false) : openCabPicker())}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl border border-emerald-200 bg-emerald-50 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 shrink-0"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  {cabPickerOpen ? 'Hide options' : 'Change Cab'}
+                </button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {packageCabs.map((cab) => {
-                  const active = (selectedUnoCab?.id || selectedUnoCab?.packageCabId) === (cab.id || cab.packageCabId);
-                  return (
-                    <button
-                      key={cab.id || cab.packageCabId || cab.name}
-                      type="button"
-                      onClick={() => onCabChange?.(cab)}
-                      className={cn(
-                        'flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-all',
-                        active
-                          ? 'border-emerald-400 bg-emerald-50 ring-2 ring-emerald-400/20'
-                          : 'border-slate-200 hover:border-emerald-300'
-                      )}
-                    >
-                      <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
-                        {cab.featuredImage ? (
-                          <img src={cab.featuredImage} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <Car className="w-5 h-5 text-slate-400" />
+
+              {!cabPickerOpen && selectedUnoCab && (
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-2.5">
+                  <div className="w-14 h-14 rounded-lg bg-white border border-emerald-100 overflow-hidden shrink-0 flex items-center justify-center">
+                    {selectedUnoCab.featuredImage ? (
+                      <img src={selectedUnoCab.featuredImage} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <Car className="w-5 h-5 text-emerald-600" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{selectedUnoCab.name}</p>
+                    <p className="text-[11px] text-slate-500">
+                      {[selectedUnoCab.seatingCapacity ? `${selectedUnoCab.seatingCapacity} seats` : null, selectedUnoCab.isDefault ? 'Default' : null]
+                        .filter(Boolean)
+                        .join(' · ') || 'Selected cab'}
+                    </p>
+                  </div>
+                  {Number(selectedUnoCab.cost || selectedUnoCab.priceDelta) > 0 && (
+                    <p className="text-xs font-bold text-emerald-600 shrink-0">
+                      {formatINR(selectedUnoCab.cost || selectedUnoCab.priceDelta)}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {(!selectedUnoCab || cabPickerOpen) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {packageCabs.map((cab) => {
+                    const active =
+                      (selectedUnoCab?.id || selectedUnoCab?.packageCabId) === (cab.id || cab.packageCabId);
+                    return (
+                      <button
+                        key={cab.id || cab.packageCabId || cab.name}
+                        type="button"
+                        onClick={() => selectCab(cab)}
+                        className={cn(
+                          'flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-all',
+                          active
+                            ? 'border-emerald-400 bg-emerald-50 ring-2 ring-emerald-400/20'
+                            : 'border-slate-200 hover:border-emerald-300'
                         )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-slate-900 truncate">{cab.name}</p>
-                        <p className="text-[10px] text-slate-500">
-                          {cab.seatingCapacity ? `${cab.seatingCapacity} seats` : 'Cab'}
-                          {cab.isDefault ? ' · Default' : ''}
-                        </p>
-                        {Number(cab.cost || cab.priceDelta) > 0 && (
-                          <p className="text-[10px] font-bold text-emerald-600">{formatINR(cab.cost || cab.priceDelta)}</p>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                      >
+                        <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
+                          {cab.featuredImage ? (
+                            <img src={cab.featuredImage} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <Car className="w-5 h-5 text-slate-400" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-slate-900 truncate">{cab.name}</p>
+                          <p className="text-[10px] text-slate-500">
+                            {cab.seatingCapacity ? `${cab.seatingCapacity} seats` : 'Cab'}
+                            {cab.isDefault ? ' · Default' : ''}
+                          </p>
+                          {Number(cab.cost || cab.priceDelta) > 0 && (
+                            <p className="text-[10px] font-bold text-emerald-600">
+                              {formatINR(cab.cost || cab.priceDelta)}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -243,6 +357,7 @@ export default function PackageBuilderWorkspace({
             packageCab={selectedUnoCab}
             onChange={onItineraryChange}
             onReplaceHotel={handleReplaceHotel}
+            onChangeCab={openCabPicker}
             destination={hotelDestination || pkg?.destination || 'Destination'}
           />
 
