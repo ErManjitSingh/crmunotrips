@@ -1,30 +1,12 @@
 import { useMemo, useState } from 'react';
-import {
-  ArrowLeft,
-  Check,
-  Hotel as HotelIcon,
-  Car,
-  Sparkles,
-  ListChecks,
-  Eye,
-} from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { ArrowLeft, Check, Car, Eye, EyeOff } from 'lucide-react';
 import { formatINR, getPackageTypeConfig } from './quotationUtils';
 import PackageDestinationFlow from './PackageDestinationFlow';
 import PackageBuilderDayTimeline from './PackageBuilderDayTimeline';
 import PackageBuilderPriceSidebar from './PackageBuilderPriceSidebar';
-import DayWiseHotelSelector from './DayWiseHotelSelector';
-import UnoCabSelector from './UnoCabSelector';
 import InclusionExclusionEditor from './InclusionExclusionEditor';
 import QuotePdfPreview from './QuotePdfPreview';
-
-const SECTIONS = [
-  { id: 'itinerary', label: 'Itinerary', icon: Sparkles },
-  { id: 'hotels', label: 'Hotels', icon: HotelIcon },
-  { id: 'cab', label: 'Cab', icon: Car },
-  { id: 'inclusions', label: 'Inclusions', icon: ListChecks },
-  { id: 'preview', label: 'Preview', icon: Eye },
-];
+import { cn } from '../../lib/utils';
 
 function parseDestinationStops(pkg, lead) {
   const raw =
@@ -67,8 +49,8 @@ export default function PackageBuilderWorkspace({
   draftLabel,
   submitLabel,
 }) {
-  const [section, setSection] = useState('itinerary');
   const [destinations, setDestinations] = useState(() => parseDestinationStops(pkg, lead));
+  const [showPreview, setShowPreview] = useState(false);
   const typeCfg = getPackageTypeConfig(pkg?.type || pkg?.category || 'family');
 
   const highlights = useMemo(() => {
@@ -76,11 +58,48 @@ export default function PackageBuilderWorkspace({
     if (nights != null) lines.push(`${nights} Nights Stay`);
     if (itinerary?.length) lines.push(`${itinerary.length} Days Itinerary`);
     if (pkg?.durationLabel) lines.push(pkg.durationLabel);
-    const mealHint = itinerary?.some((d) => /breakfast|dinner|lunch/i.test(d.meals || ''));
+    const mealHint = itinerary?.some((d) => /breakfast|dinner|lunch/i.test(d.meals || d.hotelMeta?.meals || ''));
     if (mealHint) lines.push('Daily Breakfast & Dinner');
-    lines.push('Private Transfers');
+    if (selectedUnoCab?.name || packageCabs[0]?.name) lines.push('Private Cab Included');
     return lines.slice(0, 6);
-  }, [nights, itinerary, pkg]);
+  }, [nights, itinerary, pkg, selectedUnoCab, packageCabs]);
+
+  const handleReplaceHotel = (day, option) => {
+    if (!day || !option) return;
+    const nextItinerary = itinerary.map((d) => {
+      if (d.id !== day.id && d.day !== day.day) return d;
+      return {
+        ...d,
+        hotel: option.name,
+        accommodation: option.name,
+        meals: option.meals || d.meals,
+        hotelMeta: option,
+      };
+    });
+    onItineraryChange?.(nextItinerary);
+
+    const nextHotels = (dayWiseHotels || []).filter((h) => h.day !== day.day);
+    nextHotels.push({
+      day: day.day,
+      hotel: {
+        id: option.id,
+        name: option.name,
+        image: option.image || '',
+        images: option.images || [],
+        starCategory: option.starRating || 0,
+        starRating: option.starRating || 0,
+        location: option.location || '',
+      },
+      room: { name: option.tierName || 'Standard Room' },
+      mealPlan: { label: option.meals || day.meals || 'As per package' },
+      perNight: Number(option.priceDelta || 0),
+      totalCost: Number(option.priceDelta || 0),
+      nights: 1,
+      fromPackage: true,
+      hotelOptions: day.hotelOptions || [],
+    });
+    onDayWiseHotelsChange?.(nextHotels.sort((a, b) => a.day - b.day));
+  };
 
   return (
     <div className="space-y-5">
@@ -92,29 +111,18 @@ export default function PackageBuilderWorkspace({
         >
           <ArrowLeft className="w-4 h-4" /> Change package
         </button>
-        <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
-          {SECTIONS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setSection(id)}
-              className={cn(
-                'inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-colors',
-                section === id
-                  ? 'bg-violet-600 text-white shadow-sm'
-                  : 'text-slate-500 hover:bg-slate-50'
-              )}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </button>
-          ))}
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowPreview((v) => !v)}
+          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:border-violet-300"
+        >
+          {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+          {showPreview ? 'Hide Preview' : 'Show PDF Preview'}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
         <div className="space-y-5 min-w-0">
-          {/* Package hero — GTrip style */}
           <div className="rounded-[24px] border border-slate-200/80 bg-white overflow-hidden shadow-sm">
             {pkg?.coverImage ? (
               <div className="relative h-44 sm:h-56 overflow-hidden">
@@ -137,25 +145,21 @@ export default function PackageBuilderWorkspace({
             )}
 
             <div className="px-6 py-5 space-y-4">
-              {!pkg?.coverImage && null}
               <p className="text-sm text-slate-600 leading-relaxed">
                 {pkg?.description ||
-                  `Customisable ${pkg?.destination || 'tour'} package for ${lead?.name || 'your guest'} — hotels, cabs, meals and experiences loaded from live inventory.`}
+                  `Customisable ${pkg?.destination || 'tour'} package for ${lead?.name || 'your guest'} — day-wise hotels and cabs loaded from package API.`}
               </p>
 
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Tour Highlights</p>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {highlights.map((h) => (
-                    <li key={h} className="inline-flex items-start gap-2 text-sm text-slate-700">
-                      <span className="mt-0.5 w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                        <Check className="w-3 h-3" strokeWidth={3} />
-                      </span>
-                      {h}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {highlights.map((h) => (
+                  <li key={h} className="inline-flex items-start gap-2 text-sm text-slate-700">
+                    <span className="mt-0.5 w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                      <Check className="w-3 h-3" strokeWidth={3} />
+                    </span>
+                    {h}
+                  </li>
+                ))}
+              </ul>
 
               {lead && (
                 <div className="rounded-2xl border border-violet-100 bg-violet-50/50 px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -184,55 +188,80 @@ export default function PackageBuilderWorkspace({
 
           <PackageDestinationFlow destinations={destinations} onChange={setDestinations} />
 
-          {section === 'itinerary' && (
-            <PackageBuilderDayTimeline
-              itinerary={itinerary}
-              dayWiseHotels={dayWiseHotels}
-              onChange={onItineraryChange}
-              destination={hotelDestination || pkg?.destination || 'Destination'}
+          {/* Package cab picker — inline, not a separate tab */}
+          {packageCabs.length > 0 && (
+            <div className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Car className="w-4 h-4 text-emerald-600" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Package Cab</p>
+                  <p className="text-xs text-slate-500">From day-options API · shown on Day 1</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {packageCabs.map((cab) => {
+                  const active = (selectedUnoCab?.id || selectedUnoCab?.packageCabId) === (cab.id || cab.packageCabId);
+                  return (
+                    <button
+                      key={cab.id || cab.packageCabId || cab.name}
+                      type="button"
+                      onClick={() => onCabChange?.(cab)}
+                      className={cn(
+                        'flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-all',
+                        active
+                          ? 'border-emerald-400 bg-emerald-50 ring-2 ring-emerald-400/20'
+                          : 'border-slate-200 hover:border-emerald-300'
+                      )}
+                    >
+                      <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
+                        {cab.featuredImage ? (
+                          <img src={cab.featuredImage} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Car className="w-5 h-5 text-slate-400" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-900 truncate">{cab.name}</p>
+                        <p className="text-[10px] text-slate-500">
+                          {cab.seatingCapacity ? `${cab.seatingCapacity} seats` : 'Cab'}
+                          {cab.isDefault ? ' · Default' : ''}
+                        </p>
+                        {Number(cab.cost || cab.priceDelta) > 0 && (
+                          <p className="text-[10px] font-bold text-emerald-600">{formatINR(cab.cost || cab.priceDelta)}</p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <PackageBuilderDayTimeline
+            itinerary={itinerary}
+            dayWiseHotels={dayWiseHotels}
+            packageCab={selectedUnoCab}
+            onChange={onItineraryChange}
+            onReplaceHotel={handleReplaceHotel}
+            destination={hotelDestination || pkg?.destination || 'Destination'}
+          />
+
+          <div className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-sm space-y-5">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Inclusions & Exclusions</h3>
+              <p className="text-xs text-slate-500">Edit package inclusions on the same page</p>
+            </div>
+            <InclusionExclusionEditor
+              inclusions={inclusions}
+              exclusions={exclusions}
+              onChangeInclusions={onInclusionsChange}
+              onChangeExclusions={onExclusionsChange}
             />
-          )}
+          </div>
 
-          {section === 'hotels' && (
+          {showPreview && draftQuote && (
             <div className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-sm">
-              <h3 className="text-base font-bold text-slate-900 mb-1">Hotels & Meals</h3>
-              <p className="text-xs text-slate-500 mb-4">Live inventory from Hotel API — search, replace, choose room & meal plan</p>
-              <DayWiseHotelSelector
-                nights={nights}
-                destination={hotelDestination}
-                value={dayWiseHotels}
-                onChange={onDayWiseHotelsChange}
-              />
-            </div>
-          )}
-
-          {section === 'cab' && (
-            <div className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-sm">
-              <h3 className="text-base font-bold text-slate-900 mb-1">Cab & Transfers</h3>
-              <p className="text-xs text-slate-500 mb-4">Package-included and searchable cabs from Cab API</p>
-              <UnoCabSelector
-                lead={lead}
-                pkg={pkg}
-                packageCabs={packageCabs}
-                value={selectedUnoCab}
-                onChange={onCabChange}
-              />
-            </div>
-          )}
-
-          {section === 'inclusions' && (
-            <div className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-sm space-y-5">
-              <InclusionExclusionEditor
-                inclusions={inclusions}
-                exclusions={exclusions}
-                onChangeInclusions={onInclusionsChange}
-                onChangeExclusions={onExclusionsChange}
-              />
-            </div>
-          )}
-
-          {section === 'preview' && draftQuote && (
-            <div className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-sm">
+              <h3 className="text-base font-bold text-slate-900 mb-4">Live PDF Preview</h3>
               <QuotePdfPreview quote={draftQuote} />
             </div>
           )}
@@ -247,7 +276,7 @@ export default function PackageBuilderWorkspace({
           daysCount={itinerary?.length}
           onSaveDraft={onSaveDraft}
           onSubmit={onSubmit}
-          onPreview={() => setSection('preview')}
+          onPreview={() => setShowPreview(true)}
           saving={saving}
           draftLabel={draftLabel}
           submitLabel={submitLabel}

@@ -22,9 +22,11 @@ import {
   UtensilsCrossed,
   MapPin,
   Sparkles,
+  Star,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { defaultItineraryDay } from './quotationUtils';
+import { defaultItineraryDay, formatINR } from './quotationUtils';
 
 function Chip({ icon: Icon, children }) {
   return (
@@ -35,7 +37,84 @@ function Chip({ icon: Icon, children }) {
   );
 }
 
-function SortableDayCard({ day, hotelSel, onChange, onRemove, onDuplicate, canRemove }) {
+function HotelCard({ meta, options = [], onReplace }) {
+  if (!meta?.name) return null;
+  const image = meta.image || meta.images?.[0];
+  const stars = Math.min(5, Math.round(Number(meta.starRating || 0)));
+
+  return (
+    <div className="mb-3 rounded-2xl border border-slate-100 bg-slate-50/90 overflow-hidden">
+      <div className="flex gap-3 p-3">
+        <div className="w-[72px] h-[72px] rounded-xl bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center shrink-0 overflow-hidden">
+          {image ? (
+            <img src={image} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <Hotel className="w-7 h-7 text-violet-500" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500">Stay Included</p>
+              <p className="text-sm font-semibold text-slate-900 truncate">{meta.name}</p>
+            </div>
+            {Number(meta.priceDelta) > 0 && (
+              <span className="text-xs font-bold text-emerald-600 metric-tabular shrink-0">
+                +{formatINR(meta.priceDelta)}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-slate-500">
+            {stars > 0 && (
+              <span className="inline-flex items-center gap-0.5 text-amber-600 font-semibold">
+                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                {stars}★
+              </span>
+            )}
+            {meta.tierName && <span>{meta.tierName}</span>}
+            {meta.meals && <span>· {meta.meals}</span>}
+            {meta.location && <span className="truncate">· {meta.location}</span>}
+          </div>
+        </div>
+      </div>
+
+      {options.length > 1 && (
+        <div className="px-3 pb-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-2">
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 mr-1">
+            <RefreshCw className="w-3 h-3" /> Replace
+          </span>
+          {options.map((opt) => (
+            <button
+              key={opt.id || opt.name}
+              type="button"
+              onClick={() => onReplace?.(opt)}
+              className={cn(
+                'text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors',
+                (opt.id || opt.name) === (meta.id || meta.name)
+                  ? 'border-violet-400 bg-violet-50 text-violet-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-violet-300'
+              )}
+            >
+              {opt.name}
+              {Number(opt.priceDelta) > 0 ? ` (+${formatINR(opt.priceDelta)})` : ''}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SortableDayCard({
+  day,
+  hotelSel,
+  packageCab,
+  onChange,
+  onRemove,
+  onDuplicate,
+  onReplaceHotel,
+  canRemove,
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: day.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -44,6 +123,25 @@ function SortableDayCard({ day, hotelSel, onChange, onRemove, onDuplicate, canRe
   };
 
   const update = (field, value) => onChange({ ...day, [field]: value });
+
+  const hotelMeta =
+    day.hotelMeta ||
+    (hotelSel?.hotel
+      ? {
+          name: hotelSel.hotel.name,
+          image: hotelSel.hotel.image || hotelSel.hotel.images?.[0],
+          images: hotelSel.hotel.images,
+          starRating: hotelSel.hotel.starRating || hotelSel.hotel.starCategory,
+          meals: hotelSel.mealPlan?.label || day.meals,
+          tierName: hotelSel.room?.name,
+          location: hotelSel.hotel.location,
+          priceDelta: hotelSel.perNight,
+        }
+      : day.hotel
+        ? { name: day.hotel, meals: day.meals }
+        : null);
+
+  const hotelOptions = day.hotelOptions || hotelSel?.hotelOptions || [];
 
   return (
     <div
@@ -87,40 +185,39 @@ function SortableDayCard({ day, hotelSel, onChange, onRemove, onDuplicate, canRe
           </div>
 
           <div className="flex flex-wrap gap-1.5">
-            <Chip icon={Car}>{day.transport || 'Private Transfer'}</Chip>
-            <Chip icon={UtensilsCrossed}>{day.meals || 'Meals'}</Chip>
-            <Chip icon={MapPin}>{day.hotel || hotelSel?.hotel?.name || 'Stay'}</Chip>
+            <Chip icon={Car}>
+              {packageCab?.name || day.transport || 'Private Transfer'}
+            </Chip>
+            <Chip icon={UtensilsCrossed}>{hotelMeta?.meals || day.meals || 'Meals'}</Chip>
+            <Chip icon={MapPin}>{hotelMeta?.name || day.hotel || 'Stay'}</Chip>
+            {day.sightseeing && <Chip icon={Sparkles}>{day.sightseeing}</Chip>}
           </div>
         </div>
       </div>
 
-      {(hotelSel?.hotel || day.hotel) && (
-        <div className="mb-3 flex gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
-          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center shrink-0 overflow-hidden">
-            {hotelSel?.hotel?.image || hotelSel?.hotel?.images?.[0] ? (
-              <img
-                src={hotelSel.hotel.image || hotelSel.hotel.images[0]}
-                alt=""
-                className="w-full h-full object-cover"
-              />
+      <HotelCard
+        meta={hotelMeta}
+        options={hotelOptions}
+        onReplace={(opt) => onReplaceHotel?.(day, opt)}
+      />
+
+      {packageCab && day.day === 1 && (
+        <div className="mb-3 flex gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3">
+          <div className="w-16 h-16 rounded-xl bg-white border border-emerald-100 flex items-center justify-center shrink-0 overflow-hidden">
+            {packageCab.featuredImage ? (
+              <img src={packageCab.featuredImage} alt="" className="w-full h-full object-cover" />
             ) : (
-              <Hotel className="w-6 h-6 text-violet-500" />
+              <Car className="w-6 h-6 text-emerald-600" />
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-900 truncate">
-              {hotelSel?.hotel?.name || day.hotel}
-            </p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">Cab Included</p>
+            <p className="text-sm font-semibold text-slate-900 truncate">{packageCab.name}</p>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              {[hotelSel?.roomType?.name, hotelSel?.mealPlan?.label || day.meals]
+              {[packageCab.seatingCapacity ? `${packageCab.seatingCapacity} seats` : null, packageCab.cabCategory]
                 .filter(Boolean)
-                .join(' · ') || 'Hotel stay included'}
+                .join(' · ') || 'Package cab'}
             </p>
-            {hotelSel?.hotel?.starRating ? (
-              <p className="text-[11px] text-amber-600 font-semibold mt-1">
-                {'★'.repeat(Math.min(5, Number(hotelSel.hotel.starRating) || 0))}
-              </p>
-            ) : null}
           </div>
         </div>
       )}
@@ -159,7 +256,9 @@ function SortableDayCard({ day, hotelSel, onChange, onRemove, onDuplicate, canRe
 export default function PackageBuilderDayTimeline({
   itinerary = [],
   dayWiseHotels = [],
+  packageCab = null,
   onChange,
+  onReplaceHotel,
   destination = 'Destination',
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -201,7 +300,9 @@ export default function PackageBuilderDayTimeline({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-bold text-slate-900">Day-wise Itinerary</h3>
-          <p className="text-xs text-slate-500">Drag to reorder · edit hotels, meals, transfers & experiences</p>
+          <p className="text-xs text-slate-500">
+            Hotels & cab from package API · drag to reorder · replace hotel options per day
+          </p>
         </div>
         <button
           type="button"
@@ -222,9 +323,11 @@ export default function PackageBuilderDayTimeline({
                   key={day.id}
                   day={day}
                   hotelSel={hotelSel}
+                  packageCab={packageCab}
                   onChange={(d) => updateDay(idx, d)}
                   onRemove={() => removeDay(idx)}
                   onDuplicate={() => duplicateDay(idx)}
+                  onReplaceHotel={onReplaceHotel}
                   canRemove={itinerary.length > 1}
                 />
               );

@@ -10,7 +10,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { buildListParams, unwrapPagination } from '../../utils/apiHelpers';
 import { fetchUnoPublicPackages, fetchUnoPublicPackageDetail } from '../../lib/unoPublicPackages';
 import { logSelectedPackageDebug } from '../../lib/logPackageDebug';
-import { resolvePackageItinerary } from '../../lib/packageItineraryMapper';
+import { resolvePackageItinerary, seedDayWiseHotelsFromItinerary } from '../../lib/packageItineraryMapper';
 import { resolvePackageCabs } from '../../lib/packageCabMapper';
 import InclusionExclusionEditor, { cleanInclusionExclusionLines } from './InclusionExclusionEditor';
 import { sumDayWiseHotelCost } from './DayWiseHotelSelector';
@@ -350,10 +350,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       id: d.id || `day-${d.day || index + 1}`,
       day: d.day || index + 1,
     }));
+    const packageCabs = resolvePackageCabs(cloned);
     const normalized = {
       ...cloned,
       itinerary,
-      packageCabs: resolvePackageCabs(cloned),
+      packageCabs,
     };
     logSelectedPackageDebug(normalized, meta);
     setSelectedPkgDetail(normalized);
@@ -361,7 +362,15 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setCustomInclusions(normalized.inclusions?.length ? [...normalized.inclusions] : ['']);
     setCustomExclusions(normalized.exclusions?.length ? [...normalized.exclusions] : ['']);
     setCustomizeTab('itinerary');
-    setSelectedUnoCab(null);
+
+    // Seed day-wise hotels from API hotel_options (same hotels shown in itinerary)
+    const seededHotels = seedDayWiseHotelsFromItinerary(itinerary);
+    setDayWiseHotels(seededHotels);
+
+    // Auto-select default package cab from day-options
+    const defaultCab = packageCabs.find((c) => c.isDefault) || packageCabs[0] || null;
+    setSelectedUnoCab(defaultCab);
+
     setState((s) => ({
       ...s,
       pricing: {
