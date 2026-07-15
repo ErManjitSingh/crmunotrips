@@ -11,16 +11,64 @@ const {
   unoFetch,
 } = require('./unoHotelsApiClient');
 
-function buildMealPlanOptions(mealPlans = {}) {
+function extractWebsiteRoomRates(rates) {
+  if (!rates || typeof rates !== 'object') return null;
+  const room = rates.website?.room || rates.room || null;
+  if (!room || typeof room !== 'object') return null;
+  const ep = Number(room.ep || 0);
+  const cp = Number(room.cp || 0);
+  const mapRate = Number(room.map || 0);
+  const ap = Number(room.ap || 0);
+  if (!ep && !cp && !mapRate && !ap) return null;
+  return { ep, cp, map: mapRate, ap };
+}
+
+function buildMealPlanOptions(mealPlans = {}, rates = null) {
+  const fromRates = extractWebsiteRoomRates(rates);
+  if (fromRates) {
+    const positives = [fromRates.ep, fromRates.cp, fromRates.map, fromRates.ap].filter((n) => n > 0);
+    const base = fromRates.ep > 0 ? fromRates.ep : positives.length ? Math.min(...positives) : 0;
+    return [
+      {
+        key: 'ep',
+        label: 'EP (Room Only)',
+        price: Math.max(0, fromRates.ep - base),
+        absolutePrice: fromRates.ep,
+        meals: [],
+      },
+      {
+        key: 'cp',
+        label: 'CP — Breakfast',
+        price: Math.max(0, fromRates.cp - base),
+        absolutePrice: fromRates.cp,
+        meals: ['breakfast'],
+      },
+      {
+        key: 'map',
+        label: 'MAP — Breakfast + Dinner',
+        price: Math.max(0, fromRates.map - base),
+        absolutePrice: fromRates.map,
+        meals: ['breakfast', 'dinner'],
+      },
+      {
+        key: 'ap',
+        label: 'AP — All Meals',
+        price: Math.max(0, fromRates.ap - base),
+        absolutePrice: fromRates.ap,
+        meals: ['breakfast', 'lunch', 'dinner'],
+      },
+    ].filter((plan) => Number(plan.absolutePrice) > 0);
+  }
+
   const breakfast = Number(mealPlans.breakfast) || 0;
   const lunch = Number(mealPlans.lunch) || 0;
   const dinner = Number(mealPlans.dinner) || 0;
 
   return [
-    { key: 'ep', label: 'EP (Room Only)', price: 0, meals: [] },
-    { key: 'cp', label: 'CP — Breakfast', price: breakfast, meals: ['breakfast'] },
-    { key: 'map', label: 'MAP — Breakfast + Dinner', price: breakfast + dinner, meals: ['breakfast', 'dinner'] },
-    { key: 'ap', label: 'AP — All Meals', price: breakfast + lunch + dinner, meals: ['breakfast', 'lunch', 'dinner'] },
+    { key: 'ep', label: 'EP (Room Only)', price: 0, absolutePrice: 0, meals: [] },
+    { key: 'cp', label: 'CP — Breakfast', price: breakfast, absolutePrice: 0, meals: ['breakfast'] },
+    { key: 'map', label: 'MAP — Breakfast + Dinner', price: breakfast + dinner, absolutePrice: 0, meals: ['breakfast', 'dinner'] },
+    { key: 'ap', label: 'AP — All Meals', price: breakfast + lunch + dinner, absolutePrice: 0, meals: ['breakfast', 'lunch', 'dinner'] },
   ];
 }
 
@@ -51,6 +99,10 @@ function mapHotelSummary(hotel = {}) {
 }
 
 function mapRoom(room = {}) {
+  const rateMap = extractWebsiteRoomRates(room.rates);
+  const pricePerNight = Number(
+    room.price_per_night || rateMap?.ep || rateMap?.cp || rateMap?.map || rateMap?.ap || 0
+  );
   return {
     _id: room.id,
     id: room.id,
@@ -62,10 +114,12 @@ function mapRoom(room = {}) {
     sizeSqft: room.size_sqft,
     amenities: room.amenities || [],
     images: sanitizeImages(room.images, { allowDataImages: true }),
-    pricePerNight: Number(room.price_per_night || 0),
+    pricePerNight,
+    epPrice: Number(rateMap?.ep || pricePerNight || 0),
+    rates: rateMap,
     available: room.available !== false,
     availableCount: room.available_count,
-    mealPlanOptions: buildMealPlanOptions(room.meal_plans),
+    mealPlanOptions: buildMealPlanOptions(room.meal_plans, room.rates),
     rawMealPlans: room.meal_plans || {},
   };
 }

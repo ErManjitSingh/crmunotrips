@@ -31,10 +31,10 @@ const HOTEL_STEPS = [
 ];
 
 const FALLBACK_MEAL_PLANS = [
-  { key: 'ep', label: 'EP (Room Only)', price: 0, meals: [] },
-  { key: 'cp', label: 'CP — Breakfast', price: 0, meals: ['breakfast'] },
-  { key: 'map', label: 'MAP — Breakfast + Dinner', price: 0, meals: ['breakfast', 'dinner'] },
-  { key: 'ap', label: 'AP — All Meals', price: 0, meals: ['breakfast', 'lunch', 'dinner'] },
+  { key: 'ep', label: 'EP (Room Only)', price: 0, absolutePrice: 0, meals: [] },
+  { key: 'cp', label: 'CP — Breakfast', price: 0, absolutePrice: 0, meals: ['breakfast'] },
+  { key: 'map', label: 'MAP — Breakfast + Dinner', price: 0, absolutePrice: 0, meals: ['breakfast', 'dinner'] },
+  { key: 'ap', label: 'AP — All Meals', price: 0, absolutePrice: 0, meals: ['breakfast', 'lunch', 'dinner'] },
 ];
 
 const BADGE_STYLES = [
@@ -358,9 +358,10 @@ function HotelListRow({ option, selected, loading, onSelect, showDay, index, bas
   );
 }
 
-function RoomListRow({ room, hotel, selected, onSelect }) {
+function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0 }) {
   const image = room.images?.[0] || hotel?.thumbnailUrl || hotel?.images?.[0] || hotel?.image;
-  const price = Number(room.pricePerNight || 0);
+  const price = Number(room.pricePerNight || room.epPrice || 0);
+  const rel = formatRelativePrice(price, basePrice, { isCurrent: false });
 
   return (
     <button
@@ -396,20 +397,36 @@ function RoomListRow({ room, hotel, selected, onSelect }) {
                 <Users className="w-3 h-3" /> Max {room.maxOccupancy}
               </span>
             )}
+            {room.rates?.ep > 0 && (
+              <span className="rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
+                EP {formatINR(room.rates.ep)}
+              </span>
+            )}
           </div>
-          <p className="mt-2 text-base font-black text-violet-700">
-            {price > 0 ? formatINR(price) : 'Package rate'}
-            {price > 0 && <span className="text-[10px] font-medium text-slate-400"> / night</span>}
-          </p>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <p className="text-base font-black text-violet-700">
+                {price > 0 ? formatINR(price) : 'Package rate'}
+                {price > 0 && <span className="text-[10px] font-medium text-slate-400"> / night</span>}
+              </p>
+              <p className={cn('text-xs font-bold mt-0.5', rel.tone)}>{rel.primary}</p>
+            </div>
+            <span className={cn('inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-bold', rel.chip)}>
+              vs current
+            </span>
+          </div>
         </div>
       </div>
     </button>
   );
 }
 
-function MealPlanCard({ plan, roomPrice, nights, onSelect }) {
-  const perNight = Number(roomPrice || 0) + Number(plan.price || 0);
+function MealPlanCard({ plan, roomPrice, nights, onSelect, basePrice = 0 }) {
+  const absolute = Number(plan.absolutePrice || 0);
+  const perNight = absolute > 0 ? absolute : Number(roomPrice || 0) + Number(plan.price || 0);
   const total = perNight * Math.max(1, nights);
+  const rel = formatRelativePrice(perNight, basePrice, { isCurrent: false });
+  const hasSupplement = Number(plan.price || 0) > 0;
 
   return (
     <button
@@ -421,21 +438,29 @@ function MealPlanCard({ plan, roomPrice, nights, onSelect }) {
         <div>
           <p className="text-sm font-bold text-slate-900">{plan.label}</p>
           <p className="text-[11px] text-slate-500 mt-1">
-            {Number(plan.price) > 0 ? `+ ${formatINR(plan.price)} meal / night` : 'No meal supplement'}
+            {hasSupplement
+              ? `+ ${formatINR(plan.price)} vs EP room-only`
+              : absolute > 0
+                ? 'Room only rate'
+                : 'No meal supplement'}
           </p>
         </div>
         <UtensilsCrossed className="w-4 h-4 text-violet-400 shrink-0" />
       </div>
-      <div className="mt-3 pt-3 border-t border-slate-100 flex items-end justify-between">
+      <div className="mt-3 pt-3 border-t border-slate-100 flex items-end justify-between gap-2">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Per night</p>
-          <p className="text-sm font-bold text-slate-900">{formatINR(perNight)}</p>
+          <p className="text-sm font-black text-violet-700">{formatINR(perNight)}</p>
+          <p className={cn('text-xs font-bold mt-0.5', rel.tone)}>{rel.primary}</p>
         </div>
         <div className="text-right">
           <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
             {nights} night{nights !== 1 ? 's' : ''}
           </p>
-          <p className="text-base font-black text-violet-700">{formatINR(total)}</p>
+          <p className="text-base font-black text-slate-900">{formatINR(total)}</p>
+          <span className={cn('inline-flex mt-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold', rel.chip)}>
+            vs current
+          </span>
         </div>
       </div>
     </button>
@@ -598,7 +623,11 @@ export default function PackageResourcePickerDrawer({
 
   const selectMealPlan = (plan) => {
     if (!packageHotel || !selectedRoom) return;
-    const perNight = Number(selectedRoom.pricePerNight || 0) + Number(plan.price || 0);
+    const absolute = Number(plan.absolutePrice || 0);
+    const perNight =
+      absolute > 0
+        ? absolute
+        : Number(selectedRoom.pricePerNight || 0) + Number(plan.price || 0);
     const totalCost = perNight * stayNights;
     const catalogHotel = hotelDetail || packageHotel;
 
@@ -611,17 +640,23 @@ export default function PackageResourcePickerDrawer({
       location: catalogHotel.location || packageHotel.location || '',
       city: catalogHotel.city || packageHotel.city || '',
       slug: catalogHotel.slug || packageHotel.slug || '',
+      startingPrice: packageHotel.startingPrice || catalogHotel.startingPrice || 0,
       tierName: selectedRoom.name,
       meals: plan.label,
       priceDelta: perNight,
       room: {
         id: selectedRoom.id,
         name: selectedRoom.name,
-        pricePerNight: Number(selectedRoom.pricePerNight || 0),
+        pricePerNight: Number(selectedRoom.pricePerNight || absolute || 0),
         bedType: selectedRoom.bedType,
         maxOccupancy: selectedRoom.maxOccupancy,
       },
-      mealPlan: { key: plan.key, label: plan.label, price: Number(plan.price || 0) },
+      mealPlan: {
+        key: plan.key,
+        label: plan.label,
+        price: Number(plan.price || 0),
+        absolutePrice: absolute,
+      },
       perNight,
       totalCost,
       nights: stayNights,
@@ -830,6 +865,7 @@ export default function PackageResourcePickerDrawer({
                           hotel={hotelDetail || packageHotel}
                           selected={selectedRoom?.id === room.id}
                           onSelect={selectRoom}
+                          basePrice={basePrice}
                         />
                       ))}
                     </div>
@@ -875,6 +911,7 @@ export default function PackageResourcePickerDrawer({
                         roomPrice={selectedRoom.pricePerNight}
                         nights={stayNights}
                         onSelect={selectMealPlan}
+                        basePrice={basePrice}
                       />
                     ))}
                   </div>

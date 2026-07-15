@@ -363,7 +363,11 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
   const selectMealPlan = (mealPlan) => {
     const hotel = hotelDetail || value?.hotel;
     const room = value?.room;
-    const perNight = Number(room?.pricePerNight || 0) + Number(mealPlan?.price || 0);
+    const absolute = Number(mealPlan?.absolutePrice || 0);
+    const perNight =
+      absolute > 0
+        ? absolute
+        : Number(room?.pricePerNight || 0) + Number(mealPlan?.price || 0);
     const totalCost = perNight * Math.max(1, nights);
     onChange({ hotel, room, mealPlan, nights, perNight, totalCost });
   };
@@ -502,7 +506,11 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
           <div className="grid sm:grid-cols-2 gap-3">
             {(value.room.mealPlanOptions || []).map((plan) => {
               const selected = value?.mealPlan?.key === plan.key;
-              const perNight = Number(value.room.pricePerNight || 0) + Number(plan.price || 0);
+              const absolute = Number(plan.absolutePrice || 0);
+              const perNight =
+                absolute > 0
+                  ? absolute
+                  : Number(value.room.pricePerNight || 0) + Number(plan.price || 0);
               const total = perNight * Math.max(1, nights);
               return (
                 <button
@@ -520,8 +528,16 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
                     <p className="font-semibold">{plan.label}</p>
                     {selected && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
                   </div>
-                  <p className="text-xs text-content-muted mt-1.5">
-                    {plan.price > 0 ? `+ ${formatINR(plan.price)} / person / night` : 'Room only — no meals included'}
+                  <p className="text-sm font-bold text-emerald-700 mt-1.5">
+                    {formatINR(perNight)}
+                    <span className="text-xs font-medium text-content-muted"> / night</span>
+                  </p>
+                  <p className="text-xs text-content-muted mt-1">
+                    {Number(plan.price || 0) > 0
+                      ? `+ ${formatINR(plan.price)} vs EP`
+                      : absolute > 0
+                        ? 'Room only — no meals'
+                        : 'Included in room rate'}
                   </p>
                   {selected && (
                     <p className="text-sm font-bold text-emerald-700 mt-3 pt-3 border-t border-emerald-500/20">
