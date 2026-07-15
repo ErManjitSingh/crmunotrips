@@ -20,7 +20,7 @@ import PackageDestinationFlow from './PackageDestinationFlow';
 import PackageBuilderDayTimeline from './PackageBuilderDayTimeline';
 import PackageBuilderPriceSidebar from './PackageBuilderPriceSidebar';
 import InclusionExclusionEditor from './InclusionExclusionEditor';
-import QuotePdfPreview from './QuotePdfPreview';
+import QuotationPdfOverlay from './QuotationPdfOverlay';
 import PackageResourcePickerDrawer from './PackageResourcePickerDrawer';
 import { cn } from '../../lib/utils';
 
@@ -440,7 +440,7 @@ export default function PackageBuilderWorkspace({
             className="h-10 px-4 rounded-xl bg-violet-600 text-white text-sm font-semibold shadow-md shadow-violet-600/25 hover:bg-violet-500 inline-flex items-center gap-1.5"
           >
             <FileText className="w-4 h-4" />
-            Generate PDF Preview
+            Generate PDF
           </button>
         </div>
       </div>
@@ -587,12 +587,6 @@ export default function PackageBuilderWorkspace({
               onChangeExclusions={onExclusionsChange}
             />
           </SectionShell>
-
-          {showPreview && draftQuote && (
-            <SectionShell tone="preview" step={6} title="Live PDF Preview" subtitle="What the guest will see" icon={FileText}>
-              <QuotePdfPreview quote={draftQuote} />
-            </SectionShell>
-          )}
         </div>
 
         <PackageBuilderPriceSidebar
@@ -605,11 +599,18 @@ export default function PackageBuilderWorkspace({
           onSaveDraft={onSaveDraft}
           onSubmit={onSubmit}
           onPreview={() => setShowPreview(true)}
+          onPrint={() => setShowPreview(true)}
           saving={saving}
           draftLabel={draftLabel}
           submitLabel={submitLabel}
         />
       </div>
+
+      <QuotationPdfOverlay
+        quote={draftQuote}
+        open={showPreview && !!draftQuote}
+        onClose={() => setShowPreview(false)}
+      />
 
       <PackageResourcePickerDrawer
         open={picker?.type === 'cab'}

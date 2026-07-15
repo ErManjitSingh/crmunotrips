@@ -16,7 +16,7 @@ export function buildQuotationPrintDocument(contentHtml, title = 'Quotation') {
   <title>${safeTitle}</title>
   <style>
 ${quotePdfCss}
-    @page { margin: 10mm 12mm; size: A4 portrait; }
+    @page { margin: 8mm 10mm; size: A4 portrait; }
     html, body {
       margin: 0 !important;
       padding: 0 !important;
@@ -45,11 +45,11 @@ function waitForPrintDocument(doc, win) {
   return new Promise((resolve) => {
     const done = () => resolve();
     if (doc.readyState === 'complete') {
-      setTimeout(done, 350);
+      setTimeout(done, 500);
       return;
     }
-    win.addEventListener('load', () => setTimeout(done, 350), { once: true });
-    setTimeout(done, 2000);
+    win.addEventListener('load', () => setTimeout(done, 500), { once: true });
+    setTimeout(done, 3000);
   });
 }
 
@@ -76,7 +76,7 @@ export async function printQuotation(contentEl, title = 'Quotation') {
   doc.close();
 
   await waitForPrintDocument(doc, win);
-  await waitForImages(doc.body, 5000);
+  await waitForImages(doc.body, 8000);
 
   try {
     win.focus();

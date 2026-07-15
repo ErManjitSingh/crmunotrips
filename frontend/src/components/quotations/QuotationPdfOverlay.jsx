@@ -37,14 +37,14 @@ export default function QuotationPdfOverlay({ quote, open, onClose, pdfRef: exte
           <X className="w-4 h-4" /> Close
         </Button>
         <p className="text-sm font-medium text-slate-300 hidden sm:block order-last sm:order-none w-full sm:w-auto text-center">
-          {quote.quoteNumber} — Preview matches PDF / Print output
+          {quote.quoteNumber} — Preview matches printed PDF
         </p>
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={handleOpenTab} className="rounded-xl gap-2 border-slate-500 bg-slate-800 text-white hover:bg-slate-700 hidden sm:inline-flex">
             <ExternalLink className="w-4 h-4" /> Open Tab
           </Button>
           <Button onClick={handlePrint} className="rounded-xl gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0 shadow-md">
-            <Download className="w-4 h-4" /> Print / Save PDF
+            <Download className="w-4 h-4" /> Save as PDF
           </Button>
         </div>
       </div>

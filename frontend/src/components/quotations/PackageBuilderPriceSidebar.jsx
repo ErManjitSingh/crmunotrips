@@ -19,6 +19,7 @@ export default function PackageBuilderPriceSidebar({
   onSaveDraft,
   onSubmit,
   onPreview,
+  onPrint,
   saving,
   draftLabel = 'Save as Draft',
   submitLabel = 'Review & Continue',
@@ -149,7 +150,7 @@ export default function PackageBuilderPriceSidebar({
               { icon: Share2, label: 'Share', onClick: onPreview, tone: 'hover:border-sky-300 hover:text-sky-600 hover:bg-sky-50' },
               { icon: Mail, label: 'Mail', onClick: onPreview, tone: 'hover:border-violet-300 hover:text-violet-600 hover:bg-violet-50' },
               { icon: MessageCircle, label: 'WhatsApp', onClick: onPreview, tone: 'hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50' },
-              { icon: Printer, label: 'Print', onClick: () => window.print(), tone: 'hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50' },
+              { icon: Printer, label: 'Print', onClick: onPrint || onPreview, tone: 'hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50' },
             ].map((a) => (
               <button
                 key={a.label}

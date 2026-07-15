@@ -58,7 +58,7 @@ export function imgElementToDataUrl(img) {
 export async function cloneWithEmbeddedImages(contentEl) {
   if (!contentEl) return null;
 
-  await waitForImages(contentEl);
+  await waitForImages(contentEl, 10000);
 
   const clone = contentEl.cloneNode(true);
   const srcImgs = contentEl.querySelectorAll('img');

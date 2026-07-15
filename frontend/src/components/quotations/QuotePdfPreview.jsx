@@ -67,7 +67,6 @@ function HotelStayCard({ dayHotel, dayMeals }) {
 
   const hotelPhoto = dayHotel.hotelImages?.[0] || dayHotel.thumbnailUrl;
   const roomPhoto = dayHotel.roomImage || dayHotel.roomImages?.[0];
-  const viewPhoto = (dayHotel.hotelImages || []).slice(1, 2)[0];
   const mealPlan = dayHotel.meals || dayMeals || '—';
   const location = dayHotel.city || dayHotel.location || '—';
   const roomType = dayHotel.roomType || 'Deluxe';
@@ -77,32 +76,35 @@ function HotelStayCard({ dayHotel, dayMeals }) {
   const thumbs = [
     hotelPhoto && { src: hotelPhoto, label: 'Hotel', alt: dayHotel.name },
     roomPhoto && { src: roomPhoto, label: roomType, alt: roomType },
-    viewPhoto && { src: viewPhoto, label: 'Hotel View', alt: dayHotel.name },
   ].filter(Boolean);
 
   return (
     <div className="quote-ht-stay-card">
-      <div className="quote-ht-stay-loc">
-        <span className="quote-ht-stay-loc-icon">📍</span>
-        {location}
-      </div>
-
       <div className="quote-ht-stay-main">
         <div className="quote-ht-stay-info">
-          <div className="quote-ht-stay-brand">
-            <span className="quote-ht-stay-icon-box">🏨</span>
-            <div className="quote-ht-stay-text">
-              <div className="quote-ht-stay-label">Your Stay</div>
-              <h4 className="quote-ht-stay-name">{dayHotel.name}</h4>
-              {rating > 0 && (
-                <div className="quote-ht-stay-rating">
-                  <span className="quote-ht-stay-stars">{'★'.repeat(Math.min(5, Math.round(rating)))}</span>
-                  <span className="quote-ht-stay-rating-val">{rating.toFixed(1)}</span>
-                  {reviewCount > 0 && (
-                    <span className="quote-ht-stay-reviews">({reviewCount} reviews)</span>
-                  )}
-                </div>
+          <div className="quote-ht-stay-label">Your Stay</div>
+          <h4 className="quote-ht-stay-name">{dayHotel.name}</h4>
+          {rating > 0 && (
+            <div className="quote-ht-stay-rating">
+              <span className="quote-ht-stay-stars">{'★'.repeat(Math.min(5, Math.round(rating)))}</span>
+              <span className="quote-ht-stay-rating-val">{rating.toFixed(1)}</span>
+              {reviewCount > 0 && (
+                <span className="quote-ht-stay-reviews">({reviewCount} reviews)</span>
               )}
+            </div>
+          )}
+          <div className="quote-ht-stay-meta">
+            <div className="quote-ht-stay-meta-item">
+              <span className="quote-ht-stay-meta-label">Room</span>
+              <span className="quote-ht-stay-meta-value">{roomType}</span>
+            </div>
+            <div className="quote-ht-stay-meta-item">
+              <span className="quote-ht-stay-meta-label">Meals</span>
+              <span className="quote-ht-stay-meta-value">{mealPlan}</span>
+            </div>
+            <div className="quote-ht-stay-meta-item">
+              <span className="quote-ht-stay-meta-label">Location</span>
+              <span className="quote-ht-stay-meta-value">{location}</span>
             </div>
           </div>
         </div>
@@ -117,30 +119,6 @@ function HotelStayCard({ dayHotel, dayMeals }) {
             ))}
           </div>
         )}
-      </div>
-
-      <div className="quote-ht-stay-chips">
-        <div className="quote-ht-stay-chip">
-          <span className="quote-ht-stay-chip-icon">🛏</span>
-          <div>
-            <span className="quote-ht-stay-chip-label">Room Type</span>
-            <span className="quote-ht-stay-chip-value">{roomType}</span>
-          </div>
-        </div>
-        <div className="quote-ht-stay-chip">
-          <span className="quote-ht-stay-chip-icon">🍽</span>
-          <div>
-            <span className="quote-ht-stay-chip-label">Meal Plan</span>
-            <span className="quote-ht-stay-chip-value">{mealPlan}</span>
-          </div>
-        </div>
-        <div className="quote-ht-stay-chip">
-          <span className="quote-ht-stay-chip-icon">📍</span>
-          <div>
-            <span className="quote-ht-stay-chip-label">Location</span>
-            <span className="quote-ht-stay-chip-value">{location}</span>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -314,7 +292,7 @@ const QuotePdfPreview = forwardRef(function QuotePdfPreview({ quote }, ref) {
                     <h3 className="quote-ht-day-title">{day.title}</h3>
                     {(dayHotel?.meals || day.meals) && (
                       <span className="quote-ht-meals-pill">
-                        Meals: {dayHotel?.meals || day.meals}
+                        Meals · {dayHotel?.meals || day.meals}
                       </span>
                     )}
                   </div>
@@ -397,7 +375,7 @@ const QuotePdfPreview = forwardRef(function QuotePdfPreview({ quote }, ref) {
           <PolicyBlock title="Terms & Conditions" items={policies.terms} />
           <PolicyBlock title="Confirmation Policy" items={policies.confirmation} />
           <PolicyBlock title="Cancellation Policy" items={policies.cancellation} />
-          <PolicyBlock title="Amendment {Postpone & Prepone Policy}" items={policies.amendment} />
+          <PolicyBlock title="Amendment (Postpone & Prepone) Policy" items={policies.amendment} />
         </div>
       </PdfSection>
 
