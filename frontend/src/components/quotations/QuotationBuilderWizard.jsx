@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Save, FileText, ExternalLink, SkipForward, Sparkles, Map, CheckCircle2, CircleOff, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink, Search } from 'lucide-react';
 import API from '../../api/axios';
 import { Button } from '../ui/button';
 import Avatar from '../ui/Avatar';
@@ -13,16 +13,14 @@ import { logSelectedPackageDebug } from '../../lib/logPackageDebug';
 import { resolvePackageItinerary } from '../../lib/packageItineraryMapper';
 import { resolvePackageCabs } from '../../lib/packageCabMapper';
 import InclusionExclusionEditor, { cleanInclusionExclusionLines } from './InclusionExclusionEditor';
-import QuotePricingPanel from './QuotePricingPanel';
-import QuotePdfPreview from './QuotePdfPreview';
-import DayWiseHotelSelector, { isDayWiseHotelsComplete, sumDayWiseHotelCost } from './DayWiseHotelSelector';
-import UnoCabSelector, { buildSelectedCabSnapshot } from './UnoCabSelector';
+import { sumDayWiseHotelCost } from './DayWiseHotelSelector';
+import { buildSelectedCabSnapshot } from './UnoCabSelector';
 import { parsePackageNights } from './UnoHotelSelector';
 import { WIZARD_STEPS } from './constants';
 import { calculatePricing, defaultItineraryDay, defaultWizardState, formatINR, matchesResourceDestination } from './quotationUtils';
 import { buildSelectedHotelsSnapshot } from './quotePdfHelpers';
 import { unwrapList } from '../../utils/apiHelpers';
-import ItineraryBuilder from '../packages/ItineraryBuilder';
+import PackageBuilderWorkspace from './PackageBuilderWorkspace';
 import { cn } from '../../lib/utils';
 
 const ADMIN_CONFIG = {
@@ -31,8 +29,8 @@ const ADMIN_CONFIG = {
   savePath: '/quotations',
   backPath: '/quotations',
   successPath: '/quotations',
-  title: 'Quotation Builder',
-  subtitle: 'Salesforce CPQ-style quote wizard',
+  title: 'Package Builder',
+  subtitle: 'Customize Uno packages with live hotels, cabs, itinerary and pricing',
   draftStatus: 'draft',
   submitStatus: 'sent',
   draftLabel: 'Save Draft',
@@ -46,8 +44,8 @@ const EXECUTIVE_CONFIG = {
   savePath: '/sales-executive/quotations',
   backPath: '/sales-executive/quotations',
   successPath: '/sales-executive/quotations',
-  title: 'Create Quotation',
-  subtitle: 'First quote is auto-approved; revised quotes go to Team Leader for approval',
+  title: 'Package Builder',
+  subtitle: 'Lead auto-loads into a GTrip-style tour package builder with live hotels, cabs & pricing',
   draftStatus: 'draft',
   submitStatus: 'pending_approval',
   draftLabel: 'Save Draft',
@@ -62,8 +60,8 @@ const TEAM_LEADER_CONFIG = {
   savePath: '/team-leader/quotations',
   backPath: '/team-leader/quotations/pending',
   successPath: '/team-leader/quotations/approved',
-  title: 'Create Quotation',
-  subtitle: 'Create a quote for your team — approved immediately',
+  title: 'Package Builder',
+  subtitle: 'Build and approve a tour package for your team lead',
   draftStatus: 'draft',
   submitStatus: 'approved',
   draftLabel: 'Save Draft',
@@ -78,8 +76,8 @@ const MANAGER_CONFIG = {
   savePath: '/sales-manager/quotations',
   backPath: '/sales-manager/quotations/pending',
   successPath: '/sales-manager/quotations/approved',
-  title: 'Create Quotation',
-  subtitle: 'Create a quote for any team lead in your branch',
+  title: 'Package Builder',
+  subtitle: 'Build and approve a tour package for any team lead in your branch',
   draftStatus: 'draft',
   submitStatus: 'approved',
   draftLabel: 'Save Draft',
@@ -194,8 +192,50 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   useEffect(() => {
     if (initialLeadId) {
       setState((s) => ({ ...s, leadId: initialLeadId }));
+      setStep(2);
     }
   }, [initialLeadId]);
+
+  useEffect(() => {
+    if (!initialLeadId) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const tryPaths = [
+          config.leadsPath ? `${config.leadsPath.replace(/\/$/, '')}` : null,
+          `/leads/${initialLeadId}`,
+          `/sales-executive/leads/${initialLeadId}`,
+        ].filter(Boolean);
+
+        // Prefer dedicated lead fetch when list won't include the ID
+        try {
+          const { data } = await API.get(`/leads/${initialLeadId}`, { skipErrorToast: true });
+          if (!cancelled && data?._id) {
+            setLeads((prev) => (prev.some((l) => l._id === data._id) ? prev : [data, ...prev]));
+            setState((s) => ({ ...s, leadId: data._id }));
+            setStep(2);
+            return;
+          }
+        } catch {
+          /* fall through to list search */
+        }
+
+        const rows = await fetchLeads('');
+        if (cancelled) return;
+        const found = rows.find((l) => String(l._id) === String(initialLeadId));
+        if (found) {
+          setState((s) => ({ ...s, leadId: found._id }));
+          setStep(2);
+        }
+        void tryPaths;
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialLeadId, fetchLeads, config.leadsPath]);
 
   const selectedLead = leads.find((l) => l._id === state.leadId);
   const selectedPkg = packages.find((p) => p._id === state.packageId);
@@ -290,6 +330,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setCustomizeTab('itinerary');
     setDayWiseHotels([]);
     setSelectedUnoCab(null);
+    setStep(2);
   };
 
   const buildFallbackItinerary = (detail) => {
@@ -358,6 +399,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       applyPackageDetail(pkg, { source: 'list_fallback', listItem: pkg });
     } finally {
       setLoadingPackageDetail(false);
+      setStep(3);
     }
   };
 
@@ -429,35 +471,70 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     selectedHotels: buildSelectedHotelsSnapshot(dayWiseHotels),
     selectedCabs: buildSelectedCabSnapshot(selectedUnoCab),
   } : null;
+
+  const inBuilder = step >= 3 && Boolean(activePkg);
+
   return (
-    <div className="max-w-4xl mx-auto pb-12">
-      <div className="flex items-center gap-3 mb-6">
-        <Link to={config.backPath} className="p-2 rounded-xl border border-sky-500/30 bg-sky-500/10 text-sky-600"><ArrowLeft className="w-4 h-4" /></Link>
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">{config.title}</h1>
-          <p className="text-sm text-content-muted">{config.subtitle}</p>
-          {config.approvalNote && (
-            <p className="text-xs text-amber-700 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2 mt-2 max-w-xl">
-              {config.approvalNote}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-subtle bg-surface/80 p-4 mb-6">
-        <div className="flex gap-1 overflow-x-auto pb-1">
-          {WIZARD_STEPS.map((s) => (
-            <div key={s.id} className={cn('flex items-center shrink-0', s.id < WIZARD_STEPS.length && 'flex-1')}>
-              <button type="button" onClick={() => s.id <= step && setStep(s.id)} className={cn('flex flex-col items-center gap-1 px-2', s.id <= step ? 'cursor-pointer' : 'opacity-40')}>
-                <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold', step === s.id ? 'bg-sky-600 text-white ring-4 ring-sky-500/20' : s.id < step ? 'bg-emerald-500 text-white' : 'bg-surface-elevated text-content-muted')}>{s.id}</div>
-                <span className={cn('text-[9px] font-medium hidden sm:block', step === s.id && 'text-sky-600')}>{s.title}</span>
-              </button>
-              {s.id < WIZARD_STEPS.length && <div className={cn('h-0.5 flex-1 mx-1 min-w-[12px]', s.id < step ? 'bg-emerald-500' : 'bg-surface-elevated')} />}
+    <div className={cn('pb-12', inBuilder ? 'max-w-[1440px] mx-auto' : 'max-w-4xl mx-auto')}>
+      {!inBuilder && (
+        <>
+          <div className="flex items-center gap-3 mb-6">
+            <Link to={config.backPath} className="p-2 rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-600"><ArrowLeft className="w-4 h-4" /></Link>
+            <div>
+              <h1 className="text-2xl font-bold text-content-primary">{config.title}</h1>
+              <p className="text-sm text-content-muted">{config.subtitle}</p>
+              {config.approvalNote && (
+                <p className="text-xs text-amber-700 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2 mt-2 max-w-xl">
+                  {config.approvalNote}
+                </p>
+              )}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
+          <div className="rounded-2xl border border-subtle bg-surface/80 p-4 mb-6">
+            <div className="flex gap-1 overflow-x-auto pb-1">
+              {WIZARD_STEPS.filter((s) => s.id <= 3 || s.id === 8).map((s, idx, arr) => (
+                <div key={s.id} className={cn('flex items-center shrink-0', idx < arr.length - 1 && 'flex-1')}>
+                  <button type="button" onClick={() => s.id <= step && setStep(s.id === 8 ? 3 : s.id)} className={cn('flex flex-col items-center gap-1 px-2', s.id <= step || (s.id === 8 && step >= 3) ? 'cursor-pointer' : 'opacity-40')}>
+                    <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold', step === s.id || (s.id === 3 && step >= 3) ? 'bg-violet-600 text-white ring-4 ring-violet-500/20' : s.id < step ? 'bg-emerald-500 text-white' : 'bg-surface-elevated text-content-muted')}>{idx + 1}</div>
+                    <span className={cn('text-[9px] font-medium hidden sm:block', (step === s.id || (s.id === 3 && step >= 3)) && 'text-violet-600')}>{s.id === 3 ? 'Builder' : s.title}</span>
+                  </button>
+                  {idx < arr.length - 1 && <div className={cn('h-0.5 flex-1 mx-1 min-w-[12px]', s.id < step || step >= 3 ? 'bg-emerald-500' : 'bg-surface-elevated')} />}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {inBuilder ? (
+        <PackageBuilderWorkspace
+          lead={selectedLead}
+          pkg={activePkg}
+          itinerary={customItinerary}
+          onItineraryChange={setCustomItinerary}
+          inclusions={customInclusions}
+          exclusions={customExclusions}
+          onInclusionsChange={setCustomInclusions}
+          onExclusionsChange={setCustomExclusions}
+          dayWiseHotels={dayWiseHotels}
+          onDayWiseHotelsChange={handleDayWiseHotelChange}
+          selectedUnoCab={selectedUnoCab}
+          onCabChange={setSelectedUnoCab}
+          packageCabs={resolvePackageCabs(activePkg || {})}
+          pricing={state.pricing}
+          onPricingChange={(p) => setState((s) => ({ ...s, pricing: p }))}
+          nights={packageNights}
+          hotelDestination={hotelDestination}
+          draftQuote={draftQuote}
+          onBack={() => setStep(2)}
+          onSaveDraft={() => handleSave('draft')}
+          onSubmit={() => handleSave('submit')}
+          saving={saving}
+          draftLabel={config.draftLabel}
+          submitLabel={config.submitLabel}
+        />
+      ) : (
       <div className="rounded-2xl border border-subtle bg-surface shadow-lg p-6 sm:p-8 min-h-[400px]">
         <AnimatePresence mode="wait">
           <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
@@ -477,7 +554,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                   )}
                 </div>
                 {selectedLead && (
-                  <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 px-4 py-3 text-sm">
+                  <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-3 text-sm">
                     <p className="font-semibold text-content-primary">{selectedLead.name}</p>
                     <p className="text-xs text-content-muted mt-0.5">{selectedLead.destination} · {formatINR(selectedLead.budget)}</p>
                   </div>
@@ -489,7 +566,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                     value={leadSearch}
                     onChange={(e) => setLeadSearch(e.target.value)}
                     placeholder="Search leads by name, phone, destination (min 2 chars)…"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-subtle bg-surface text-sm outline-none focus:ring-2 focus:ring-sky-500/30"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-subtle bg-surface text-sm outline-none focus:ring-2 focus:ring-violet-500/30"
                   />
                 </div>
                 {loadingLeads ? (
@@ -511,7 +588,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                       className={cn(
                         'flex items-center gap-3 p-4 rounded-xl border text-left transition-all w-full',
                         state.leadId === l._id
-                          ? 'border-sky-500/50 bg-sky-500/10 ring-2 ring-sky-500/20'
+                          ? 'border-violet-500/50 bg-violet-500/10 ring-2 ring-violet-500/20'
                           : 'border-subtle hover:bg-surface-elevated'
                       )}
                     >
@@ -584,222 +661,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                 </div>
                 )}
                 {loadingPackageDetail && (
-                  <p className="text-xs text-amber-700">Loading package details...</p>
+                  <p className="text-xs text-amber-700">Opening package builder...</p>
                 )}
-                {!loadingPackageDetail && state.packageId && customItinerary.length > 0 && (
-                  <p className="text-xs text-emerald-700">
-                    {customItinerary.length} day itinerary loaded. Continue to the next step to view and edit.
-                  </p>
-                )}
-              </div>
-            )}
-            {step === 3 && activePkg && (
-              <div className="space-y-5">
-                <div>
-                  <h2 className="text-lg font-bold">Customize Package</h2>
-                  <p className="text-sm text-content-muted mt-1">Edit itinerary, inclusions & exclusions for this quote</p>
-                </div>
-
-                <div className="flex gap-1 p-1 rounded-2xl bg-surface-elevated/80 border border-subtle overflow-x-auto">
-                  {[
-                    { key: 'itinerary', label: 'Itinerary', icon: Map },
-                    { key: 'inclusions', label: 'Inclusions', icon: CheckCircle2 },
-                    { key: 'exclusions', label: 'Exclusions', icon: CircleOff },
-                  ].map(({ key, label, icon: Icon }) => {
-                    const active = customizeTab === key;
-                    const count = key === 'itinerary'
-                      ? customItinerary.length
-                      : cleanInclusionExclusionLines(key === 'inclusions' ? customInclusions : customExclusions).length;
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setCustomizeTab(key)}
-                        className={cn(
-                          'flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap min-w-[120px] flex-1 transition-all',
-                          active && key === 'itinerary' && 'bg-sky-600 text-white shadow-sm',
-                          active && key === 'inclusions' && 'bg-emerald-500 text-white shadow-sm',
-                          active && key === 'exclusions' && 'bg-rose-500 text-white shadow-sm',
-                          !active && 'text-content-muted hover:bg-surface-base'
-                        )}
-                      >
-                        <Icon className="w-4 h-4 shrink-0" />
-                        {label}
-                        {count > 0 && (
-                          <span className={cn(
-                            'text-[10px] px-1.5 py-0.5 rounded-full font-bold',
-                            active ? 'bg-white/20 text-white' : 'bg-surface-elevated text-content-muted'
-                          )}>
-                            {count}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {customizeTab === 'itinerary' && (
-                  <div className="space-y-4">
-                    <textarea
-                      value={state.customizations}
-                      onChange={(e) => setState({ ...state, customizations: e.target.value })}
-                      rows={3}
-                      placeholder="Special requests or notes for this quotation..."
-                      className="input-premium w-full rounded-xl resize-none"
-                    />
-                    <ItineraryBuilder itinerary={customItinerary} onChange={setCustomItinerary} destination={activePkg.destination} />
-                  </div>
-                )}
-
-                {customizeTab === 'inclusions' && (
-                  <div className="rounded-2xl border border-subtle bg-surface-base p-4 sm:p-5">
-                    <InclusionExclusionEditor
-                      mode="inclusions"
-                      inclusions={customInclusions}
-                      exclusions={customExclusions}
-                      onChangeInclusions={setCustomInclusions}
-                      onChangeExclusions={setCustomExclusions}
-                    />
-                  </div>
-                )}
-
-                {customizeTab === 'exclusions' && (
-                  <div className="rounded-2xl border border-subtle bg-surface-base p-4 sm:p-5">
-                    <InclusionExclusionEditor
-                      mode="exclusions"
-                      inclusions={customInclusions}
-                      exclusions={customExclusions}
-                      onChangeInclusions={setCustomInclusions}
-                      onChangeExclusions={setCustomExclusions}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-            {step === 4 && (
-              <DayWiseHotelSelector
-                destination={hotelDestination}
-                value={dayWiseHotels}
-                onChange={handleDayWiseHotelChange}
-                nights={packageNights}
-              />
-            )}
-            {step === 5 && (
-              <div className="space-y-6">
-                <UnoCabSelector
-                  lead={selectedLead}
-                  pkg={activePkg}
-                  packageCabs={resolvePackageCabs(activePkg || {})}
-                  value={selectedUnoCab}
-                  onChange={setSelectedUnoCab}
-                />
-                <div className="border-t border-subtle pt-4 space-y-4">
-                  <h2 className="text-lg font-bold">Flights</h2>
-                  {flights.length === 0 ? (
-                    <p className="text-sm text-content-muted">No flights configured.</p>
-                  ) : (
-                    flights.map((f) => (
-                      <button key={f._id} type="button" onClick={() => toggleId('selectedFlightIds', f._id)} className={cn('w-full flex justify-between p-3 rounded-xl border text-left', state.selectedFlightIds.includes(f._id) ? 'border-sky-500/50 bg-sky-500/10' : 'border-subtle')}>
-                        <span className="text-sm">{f.airline} {f.flightNumber}</span>
-                        <span className="font-bold text-sm">{formatINR(f.cost)}</span>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-            {step === 6 && (
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-bold">Add Activities</h2>
-                    <p className="text-sm text-content-muted mt-1">
-                      {hotelDestination
-                        ? `Optional extras for ${hotelDestination} — skip if none needed`
-                        : 'Optional — skip if no activities apply to this quote'}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="rounded-xl gap-1.5 shrink-0 self-start"
-                    onClick={skipActivities}
-                  >
-                    <SkipForward className="w-3.5 h-3.5" />
-                    Skip activities
-                  </Button>
-                </div>
-
-                {state.activitiesSkipped && state.selectedActivityIds.length === 0 && (
-                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800">
-                    Activities skipped for this quotation.
-                  </div>
-                )}
-
-                {availableActivities.length === 0 ? (
-                  <div className="text-center py-14 rounded-2xl border border-dashed border-subtle bg-surface-elevated/30">
-                    <Sparkles className="w-10 h-10 mx-auto text-content-muted/40 mb-3" />
-                    <p className="text-sm font-medium">No activities for this destination</p>
-                    <p className="text-xs text-content-muted mt-1 max-w-sm mx-auto">
-                      {hotelDestination
-                        ? `Nothing is listed for ${hotelDestination} right now. You can skip and continue.`
-                        : 'No activities available. Skip this step to continue.'}
-                    </p>
-                    <Button
-                      type="button"
-                      variant="sky"
-                      className="rounded-xl gap-2 mt-5"
-                      onClick={skipActivities}
-                    >
-                      <SkipForward className="w-4 h-4" />
-                      Skip & Continue
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-2 max-h-[360px] overflow-y-auto">
-                      {availableActivities.map((a) => (
-                        <button
-                          key={a._id}
-                          type="button"
-                          onClick={() => toggleId('selectedActivityIds', a._id)}
-                          className={cn(
-                            'w-full flex justify-between p-3 rounded-xl border text-left transition-colors',
-                            state.selectedActivityIds.includes(a._id)
-                              ? 'border-indigo-500/50 bg-indigo-500/10 ring-2 ring-indigo-500/20'
-                              : 'border-subtle hover:bg-surface-elevated'
-                          )}
-                        >
-                          <span className="text-sm">
-                            {a.name}
-                            {a.destination ? ` · ${a.destination}` : ''}
-                            {a.duration ? ` · ${a.duration}` : ''}
-                          </span>
-                          <span className="font-bold text-sm shrink-0 ml-3">{formatINR(a.price)}</span>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="pt-2 border-t border-subtle">
-                      <button
-                        type="button"
-                        onClick={skipActivities}
-                        className="text-sm text-content-muted hover:text-content-primary underline-offset-2 hover:underline"
-                      >
-                        Continue without adding activities
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-            {step === 7 && <div><h2 className="text-lg font-bold mb-4">Pricing</h2><QuotePricingPanel pricing={state.pricing} onChange={(p) => setState({ ...state, pricing: p })} /></div>}
-            {step === 8 && draftQuote && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold">Generate Quote</h2>
-                <div className="rounded-xl border border-subtle overflow-hidden max-h-[500px] overflow-y-auto bg-white">
-                  <QuotePdfPreview quote={draftQuote} />
-                </div>
               </div>
             )}
           </motion.div>
@@ -807,16 +670,16 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
 
         <div className="flex justify-between mt-8 pt-6 border-t border-subtle">
           <Button type="button" variant="outline" className="rounded-xl gap-2" disabled={step === 1} onClick={() => setStep((s) => s - 1)}><ArrowLeft className="w-4 h-4" /> Back</Button>
-          {step < 8 ? (
-            <Button type="button" variant="sky" className="rounded-xl gap-2" onClick={() => setStep((s) => s + 1)} disabled={(step === 1 && !state.leadId) || (step === 2 && (!state.packageId || loadingPackageDetail)) || (step === 4 && !isDayWiseHotelsComplete(dayWiseHotels, packageNights))}>Continue <ArrowRight className="w-4 h-4" /></Button>
+          {step === 1 ? (
+            <Button type="button" variant="sky" className="rounded-xl gap-2" onClick={() => setStep(2)} disabled={!state.leadId}>Continue <ArrowRight className="w-4 h-4" /></Button>
           ) : (
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" className="rounded-xl gap-2" disabled={saving} onClick={() => handleSave('draft')}><Save className="w-4 h-4" /> {config.draftLabel}</Button>
-              <Button type="button" variant="emerald" className="rounded-xl gap-2" disabled={saving} onClick={() => handleSave('submit')}><FileText className="w-4 h-4" /> {config.submitLabel}</Button>
-            </div>
+            <Button type="button" variant="sky" className="rounded-xl gap-2" disabled={!state.packageId || loadingPackageDetail} onClick={() => state.packageId && setStep(3)}>
+              Open Builder <ArrowRight className="w-4 h-4" />
+            </Button>
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
