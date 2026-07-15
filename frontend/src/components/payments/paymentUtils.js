@@ -116,6 +116,10 @@ export function filterPayments(payments, filters, datePreset) {
       const dest = p.lead?.destination || '';
       if (!dest.toLowerCase().includes(filters.destination.toLowerCase())) return false;
     }
+    if (filters.executive) {
+      const exec = p.createdBy?.name || '';
+      if (!exec.toLowerCase().includes(filters.executive.toLowerCase())) return false;
+    }
     if (filters.amountMin && Number(p.amount) < Number(filters.amountMin)) return false;
     if (filters.amountMax && Number(p.amount) > Number(filters.amountMax)) return false;
 
@@ -250,8 +254,8 @@ export function buildPaymentAnalytics(payments) {
         value: formatINRCompact(totalRevenue),
         change: '+12.4%',
         changeType: 'up',
-        iconColor: 'bg-indigo-500',
-        sparkColor: '#5B5CEB',
+        iconColor: 'bg-violet-500',
+        sparkColor: '#8B5CF6',
         sparkData: spark(1, 55),
       },
       {
@@ -260,8 +264,8 @@ export function buildPaymentAnalytics(payments) {
         value: formatINRCompact(received),
         change: '+8.2%',
         changeType: 'up',
-        iconColor: 'bg-emerald-500',
-        sparkColor: '#16C784',
+        iconColor: 'bg-teal-500',
+        sparkColor: '#14B8A6',
         sparkData: spark(2, 48),
       },
       {
@@ -270,8 +274,8 @@ export function buildPaymentAnalytics(payments) {
         value: formatINRCompact(pending),
         change: '-3.1%',
         changeType: 'down',
-        iconColor: 'bg-amber-500',
-        sparkColor: '#F59E0B',
+        iconColor: 'bg-orange-500',
+        sparkColor: '#F97316',
         sparkData: spark(3, 35),
       },
       {
@@ -280,8 +284,8 @@ export function buildPaymentAnalytics(payments) {
         value: formatINRCompact(advances),
         change: '+5.6%',
         changeType: 'up',
-        iconColor: 'bg-sky-500',
-        sparkColor: '#0EA5E9',
+        iconColor: 'bg-blue-500',
+        sparkColor: '#3B82F6',
         sparkData: spark(4, 42),
       },
       {
@@ -291,7 +295,7 @@ export function buildPaymentAnalytics(payments) {
         change: pending > 0 ? '+2.0%' : '0%',
         changeType: pending > 0 ? 'down' : 'neutral',
         iconColor: 'bg-rose-500',
-        sparkColor: '#EF4444',
+        sparkColor: '#F43F5E',
         sparkData: spark(5, 28),
       },
       {
@@ -300,9 +304,19 @@ export function buildPaymentAnalytics(payments) {
         value: formatINRCompact(todayCollection),
         change: todayCollection > 0 ? '+18%' : '0%',
         changeType: todayCollection > 0 ? 'up' : 'neutral',
-        iconColor: 'bg-teal-500',
-        sparkColor: '#14B8A6',
+        iconColor: 'bg-emerald-500',
+        sparkColor: '#10B981',
         sparkData: spark(6, 30),
+      },
+      {
+        key: 'success',
+        label: 'Success Rate',
+        value: `${successRate}%`,
+        change: '+0.8%',
+        changeType: 'up',
+        iconColor: 'bg-fuchsia-500',
+        sparkColor: '#D946EF',
+        sparkData: spark(8, 60),
       },
       {
         key: 'refund',
@@ -313,16 +327,6 @@ export function buildPaymentAnalytics(payments) {
         iconColor: 'bg-violet-500',
         sparkColor: '#8B5CF6',
         sparkData: spark(7, 18),
-      },
-      {
-        key: 'success',
-        label: 'Payment Success Rate',
-        value: `${successRate}%`,
-        change: '+0.8%',
-        changeType: 'up',
-        iconColor: 'bg-fuchsia-500',
-        sparkColor: '#D946EF',
-        sparkData: spark(8, 60),
       },
     ],
     totals: { totalRevenue, received, pending, refunded, todayCollection, successRate },

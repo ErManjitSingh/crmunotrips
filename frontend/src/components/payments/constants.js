@@ -8,10 +8,10 @@ export const PAYMENT_STATUSES = [
 ];
 
 export const PAYMENT_METHODS = [
-  { value: 'upi', label: 'UPI', color: '#16C784' },
-  { value: 'card', label: 'Card', color: '#5B5CEB' },
+  { value: 'upi', label: 'UPI', color: '#8B5CF6' },
+  { value: 'card', label: 'Card', color: '#3B82F6' },
+  { value: 'bank_transfer', label: 'Bank Transfer', color: '#14B8A6' },
   { value: 'cash', label: 'Cash', color: '#F59E0B' },
-  { value: 'bank_transfer', label: 'Bank', color: '#3B82F6' },
   { value: 'cheque', label: 'Cheque', color: '#64748B' },
 ];
 
@@ -35,6 +35,9 @@ export const EMPTY_FILTERS = {
   amountMax: '',
   dateFrom: '',
   dateTo: '',
+  gateway: '',
+  executive: '',
+  branch: '',
 };
 
 export const STATUS_MAP = Object.fromEntries(PAYMENT_STATUSES.map((s) => [s.value, s]));

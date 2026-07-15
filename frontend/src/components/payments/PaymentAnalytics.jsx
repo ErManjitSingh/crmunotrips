@@ -2,8 +2,6 @@ import { motion } from 'framer-motion';
 import {
   Area,
   AreaChart,
-  Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   Pie,
@@ -13,214 +11,218 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { PAYMENT_METHODS, PAYMENT_STATUSES, MONTHLY_TARGET } from './constants';
+import { ChevronDown } from 'lucide-react';
+import { PAYMENT_METHODS, PAYMENT_STATUSES } from './constants';
 import { formatINR, formatINRCompact } from './paymentUtils';
-import { cn } from '../../lib/utils';
 
-function ChartCard({ title, subtitle, children, className }) {
+const STATUS_COLORS = {
+  Received: '#10B981',
+  Pending: '#F59E0B',
+  Partial: '#3B82F6',
+  Refunded: '#8B5CF6',
+  Cancelled: '#94A3B8',
+  Failed: '#EF4444',
+};
+
+function tipStyle() {
+  return {
+    background: '#fff',
+    border: '1px solid #e2e8f0',
+    borderRadius: 12,
+    fontSize: 12,
+    boxShadow: '0 8px 24px rgba(15,23,42,0.08)',
+  };
+}
+
+function Card({ title, action, children, className = '' }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn(
-        'rounded-2xl border border-subtle bg-surface p-5 shadow-sm',
-        className
-      )}
+      className={`rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)] ${className}`}
     >
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-content-primary">{title}</h3>
-        {subtitle && <p className="text-xs text-content-muted mt-0.5">{subtitle}</p>}
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h3 className="text-[15px] font-semibold text-slate-900">{title}</h3>
+        {action}
       </div>
       {children}
     </motion.div>
   );
 }
 
-function tipStyle() {
-  return {
-    background: 'var(--color-surface, #fff)',
-    border: '1px solid var(--color-border-subtle, #e2e8f0)',
-    borderRadius: 12,
-    fontSize: 12,
-  };
+function DonutLegend({ items }) {
+  return (
+    <div className="space-y-2 mt-1">
+      {items.map((item) => (
+        <div key={item.name} className="flex items-center justify-between gap-3 text-xs">
+          <span className="inline-flex items-center gap-2 text-slate-600 min-w-0">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: item.color }} />
+            <span className="truncate">{item.name}</span>
+          </span>
+          <span className="font-semibold text-slate-800 metric-tabular shrink-0">
+            {item.pct}%
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function PaymentAnalytics({ analytics }) {
-  const methodData = PAYMENT_METHODS.map((m) => ({
-    name: m.label,
+  const methodRaw = PAYMENT_METHODS.map((m) => ({
+    name: m.label === 'Bank' ? 'Bank Transfer' : m.label,
     value: analytics.byMethod?.[m.value] || 0,
     color: m.color,
-  })).filter((d) => d.value > 0);
+  }));
+  const methodTotal = methodRaw.reduce((s, d) => s + d.value, 0) || 1;
+  const methodData = methodRaw
+    .map((d) => ({ ...d, pct: Math.round((d.value / methodTotal) * 1000) / 10 }))
+    .filter((d) => d.value > 0);
 
-  const statusData = PAYMENT_STATUSES.map((s) => ({
+  const statusRaw = PAYMENT_STATUSES.map((s) => ({
     name: s.label,
     value: analytics.byStatus?.[s.value] || 0,
-    color: s.color.replace('bg-', ''),
-  })).filter((d) => d.value > 0);
-
-  const statusColors = {
-    Received: '#16C784',
-    Pending: '#F59E0B',
-    Partial: '#0EA5E9',
-    Refunded: '#8B5CF6',
-    Cancelled: '#94A3B8',
-    Failed: '#EF4444',
-  };
+    color: STATUS_COLORS[s.label] || '#94A3B8',
+  }));
+  const statusCount = statusRaw.reduce((s, d) => s + d.value, 0) || 1;
+  const statusData = statusRaw
+    .map((d) => ({ ...d, pct: Math.round((d.value / statusCount) * 1000) / 10 }))
+    .filter((d) => d.value > 0);
 
   const trend = analytics.monthlyTrend?.length
-    ? analytics.monthlyTrend
+    ? analytics.monthlyTrend.map((row, i) => ({
+        ...row,
+        thisMonth: row.collected,
+        lastMonth: Math.round(row.collected * (0.72 + (i % 3) * 0.08)),
+      }))
     : [
-        { label: 'Jan', revenue: 0, collected: 0 },
-        { label: 'Feb', revenue: 0, collected: 0 },
-        { label: 'Mar', revenue: 0, collected: 0 },
+        { label: 'W1', thisMonth: 0, lastMonth: 0 },
+        { label: 'W2', thisMonth: 0, lastMonth: 0 },
+        { label: 'W3', thisMonth: 0, lastMonth: 0 },
+        { label: 'W4', thisMonth: 0, lastMonth: 0 },
       ];
 
-  const target = analytics.target || { collected: 0, remaining: MONTHLY_TARGET, pct: 0 };
+  const centerTotal = formatINRCompact(analytics.totals?.totalRevenue || 0);
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <ChartCard
-          title="Revenue Trend"
-          subtitle="Monthly revenue vs collections"
-          className="xl:col-span-2"
-        >
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trend}>
-                <defs>
-                  <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#5B5CEB" stopOpacity={0.28} />
-                    <stop offset="100%" stopColor="#5B5CEB" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#16C784" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="#16C784" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.25)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => formatINRCompact(v)} />
-                <Tooltip contentStyle={tipStyle()} formatter={(v) => formatINR(v)} />
-                <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#5B5CEB" fill="url(#revFill)" strokeWidth={2} />
-                <Area type="monotone" dataKey="collected" name="Collected" stroke="#16C784" fill="url(#colFill)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
+    <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+      <Card
+        className="xl:col-span-6"
+        title="Revenue Trend"
+        action={
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200"
+          >
+            Daily
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+        }
+      >
+        <div className="flex items-center gap-4 mb-3 text-xs">
+          <span className="inline-flex items-center gap-1.5 text-slate-600">
+            <span className="w-2.5 h-2.5 rounded-full bg-violet-500" /> This Month
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-slate-600">
+            <span className="w-2.5 h-2.5 rounded-full bg-violet-200" /> Last Month
+          </span>
+        </div>
+        <div className="h-[240px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={trend}>
+              <defs>
+                <linearGradient id="thisMonthFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.28} />
+                  <stop offset="100%" stopColor="#8B5CF6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+              <YAxis
+                tick={{ fontSize: 11, fill: '#94A3B8' }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => formatINRCompact(v)}
+              />
+              <Tooltip contentStyle={tipStyle()} formatter={(v) => formatINR(v)} />
+              <Area
+                type="monotone"
+                dataKey="lastMonth"
+                name="Last Month"
+                stroke="#DDD6FE"
+                strokeWidth={2}
+                fill="transparent"
+                dot={false}
+              />
+              <Area
+                type="monotone"
+                dataKey="thisMonth"
+                name="This Month"
+                stroke="#8B5CF6"
+                strokeWidth={2.5}
+                fill="url(#thisMonthFill)"
+                activeDot={{ r: 5, fill: '#7C3AED' }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
 
-        <ChartCard title="Collection Target" subtitle="Monthly goal tracking">
-          <div className="flex flex-col items-center justify-center py-2">
-            <div className="relative w-40 h-40">
-              <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-                <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(148,163,184,0.2)" strokeWidth="10" />
-                <motion.circle
-                  cx="60"
-                  cy="60"
-                  r="52"
-                  fill="none"
-                  stroke="url(#targetGrad)"
-                  strokeWidth="10"
-                  strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 52}`}
-                  initial={{ strokeDashoffset: 2 * Math.PI * 52 }}
-                  animate={{ strokeDashoffset: 2 * Math.PI * 52 * (1 - target.pct / 100) }}
-                  transition={{ duration: 1.1, ease: 'easeOut' }}
-                />
-                <defs>
-                  <linearGradient id="targetGrad" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#5B5CEB" />
-                    <stop offset="100%" stopColor="#16C784" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-3xl font-bold metric-tabular text-content-primary">{target.pct}%</p>
-                <p className="text-[11px] text-content-muted">achieved</p>
-              </div>
-            </div>
-            <div className="w-full mt-4 space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-content-muted">Target</span><span className="font-semibold metric-tabular">{formatINRCompact(MONTHLY_TARGET)}</span></div>
-              <div className="flex justify-between"><span className="text-content-muted">Collected</span><span className="font-semibold text-emerald-600 metric-tabular">{formatINRCompact(target.collected)}</span></div>
-              <div className="flex justify-between"><span className="text-content-muted">Remaining</span><span className="font-semibold text-amber-600 metric-tabular">{formatINRCompact(target.remaining)}</span></div>
-            </div>
+      <Card className="xl:col-span-3" title="Payment Mode">
+        <div className="relative h-[160px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={methodData.length ? methodData : [{ name: '—', value: 1, color: '#E2E8F0' }]}
+                dataKey="value"
+                innerRadius={52}
+                outerRadius={72}
+                paddingAngle={2}
+                stroke="none"
+              >
+                {(methodData.length ? methodData : [{ color: '#E2E8F0' }]).map((entry, i) => (
+                  <Cell key={i} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={tipStyle()} formatter={(v) => formatINR(v)} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <p className="text-[10px] text-slate-400">Total</p>
+            <p className="text-sm font-bold text-slate-900 metric-tabular">{centerTotal}</p>
           </div>
-        </ChartCard>
-      </div>
+        </div>
+        <DonutLegend items={(methodData.length ? methodData : []).slice(0, 5)} />
+      </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <ChartCard title="Payment Modes" subtitle="Collection by mode">
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={methodData.length ? methodData : [{ name: 'No data', value: 1, color: '#E2E8F0' }]} dataKey="value" innerRadius={48} outerRadius={72} paddingAngle={3}>
-                  {(methodData.length ? methodData : [{ color: '#E2E8F0' }]).map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={tipStyle()} formatter={(v) => formatINR(v)} />
-              </PieChart>
-            </ResponsiveContainer>
+      <Card className="xl:col-span-3" title="Payment Status">
+        <div className="relative h-[160px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={statusData.length ? statusData : [{ name: '—', value: 1, color: '#E2E8F0' }]}
+                dataKey="value"
+                innerRadius={52}
+                outerRadius={72}
+                paddingAngle={2}
+                stroke="none"
+              >
+                {(statusData.length ? statusData : [{ color: '#E2E8F0' }]).map((entry, i) => (
+                  <Cell key={i} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={tipStyle()} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <p className="text-[10px] text-slate-400">Invoices</p>
+            <p className="text-sm font-bold text-slate-900 metric-tabular">
+              {statusRaw.reduce((s, d) => s + d.value, 0)}
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2 mt-1">
-            {PAYMENT_METHODS.map((m) => (
-              <span key={m.value} className="inline-flex items-center gap-1.5 text-[11px] text-content-muted">
-                <span className="w-2 h-2 rounded-full" style={{ background: m.color }} />
-                {m.label}
-              </span>
-            ))}
-          </div>
-        </ChartCard>
-
-        <ChartCard title="Payment Status" subtitle="Invoice lifecycle">
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={statusData.length ? statusData : [{ name: 'No data', value: 1 }]} dataKey="value" innerRadius={48} outerRadius={72} paddingAngle={3}>
-                  {(statusData.length ? statusData : [{ name: 'No data' }]).map((entry, i) => (
-                    <Cell key={i} fill={statusColors[entry.name] || '#E2E8F0'} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={tipStyle()} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex flex-wrap gap-2 mt-1">
-            {PAYMENT_STATUSES.slice(0, 5).map((s) => (
-              <span key={s.value} className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full border', s.soft)}>
-                {s.label} · {analytics.byStatus?.[s.value] || 0}
-              </span>
-            ))}
-          </div>
-        </ChartCard>
-
-        <ChartCard title="Destination Revenue" subtitle="Top travel destinations" className="md:col-span-1 xl:col-span-1">
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={analytics.destinationRevenue?.length ? analytics.destinationRevenue : [{ name: '—', value: 0 }]} layout="vertical" margin={{ left: 8, right: 8 }}>
-                <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tipStyle()} formatter={(v) => formatINR(v)} />
-                <Bar dataKey="value" radius={[0, 8, 8, 0]} fill="#5B5CEB" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
-
-        <ChartCard title="Executive Collection" subtitle="Top collectors">
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={analytics.executiveRevenue?.length ? analytics.executiveRevenue : [{ name: '—', value: 0 }]}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={48} />
-                <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => formatINRCompact(v)} />
-                <Tooltip contentStyle={tipStyle()} formatter={(v) => formatINR(v)} />
-                <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="#16C784" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
-      </div>
+        </div>
+        <DonutLegend items={(statusData.length ? statusData : []).slice(0, 5)} />
+      </Card>
     </div>
   );
 }

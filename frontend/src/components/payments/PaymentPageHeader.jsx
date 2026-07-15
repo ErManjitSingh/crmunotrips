@@ -1,80 +1,75 @@
-import {
-  Plus,
-  FileText,
-  Download,
-  FileSpreadsheet,
-  Printer,
-  CalendarRange,
-} from 'lucide-react';
-import { DATE_PRESETS } from './constants';
-import { cn } from '../../lib/utils';
+import { FileText, ChevronDown, Download } from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
-export default function PaymentPageHeader({
-  datePreset,
-  onDatePresetChange,
-  onAddPayment,
-  onGenerateInvoice,
-  onExport,
-}) {
+export default function PaymentPageHeader({ onGenerateInvoice, onExport, onAddPayment }) {
   return (
-    <div className="mb-6 animate-fade-up">
-      <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+    <div className="mb-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-500 mb-2">
-            Finance Operations
-          </p>
-          <h1 className="text-2xl sm:text-3xl font-bold text-content-primary tracking-tight">
+          <h1 className="text-[28px] font-bold tracking-tight text-slate-900 dark:text-slate-50">
             Payment Management
           </h1>
-          <p className="text-sm text-content-secondary mt-1.5 max-w-2xl">
+          <p className="mt-1.5 text-sm text-slate-500 max-w-xl leading-relaxed">
             Manage invoices, collections, dues, refunds and complete finance operations from one place.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <button type="button" onClick={onAddPayment} className="btn-primary gap-1.5">
-            <Plus className="w-4 h-4" />
-            Add Payment
-          </button>
-          <button type="button" onClick={onGenerateInvoice} className="btn-secondary gap-1.5">
-            <FileText className="w-4 h-4" />
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={onGenerateInvoice}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition-colors"
+          >
+            <FileText className="w-4 h-4 text-slate-500" />
             Generate Invoice
           </button>
-          <button type="button" onClick={() => onExport?.('excel')} className="btn-ghost gap-1.5 border border-subtle">
-            <FileSpreadsheet className="w-4 h-4" />
-            Excel
-          </button>
-          <button type="button" onClick={() => onExport?.('pdf')} className="btn-ghost gap-1.5 border border-subtle">
-            <Download className="w-4 h-4" />
-            PDF
-          </button>
-          <button type="button" onClick={() => window.print()} className="btn-ghost gap-1.5 border border-subtle">
-            <Printer className="w-4 h-4" />
-            Print
+
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition-colors"
+              >
+                <Download className="w-4 h-4 text-slate-500" />
+                Export
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="end"
+                className="z-[250] min-w-[160px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl"
+              >
+                <DropdownMenu.Item
+                  className="px-3 py-2 rounded-lg text-sm cursor-pointer outline-none hover:bg-slate-50"
+                  onSelect={() => onExport?.('excel')}
+                >
+                  Download Excel
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="px-3 py-2 rounded-lg text-sm cursor-pointer outline-none hover:bg-slate-50"
+                  onSelect={() => onExport?.('pdf')}
+                >
+                  Download PDF
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="px-3 py-2 rounded-lg text-sm cursor-pointer outline-none hover:bg-slate-50"
+                  onSelect={() => window.print()}
+                >
+                  Print
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+
+          <button
+            type="button"
+            onClick={onAddPayment}
+            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold shadow-md shadow-violet-600/25 transition-colors lg:hidden"
+          >
+            + Add Payment
           </button>
         </div>
-      </div>
-
-      <div className="mt-5 flex items-center gap-2 overflow-x-auto pb-1">
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-content-muted shrink-0">
-          <CalendarRange className="w-3.5 h-3.5" />
-          Date
-        </span>
-        {DATE_PRESETS.map((preset) => (
-          <button
-            key={preset.value}
-            type="button"
-            onClick={() => onDatePresetChange(preset.value)}
-            className={cn(
-              'px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all',
-              datePreset === preset.value
-                ? 'bg-indigo-500 text-white shadow-sm shadow-indigo-500/25'
-                : 'bg-surface border border-subtle text-content-secondary hover:border-indigo-300 hover:text-indigo-600'
-            )}
-          >
-            {preset.label}
-          </button>
-        ))}
       </div>
     </div>
   );

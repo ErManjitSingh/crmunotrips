@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -27,16 +27,14 @@ import CollectPaymentModal from './CollectPaymentModal';
 import AddPaymentModal from './AddPaymentModal';
 import RefundPaymentModal from './RefundPaymentModal';
 import PaymentInsightSidebar from './PaymentInsightSidebar';
-import PaymentQuickActions from './PaymentQuickActions';
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 5;
 
 export default function PaymentsPage() {
   const { user, hasPermission } = useAuth();
   const toast = useToast();
   const queryClient = useQueryClient();
 
-  const [datePreset, setDatePreset] = useState('month');
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -56,19 +54,9 @@ export default function PaymentsPage() {
     staleTime: 30_000,
   });
 
-  useEffect(() => {
-    if (datePreset === 'custom') {
-      setFilters((prev) => ({
-        ...prev,
-        dateFrom: prev.dateFrom || new Date().toISOString().slice(0, 10),
-        dateTo: prev.dateTo || new Date().toISOString().slice(0, 10),
-      }));
-    }
-  }, [datePreset]);
-
   const filtered = useMemo(
-    () => filterPayments(payments, filters, datePreset),
-    [payments, filters, datePreset]
+    () => filterPayments(payments, filters, 'month'),
+    [payments, filters]
   );
 
   const analytics = useMemo(() => buildPaymentAnalytics(filtered), [filtered]);
@@ -79,12 +67,8 @@ export default function PaymentsPage() {
   }, [filtered, page]);
 
   const activeFilterCount = useMemo(
-    () =>
-      Object.entries(filters).filter(([key, value]) => {
-        if (datePreset !== 'custom' && (key === 'dateFrom' || key === 'dateTo')) return false;
-        return Boolean(value);
-      }).length,
-    [filters, datePreset]
+    () => Object.values(filters).filter(Boolean).length,
+    [filters]
   );
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['payments'] });
@@ -106,7 +90,7 @@ export default function PaymentsPage() {
 
   const handleExport = useCallback(
     (type) => {
-      toast.success(type === 'excel' ? 'Excel export prepared for current filters' : 'PDF export queued for download');
+      toast.success(type === 'excel' ? 'Excel export prepared for current filters' : 'PDF export queued');
     },
     [toast]
   );
@@ -204,18 +188,13 @@ export default function PaymentsPage() {
       else toast.info('No refundable payments found');
     } else if (key === 'export') handleExport('excel');
     else if (key === 'reports') toast.info('Open Reports from the sidebar for full finance reports');
-    else if (key === 'remind') toast.info('Reminder center: overdue & due-today items are in the right sidebar');
+    else if (key === 'remind') toast.info('Use Upcoming Due on the right to send reminders');
   };
 
   return (
     <Fragment>
-      <div className="space-y-5 pb-24">
+      <div className="space-y-5 pb-8 max-w-[1600px]">
         <PaymentPageHeader
-          datePreset={datePreset}
-          onDatePresetChange={(value) => {
-            setDatePreset(value);
-            setPage(1);
-          }}
           onAddPayment={() => setAddOpen(true)}
           onGenerateInvoice={() => setAddOpen(true)}
           onExport={handleExport}
@@ -231,71 +210,65 @@ export default function PaymentsPage() {
         ) : null}
 
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-[120px] rounded-2xl bg-slate-100 animate-pulse" />
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3.5">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="h-[138px] rounded-[20px] bg-slate-100 animate-pulse" />
             ))}
           </div>
         ) : (
           <PaymentKpiStrip kpis={analytics.kpis} />
         )}
 
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-5">
-          <div className="space-y-5 min-w-0">
-            {!isLoading && <PaymentAnalytics analytics={analytics} />}
+        {!isLoading && <PaymentAnalytics analytics={analytics} />}
 
-            <PaymentFilterBar
-              filters={filters}
-              activeCount={activeFilterCount}
-              onChange={(next) => {
-                setFilters(next);
-                setPage(1);
-              }}
-              onReset={() => {
-                setFilters(EMPTY_FILTERS);
-                setDatePreset('month');
-                setPage(1);
-              }}
-            />
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-5 items-start">
+          <div className="space-y-4 min-w-0">
+            <div className="rounded-[24px] border border-slate-200/80 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)] space-y-4">
+              <PaymentFilterBar
+                filters={filters}
+                activeCount={activeFilterCount}
+                onChange={(next) => {
+                  setFilters(next);
+                  setPage(1);
+                }}
+                onReset={() => {
+                  setFilters(EMPTY_FILTERS);
+                  setPage(1);
+                }}
+              />
 
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-content-secondary">
-                Showing <span className="font-semibold text-content-primary">{filtered.length}</span> payments
-                {selectedIds.size > 0 && (
-                  <span className="ml-2 text-indigo-600 font-medium">· {selectedIds.size} selected</span>
-                )}
-              </p>
+              <PaymentTable
+                payments={pageItems}
+                selectedIds={selectedIds}
+                onToggleRow={onToggleRow}
+                onToggleAll={onToggleAll}
+                onView={openPayment}
+                onCollect={openCollect}
+                onRefund={openRefund}
+                onDelete={setDeleteTarget}
+                canDelete={canDelete}
+              />
+
+              <TablePagination
+                pageIndex={page - 1}
+                pageSize={PAGE_SIZE}
+                pageCount={Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))}
+                total={filtered.length}
+                onPageChange={(idx) => setPage(idx + 1)}
+                totalLabel="entries"
+              />
             </div>
-
-            <PaymentTable
-              payments={pageItems}
-              selectedIds={selectedIds}
-              onToggleRow={onToggleRow}
-              onToggleAll={onToggleAll}
-              onView={openPayment}
-              onCollect={openCollect}
-              onRefund={openRefund}
-              onDelete={setDeleteTarget}
-              canDelete={canDelete}
-            />
-
-            <TablePagination
-              pageIndex={page - 1}
-              pageSize={PAGE_SIZE}
-              pageCount={Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))}
-              total={filtered.length}
-              onPageChange={(idx) => setPage(idx + 1)}
-              totalLabel="payments"
-            />
           </div>
 
           {!isLoading && (
-            <PaymentInsightSidebar analytics={analytics} onSelect={openPayment} />
+            <PaymentInsightSidebar
+              analytics={analytics}
+              onSelect={openPayment}
+              onAction={onQuickAction}
+            />
           )}
         </div>
       </div>
-
-      <PaymentQuickActions onAction={onQuickAction} />
 
       <PaymentDetailDrawer
         open={drawerOpen}
