@@ -12,36 +12,50 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { MapPin, GripVertical, Plus, X } from 'lucide-react';
+import { MapPin, GripVertical, Plus, ChevronRight, ArrowRightLeft } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-function SortableChip({ id, label, onRemove, canRemove }) {
+function SortableStop({ id, label, index, total, onRemove, canRemove }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.85 : 1,
   };
+  const isFirst = index === 0;
+  const isLast = index === total - 1;
+  const hint = isFirst ? 'Pickup' : isLast ? 'Drop' : '';
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-semibold text-violet-700 shadow-sm',
-        isDragging && 'ring-2 ring-violet-300'
-      )}
-    >
-      <button type="button" className="cursor-grab text-violet-400" {...attributes} {...listeners}>
-        <GripVertical className="w-3.5 h-3.5" />
-      </button>
-      <MapPin className="w-3.5 h-3.5" />
-      <span>{label}</span>
-      {canRemove && (
-        <button type="button" onClick={onRemove} className="ml-0.5 text-violet-400 hover:text-rose-500">
-          <X className="w-3.5 h-3.5" />
+    <div ref={setNodeRef} style={style} className="flex items-center gap-1.5 shrink-0">
+      <div
+        className={cn(
+          'inline-flex items-center gap-2 rounded-xl border bg-white px-3 py-2 shadow-sm',
+          isDragging ? 'ring-2 ring-violet-300 border-violet-300' : 'border-slate-200'
+        )}
+      >
+        <button type="button" className="cursor-grab text-slate-300 hover:text-slate-500" {...attributes} {...listeners}>
+          <GripVertical className="w-3.5 h-3.5" />
         </button>
-      )}
+        <span className="w-7 h-7 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
+          <MapPin className="w-3.5 h-3.5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-900 truncate max-w-[120px]">{label}</p>
+          {hint && <p className="text-[10px] font-medium text-slate-400">{hint}</p>}
+        </div>
+        {canRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-[10px] font-bold text-slate-300 hover:text-rose-500 px-1"
+            title="Remove"
+          >
+            ×
+          </button>
+        )}
+      </div>
+      {!isLast && <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />}
     </div>
   );
 }
@@ -68,39 +82,43 @@ export default function PackageDestinationFlow({ destinations = [], onChange }) 
   };
 
   return (
-    <div className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-3 mb-3">
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-3 mb-4">
         <div>
-          <p className="text-sm font-semibold text-slate-900">Destination Flow</p>
+          <h3 className="text-base font-bold text-slate-900">Destination Flow</h3>
           <p className="text-xs text-slate-500">Drag to reorder route stops</p>
         </div>
-        <button
-          type="button"
-          onClick={addStop}
-          className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:border-violet-300 hover:text-violet-600"
-        >
-          <Plus className="w-3.5 h-3.5" /> Add
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-slate-200 text-xs font-semibold text-slate-500">
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            Reorder
+          </span>
+          <button
+            type="button"
+            onClick={addStop}
+            className="inline-flex items-center gap-1 h-8 px-3 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-500"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add
+          </button>
+        </div>
       </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={items.map((i) => i.id)} strategy={horizontalListSortingStrategy}>
-          <div className="flex flex-wrap items-center gap-2">
-            {items.map((item, idx) => (
-              <div key={item.id} className="inline-flex items-center gap-2">
-                <SortableChip
-                  id={item.id}
-                  label={item.name}
-                  canRemove={items.length > 1}
-                  onRemove={() => onChange?.(items.filter((d) => d.id !== item.id))}
-                />
-                {idx < items.length - 1 && (
-                  <span className="text-slate-300 text-sm font-bold">→</span>
-                )}
-              </div>
+        <SortableContext items={items.map((d) => d.id)} strategy={horizontalListSortingStrategy}>
+          <div className="flex items-center gap-1 overflow-x-auto pb-1">
+            {items.map((d, i) => (
+              <SortableStop
+                key={d.id}
+                id={d.id}
+                label={d.name}
+                index={i}
+                total={items.length}
+                canRemove={items.length > 2}
+                onRemove={() => onChange?.(items.filter((x) => x.id !== d.id))}
+              />
             ))}
             {!items.length && (
-              <p className="text-xs text-slate-400">No destinations yet — add a stop to begin.</p>
+              <p className="text-sm text-slate-400 py-2">No destinations yet — click Add</p>
             )}
           </div>
         </SortableContext>
