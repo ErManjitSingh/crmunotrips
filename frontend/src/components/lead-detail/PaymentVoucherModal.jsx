@@ -6,83 +6,13 @@ import {
   Download,
   Send,
   ChevronDown,
-  User,
-  MapPin,
-  Calendar,
-  Layers,
-  FileSpreadsheet,
-  CreditCard,
-  Wallet,
-  ArrowDownToLine,
-  Phone,
-  Check,
   Loader2,
 } from 'lucide-react';
 import AppModal from '../ui/AppModal';
 import { Button } from '../ui/button';
-import { cn } from '../../lib/utils';
 import { toast } from '../../context/ToastContext';
 import API from '../../api/axios';
 import { downloadVoucherPdf, printVoucherHtml } from './voucherPdf';
-
-function formatINR(n) {
-  const num = Number(n || 0);
-  return `₹${num.toLocaleString('en-IN', { maximumFractionDigits: 1 })}`;
-}
-
-function InfoCell({ icon: Icon, iconClass, label, value, children }) {
-  return (
-    <div className="p-3.5 sm:p-4 min-h-[88px]">
-      <div className="flex items-start gap-2.5">
-        <span className={cn('inline-flex h-8 w-8 items-center justify-center rounded-xl shrink-0', iconClass)}>
-          <Icon className="w-4 h-4" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium text-slate-400">{label}</p>
-          <div className="mt-0.5 text-[15px] font-extrabold text-slate-900 leading-snug break-words">
-            {value}
-          </div>
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MoneyCard({ icon: Icon, label, value, tone }) {
-  const tones = {
-    total: {
-      card: 'bg-emerald-50',
-      icon: 'bg-emerald-200/80 text-emerald-700',
-      label: 'text-emerald-700',
-      value: 'text-emerald-950',
-    },
-    advance: {
-      card: 'bg-emerald-100/80',
-      icon: 'bg-emerald-300/70 text-emerald-800',
-      label: 'text-emerald-700',
-      value: 'text-emerald-950',
-    },
-    balance: {
-      card: 'bg-orange-100/70',
-      icon: 'bg-orange-300/70 text-orange-700',
-      label: 'text-orange-700',
-      value: 'text-orange-800',
-    },
-  };
-  const t = tones[tone] || tones.total;
-  return (
-    <div className={cn('rounded-2xl p-4', t.card)}>
-      <span className={cn('inline-flex h-7 w-7 items-center justify-center rounded-lg mb-2.5', t.icon)}>
-        <Icon className="w-3.5 h-3.5" />
-      </span>
-      <p className={cn('text-[10px] font-bold uppercase tracking-wide mb-1', t.label)}>{label}</p>
-      <p className={cn('text-xl sm:text-2xl font-extrabold tracking-tight metric-tabular', t.value)}>
-        {formatINR(value)}
-      </p>
-    </div>
-  );
-}
 
 export default function PaymentVoucherModal({
   open,
@@ -96,12 +26,8 @@ export default function PaymentVoucherModal({
   const [sendOpen, setSendOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  const v = useMemo(() => {
-    if (voucher) return voucher;
-    return null;
-  }, [voucher]);
-
-  const receiptNo = v?.receiptNumber || 'payment-voucher';
+  const v = useMemo(() => voucher || null, [voucher]);
+  const receiptNo = v?.receiptNumber || v?.invoiceNumber || 'payment-voucher';
 
   const printVoucher = async () => {
     if (!html) {
@@ -109,7 +35,7 @@ export default function PaymentVoucherModal({
       return;
     }
     try {
-      await printVoucherHtml(html, `Payment Voucher ${receiptNo}`);
+      await printVoucherHtml(html, `Tax Invoice ${receiptNo}`);
     } catch {
       toast.error('Unable to print voucher');
     }
@@ -158,16 +84,17 @@ export default function PaymentVoucherModal({
   };
 
   return (
-    <AppModal open={open} onClose={onClose} size="3xl" className="p-0 overflow-hidden bg-white" panelClassName="max-w-[760px]">
-      {/* Modal chrome header */}
+    <AppModal open={open} onClose={onClose} size="3xl" className="p-0 overflow-hidden bg-white" panelClassName="max-w-[820px]">
       <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-white sticky top-0 z-10">
         <div className="flex items-center gap-3 min-w-0">
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shrink-0">
             <FileText className="w-5 h-5" />
           </span>
           <div className="min-w-0">
-            <h3 className="text-base sm:text-lg font-bold text-slate-900">Payment Voucher</h3>
-            <p className="text-xs text-slate-500 truncate">Voucher {receiptNo}</p>
+            <h3 className="text-base sm:text-lg font-bold text-slate-900">Tax Invoice / Voucher</h3>
+            <p className="text-xs text-slate-500 truncate">
+              {v?.invoiceNumber ? `Invoice ${v.invoiceNumber}` : `Voucher ${receiptNo}`}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -190,129 +117,18 @@ export default function PaymentVoucherModal({
         </div>
       </div>
 
-      <div className="max-h-[min(72vh,780px)] overflow-y-auto bg-white">
-        {v ? (
-          <div className="p-4 sm:p-5">
-            {/* Hero banner */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 text-white px-5 py-6 sm:px-7 sm:py-7">
-              <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-white/10 pointer-events-none" />
-              <div className="absolute -left-16 -bottom-20 w-48 h-48 rounded-full bg-black/10 pointer-events-none" />
-              <div className="relative z-[1] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/85">UNO TRIPS</p>
-                  <h2 className="text-2xl sm:text-[28px] font-extrabold tracking-tight mt-1.5 leading-tight">
-                    Advance / Token Receipt
-                  </h2>
-                  <p className="text-sm text-white/90 mt-2">
-                    Voucher ID: {v.receiptNumber} · {v.paidAtLabel}
-                  </p>
-                </div>
-                <div className="bg-white rounded-2xl px-4 py-3.5 shadow-lg shadow-black/15 min-w-[180px]">
-                  <div className="flex items-center gap-2.5">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-white shrink-0">
-                      <Check className="w-3.5 h-3.5" strokeWidth={3} />
-                    </span>
-                    <div>
-                      <p className="text-sm font-extrabold text-emerald-600 leading-tight">Payment Received</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Thank you for your payment!</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Info grid */}
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 rounded-2xl border border-slate-100 overflow-hidden divide-y sm:divide-y-0 sm:[&>*]:border-r sm:[&>*:nth-child(3n)]:border-r-0 sm:[&>*:nth-child(n+4)]:border-t border-slate-100 [&>*]:border-slate-100">
-              <InfoCell
-                icon={User}
-                iconClass="bg-emerald-100 text-emerald-600"
-                label="Customer"
-                value={(
-                  <span className="inline-flex items-center gap-2 flex-wrap">
-                    <span>{v.customerName}</span>
-                    <span className="inline-flex px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">
-                      {v.leadBadge}
-                    </span>
-                  </span>
-                )}
-              >
-                <p className="mt-1 text-xs text-slate-500 inline-flex items-center gap-1">
-                  <Phone className="w-3 h-3" /> {v.customerPhone}
-                </p>
-              </InfoCell>
-
-              <InfoCell
-                icon={MapPin}
-                iconClass="bg-violet-100 text-violet-600"
-                label="Destination"
-                value={v.destination}
-              >
-                {v.destinationSub ? <p className="mt-1 text-xs text-slate-500">{v.destinationSub}</p> : null}
-              </InfoCell>
-
-              <InfoCell
-                icon={Calendar}
-                iconClass="bg-sky-100 text-sky-600"
-                label="Travel Date"
-                value={v.travelDate}
-              >
-                {v.travelWeekday ? <p className="mt-1 text-xs text-slate-500">{v.travelWeekday}</p> : null}
-              </InfoCell>
-
-              <InfoCell
-                icon={Layers}
-                iconClass="bg-amber-100 text-amber-600"
-                label="Booking / Quote"
-                value={v.quoteNumber !== '—' ? v.quoteNumber : v.bookingNumber}
-              />
-
-              <InfoCell
-                icon={FileSpreadsheet}
-                iconClass="bg-indigo-100 text-indigo-600"
-                label="Invoice No."
-                value={v.invoiceNumber}
-              >
-                <p className="mt-1 text-xs text-slate-500">Generated on {v.invoiceGeneratedOn}</p>
-              </InfoCell>
-
-              <InfoCell
-                icon={CreditCard}
-                iconClass="bg-pink-100 text-pink-600"
-                label="Payment Mode"
-                value={v.paymentMethod}
-              >
-                <p className="mt-1 text-xs text-slate-500">
-                  {v.paymentRef ? `Ref: ${v.paymentRef}` : 'Confirmed'}
-                </p>
-              </InfoCell>
-            </div>
-
-            {/* Money cards */}
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <MoneyCard icon={Wallet} label="Package Total" value={v.totalAmount} tone="total" />
-              <MoneyCard icon={ArrowDownToLine} label="Advance Received" value={v.advanceReceived} tone="advance" />
-              <MoneyCard icon={FileText} label="Balance Due" value={v.balanceDue} tone="balance" />
-            </div>
-
-            {/* Important note */}
-            <div className="mt-4 flex gap-3 rounded-2xl bg-sky-50 px-4 py-3.5">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white text-[11px] font-bold shrink-0 mt-0.5">
-                i
-              </span>
-              <div>
-                <p className="text-sm font-bold text-blue-700">Important Note</p>
-                <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-                  This is an advance receipt for the above booking. Balance payment is required before the travel date.
-                </p>
-              </div>
-            </div>
-          </div>
+      <div className="max-h-[min(72vh,820px)] overflow-y-auto bg-slate-100">
+        {html ? (
+          <iframe
+            title="Payment tax invoice"
+            srcDoc={html}
+            className="w-full min-h-[720px] border-0 bg-white"
+          />
         ) : (
           <p className="p-10 text-center text-sm text-slate-500">No voucher data available</p>
         )}
       </div>
 
-      {/* Footer actions */}
       <div className="px-5 py-4 border-t border-slate-100 bg-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sticky bottom-0">
         <Button
           type="button"
@@ -367,11 +183,11 @@ export default function PaymentVoucherModal({
           )}
         </div>
       </div>
-      {lead?.email ? null : (
+      {!lead?.email ? (
         <p className="px-5 pb-3 -mt-2 text-[11px] text-amber-600">
           Tip: add customer email on the lead to send this voucher.
         </p>
-      )}
+      ) : null}
     </AppModal>
   );
 }
