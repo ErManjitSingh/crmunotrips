@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -26,7 +25,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { defaultItineraryDay, formatINR } from './quotationUtils';
+import { defaultItineraryDay } from './quotationUtils';
 
 function Chip({ children }) {
   return (
@@ -49,8 +48,7 @@ function ChangeBtn({ onClick, label = 'Change' }) {
   );
 }
 
-function HotelCard({ meta, options = [], onReplace, emptyLabel }) {
-  const [picking, setPicking] = useState(false);
+function HotelCard({ meta, options = [], onOpenPicker, emptyLabel }) {
   const image = meta?.image || meta?.images?.[0];
   const stars = Math.min(5, Math.round(Number(meta?.starRating || 0)));
   const hasOptions = options.length > 0;
@@ -71,9 +69,7 @@ function HotelCard({ meta, options = [], onReplace, emptyLabel }) {
               <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500">Hotel & Stay</p>
               <p className="text-sm font-semibold text-slate-900 truncate">{meta?.name || emptyLabel}</p>
             </div>
-            {hasOptions && (
-              <ChangeBtn onClick={() => setPicking((v) => !v)} label={picking ? 'Close' : 'Change'} />
-            )}
+            {hasOptions && onOpenPicker && <ChangeBtn onClick={onOpenPicker} />}
           </div>
           <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-slate-500">
             {stars > 0 && (
@@ -87,33 +83,6 @@ function HotelCard({ meta, options = [], onReplace, emptyLabel }) {
           </div>
         </div>
       </div>
-
-      {picking && hasOptions && (
-        <div className="px-3 pb-3 border-t border-slate-200/80 pt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-44 overflow-y-auto">
-          {options.map((opt) => {
-            const active = (opt.id || opt.name) === (meta?.id || meta?.name);
-            return (
-              <button
-                key={opt.id || opt.name}
-                type="button"
-                onClick={() => {
-                  onReplace?.(opt);
-                  setPicking(false);
-                }}
-                className={cn(
-                  'text-left text-[11px] font-semibold px-2.5 py-2 rounded-lg border bg-white',
-                  active ? 'border-violet-400 text-violet-700' : 'border-slate-200 text-slate-700 hover:border-violet-300'
-                )}
-              >
-                <span className="block truncate">{opt.name}</span>
-                {Number(opt.priceDelta) > 0 && (
-                  <span className="text-[10px] text-emerald-600">+{formatINR(opt.priceDelta)}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -152,7 +121,7 @@ function SortableDayCard({
   onChange,
   onRemove,
   onDuplicate,
-  onReplaceHotel,
+  onOpenHotelPicker,
   onChangeCab,
   canRemove,
   isLastDay,
@@ -257,7 +226,7 @@ function SortableDayCard({
         <HotelCard
           meta={hotelMeta}
           options={hotelOptions}
-          onReplace={(opt) => onReplaceHotel?.(day, opt)}
+          onOpenPicker={() => onOpenHotelPicker?.(day)}
           emptyLabel={isLastDay ? 'Departure day · no overnight stay' : 'Hotel not linked'}
         />
         {packageCab && day.day === 1 && <CabCard packageCab={packageCab} onChangeCab={onChangeCab} />}
@@ -279,7 +248,7 @@ export default function PackageBuilderDayTimeline({
   dayWiseHotels = [],
   packageCab = null,
   onChange,
-  onReplaceHotel,
+  onOpenHotelPicker,
   onChangeCab,
   destination = 'Destination',
 }) {
@@ -347,7 +316,7 @@ export default function PackageBuilderDayTimeline({
                   onChange={(d) => updateDay(idx, d)}
                   onRemove={() => removeDay(idx)}
                   onDuplicate={() => duplicateDay(idx)}
-                  onReplaceHotel={onReplaceHotel}
+                  onOpenHotelPicker={onOpenHotelPicker}
                   onChangeCab={onChangeCab}
                   canRemove={itinerary.length > 1}
                   isLastDay={idx === itinerary.length - 1}
