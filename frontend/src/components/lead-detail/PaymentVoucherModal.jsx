@@ -16,12 +16,14 @@ import {
   ArrowDownToLine,
   Phone,
   Check,
+  Loader2,
 } from 'lucide-react';
 import AppModal from '../ui/AppModal';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
 import { toast } from '../../context/ToastContext';
 import API from '../../api/axios';
+import { downloadVoucherPdf, printVoucherHtml } from './voucherPdf';
 
 function formatINR(n) {
   const num = Number(n || 0);
@@ -92,46 +94,41 @@ export default function PaymentVoucherModal({
 }) {
   const [sending, setSending] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const v = useMemo(() => {
     if (voucher) return voucher;
     return null;
   }, [voucher]);
 
-  const receiptNo = v?.receiptNumber || '—';
+  const receiptNo = v?.receiptNumber || 'payment-voucher';
 
-  const printVoucher = () => {
+  const printVoucher = async () => {
     if (!html) {
       toast.error('Voucher not ready to print');
       return;
     }
-    const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=1000');
-    if (!w) {
-      toast.error('Popup blocked — allow popups to print');
-      return;
+    try {
+      await printVoucherHtml(html, `Payment Voucher ${receiptNo}`);
+    } catch {
+      toast.error('Unable to print voucher');
     }
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 400);
   };
 
-  const downloadPdf = () => {
+  const downloadPdf = async () => {
     if (!html) {
       toast.error('Voucher not ready');
       return;
     }
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${receiptNo || 'payment-voucher'}.html`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    // Browser print-to-PDF is the cleanest PDF path
-    printVoucher();
+    setDownloading(true);
+    try {
+      await downloadVoucherPdf(html, `${receiptNo}.pdf`);
+      toast.success('PDF downloaded');
+    } catch {
+      toast.error('Failed to download PDF');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const sendToCustomer = async () => {
@@ -321,9 +318,11 @@ export default function PaymentVoucherModal({
           type="button"
           variant="outline"
           onClick={downloadPdf}
+          disabled={downloading || !html}
           className="rounded-xl h-10 gap-2 border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-semibold"
         >
-          <Download className="w-4 h-4" /> Download PDF
+          {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          {downloading ? 'Preparing PDF…' : 'Download PDF'}
         </Button>
 
         <div className="relative flex w-full sm:w-auto">
