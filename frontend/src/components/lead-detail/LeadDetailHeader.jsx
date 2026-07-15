@@ -23,14 +23,13 @@ function formatTravelRange(lead) {
 }
 
 function formatBudget(lead) {
-  if (lead?.budgetRange) {
+  if (lead?.budgetRange && lead.budgetRange !== 'custom') {
     const map = {
-      'under_25k': 'Under ₹25,000',
-      '25k_50k': '₹25,000 - ₹50,000',
-      '50k_75k': '₹50,000 - ₹75,000',
-      '75k_1L': '₹75,000 - ₹1,00,000',
-      '1L_2L': '₹1,00,000 - ₹2,00,000',
-      'above_2L': 'Above ₹2,00,000',
+      under_20000: 'Under ₹20,000',
+      '20000_40000': '₹20,000 - ₹40,000',
+      '40000_60000': '₹40,000 - ₹60,000',
+      '60000_100000': '₹60,000 - ₹1,00,000',
+      above_100000: 'Above ₹1,00,000',
     };
     return map[lead.budgetRange] || String(lead.budgetRange).replace(/_/g, ' ');
   }
