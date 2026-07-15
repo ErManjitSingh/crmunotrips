@@ -9,7 +9,6 @@ import {
   Pencil,
   ChevronRight,
   Eye,
-  Printer,
   Wallet,
   ArrowDownCircle,
   CreditCard,
@@ -18,8 +17,8 @@ import { formatLeadId } from '../leads/constants';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
 import Avatar from '../ui/Avatar';
 import API from '../../api/axios';
-import AppModal from '../ui/AppModal';
 import { Button } from '../ui/button';
+import PaymentVoucherModal from './PaymentVoucherModal';
 import { normalizeLeadStatus } from '../../utils/leadUtils';
 import {
   getInitials,
@@ -162,11 +161,14 @@ export default function LeadDetailHeader({
 
   const [voucherOpen, setVoucherOpen] = useState(false);
   const [voucherHtml, setVoucherHtml] = useState('');
+  const [voucherData, setVoucherData] = useState(null);
   const [voucherLoading, setVoucherLoading] = useState(false);
 
   const endpoint =
     receiptEndpoint ||
     (lead?._id ? `/leads/${lead._id}/payment-receipt` : null);
+
+  const sendEndpoint = endpoint ? `${endpoint}/send` : null;
 
   const voucherLabel = summary?.receiptNumber
     ? `Voucher ${summary.receiptNumber}`
@@ -180,25 +182,13 @@ export default function LeadDetailHeader({
     try {
       const { data } = await API.get(endpoint, { skipSuccessToast: true });
       setVoucherHtml(data.html || '');
+      setVoucherData(data.voucher || null);
       setVoucherOpen(true);
     } catch {
       toast.error('Unable to load payment voucher');
     } finally {
       setVoucherLoading(false);
     }
-  };
-
-  const printVoucher = () => {
-    if (!voucherHtml) return;
-    const w = window.open('', '_blank', 'noopener,noreferrer,width=800,height=900');
-    if (!w) {
-      toast.error('Popup blocked — allow popups to print voucher');
-      return;
-    }
-    w.document.write(voucherHtml);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 400);
   };
 
   return (
@@ -373,29 +363,14 @@ export default function LeadDetailHeader({
         </div>
       </div>
 
-      <AppModal open={voucherOpen} onClose={() => setVoucherOpen(false)} size="lg" className="p-0 overflow-hidden">
-        <div className="px-5 py-4 border-b border-subtle flex items-center justify-between gap-3 bg-white">
-          <div>
-            <h3 className="text-lg font-bold text-content-primary">Payment Voucher</h3>
-            <p className="text-xs text-content-muted mt-0.5">{voucherLabel}</p>
-          </div>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" className="rounded-xl gap-2" onClick={printVoucher}>
-              <Printer className="w-4 h-4" /> Print
-            </Button>
-            <Button type="button" variant="secondary" className="rounded-xl" onClick={() => setVoucherOpen(false)}>
-              Close
-            </Button>
-          </div>
-        </div>
-        <div className="max-h-[70vh] overflow-auto bg-slate-100">
-          {voucherHtml ? (
-            <iframe title="Payment voucher" srcDoc={voucherHtml} className="w-full min-h-[70vh] border-0 bg-white" />
-          ) : (
-            <p className="p-8 text-center text-sm text-slate-500">No voucher HTML available</p>
-          )}
-        </div>
-      </AppModal>
+      <PaymentVoucherModal
+        open={voucherOpen}
+        onClose={() => setVoucherOpen(false)}
+        voucher={voucherData}
+        html={voucherHtml}
+        lead={lead}
+        sendEndpoint={sendEndpoint}
+      />
     </div>
   );
 }

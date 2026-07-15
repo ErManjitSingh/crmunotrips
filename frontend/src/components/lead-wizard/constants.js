@@ -1,12 +1,10 @@
-import { User, Plane, Megaphone, ClipboardCheck } from 'lucide-react';
+import { FileText, ClipboardCheck } from 'lucide-react';
 
-export const WIZARD_STEP_COUNT = 4;
+export const WIZARD_STEP_COUNT = 2;
 
 export const WIZARD_STEPS = [
-  { id: 1, key: 'customer', title: 'Customer Details', subtitle: 'Contact & location', icon: User },
-  { id: 2, key: 'travel', title: 'Travel Details', subtitle: 'Destination & dates', icon: Plane },
-  { id: 3, key: 'lead', title: 'Lead Information', subtitle: 'Source & priority', icon: Megaphone },
-  { id: 4, key: 'review', title: 'Review', subtitle: 'Confirm & save', icon: ClipboardCheck },
+  { id: 1, key: 'form', title: 'Lead Form', subtitle: 'All details', icon: FileText },
+  { id: 2, key: 'review', title: 'Review', subtitle: 'Confirm & save', icon: ClipboardCheck },
 ];
 
 export const LEAD_SOURCES = [
@@ -36,9 +34,9 @@ export const INDIAN_STATES = [
 ];
 
 export const LEAD_TYPES = [
-  { value: 'fit', label: 'FIT', description: 'Individual / family travel' },
-  { value: 'group', label: 'Group', description: '10+ travelers or group tour' },
-  { value: 'corporate', label: 'Corporate', description: 'Business / MICE / company travel' },
+  { value: 'fit', label: 'FIT', description: 'Individual / family' },
+  { value: 'group', label: 'Group', description: '10+ travelers' },
+  { value: 'corporate', label: 'Corporate', description: 'Business / MICE' },
 ];
 
 export const DESTINATIONS = [
@@ -48,7 +46,16 @@ export const DESTINATIONS = [
   'Himachal Pradesh', 'Uttarakhand', 'Ladakh', 'Spiti Valley', 'Rishikesh',
 ];
 
-export const DRAFT_STORAGE_KEY = 'uno-crm-lead-wizard-draft-v7';
+export const BUDGET_RANGE_OPTIONS = [
+  { value: 'under_20000', label: 'Under 20k', amount: 20000 },
+  { value: '20000_40000', label: '20–40k', amount: 30000 },
+  { value: '40000_60000', label: '40–60k', amount: 50000 },
+  { value: '60000_100000', label: '60–100k', amount: 80000 },
+  { value: 'above_100000', label: '100k+', amount: 120000 },
+  { value: 'custom', label: 'Custom', amount: '' },
+];
+
+export const DRAFT_STORAGE_KEY = 'uno-crm-lead-wizard-draft-v8';
 
 export const defaultWizardValues = {
   name: '',

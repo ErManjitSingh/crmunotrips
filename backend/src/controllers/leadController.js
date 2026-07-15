@@ -27,7 +27,11 @@ const { onLeadConverted, isLeadStatusLocked } = require('../services/leadConvers
 const {
   getLeadPaymentSummary,
   getLeadPaymentReceipt,
+  sendReceiptToCustomer,
+  generateAndStoreReceipt,
 } = require('../services/paymentReceiptService');
+const Payment = require('../models/Payment');
+const Booking = require('../models/Booking');
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
 const { runLeadAutoAssignment } = require('../services/leadAutoAssignmentService');
 const { LEAD_AUTO_ASSIGNMENT_ENABLED } = require('../config/assignment');
@@ -162,6 +166,32 @@ const getLead = asyncHandler(async (req, res) => {
 const getLeadPaymentReceiptDoc = asyncHandler(async (req, res) => {
   const data = await getLeadPaymentReceipt(req.params.id, { branchId: req.branchId });
   res.json(data);
+});
+
+const sendLeadPaymentReceipt = asyncHandler(async (req, res) => {
+  const lead = await loadLeadCore(req.params.id, { branchId: req.branchId });
+  if (!lead) throw new ApiError(404, 'Lead not found');
+
+  let payment = await Payment.findOne({ lead: lead._id }).sort({ createdAt: -1 });
+  if (!payment) throw new ApiError(404, 'No payment found for this lead');
+
+  const booking = await Booking.findOne({ lead: lead._id }).sort({ createdAt: -1 }).lean();
+  const quotation = payment.quotation
+    ? await Quotation.findById(payment.quotation).lean()
+    : null;
+
+  if (!payment.receiptHtml) {
+    payment = await generateAndStoreReceipt({
+      lead,
+      payment,
+      booking,
+      quotation,
+      actor: req.user,
+    });
+  }
+
+  const result = await sendReceiptToCustomer({ lead, payment, actor: req.user });
+  res.json(result);
 });
 
 const getLeadFollowups = asyncHandler(async (req, res) => {
@@ -849,6 +879,7 @@ module.exports = {
   getLeadQuotations,
   getLeadNotesList,
   getLeadPaymentReceiptDoc,
+  sendLeadPaymentReceipt,
   createLead,
   seedDemoLeads,
   clearAllLeads,

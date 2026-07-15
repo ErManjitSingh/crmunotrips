@@ -15,7 +15,11 @@ const { onLeadConverted, isLeadStatusLocked } = require('../services/leadConvers
 const {
   getLeadPaymentSummary,
   getLeadPaymentReceipt,
+  sendReceiptToCustomer,
+  generateAndStoreReceipt,
 } = require('../services/paymentReceiptService');
+const Payment = require('../models/Payment');
+const Booking = require('../models/Booking');
 const { invalidate: invalidateDashboardCache } = require('../services/dashboardCacheService');
 const { notifyQuotationCreated } = require('../services/notificationService');
 const {
@@ -125,6 +129,35 @@ const getLeadPaymentReceiptDoc = asyncHandler(async (req, res) => {
     extraFilter: { assignedTo: req.user._id },
   });
   res.json(data);
+});
+
+const sendLeadPaymentReceipt = asyncHandler(async (req, res) => {
+  const lead = await loadLeadCore(req.params.id, {
+    branchId: req.branchId,
+    extraFilter: { assignedTo: req.user._id },
+  });
+  if (!lead) throw new ApiError(404, 'Lead not found');
+
+  let payment = await Payment.findOne({ lead: lead._id }).sort({ createdAt: -1 });
+  if (!payment) throw new ApiError(404, 'No payment found for this lead');
+
+  const booking = await Booking.findOne({ lead: lead._id }).sort({ createdAt: -1 }).lean();
+  const quotation = payment.quotation
+    ? await Quotation.findById(payment.quotation).lean()
+    : null;
+
+  if (!payment.receiptHtml) {
+    payment = await generateAndStoreReceipt({
+      lead,
+      payment,
+      booking,
+      quotation,
+      actor: req.user,
+    });
+  }
+
+  const result = await sendReceiptToCustomer({ lead, payment, actor: req.user });
+  res.json(result);
 });
 
 const getLeadQuotationsList = asyncHandler(async (req, res) => {
@@ -604,6 +637,7 @@ module.exports = {
   getLeadQuotationsList,
   getLeadNotesList,
   getLeadPaymentReceiptDoc,
+  sendLeadPaymentReceipt,
   updateLead,
   addLeadNote,
   listFollowUps,

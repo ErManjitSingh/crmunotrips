@@ -82,40 +82,40 @@ export default function LeadWizard() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto pb-12">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div className="flex items-start gap-3">
+    <div className="max-w-3xl mx-auto pb-10">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div className="flex items-start gap-2.5">
           <Link
             to="/leads"
-            className="mt-1 p-2 rounded-xl border border-brand-500/30 bg-brand-500/10 hover:bg-brand-500/20 text-brand-600 transition-colors shrink-0"
+            className="mt-0.5 p-2 rounded-xl border border-brand-500/30 bg-brand-500/10 hover:bg-brand-500/20 text-brand-600 transition-colors shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-content-primary tracking-tight">
-              {isEdit ? 'Edit Lead' : 'Create New Lead'}
+            <h1 className="text-xl sm:text-2xl font-bold text-content-primary tracking-tight">
+              {isEdit ? 'Edit Lead' : 'Add Lead'}
             </h1>
-            <p className="text-sm text-content-muted mt-0.5">
-              {isEdit ? 'Update lead information' : 'Quick 4-step lead form'}
+            <p className="text-xs sm:text-sm text-content-muted mt-0.5">
+              {isEdit ? 'Update lead information' : '2 steps — form, then review'}
             </p>
           </div>
         </div>
         {!isEdit && <WizardDraftIndicator status={draftStatus} lastSaved={lastSaved} />}
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <WizardStepProgress currentStep={step} maxReachable={maxReachable} onStepClick={goToStep} />
       </div>
 
       {error && (
-        <div className="mb-4 p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 text-sm">
+        <div className="mb-3 p-3 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 text-sm">
           {error}
         </div>
       )}
 
       <WizardFormContext.Provider value={formApi}>
         <form onSubmit={(e) => e.preventDefault()}>
-          <div className="rounded-2xl border border-subtle bg-surface/90 backdrop-blur-sm shadow-lg overflow-hidden">
+          <div className="rounded-2xl border border-subtle bg-surface/95 backdrop-blur-sm shadow-xl shadow-brand-900/5 overflow-hidden ring-1 ring-brand-500/5">
             <WizardFormBody
               step={step}
               isEdit={isEdit}
