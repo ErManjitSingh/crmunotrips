@@ -16,7 +16,7 @@ export function buildQuotationPrintDocument(contentHtml, title = 'Quotation') {
   <title>${safeTitle}</title>
   <style>
 ${quotePdfCss}
-    @page { margin: 8mm 10mm; size: A4 portrait; }
+    @page { margin: 10mm 11mm; size: A4 portrait; }
     html, body {
       margin: 0 !important;
       padding: 0 !important;
@@ -25,13 +25,38 @@ ${quotePdfCss}
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
+    /* Prefer whole blocks on one page so page joins stay invisible */
     .quote-ht-section {
-      orphans: 3;
-      widows: 3;
+      orphans: 4;
+      widows: 4;
+      page-break-inside: auto;
+      break-inside: auto;
+    }
+    .quote-ht-section-title {
+      page-break-after: avoid !important;
+      break-after: avoid !important;
     }
     .quote-ht-section-title + .quote-ht-section-content {
-      page-break-before: avoid;
-      break-before: avoid;
+      page-break-before: avoid !important;
+      break-before: avoid !important;
+    }
+    .quote-ht-stay-card,
+    .quote-ht-fare,
+    .quote-ht-cover,
+    .quote-ht-glance,
+    .quote-ht-highlights,
+    .quote-ht-day-head,
+    .quote-ht-transport-card,
+    .quote-ht-policy,
+    .quote-ht-footer {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .quote-ht-timeline-line { display: none !important; }
+    .quote-ht-timeline-card {
+      border: none !important;
+      box-shadow: none !important;
+      background: transparent !important;
     }
   </style>
 </head>

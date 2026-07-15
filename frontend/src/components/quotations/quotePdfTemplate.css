@@ -984,7 +984,7 @@
   opacity: 0.72;
 }
 
-/* Print */
+/* Print — seamless page breaks (no cut cards / torn borders) */
 @media print {
   .quote-pdf-preview-shell,
   .quote-pdf-preview-paper {
@@ -997,6 +997,7 @@
 
   .quote-ht-pdf {
     max-width: none;
+    overflow: visible;
   }
 
   .quote-ht-section {
@@ -1009,17 +1010,106 @@
     margin-right: 0;
   }
 
+  /* Keep visual blocks whole so a page never tears through a card */
+  .quote-ht-topbar,
   .quote-ht-cover,
   .quote-ht-glance,
   .quote-ht-highlights,
-  .quote-ht-timeline-item,
+  .quote-ht-highlight-card,
+  .quote-ht-section-title,
+  .quote-ht-snapshot,
+  .quote-ht-snapshot-cell,
+  .quote-ht-transport-card,
+  .quote-ht-day-head,
+  .quote-ht-day-extra,
   .quote-ht-stay-card,
+  .quote-ht-inc-exc,
+  .quote-ht-inc-exc > div,
   .quote-ht-fare,
   .quote-ht-policy,
+  .quote-ht-planner,
+  .quote-ht-planner-box,
+  .quote-ht-bank-table,
   .quote-ht-footer,
-  .quote-ht-transport-card {
-    page-break-inside: avoid;
-    break-inside: avoid;
+  .quote-ht-cover-price,
+  .quote-ht-timeline-dot {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Title never sits alone at page bottom */
+  .quote-ht-section-title {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .quote-ht-section-title + .quote-ht-section-content {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+
+  /* Day head sticks with following body start */
+  .quote-ht-day-head {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* If browser still splits a box, redraw border/bg on each fragment */
+  .quote-ht-stay-card,
+  .quote-ht-transport-card,
+  .quote-ht-inc-exc > div,
+  .quote-ht-planner-box,
+  .quote-ht-snapshot-cell,
+  .quote-ht-policy,
+  .quote-ht-day-extra {
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  /* Timeline connector cuts across pages — hide so join is invisible */
+  .quote-ht-timeline-line {
+    display: none !important;
+  }
+
+  .quote-ht-timeline-item {
+    margin-bottom: 12px;
+  }
+
+  /*
+   * Itinerary prose can span pages. Remove card chrome on print so
+   * the page join is just white → white (no half-border / torn box).
+   */
+  .quote-ht-timeline-card {
+    margin-bottom: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    background: transparent !important;
+  }
+
+  .quote-ht-cover-price,
+  .quote-ht-timeline-dot {
+    box-shadow: none !important;
+  }
+
+  /* Soften edges on compact blocks */
+  .quote-ht-stay-card,
+  .quote-ht-transport-card,
+  .quote-ht-inc-exc > div,
+  .quote-ht-planner-box,
+  .quote-ht-fare,
+  .quote-ht-highlight-card,
+  .quote-ht-snapshot {
+    border-radius: 4px !important;
+  }
+
+  .quote-ht-day-body,
+  .quote-ht-welcome,
+  .quote-ht-policy li {
+    orphans: 4;
+    widows: 4;
   }
 
   .quote-ht-section-title,
@@ -1029,7 +1119,10 @@
   .quote-ht-fare,
   .quote-ht-meals-pill,
   .quote-ht-transport-icon,
-  .quote-ht-footer {
+  .quote-ht-glance-icon,
+  .quote-ht-footer,
+  .quote-ht-inc-exc .inc,
+  .quote-ht-inc-exc .exc {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -1039,14 +1132,14 @@
   }
 
   tr {
-    page-break-inside: avoid;
-    break-inside: avoid;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   img {
     max-width: 100%;
-    page-break-inside: avoid;
-    break-inside: avoid;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }
 
