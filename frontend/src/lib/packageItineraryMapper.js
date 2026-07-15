@@ -281,22 +281,44 @@ export function buildMergedItinerary(itineraryDays = [], optionDays = [], stays 
   );
 }
 
+function itineraryHotelRichness(days = []) {
+  return (Array.isArray(days) ? days : []).reduce((score, day) => {
+    if (day?.hotelMeta?.image || day?.hotelMeta?.images?.length) score += 4;
+    if (day?.hotelMeta?.starRating) score += 1;
+    if (day?.hotelMeta?.name || day?.hotel) score += 1;
+    if (Array.isArray(day?.hotelOptions) && day.hotelOptions.length) score += 1;
+    if (day?.hotelOptions?.some((o) => o.image || o.images?.length)) score += 2;
+    return score;
+  }, 0);
+}
+
 /** Prefer merged package itinerary from API raw payloads when mapped itinerary is sparse. */
 export function resolvePackageItinerary(source = {}) {
   const itineraryDays = source._apiRaw?.package?.itinerary_days || source.itinerary_days || [];
   const optionDays = source._apiRaw?.dayOptions?.days || [];
   const stays = source._apiRaw?.dayOptions?.stays || source.stays || [];
+  const existing = Array.isArray(source.itinerary) ? source.itinerary : [];
+
+  // Backend already hydrates hotel_ids via Uno Hotels search — keep that payload.
+  if (existing.length && itineraryHotelRichness(existing) > 0) {
+    const existingScore = itineraryHotelRichness(existing);
+    let merged = [];
+    if (optionDays.length || itineraryDays.length || stays.length) {
+      merged = buildMergedItinerary(itineraryDays, optionDays, stays);
+    }
+    if (existingScore >= itineraryHotelRichness(merged)) {
+      return enrichItineraryWithStays(existing, stays);
+    }
+  }
 
   let merged = [];
   if (optionDays.length || itineraryDays.length || stays.length) {
     merged = buildMergedItinerary(itineraryDays, optionDays, stays);
   }
 
-  const existing = Array.isArray(source.itinerary) ? source.itinerary : [];
   const mergedHasHotels = merged.some((d) => d.hotelMeta?.name || d.hotel);
   const existingHasHotels = existing.some((d) => d.hotelMeta?.name || d.hotel);
 
-  // Prefer longer/hotel-rich itinerary, then always re-apply stays for missing nights
   if (!merged.length) {
     return enrichItineraryWithStays(existing, stays);
   }

@@ -3,6 +3,7 @@ const { inferCityFromDestination, matchesDestination } = require('../utils/desti
 const cacheService = require('./cacheService');
 const {
   unwrapPayload,
+  unwrapListPayload,
   sanitizeImageUrl,
   sanitizeImages,
   unoFetch,
@@ -11,6 +12,10 @@ const {
 const LIST_CACHE_TTL_MS = 10 * 60 * 1000;
 const DETAIL_CACHE_TTL_MS = 15 * 60 * 1000;
 const TOTAL_CACHE_TTL_MS = 10 * 60 * 1000;
+const HOTEL_CITY_CACHE_TTL_MS = 15 * 60 * 1000;
+
+/** city -> { fetchedAt, byId: Map } */
+const hotelCityCache = new Map();
 
 function parseDurationDays(pkg = {}) {
   if (pkg.duration_days > 0) return pkg.duration_days;
@@ -100,8 +105,126 @@ function findStayForDay(stays = [], dayNumber) {
   return list.find((stay) => stayCoversDay(stay, dayNumber)) || null;
 }
 
+/**
+ * Resolve package stay hotel_ids via Uno Hotels public search API
+ * (https://api.unohotelsandresorts.com/docs — GET /v1/hotels/search).
+ */
+async function fetchHotelsForCity(city) {
+  const key = String(city || '').trim().toLowerCase();
+  if (!key) return new Map();
+
+  const cached = hotelCityCache.get(key);
+  if (cached && Date.now() - cached.fetchedAt < HOTEL_CITY_CACHE_TTL_MS) {
+    return cached.byId;
+  }
+
+  const byId = new Map();
+  try {
+    const raw = await unoFetch('/v1/hotels/search', {
+      query: { city: String(city).trim(), limit: 100, sort: 'popular' },
+    });
+    for (const hotel of unwrapListPayload(raw)) {
+      if (hotel?.id) byId.set(String(hotel.id), hotel);
+    }
+  } catch {
+    /* city may be empty / API miss */
+  }
+
+  hotelCityCache.set(key, { fetchedAt: Date.now(), byId });
+  return byId;
+}
+
+function collectStayHotelRefs(stays = []) {
+  const refs = [];
+  for (const stay of Array.isArray(stays) ? stays : []) {
+    const city = stay.destination_city || '';
+    if (stay.default_hotel_id) {
+      refs.push({
+        hotelId: String(stay.default_hotel_id),
+        name: stay.default_hotel_name || '',
+        city,
+      });
+    }
+    for (const opt of Array.isArray(stay.hotel_options) ? stay.hotel_options : []) {
+      if (!opt?.hotel_id) continue;
+      refs.push({
+        hotelId: String(opt.hotel_id),
+        name: opt.hotel_name || '',
+        city,
+      });
+    }
+  }
+  return refs;
+}
+
+async function resolveHotelCatalog(stays = []) {
+  const refs = collectStayHotelRefs(stays);
+  const catalog = new Map();
+  if (!refs.length) return catalog;
+
+  const cities = [...new Set(refs.map((r) => r.city).filter(Boolean))];
+  await Promise.all(
+    cities.map(async (city) => {
+      const byId = await fetchHotelsForCity(city);
+      byId.forEach((hotel, id) => catalog.set(id, hotel));
+    })
+  );
+
+  const missing = refs.filter((r) => r.hotelId && !catalog.has(r.hotelId));
+  await Promise.all(
+    missing.map(async (ref) => {
+      if (!ref.city || !ref.name) return;
+      try {
+        const raw = await unoFetch('/v1/hotels/search', {
+          query: { city: ref.city, q: ref.name, limit: 10, sort: 'popular' },
+        });
+        const list = unwrapListPayload(raw);
+        const hit = list.find((h) => String(h.id) === ref.hotelId) || list[0];
+        if (hit?.id) catalog.set(String(hit.id === ref.hotelId ? hit.id : ref.hotelId), hit);
+        if (hit?.id) catalog.set(ref.hotelId, hit);
+      } catch {
+        /* ignore */
+      }
+    })
+  );
+
+  return catalog;
+}
+
+function applyCatalogToOption(option = {}, catalog = null, stay = null) {
+  const hotelId = String(option.hotel_id || option.id || '');
+  const hotel = hotelId && catalog ? catalog.get(hotelId) : null;
+  if (!hotel) return option;
+
+  const thumb = sanitizeImageUrl(hotel.thumbnail_url);
+  const images = sanitizeImages(hotel.images || (thumb ? [thumb] : []));
+  const location =
+    [hotel.city, hotel.state].filter(Boolean).join(', ') ||
+    option.location ||
+    stay?.destination_city ||
+    '';
+
+  return {
+    ...option,
+    hotel_id: hotelId || option.hotel_id,
+    hotel_name: hotel.name || option.hotel_name,
+    name: hotel.name || option.name || option.hotel_name,
+    image_url: thumb || option.image_url,
+    image: thumb || option.image,
+    images: images.length ? images : option.images,
+    star_rating: hotel.star_category ?? option.star_rating,
+    stars: hotel.star_category ?? option.stars,
+    rating: hotel.rating ?? option.rating,
+    location,
+    city: hotel.city || option.city,
+    slug: hotel.slug || option.slug,
+    amenities: hotel.amenities || option.amenities,
+    address: hotel.address || option.address,
+  };
+}
+
 /** Hotels live on day-options `stays[]` — build default + alternatives for a night. */
-function hotelOptionsFromStay(stay = {}) {
+function hotelOptionsFromStay(stay = {}, catalog = null) {
   if (!stay || typeof stay !== 'object') return [];
   const meals = formatMealPlanCode(stay.default_meal_plan);
   const location = stay.destination_city || stay.destination_state || '';
@@ -110,35 +233,48 @@ function hotelOptionsFromStay(stay = {}) {
   const defaultHotelId = stay.default_hotel_id || null;
 
   if (stay.default_hotel_name || defaultHotelId) {
-    options.push({
-      id: defaultHotelId || stay.id || stay.default_hotel_name,
-      hotel_id: defaultHotelId,
-      hotel_name: stay.default_hotel_name,
-      name: stay.default_hotel_name,
-      room_type: stay.default_room_type_name || roomFallback,
-      tier_name: stay.default_room_type_name || roomFallback,
-      meals,
-      price_delta: Number(stay.default_upgrade_price || 0),
-      is_default: true,
-      location,
-    });
+    options.push(
+      applyCatalogToOption(
+        {
+          id: defaultHotelId || stay.id || stay.default_hotel_name,
+          hotel_id: defaultHotelId,
+          hotel_name: stay.default_hotel_name,
+          name: stay.default_hotel_name,
+          room_type: stay.default_room_type_name || roomFallback,
+          tier_name: stay.default_room_type_name || roomFallback,
+          room_type_id: stay.default_room_type_id || null,
+          meals,
+          price_delta: Number(stay.default_upgrade_price || 0),
+          is_default: true,
+          location,
+        },
+        catalog,
+        stay
+      )
+    );
   }
 
   for (const opt of Array.isArray(stay.hotel_options) ? stay.hotel_options : []) {
     if (defaultHotelId && opt.hotel_id && opt.hotel_id === defaultHotelId) continue;
     const name = pickHotelLabel(opt);
-    if (!name) continue;
-    options.push({
-      ...opt,
-      name,
-      hotel_name: opt.hotel_name || name,
-      room_type: opt.default_room_type_name || roomFallback,
-      tier_name: opt.default_room_type_name || roomFallback,
-      meals,
-      price_delta: Number(opt.upgrade_price ?? opt.price_delta ?? 0),
-      is_default: false,
-      location,
-    });
+    if (!name && !opt.hotel_id) continue;
+    options.push(
+      applyCatalogToOption(
+        {
+          ...opt,
+          name: name || opt.hotel_name,
+          hotel_name: opt.hotel_name || name,
+          room_type: opt.default_room_type_name || roomFallback,
+          tier_name: opt.default_room_type_name || roomFallback,
+          meals,
+          price_delta: Number(opt.upgrade_price ?? opt.price_delta ?? 0),
+          is_default: false,
+          location,
+        },
+        catalog,
+        stay
+      )
+    );
   }
 
   return options;
@@ -149,30 +285,45 @@ function mapHotelMeta(option = {}) {
   const name = pickHotelLabel(option);
   if (!name) return null;
   const image = sanitizeImageUrl(
-    option.image_url || option.image || option.featured_image || option.thumbnail || option.cover_image
+    option.image_url ||
+      option.image ||
+      option.featured_image ||
+      option.thumbnail ||
+      option.thumbnail_url ||
+      option.cover_image ||
+      (Array.isArray(option.images) ? option.images[0] : '')
   );
   const meals =
     formatMealsLabel(option.meals) ||
     formatMealPlanCode(option.meal_plan || option.default_meal_plan);
   return {
-    id: option.id || option.hotel_id || name,
+    id: option.hotel_id || option.id || name,
+    hotelId: option.hotel_id || option.id || null,
     name,
     image,
     images: sanitizeImages(option.images || (image ? [image] : [])),
-    starRating: Number(option.star_rating || option.stars || option.rating || 0),
+    starRating: Number(
+      option.star_rating || option.star_category || option.stars || option.rating || 0
+    ),
     location: option.location || option.city || option.area || '',
+    city: option.city || '',
+    slug: option.slug || '',
     meals,
     priceDelta: Number(option.price_delta ?? option.upgrade_price ?? option.price ?? 0),
     tierName: option.tier_name || option.room_type || option.default_room_type_name || '',
+    roomTypeId: option.room_type_id || option.default_room_type_id || null,
     isDefault: Boolean(option.is_default || option.isDefault || option.is_selected),
+    amenities: Array.isArray(option.amenities) ? option.amenities : [],
   };
 }
 
-function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
+function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null, catalog = null) {
   const dayNumber = itineraryDay.day_number || optionDay.day_number;
   const dayHotelOptions = Array.isArray(optionDay.hotel_options) ? optionDay.hotel_options : [];
   const hotelOptionsRaw =
-    dayHotelOptions.length > 0 ? dayHotelOptions : hotelOptionsFromStay(stay || {});
+    dayHotelOptions.length > 0
+      ? dayHotelOptions.map((opt) => applyCatalogToOption(opt, catalog, stay))
+      : hotelOptionsFromStay(stay || {}, catalog);
   const hotelOptions = hotelOptionsRaw.map(mapHotelMeta).filter(Boolean);
   const defaultHotelMeta =
     hotelOptions.find((o) => o.isDefault) || hotelOptions[0] || null;
@@ -238,7 +389,7 @@ function stayNightNumbers(stays = []) {
   return nums;
 }
 
-function enrichItineraryWithStays(itinerary = [], stays = []) {
+function enrichItineraryWithStays(itinerary = [], stays = [], catalog = null) {
   if (!Array.isArray(itinerary) || !itinerary.length) return [];
   if (!Array.isArray(stays) || !stays.length) return itinerary;
 
@@ -247,9 +398,15 @@ function enrichItineraryWithStays(itinerary = [], stays = []) {
     const stay = findStayForDay(stays, dayNum);
     if (!stay) return day;
 
+    const hotelOptions = hotelOptionsFromStay(stay, catalog).map(mapHotelMeta).filter(Boolean);
+    const defaultHotel = hotelOptions.find((o) => o.isDefault) || hotelOptions[0] || null;
+    const existingHasImage = Boolean(day.hotelMeta?.image || day.hotelMeta?.images?.length);
+    const nextHasImage = Boolean(defaultHotel?.image || defaultHotel?.images?.length);
     const hasHotel = Boolean(day.hotelMeta?.name || day.hotel);
     const hasOptions = Array.isArray(day.hotelOptions) && day.hotelOptions.length > 0;
-    if (hasHotel && hasOptions) {
+
+    // Prefer catalog-hydrated options when existing cards lack images
+    if (hasHotel && hasOptions && existingHasImage && (!catalog || !nextHasImage)) {
       return {
         ...day,
         stayId: day.stayId || stay.id || null,
@@ -257,26 +414,29 @@ function enrichItineraryWithStays(itinerary = [], stays = []) {
       };
     }
 
-    const hotelOptions = hotelOptionsFromStay(stay).map(mapHotelMeta).filter(Boolean);
-    const defaultHotel = hotelOptions.find((o) => o.isDefault) || hotelOptions[0] || null;
-    const hotelName = hasHotel
-      ? day.hotelMeta?.name || day.hotel
-      : defaultHotel?.name || '';
+    if (!defaultHotel && !hasHotel) {
+      return {
+        ...day,
+        stayId: day.stayId || stay.id || null,
+        stayNights: day.stayNights || Number(stay.nights) || 1,
+      };
+    }
 
+    const hotelName = defaultHotel?.name || day.hotelMeta?.name || day.hotel || '';
     return {
       ...day,
       hotel: hotelName,
       accommodation: hotelName || day.accommodation || '',
-      hotelMeta: day.hotelMeta?.name ? day.hotelMeta : defaultHotel,
-      hotelOptions: hasOptions ? day.hotelOptions : hotelOptions,
-      meals: day.meals || defaultHotel?.meals || formatMealPlanCode(stay.default_meal_plan),
+      hotelMeta: defaultHotel || day.hotelMeta,
+      hotelOptions: hotelOptions.length ? hotelOptions : day.hotelOptions || [],
+      meals: defaultHotel?.meals || day.meals || formatMealPlanCode(stay.default_meal_plan),
       stayId: day.stayId || stay.id || null,
       stayNights: day.stayNights || Number(stay.nights) || 1,
     };
   });
 }
 
-function buildMergedItinerary(itineraryDays = [], optionDays = [], stays = []) {
+function buildMergedItinerary(itineraryDays = [], optionDays = [], stays = [], catalog = null) {
   const itineraryByDay = new Map(
     (Array.isArray(itineraryDays) ? itineraryDays : [])
       .map((day) => [dayKey(day), day])
@@ -305,13 +465,14 @@ function buildMergedItinerary(itineraryDays = [], optionDays = [], stays = []) {
     mergeDayItinerary(
       itineraryByDay.get(dayNumber) || {},
       optionByDay.get(dayNumber) || { day_number: dayNumber },
-      findStayForDay(stayList, dayNumber)
+      findStayForDay(stayList, dayNumber),
+      catalog
     )
   );
 }
 
-function mapDayOptionsToItinerary(days = [], stays = []) {
-  return buildMergedItinerary([], days, stays);
+function mapDayOptionsToItinerary(days = [], stays = [], catalog = null) {
+  return buildMergedItinerary([], days, stays, catalog);
 }
 
 async function fetchUnoPackageDayOptionsPayload(slug) {
@@ -370,10 +531,13 @@ async function attachItineraryFromDayOptions(mapped, slug, itineraryDaysFromPack
     if (packageCabs.length) mapped.packageCabs = packageCabs;
 
     if (days.length > 0 || packageItineraryDays.length > 0 || stays.length > 0) {
+      const catalog = await resolveHotelCatalog(stays);
       mapped.itinerary = enrichItineraryWithStays(
-        buildMergedItinerary(packageItineraryDays, days, stays),
-        stays
+        buildMergedItinerary(packageItineraryDays, days, stays, catalog),
+        stays,
+        catalog
       );
+      mapped.hotelCatalogSize = catalog.size;
       return mapped;
     }
   } catch {
@@ -622,7 +786,7 @@ async function fetchUnoPackageById(packageId) {
 
 async function getUnoPackageById(packageId) {
   return cacheService.getOrSet(
-    `uno:packages:detail:v4:${packageId}`,
+    `uno:packages:detail:v5:${packageId}`,
     () => fetchUnoPackageById(packageId),
     DETAIL_CACHE_TTL_MS
   );
