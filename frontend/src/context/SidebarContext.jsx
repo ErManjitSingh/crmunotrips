@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 const SidebarContext = createContext(null);
 
 const STORAGE_KEY = 'uno-sidebar-collapsed';
 
 export function SidebarProvider({ children }) {
+  const location = useLocation();
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem(STORAGE_KEY) === 'true';
   });
@@ -13,6 +15,11 @@ export function SidebarProvider({ children }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, String(collapsed));
   }, [collapsed]);
+
+  // Close mobile drawer after every navigation (link click, bottom nav, programmatic).
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname, location.search]);
 
   const toggleCollapsed = () => setCollapsed((prev) => !prev);
   const effectiveCollapsed = mobileOpen ? false : collapsed;

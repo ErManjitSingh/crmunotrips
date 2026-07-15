@@ -19,7 +19,7 @@ function computeCollected(payments = []) {
 }
 
 export default function SidebarCollectionTarget() {
-  const { collapsed } = useSidebar();
+  const { collapsed, setMobileOpen } = useSidebar();
   const { data: payments = [] } = useQuery({
     queryKey: ['payments'],
     queryFn: () => listPayments(),
@@ -68,6 +68,7 @@ export default function SidebarCollectionTarget() {
 
         <Link
           to="/payments"
+          onClick={() => setMobileOpen(false)}
           className="flex items-center justify-center h-8 rounded-xl text-[11px] font-semibold text-white bg-white/10 hover:bg-white/15 border border-white/10 transition-colors"
         >
           View Details
