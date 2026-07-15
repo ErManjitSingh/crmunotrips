@@ -12,6 +12,10 @@ const { getTeamLeaderForExecutive } = require('../services/teamScopeService');
 const { logActivity, getClientIp } = require('../services/activityService');
 const { logLeadActivity } = require('../services/leadActivityService');
 const { onLeadConverted, isLeadStatusLocked } = require('../services/leadConversionService');
+const {
+  getLeadPaymentSummary,
+  getLeadPaymentReceipt,
+} = require('../services/paymentReceiptService');
 const { invalidate: invalidateDashboardCache } = require('../services/dashboardCacheService');
 const { notifyQuotationCreated } = require('../services/notificationService');
 const {
@@ -103,14 +107,24 @@ const getLeadDetail = asyncHandler(async (req, res) => {
 
   markLeadViewedByExecutive(lead._id, req.user._id).catch(() => {});
 
+  const paymentSummary = await getLeadPaymentSummary(lead._id);
+
   const includeRelated = req.query.includeRelated === '1' || req.query.includeRelated === 'true';
   if (!includeRelated) {
-    res.json(enrichLead(lead));
+    res.json({ ...enrichLead(lead), paymentSummary });
     return;
   }
 
   const related = await loadLeadRelated(lead._id, { branchId: req.branchId });
-  res.json({ ...enrichLead(lead), ...related });
+  res.json({ ...enrichLead(lead), ...related, paymentSummary });
+});
+
+const getLeadPaymentReceiptDoc = asyncHandler(async (req, res) => {
+  const data = await getLeadPaymentReceipt(req.params.id, {
+    branchId: req.branchId,
+    extraFilter: { assignedTo: req.user._id },
+  });
+  res.json(data);
 });
 
 const getLeadQuotationsList = asyncHandler(async (req, res) => {
@@ -142,8 +156,11 @@ const updateLead = asyncHandler(async (req, res) => {
   });
   if (!lead) throw new ApiError(404, 'Lead not found');
 
-  const { status, statusReason } = req.body;
-  const otherFields = Object.keys(req.body).filter((k) => !['status', 'statusReason'].includes(k));
+  const { status, statusReason, advanceAmount, tokenAmount, paymentMethod, sendReceipt } = req.body;
+  const allowedExtra = new Set(['advanceAmount', 'tokenAmount', 'paymentMethod', 'sendReceipt']);
+  const otherFields = Object.keys(req.body).filter(
+    (k) => !['status', 'statusReason'].includes(k) && !allowedExtra.has(k)
+  );
   if (otherFields.length > 0) {
     throw new ApiError(403, 'You can only change lead status, not edit lead details');
   }
@@ -152,6 +169,12 @@ const updateLead = asyncHandler(async (req, res) => {
   const trimmedReason = typeof statusReason === 'string' ? statusReason.trim() : '';
   if (['lost', 'booked_from_another_company'].includes(status) && !trimmedReason) {
     throw new ApiError(400, 'Reason is required for this status');
+  }
+  if (status === 'converted') {
+    const advance = Number(advanceAmount ?? tokenAmount);
+    if (!Number.isFinite(advance) || advance < 0) {
+      throw new ApiError(400, 'Enter advance / token amount received (₹)');
+    }
   }
   if (isLeadStatusLocked(lead.status)) {
     throw new ApiError(400, 'Lead status cannot be changed after conversion or closure');
@@ -178,12 +201,21 @@ const updateLead = asyncHandler(async (req, res) => {
       type: typeMap[status] || 'status_changed',
       description: `Status changed from ${prevStatus.replace(/_/g, ' ')} to ${statusLabel}${trimmedReason ? ` — ${trimmedReason}` : ''}`,
       actor: req.user,
-      meta: { from: prevStatus, to: status, reason: trimmedReason || undefined },
+      meta: {
+        from: prevStatus,
+        to: status,
+        reason: trimmedReason || undefined,
+        advanceAmount: status === 'converted' ? Number(advanceAmount ?? tokenAmount) : undefined,
+      },
     });
   }
 
   if (status === 'converted' && prevStatus !== 'converted') {
-    await onLeadConverted(lead, req.user).catch((err) => {
+    await onLeadConverted(lead, req.user, {
+      advanceAmount: Number(advanceAmount ?? tokenAmount),
+      paymentMethod,
+      sendReceipt: sendReceipt !== false,
+    }).catch((err) => {
       console.error('[LeadConversion]', err.message);
     });
   } else if (status !== prevStatus) {
@@ -195,7 +227,8 @@ const updateLead = asyncHandler(async (req, res) => {
   }
 
   const populated = await Lead.findById(lead._id).populate(LEAD_POPULATE).lean();
-  res.json(enrichLead(populated));
+  const paymentSummary = await getLeadPaymentSummary(lead._id);
+  res.json({ ...enrichLead(populated), paymentSummary });
 });
 
 const addLeadNote = asyncHandler(async (req, res) => {
@@ -570,6 +603,7 @@ module.exports = {
   getLeadDetail,
   getLeadQuotationsList,
   getLeadNotesList,
+  getLeadPaymentReceiptDoc,
   updateLead,
   addLeadNote,
   listFollowUps,

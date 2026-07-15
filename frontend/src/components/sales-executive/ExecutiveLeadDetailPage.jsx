@@ -32,6 +32,8 @@ export default function ExecutiveLeadDetailPage() {
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [modalStatus, setModalStatus] = useState('contacted');
   const [modalStatusReason, setModalStatusReason] = useState('');
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('upi');
 
   const loadLead = useCallback(({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -91,15 +93,28 @@ export default function ExecutiveLeadDetailPage() {
 
   const handleChangeStatus = async () => {
     if (!id) return;
-    await API.put(`/sales-executive/leads/${id}`, {
+    const payload = {
       status: modalStatus,
       statusReason: modalStatusReason,
-    });
+    };
+    if (modalStatus === 'converted') {
+      const advance = Number(advanceAmount);
+      if (!Number.isFinite(advance) || advance < 0) {
+        return;
+      }
+      payload.advanceAmount = advance;
+      payload.paymentMethod = paymentMethod;
+      payload.sendReceipt = true;
+    }
+    await API.put(`/sales-executive/leads/${id}`, payload);
     setStatusModalOpen(false);
     setModalStatusReason('');
+    setAdvanceAmount('');
     await loadLead();
   };
   const reasonRequired = ['lost', 'booked_from_another_company'].includes(modalStatus);
+  const convertAdvanceInvalid =
+    modalStatus === 'converted' && (!advanceAmount || Number(advanceAmount) < 0 || Number.isNaN(Number(advanceAmount)));
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="pb-8">
@@ -146,6 +161,38 @@ export default function ExecutiveLeadDetailPage() {
             <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
           ))}
         </select>
+        {modalStatus === 'converted' && (
+          <div className="mb-4 space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/80 p-3">
+            <p className="text-xs font-semibold text-emerald-800">
+              Enter advance / token received. Customer will get a payment voucher by email.
+            </p>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Advance / Token (₹)</label>
+              <input
+                type="number"
+                min={0}
+                value={advanceAmount}
+                onChange={(e) => setAdvanceAmount(e.target.value)}
+                placeholder="e.g. 15000"
+                className="mt-1 w-full rounded-xl border border-subtle bg-white p-3 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Payment mode</label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-subtle bg-white p-3 text-sm"
+              >
+                <option value="upi">UPI</option>
+                <option value="cash">Cash</option>
+                <option value="card">Card</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="cheque">Cheque</option>
+              </select>
+            </div>
+          </div>
+        )}
         <textarea
           value={modalStatusReason}
           onChange={(e) => setModalStatusReason(e.target.value)}
@@ -154,8 +201,13 @@ export default function ExecutiveLeadDetailPage() {
           className="w-full rounded-xl border border-subtle bg-white p-3 text-sm mb-4"
         />
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => { setStatusModalOpen(false); setModalStatusReason(''); }}>Cancel</Button>
-          <Button onClick={handleChangeStatus} disabled={reasonRequired && !modalStatusReason.trim()}>Update</Button>
+          <Button variant="secondary" onClick={() => { setStatusModalOpen(false); setModalStatusReason(''); setAdvanceAmount(''); }}>Cancel</Button>
+          <Button
+            onClick={handleChangeStatus}
+            disabled={(reasonRequired && !modalStatusReason.trim()) || convertAdvanceInvalid}
+          >
+            {modalStatus === 'converted' ? 'Convert & Send Voucher' : 'Update'}
+          </Button>
         </div>
       </ActionModal>
     </motion.div>

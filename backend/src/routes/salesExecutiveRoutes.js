@@ -7,6 +7,7 @@ const {
   getLeadDetail,
   getLeadQuotationsList,
   getLeadNotesList,
+  getLeadPaymentReceiptDoc,
   updateLead,
   addLeadNote,
   listFollowUps,
@@ -47,6 +48,7 @@ router.put('/quotations/:id', updateQuotation);
 router.get('/leads', listLeads);
 router.get('/leads/:id/quotations', getLeadQuotationsList);
 router.get('/leads/:id/notes-list', getLeadNotesList);
+router.get('/leads/:id/payment-receipt', getLeadPaymentReceiptDoc);
 router.get('/leads/:idOrFilter', (req, res, next) => {
   const seg = req.params.idOrFilter;
   if (LEAD_FILTER_KEYS.includes(seg)) {

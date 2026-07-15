@@ -1,6 +1,7 @@
 import LeadDetailHeader from './LeadDetailHeader';
 import LeadStatusPipeline from './LeadStatusPipeline';
 import LeadConvertedBanner from './LeadConvertedBanner';
+import LeadPaymentVoucherPanel from './LeadPaymentVoucherPanel';
 import LeadContactActions from '../whatsapp-contact/LeadContactActions';
 import LeadCustomerPanel from './LeadCustomerPanel';
 import LeadActivityTimeline from './LeadActivityTimeline';
@@ -36,6 +37,7 @@ export default function LeadDetailLayout({
   headerExtra,
   sidebarExtra,
   bottomExtra,
+  receiptEndpoint,
 }) {
   const detail = getLeadDetailData(lead);
   const followups = lead.followups || lead.followUps || detail.followUps || [];
@@ -54,12 +56,21 @@ export default function LeadDetailLayout({
   const quotations = embeddedQuotations.length ? embeddedQuotations : (quotationsData?.items || []);
   const notes = embeddedNotes || notesData?.items || [];
 
+  const paymentReceiptEndpoint =
+    receiptEndpoint ||
+    (relatedBasePath ? `${relatedBasePath}/${leadId}/payment-receipt` : `/leads/${leadId}/payment-receipt`);
+
   return (
     <>
       <LeadDetailHeader lead={lead} backHref={backHref} backLabel={backLabel} />
       {headerExtra}
       <LeadStatusPipeline status={lead.status} />
       <LeadConvertedBanner status={lead.status} />
+      <LeadPaymentVoucherPanel
+        lead={lead}
+        paymentSummary={lead.paymentSummary}
+        receiptEndpoint={paymentReceiptEndpoint}
+      />
 
       <LeadContactActions
         lead={lead}

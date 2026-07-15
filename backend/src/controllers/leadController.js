@@ -24,6 +24,10 @@ const { ROLE_LABELS } = require('../config/roles');
 const { findLeadsPaginated } = require('../repositories/leadRepository');
 const { invalidate: invalidateDashboardCache } = require('../services/dashboardCacheService');
 const { onLeadConverted, isLeadStatusLocked } = require('../services/leadConversionService');
+const {
+  getLeadPaymentSummary,
+  getLeadPaymentReceipt,
+} = require('../services/paymentReceiptService');
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
 const { runLeadAutoAssignment } = require('../services/leadAutoAssignmentService');
 const { LEAD_AUTO_ASSIGNMENT_ENABLED } = require('../config/assignment');
@@ -140,9 +144,11 @@ const getLead = asyncHandler(async (req, res) => {
   const lead = await loadLeadCore(req.params.id, { branchId: req.branchId });
   if (!lead) throw new ApiError(404, 'Lead not found');
 
+  const paymentSummary = await getLeadPaymentSummary(lead._id);
+
   const includeRelated = req.query.includeRelated === '1' || req.query.includeRelated === 'true';
   if (!includeRelated) {
-    res.json(enrichLead(lead));
+    res.json({ ...enrichLead(lead), paymentSummary });
     return;
   }
 
@@ -150,7 +156,12 @@ const getLead = asyncHandler(async (req, res) => {
     branchId: req.branchId,
     followupsLimit: req.query.followupsLimit,
   });
-  res.json({ ...enrichLead(lead), ...related });
+  res.json({ ...enrichLead(lead), ...related, paymentSummary });
+});
+
+const getLeadPaymentReceiptDoc = asyncHandler(async (req, res) => {
+  const data = await getLeadPaymentReceipt(req.params.id, { branchId: req.branchId });
+  res.json(data);
 });
 
 const getLeadFollowups = asyncHandler(async (req, res) => {
@@ -471,7 +482,11 @@ const updateLead = asyncHandler(async (req, res) => {
   }
 
   if (data.status === 'converted' && prevStatus !== 'converted') {
-    await onLeadConverted(lead, req.user).catch((err) => {
+    await onLeadConverted(lead, req.user, {
+      advanceAmount: req.body.advanceAmount ?? req.body.tokenAmount,
+      paymentMethod: req.body.paymentMethod,
+      sendReceipt: req.body.sendReceipt !== false,
+    }).catch((err) => {
       console.error('[LeadConversion]', err.message);
     });
   } else if (data.status && data.status !== prevStatus) {
@@ -483,7 +498,8 @@ const updateLead = asyncHandler(async (req, res) => {
   }
 
   const populated = await Lead.findById(lead._id).populate(LEAD_POPULATE).lean();
-  res.json(enrichLead(populated));
+  const paymentSummary = await getLeadPaymentSummary(lead._id);
+  res.json({ ...enrichLead(populated), paymentSummary });
 });
 
 const deleteLead = asyncHandler(async (req, res) => {
@@ -832,6 +848,7 @@ module.exports = {
   getLeadFollowups,
   getLeadQuotations,
   getLeadNotesList,
+  getLeadPaymentReceiptDoc,
   createLead,
   seedDemoLeads,
   clearAllLeads,

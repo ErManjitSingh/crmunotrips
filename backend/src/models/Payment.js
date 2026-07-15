@@ -18,6 +18,12 @@ const paymentSchema = new mongoose.Schema(
     method: { type: String, enum: ['cash', 'upi', 'card', 'bank_transfer', 'cheque'], default: 'bank_transfer' },
     dueDate: { type: Date },
     paidAt: { type: Date },
+    /** Advance / token receipt voucher generated on lead conversion */
+    receiptNumber: { type: String, trim: true, index: true },
+    receiptHtml: { type: String, default: '' },
+    receiptSentAt: { type: Date },
+    receiptSentTo: { type: String, trim: true, default: '' },
+    notes: { type: String, trim: true, default: '' },
     refunds: [
       {
         amount: Number,
