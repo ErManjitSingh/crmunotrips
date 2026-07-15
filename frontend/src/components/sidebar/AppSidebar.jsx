@@ -14,6 +14,7 @@ import SidebarNavItem from './SidebarNavItem';
 import SidebarNavGroup from './SidebarNavGroup';
 import SidebarNavSection from './SidebarNavSection';
 import SidebarQuickActions from './SidebarQuickActions';
+import SidebarCollectionTarget from './SidebarCollectionTarget';
 import { SidebarThemeProvider } from './SidebarThemeContext';
 import { mainNavItems } from './sidebar-config';
 import { filterNavItemsBySearch, injectSectionHeaders, isNavItemActive } from './sidebar-utils';
@@ -79,8 +80,18 @@ export default function AppSidebar({
   const selectedBranch = availableBranches.find((b) => b._id === selectedBranchId);
   const selectedBranchLabel = formatBranchLabel(selectedBranch?.name);
   const resolvedBrandTitle = brandTitle || APP_BRAND_NAME;
+  const financeRole = ['admin', 'accountant'].includes(effectiveUser?.role);
+  const onFinanceRoute = ['/payments', '/invoices', '/refunds'].some((p) =>
+    location.pathname.startsWith(p)
+  );
+  const showCollectionTarget = financeRole && (onFinanceRoute || effectiveUser?.role === 'accountant');
   const resolvedBrandSubtitle =
-    brandSubtitle || (effectiveUser?.role === 'admin' && selectedBranchLabel ? selectedBranchLabel : 'Travel Lead Management');
+    brandSubtitle ||
+    (effectiveUser?.role === 'admin'
+      ? selectedBranchLabel || 'Super Admin'
+      : effectiveUser?.role === 'accountant'
+        ? 'Finance'
+        : 'Travel Lead Management');
 
   return (
     <SidebarThemeProvider accent={accent} profilePath={resolvedProfilePath}>
@@ -119,7 +130,8 @@ export default function AppSidebar({
               })}
             </nav>
 
-            <SidebarQuickActions actions={quickActions} />
+            <SidebarQuickActions actions={showCollectionTarget ? [] : quickActions} />
+            {showCollectionTarget ? <SidebarCollectionTarget /> : null}
             {sidebarFooter}
           </div>
         </motion.aside>

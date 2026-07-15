@@ -96,6 +96,8 @@ import {
   TripTrackerPage,
   OperationsTasksPage,
   PaymentsPage,
+  InvoicesPage,
+  RefundsPage,
 } from './routes/lazyRoutes';
 
 function App() {
@@ -255,6 +257,8 @@ function App() {
               <Route path="team/users/:id" element={<PermissionRoute module="users"><TeamUserProfile /></PermissionRoute>} />
               <Route path="reports" element={<PermissionRoute module="reports"><Reports /></PermissionRoute>} />
               <Route path="payments" element={<RoleRoute roles={['admin', 'accountant']}><PaymentsPage /></RoleRoute>} />
+              <Route path="invoices" element={<RoleRoute roles={['admin', 'accountant']}><InvoicesPage /></RoleRoute>} />
+              <Route path="refunds" element={<RoleRoute roles={['admin', 'accountant']}><RefundsPage /></RoleRoute>} />
               <Route path="calendar" element={<ComingSoon title="Calendar" description="Travel dates, follow-ups, and team schedule" />} />
               <Route path="notifications" element={<PermissionRoute module="leads"><Notifications /></PermissionRoute>} />
               <Route path="settings" element={<SettingsPage />} />

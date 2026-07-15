@@ -18,6 +18,8 @@ import {
   Plane,
   CreditCard,
   Megaphone,
+  Receipt,
+  RotateCcw,
 } from 'lucide-react';
 import { operationsAdminMenuChildren } from '../operations-manager/operations-nav-config';
 import { leadManagementSections } from './lead-management-config';
@@ -140,6 +142,20 @@ export const mainNavItems = [
     path: '/payments',
     label: 'Payments',
     icon: CreditCard,
+    roles: ['admin', 'accountant'],
+    permission: { module: 'payments', action: 'view' },
+  },
+  {
+    path: '/invoices',
+    label: 'Invoices',
+    icon: Receipt,
+    roles: ['admin', 'accountant'],
+    permission: { module: 'payments', action: 'view' },
+  },
+  {
+    path: '/refunds',
+    label: 'Refunds',
+    icon: RotateCcw,
     roles: ['admin', 'accountant'],
     permission: { module: 'payments', action: 'view' },
   },
