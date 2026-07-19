@@ -81,7 +81,7 @@ export default function WhatsAppLeadList({
               <WhatsAppLeadListItem
                 key={conv._id}
                 conversation={conv}
-                active={selectedId === conv.leadId}
+                active={selectedId === (conv.conversationId || conv._id) || selectedId === conv.leadId}
                 onClick={() => onSelect(conv)}
               />
             ))}

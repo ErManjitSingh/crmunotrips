@@ -1,93 +1,150 @@
 const Lead = require('../models/Lead');
 const WhatsAppMessage = require('../models/WhatsAppMessage');
 const WhatsAppNote = require('../models/WhatsAppNote');
+const WhatsAppConversation = require('../models/WhatsAppConversation');
 const FollowUp = require('../models/FollowUp');
 const User = require('../models/User');
 const ApiError = require('../utils/apiError');
 const asyncHandler = require('../utils/asyncHandler');
-const { LEAD_LIST_POPULATE, enrichLead, buildLeadSearchFilter, FOLLOWUP_POPULATE } = require('../utils/queryHelpers');
+const {
+  LEAD_LIST_POPULATE,
+  enrichLead,
+  FOLLOWUP_POPULATE,
+} = require('../utils/queryHelpers');
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
+const {
+  sendWhatsAppText,
+  createLeadFromConversation,
+  isConfigured,
+  normalizePhone,
+} = require('../services/whatsappCloudService');
 
 const listConversations = asyncHandler(async (req, res) => {
-  const { status, search } = req.query;
-  const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 25, maxLimit: 100 });
-  const filter = { channel: 'whatsapp' };
-  if (req.branchId) filter.branchId = req.branchId;
-  if (status) filter.status = status;
-  Object.assign(filter, buildLeadSearchFilter(search));
+  const { status, search, onlyUnlinked } = req.query;
+  const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 40, maxLimit: 100 });
 
-  const [leads, total] = await Promise.all([
-    Lead.find(filter)
-      .select('-notes')
-      .populate(LEAD_LIST_POPULATE)
-      .sort({ updatedAt: -1 })
+  const filter = { isArchived: { $ne: true } };
+  if (req.branchId) filter.branchId = req.branchId;
+  if (onlyUnlinked === '1' || onlyUnlinked === 'true') filter.lead = null;
+  if (search) {
+    const q = String(search).trim();
+    filter.$or = [
+      { phone: new RegExp(q.replace(/\D/g, '').slice(-10) || q, 'i') },
+      { profileName: new RegExp(q, 'i') },
+      { lastMessageText: new RegExp(q, 'i') },
+    ];
+  }
+
+  const [conversations, total] = await Promise.all([
+    WhatsAppConversation.find(filter)
+      .populate({
+        path: 'lead',
+        select: '-notes',
+        populate: LEAD_LIST_POPULATE,
+      })
+      .sort({ lastMessageAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean(),
-    Lead.countDocuments(filter),
-  ]);
-  const leadIds = leads.map((l) => l._id);
-
-  const [lastMessages, unreadCounts] = await Promise.all([
-    WhatsAppMessage.aggregate([
-      { $match: { lead: { $in: leadIds } } },
-      { $sort: { timestamp: -1 } },
-      { $group: { _id: '$lead', lastMessage: { $first: '$$ROOT' } } },
-    ]),
-    WhatsAppMessage.aggregate([
-      {
-        $match: {
-          lead: { $in: leadIds },
-          direction: 'incoming',
-          status: { $ne: 'read' },
-        },
-      },
-      { $group: { _id: '$lead', count: { $sum: 1 } } },
-    ]),
+    WhatsAppConversation.countDocuments(filter),
   ]);
 
-  const lastMap = Object.fromEntries(lastMessages.map((m) => [m._id.toString(), m.lastMessage]));
-  const unreadMap = Object.fromEntries(unreadCounts.map((u) => [u._id.toString(), u.count]));
-
-  const conversations = leads.map((lead) => {
-    const enriched = enrichLead(lead);
-    const id = lead._id.toString();
-    const last = lastMap[id];
+  let rows = conversations.map((c) => {
+    const lead = c.lead ? enrichLead(c.lead) : null;
+    if (status && lead && lead.status !== status) return null;
+    if (status && !lead) return null;
     return {
-      _id: `wa-conv-${id}`,
-      leadId: lead._id,
-      lead: enriched,
-      lastMessage: last
+      _id: c._id,
+      conversationId: c._id,
+      phone: c.phone,
+      profileName: c.profileName || lead?.name || `+91 ${c.phone}`,
+      leadId: lead?._id || null,
+      lead,
+      hasLead: Boolean(lead),
+      lastMessage: c.lastMessageText
         ? {
-            _id: last._id,
-            text: last.text,
-            direction: last.direction,
-            type: last.type,
-            status: last.status,
-            timestamp: last.timestamp,
+            text: c.lastMessageText,
+            direction: c.lastDirection,
+            timestamp: c.lastMessageAt,
           }
         : null,
-      unreadCount: unreadMap[id] || 0,
+      unreadCount: c.unreadCount || 0,
+      updatedAt: c.lastMessageAt || c.updatedAt,
     };
-  });
+  }).filter(Boolean);
 
-  res.json(paginatedResponse(conversations, { page, limit, total }));
+  // Fallback: also include classic channel=whatsapp leads with no conversation row yet
+  if (!onlyUnlinked && page === 1) {
+    const leadFilter = { channel: 'whatsapp', isDeleted: { $ne: true } };
+    if (req.branchId) leadFilter.branchId = req.branchId;
+    if (status) leadFilter.status = status;
+    const linkedPhones = new Set(rows.filter((r) => r.leadId).map((r) => normalizePhone(r.phone)));
+    const orphanLeads = await Lead.find(leadFilter)
+      .select('-notes')
+      .populate(LEAD_LIST_POPULATE)
+      .sort({ updatedAt: -1 })
+      .limit(25)
+      .lean();
+
+    for (const leadRaw of orphanLeads) {
+      const phone = normalizePhone(leadRaw.phone || leadRaw.whatsapp);
+      if (!phone || linkedPhones.has(phone)) continue;
+      const lead = enrichLead(leadRaw);
+      rows.push({
+        _id: `lead-${lead._id}`,
+        conversationId: null,
+        phone,
+        profileName: lead.name,
+        leadId: lead._id,
+        lead,
+        hasLead: true,
+        lastMessage: null,
+        unreadCount: 0,
+        updatedAt: lead.updatedAt,
+      });
+    }
+  }
+
+  rows.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+
+  res.json(paginatedResponse(rows.slice(0, limit), { page, limit, total: Math.max(total, rows.length) }));
 });
 
-const getMessages = asyncHandler(async (req, res) => {
-  const lead = await Lead.findOne({ _id: req.params.leadId, ...(req.branchId ? { branchId: req.branchId } : {}) })
-    .select('_id');
-  if (!lead) throw new ApiError(404, 'Lead not found');
+const getMessagesByConversation = asyncHandler(async (req, res) => {
+  const conversation = await WhatsAppConversation.findById(req.params.conversationId).select('_id lead');
+  if (!conversation) throw new ApiError(404, 'Conversation not found');
 
-  const messages = await WhatsAppMessage.find({ lead: lead._id })
+  const messages = await WhatsAppMessage.find({ conversation: conversation._id })
     .sort({ timestamp: 1 })
     .lean();
   res.json(messages);
 });
 
+const getMessages = asyncHandler(async (req, res) => {
+  const lead = await Lead.findOne({
+    _id: req.params.leadId,
+    ...(req.branchId ? { branchId: req.branchId } : {}),
+  }).select('_id phone whatsapp');
+  if (!lead) throw new ApiError(404, 'Lead not found');
+
+  const phone = normalizePhone(lead.phone || lead.whatsapp);
+  const conversation = phone
+    ? await WhatsAppConversation.findOne({ phone }).select('_id')
+    : null;
+
+  const filter = conversation
+    ? { $or: [{ lead: lead._id }, { conversation: conversation._id }] }
+    : { lead: lead._id };
+
+  const messages = await WhatsAppMessage.find(filter).sort({ timestamp: 1 }).lean();
+  res.json(messages);
+});
+
 const getNotes = asyncHandler(async (req, res) => {
-  const lead = await Lead.findOne({ _id: req.params.leadId, ...(req.branchId ? { branchId: req.branchId } : {}) })
-    .select('_id');
+  const lead = await Lead.findOne({
+    _id: req.params.leadId,
+    ...(req.branchId ? { branchId: req.branchId } : {}),
+  }).select('_id');
   if (!lead) throw new ApiError(404, 'Lead not found');
 
   const notes = await WhatsAppNote.find({ lead: lead._id })
@@ -98,11 +155,16 @@ const getNotes = asyncHandler(async (req, res) => {
 });
 
 const getFollowUpsForLead = asyncHandler(async (req, res) => {
-  const lead = await Lead.findOne({ _id: req.params.leadId, ...(req.branchId ? { branchId: req.branchId } : {}) })
-    .select('_id');
+  const lead = await Lead.findOne({
+    _id: req.params.leadId,
+    ...(req.branchId ? { branchId: req.branchId } : {}),
+  }).select('_id');
   if (!lead) throw new ApiError(404, 'Lead not found');
 
-  const followups = await FollowUp.find({ lead: lead._id, ...(req.branchId ? { branchId: req.branchId } : {}) })
+  const followups = await FollowUp.find({
+    lead: lead._id,
+    ...(req.branchId ? { branchId: req.branchId } : {}),
+  })
     .populate(FOLLOWUP_POPULATE)
     .sort({ scheduledAt: -1 })
     .lean();
@@ -121,22 +183,74 @@ const listExecutives = asyncHandler(async (req, res) => {
 });
 
 const postMessage = asyncHandler(async (req, res) => {
-  const { leadId, text, type = 'text', attachment } = req.body;
-  if (!leadId) throw new ApiError(400, 'leadId is required');
+  const { leadId, conversationId, text, type = 'text', attachment } = req.body;
+  if (!text?.trim() && !attachment) throw new ApiError(400, 'Message text is required');
 
-  const lead = await Lead.findOne({ _id: leadId, ...(req.branchId ? { branchId: req.branchId } : {}) });
-  if (!lead) throw new ApiError(404, 'Lead not found');
+  let conversation = null;
+  let lead = null;
+
+  if (conversationId) {
+    conversation = await WhatsAppConversation.findById(conversationId);
+    if (!conversation) throw new ApiError(404, 'Conversation not found');
+    if (conversation.lead) {
+      lead = await Lead.findById(conversation.lead);
+    }
+  } else if (leadId) {
+    lead = await Lead.findOne({
+      _id: leadId,
+      ...(req.branchId ? { branchId: req.branchId } : {}),
+    });
+    if (!lead) throw new ApiError(404, 'Lead not found');
+    const phone = normalizePhone(lead.phone || lead.whatsapp);
+    conversation = phone ? await WhatsAppConversation.findOne({ phone }) : null;
+    if (!conversation && phone) {
+      conversation = await WhatsAppConversation.create({
+        phone,
+        profileName: lead.name || '',
+        lead: lead._id,
+        lastMessageText: text || '',
+        lastMessageAt: new Date(),
+        lastDirection: 'outgoing',
+      });
+    }
+  } else {
+    throw new ApiError(400, 'conversationId or leadId is required');
+  }
+
+  const toPhone = conversation?.phone || lead?.phone || lead?.whatsapp;
+  let waMessageId = null;
+  let status = 'sent';
+
+  if (isConfigured() && toPhone && text?.trim()) {
+    try {
+      const sent = await sendWhatsAppText({ toPhone, text: text.trim() });
+      waMessageId = sent?.messages?.[0]?.id || null;
+    } catch (err) {
+      status = 'failed';
+      throw err;
+    }
+  }
 
   const msg = await WhatsAppMessage.create({
-    lead: leadId,
+    conversation: conversation?._id,
+    lead: lead?._id || conversation?.lead || undefined,
+    waMessageId,
+    fromPhone: toPhone || '',
     direction: 'outgoing',
     type,
     text: text || '',
     attachment: attachment || null,
-    status: 'sent',
+    status,
     timestamp: new Date(),
     sentBy: req.user._id,
   });
+
+  if (conversation) {
+    conversation.lastMessageText = text || conversation.lastMessageText;
+    conversation.lastMessageAt = new Date();
+    conversation.lastDirection = 'outgoing';
+    await conversation.save();
+  }
 
   res.status(201).json(msg);
 });
@@ -145,7 +259,10 @@ const postNote = asyncHandler(async (req, res) => {
   const { leadId, text } = req.body;
   if (!leadId || !text?.trim()) throw new ApiError(400, 'leadId and text are required');
 
-  const lead = await Lead.findOne({ _id: leadId, ...(req.branchId ? { branchId: req.branchId } : {}) });
+  const lead = await Lead.findOne({
+    _id: leadId,
+    ...(req.branchId ? { branchId: req.branchId } : {}),
+  });
   if (!lead) throw new ApiError(404, 'Lead not found');
 
   const note = await WhatsAppNote.create({
@@ -164,27 +281,79 @@ const updateWhatsAppLead = asyncHandler(async (req, res) => {
     req.body,
     { new: true, runValidators: true }
   )
-    .populate(LEAD_POPULATE)
+    .populate(LEAD_LIST_POPULATE)
     .lean();
   if (!lead) throw new ApiError(404, 'Lead not found');
   res.json(enrichLead(lead));
 });
 
 const markRead = asyncHandler(async (req, res) => {
-  const lead = await Lead.findOne({ _id: req.params.leadId, ...(req.branchId ? { branchId: req.branchId } : {}) })
-    .select('_id');
-  if (!lead) throw new ApiError(404, 'Lead not found');
+  const { leadId } = req.params;
+  const conversationId = req.query.conversationId || req.body?.conversationId;
 
-  await WhatsAppMessage.updateMany(
-    { lead: lead._id, direction: 'incoming' },
-    { status: 'read' }
-  );
+  if (conversationId) {
+    await WhatsAppConversation.findByIdAndUpdate(conversationId, { unreadCount: 0 });
+    await WhatsAppMessage.updateMany(
+      { conversation: conversationId, direction: 'incoming' },
+      { status: 'read' }
+    );
+  }
+
+  if (leadId && leadId !== 'none') {
+    const lead = await Lead.findOne({
+      _id: leadId,
+      ...(req.branchId ? { branchId: req.branchId } : {}),
+    }).select('_id');
+    if (lead) {
+      await WhatsAppMessage.updateMany(
+        { lead: lead._id, direction: 'incoming' },
+        { status: 'read' }
+      );
+    }
+  }
+
   res.json({ success: true });
+});
+
+const createLeadFromChat = asyncHandler(async (req, res) => {
+  const { conversationId, name, destination, email, city, message } = req.body || {};
+  if (!conversationId) throw new ApiError(400, 'conversationId is required');
+
+  const result = await createLeadFromConversation(
+    conversationId,
+    { name, destination, email, city, message },
+    req.user
+  );
+
+  res.status(result.duplicate ? 200 : 201).json({
+    success: true,
+    duplicate: result.duplicate,
+    message: result.duplicate ? 'Lead already linked' : 'Lead created from WhatsApp chat',
+    data: {
+      id: result.lead?._id,
+      leadId: result.lead?.leadId,
+      name: result.lead?.name,
+      phone: result.lead?.phone,
+      destination: result.lead?.destination,
+      source: result.lead?.source,
+      sourceLabel: result.lead?.sourceLabel,
+      status: result.lead?.status,
+    },
+  });
+});
+
+const cloudStatus = asyncHandler(async (_req, res) => {
+  res.json({
+    ok: true,
+    configured: isConfigured(),
+    inboxMode: isConfigured() ? 'cloud_api' : 'local_only',
+  });
 });
 
 module.exports = {
   listConversations,
   getMessages,
+  getMessagesByConversation,
   getNotes,
   getFollowUpsForLead,
   listExecutives,
@@ -192,4 +361,6 @@ module.exports = {
   postNote,
   updateWhatsAppLead,
   markRead,
+  createLeadFromChat,
+  cloudStatus,
 };

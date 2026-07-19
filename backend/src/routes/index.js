@@ -87,7 +87,9 @@ router.use('/assignment', assignmentConfigRoutes);
 
 const publicLeadRoutes = require('./publicLeadRoutes');
 const facebookWebhookRoutes = require('./facebookWebhookRoutes');
+const whatsappWebhookRoutes = require('./whatsappWebhookRoutes');
 router.use('/public', publicLeadRoutes);
 router.use('/webhooks/facebook', facebookWebhookRoutes);
+router.use('/webhooks/whatsapp', whatsappWebhookRoutes);
 
 module.exports = router;

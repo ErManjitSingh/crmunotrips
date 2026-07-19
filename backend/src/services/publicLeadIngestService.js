@@ -73,7 +73,8 @@ async function resolvePublicBranchId(explicitBranchId) {
 
 /**
  * Website / Meta landers → DPW.
- * Facebook Lead Ads (when wired) → Facebook Lead.
+ * Facebook Lead Ads → Facebook Lead.
+ * WhatsApp chats → WhatsApp.
  */
 function resolvePublicLeadSource(raw = {}) {
   const hint = [
@@ -82,6 +83,7 @@ function resolvePublicLeadSource(raw = {}) {
     raw.source,
     raw.sourceLabel,
     raw.channel,
+    raw.captureType,
   ]
     .map((v) => String(v || '').toLowerCase().trim())
     .join(' ');
@@ -97,6 +99,18 @@ function resolvePublicLeadSource(raw = {}) {
       source: 'facebook_ads',
       sourceLabel: 'Facebook Lead',
       channel: 'facebook',
+    };
+  }
+
+  const isWhatsApp =
+    /\bwhatsapp\b/.test(hint) ||
+    String(raw.channel || '').toLowerCase() === 'whatsapp';
+
+  if (isWhatsApp) {
+    return {
+      source: 'whatsapp',
+      sourceLabel: 'WhatsApp',
+      channel: 'whatsapp',
     };
   }
 
@@ -137,7 +151,7 @@ async function ingestPublicLead(raw = {}) {
   const rawSourceText = String(raw.landingPage || raw.page || raw.landing || raw.sourceLabel || raw.source || '').trim();
   const landingPage =
     rawSourceText &&
-    !['dpw', 'website', 'facebook', 'facebook lead', 'facebook_ads', 'fb lead', 'meta'].includes(
+    !['dpw', 'website', 'facebook', 'facebook lead', 'facebook_ads', 'fb lead', 'meta', 'whatsapp'].includes(
       rawSourceText.toLowerCase()
     )
       ? rawSourceText

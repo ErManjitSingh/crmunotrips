@@ -41,7 +41,11 @@ app.use(
   express.json({
     limit: '10mb',
     verify: (req, _res, buf) => {
-      if (req.originalUrl && req.originalUrl.startsWith('/api/webhooks/facebook')) {
+      if (
+        req.originalUrl &&
+        (req.originalUrl.startsWith('/api/webhooks/facebook') ||
+          req.originalUrl.startsWith('/api/webhooks/whatsapp'))
+      ) {
         req.rawBody = buf;
       }
     },
