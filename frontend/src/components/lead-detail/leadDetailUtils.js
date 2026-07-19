@@ -1,5 +1,5 @@
 const SOURCE_LABELS = {
-  website: 'Website',
+  website: 'DPW',
   whatsapp: 'WhatsApp',
   referral: 'Referral',
   'walk-in': 'Walk-in',
@@ -7,8 +7,10 @@ const SOURCE_LABELS = {
   phone: 'Phone',
   other: 'Other',
   google_ads: 'Google Ads',
-  facebook_ads: 'Facebook Ads',
+  facebook_ads: 'Facebook Lead',
   organic: 'Organic',
+  DPW: 'DPW',
+  'Facebook Lead': 'Facebook Lead',
 };
 
 export function getInitials(name) {

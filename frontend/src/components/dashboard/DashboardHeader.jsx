@@ -6,8 +6,8 @@ import { cn } from '../../lib/utils';
 const SOURCE_OPTIONS = [
   { value: '', label: 'All Sources' },
   { value: 'google_ads', label: 'Google Ads' },
-  { value: 'facebook_ads', label: 'Facebook Ads' },
-  { value: 'website', label: 'Website' },
+  { value: 'facebook_ads', label: 'Facebook Lead' },
+  { value: 'website', label: 'DPW' },
   { value: 'whatsapp', label: 'WhatsApp' },
   { value: 'instagram', label: 'Instagram' },
   { value: 'referral', label: 'Referral' },

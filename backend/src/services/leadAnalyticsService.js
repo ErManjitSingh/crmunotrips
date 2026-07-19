@@ -5,8 +5,8 @@ const { withBranch } = require('../utils/branchScope');
 
 const SOURCE_LABELS = {
   google_ads: 'Google Ads',
-  facebook_ads: 'Facebook Ads',
-  website: 'Website',
+  facebook_ads: 'Facebook Lead',
+  website: 'DPW',
   whatsapp: 'WhatsApp',
   referral: 'Referral',
   'walk-in': 'Walk-in',

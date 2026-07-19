@@ -72,7 +72,43 @@ async function resolvePublicBranchId(explicitBranchId) {
 }
 
 /**
- * Ingest a Meta landing / chatbot lead into CRM.
+ * Website / Meta landers → DPW.
+ * Facebook Lead Ads (when wired) → Facebook Lead.
+ */
+function resolvePublicLeadSource(raw = {}) {
+  const hint = [
+    raw.sourceKey,
+    raw.leadSource,
+    raw.source,
+    raw.sourceLabel,
+    raw.channel,
+  ]
+    .map((v) => String(v || '').toLowerCase().trim())
+    .join(' ');
+
+  const isFacebook =
+    /\bfacebook\b/.test(hint) ||
+    /\bfb[_ ]?lead\b/.test(hint) ||
+    hint.includes('facebook_ads') ||
+    String(raw.channel || '').toLowerCase() === 'facebook';
+
+  if (isFacebook) {
+    return {
+      source: 'facebook_ads',
+      sourceLabel: 'Facebook Lead',
+      channel: 'facebook',
+    };
+  }
+
+  return {
+    source: 'website',
+    sourceLabel: 'DPW',
+    channel: 'website',
+  };
+}
+
+/**
+ * Ingest a website / Meta / Facebook public lead into CRM.
  * Budget is optional (defaults to 0). Phone + destination required.
  */
 async function ingestPublicLead(raw = {}) {
@@ -91,17 +127,26 @@ async function ingestPublicLead(raw = {}) {
 
   const name =
     String(raw.name || raw.namey || raw.user_name || '').trim() ||
-    `Meta Lead ${phone.slice(-4)}`;
+    `Website Lead ${phone.slice(-4)}`;
 
   const email = String(raw.email || raw.emaily || raw.user_email || '').trim() || undefined;
   const packageTitle = String(raw.package || raw['package-title'] || raw.packageTitle || '').trim();
-  const sourceLabel = String(
-    raw.sourceLabel || raw.source || raw.landingPage || 'Meta Landing Page'
-  ).trim();
-  const channel = String(raw.channel || 'meta').trim() || 'meta';
   const captureType = String(raw.captureType || raw.type || 'form').trim().toLowerCase();
+  const { source, sourceLabel, channel } = resolvePublicLeadSource(raw);
+
+  const rawSourceText = String(raw.landingPage || raw.page || raw.landing || raw.sourceLabel || raw.source || '').trim();
+  const landingPage =
+    rawSourceText &&
+    !['dpw', 'website', 'facebook', 'facebook lead', 'facebook_ads', 'fb lead', 'meta'].includes(
+      rawSourceText.toLowerCase()
+    )
+      ? rawSourceText
+      : String(raw.landingPage || raw.page || raw.landing || '').trim();
 
   const noteParts = [];
+  if (landingPage && landingPage !== sourceLabel) {
+    noteParts.push(`Landing: ${landingPage}`);
+  }
   if (packageTitle) noteParts.push(`Package: ${packageTitle}`);
   if (raw.message) noteParts.push(String(raw.message).trim());
   const transcript = formatTranscript(raw.chat || raw.transcript || raw.conversation);
@@ -122,8 +167,8 @@ async function ingestPublicLead(raw = {}) {
     travelers: Number(raw.travelers || raw.travellers) || 1,
     adults: Number(raw.adults || raw.travelers || raw.travellers) || 1,
     budget: Number(raw.budget) || 0,
-    source: 'facebook_ads',
-    leadSource: 'facebook_ads',
+    source,
+    leadSource: source,
     sourceLabel,
     channel,
     notes: noteParts.filter(Boolean).join('\n\n'),
@@ -139,8 +184,8 @@ async function ingestPublicLead(raw = {}) {
   data.destination = destination;
   data.budget = Number(data.budget) || 0;
   data.budgetRange = data.budget > 0 ? data.budgetRange : 'custom';
-  data.source = 'facebook_ads';
-  data.leadSource = 'facebook_ads';
+  data.source = source;
+  data.leadSource = source;
   data.sourceLabel = sourceLabel;
   data.channel = channel;
   data.status = 'new';
@@ -156,17 +201,19 @@ async function ingestPublicLead(raw = {}) {
   await applyLeadMetrics(data);
   const lead = await Lead.create(data);
 
+  const originLabel = landingPage || sourceLabel;
   await logLeadActivity({
     leadId: lead._id,
     branchId: lead.branchId,
     type: 'lead_created',
-    description: `Lead captured from ${sourceLabel}${captureType === 'chatbot' ? ' (chatbot)' : ''}`,
-    actor: { _id: data.createdBy, name: 'Meta Landing' },
+    description: `Lead captured from ${originLabel}${captureType === 'chatbot' ? ' (chatbot)' : ''}`,
+    actor: { _id: data.createdBy, name: sourceLabel },
     meta: {
-      source: 'facebook_ads',
+      source,
+      sourceLabel,
       channel,
       captureType,
-      landingPage: sourceLabel,
+      landingPage: landingPage || undefined,
       package: packageTitle || undefined,
     },
   });
@@ -183,6 +230,7 @@ async function ingestPublicLead(raw = {}) {
 
 module.exports = {
   ingestPublicLead,
+  resolvePublicLeadSource,
   digitsPhone,
   formatTranscript,
 };

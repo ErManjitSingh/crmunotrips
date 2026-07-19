@@ -5,7 +5,7 @@ import DashboardPanel from './DashboardPanel';
 const COLORS = ['#3B82F6', '#EC4899', '#64748B', '#22C55E', '#8B5CF6', '#F59E0B', '#06B6D4'];
 
 const SOURCE_LABELS = {
-  website: 'Website',
+  website: 'DPW',
   whatsapp: 'WhatsApp',
   referral: 'Referral',
   walk_in: 'Walk-in',
@@ -14,7 +14,7 @@ const SOURCE_LABELS = {
   email: 'Email',
   social: 'Social Media',
   google_ads: 'Google Ads',
-  facebook_ads: 'Facebook Ads',
+  facebook_ads: 'Facebook Lead',
   organic: 'Organic',
   other: 'Other',
 };
