@@ -190,6 +190,10 @@ async function ingestPublicLead(raw = {}) {
   data.channel = channel;
   data.status = 'new';
   data.notes = body.notes;
+  if (raw.externalLeadId) {
+    data.externalLeadId = String(raw.externalLeadId).trim();
+    data.externalLeadSource = String(raw.externalLeadSource || 'facebook_leadgen').trim();
+  }
 
   const typeDetection = detectLeadType({ ...body, ...data });
   data.leadType = typeDetection.leadType;
@@ -215,6 +219,7 @@ async function ingestPublicLead(raw = {}) {
       captureType,
       landingPage: landingPage || undefined,
       package: packageTitle || undefined,
+      externalLeadId: data.externalLeadId || undefined,
     },
   });
 

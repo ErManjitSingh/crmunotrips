@@ -52,6 +52,13 @@ cd ${APP_ROOT}/backend
 if ! grep -q '^META_LEAD_API_KEY=' .env 2>/dev/null; then
   echo 'META_LEAD_API_KEY=unotrips-meta-lead-2026-secure' >> .env
 fi
+if ! grep -q '^FACEBOOK_VERIFY_TOKEN=' .env 2>/dev/null; then
+  echo 'FACEBOOK_VERIFY_TOKEN=unotrips-fb-verify-2026' >> .env
+fi
+if ! grep -q '^FACEBOOK_DEFAULT_DESTINATION=' .env 2>/dev/null; then
+  echo 'FACEBOOK_DEFAULT_DESTINATION=Not specified' >> .env
+fi
+# Keep existing FACEBOOK_PAGE_ACCESS_TOKEN / FACEBOOK_APP_SECRET if already set.
 if grep -q '^CORS_ORIGINS=' .env 2>/dev/null; then
   sed -i 's|^CORS_ORIGINS=.*|CORS_ORIGINS=https://testing.unotrips.com,https://unotrips.com,https://www.unotrips.com|' .env
 else

@@ -124,6 +124,8 @@ const leadSchema = new mongoose.Schema(
     lastFollowUp: { type: Date },
     nextFollowUp: { type: Date },
     channel: { type: String, default: 'crm' },
+    externalLeadId: { type: String, trim: true, index: true, sparse: true },
+    externalLeadSource: { type: String, trim: true },
     reactivation: {
       isReactivated: { type: Boolean, default: false, index: true },
       previousLostStatus: { type: String, enum: ['lost', 'booked_from_another_company', ''] },

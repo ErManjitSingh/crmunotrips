@@ -86,6 +86,8 @@ router.use('/skill-assignment', skillAssignmentRoutes);
 router.use('/assignment', assignmentConfigRoutes);
 
 const publicLeadRoutes = require('./publicLeadRoutes');
+const facebookWebhookRoutes = require('./facebookWebhookRoutes');
 router.use('/public', publicLeadRoutes);
+router.use('/webhooks/facebook', facebookWebhookRoutes);
 
 module.exports = router;
