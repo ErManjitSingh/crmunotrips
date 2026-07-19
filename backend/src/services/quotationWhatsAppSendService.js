@@ -63,6 +63,10 @@ async function sendQuotationViaWhatsApp({
   const wasAlreadySent = ['sent', 'viewed', 'negotiation'].includes(quotation.status);
   let markedSent = false;
 
+  if (!Array.isArray(quotation.timeline)) {
+    quotation.timeline = [];
+  }
+
   if (quotation.status === 'approved') {
     quotation.status = 'sent';
     quotation.sentAt = now;

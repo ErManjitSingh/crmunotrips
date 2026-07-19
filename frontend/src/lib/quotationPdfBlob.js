@@ -7,8 +7,23 @@ function safePdfFilename(quoteNumber) {
   return `Quotation-${String(quoteNumber || 'UNO').replace(/[^\w.\-]+/g, '_')}.pdf`;
 }
 
+function canvasToImageData(canvas) {
+  try {
+    return canvas.toDataURL('image/jpeg', 0.82);
+  } catch {
+    try {
+      return canvas.toDataURL('image/png', 0.92);
+    } catch (err) {
+      throw new Error(
+        err?.message ||
+          'Could not export quotation PDF (image security). Try Save as PDF from the PDF preview instead.'
+      );
+    }
+  }
+}
+
 export async function generateQuotationPdfBlob(contentEl, quoteNumber = 'UNO') {
-  if (!contentEl) throw new Error('Quotation preview is not ready');
+  if (!contentEl) throw new Error('Quotation preview is not ready yet');
 
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
     import('html2canvas'),
@@ -16,18 +31,43 @@ export async function generateQuotationPdfBlob(contentEl, quoteNumber = 'UNO') {
   ]);
 
   const embedded = (await cloneWithEmbeddedImages(contentEl)) || contentEl;
-  await waitForImages(embedded, 8000);
+  await waitForImages(embedded, 10000);
 
-  const canvas = await html2canvas(embedded, {
-    scale: 2,
-    useCORS: true,
-    allowTaint: true,
-    backgroundColor: '#ffffff',
-    logging: false,
-    windowWidth: Math.max(embedded.scrollWidth || 794, 794),
-  });
+  // Keep canvas under browser size limits on long quotations
+  const width = Math.max(embedded.scrollWidth || 794, 794);
+  const scale = width > 900 ? 1 : 1.25;
 
-  const imgData = canvas.toDataURL('image/png', 1.0);
+  let canvas;
+  try {
+    canvas = await html2canvas(embedded, {
+      scale,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+      imageTimeout: 15000,
+      windowWidth: width,
+      scrollX: 0,
+      scrollY: 0,
+      onclone: (doc) => {
+        // Avoid transformed ancestors / dark-mode filters affecting capture
+        const root = doc.body;
+        if (root) {
+          root.style.transform = 'none';
+          root.style.filter = 'none';
+        }
+      },
+    });
+  } catch (err) {
+    throw new Error(err?.message || 'Failed to render quotation for PDF');
+  }
+
+  if (!canvas?.width || !canvas?.height) {
+    throw new Error('Quotation PDF render produced an empty page');
+  }
+
+  const imgData = canvasToImageData(canvas);
+  const format = imgData.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -38,13 +78,13 @@ export async function generateQuotationPdfBlob(contentEl, quoteNumber = 'UNO') {
   let heightLeft = imgHeight;
   let position = margin;
 
-  pdf.addImage(imgData, 'PNG', margin, position, usableWidth, imgHeight);
+  pdf.addImage(imgData, format, margin, position, usableWidth, imgHeight);
   heightLeft -= pageHeight - margin * 2;
 
   while (heightLeft > 0) {
     position = margin - (imgHeight - heightLeft);
     pdf.addPage();
-    pdf.addImage(imgData, 'PNG', margin, position, usableWidth, imgHeight);
+    pdf.addImage(imgData, format, margin, position, usableWidth, imgHeight);
     heightLeft -= pageHeight - margin * 2;
   }
 
@@ -129,4 +169,12 @@ export function buildQuotationWhatsAppMessage({ lead, quote, userName } = {}) {
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+export function extractSendErrorMessage(err) {
+  const data = err?.response?.data;
+  if (typeof data?.message === 'string' && data.message.trim()) return data.message.trim();
+  if (typeof data?.error === 'string' && data.error.trim()) return data.error.trim();
+  if (typeof err?.message === 'string' && err.message.trim()) return err.message.trim();
+  return 'Could not send quotation. Please try again.';
 }

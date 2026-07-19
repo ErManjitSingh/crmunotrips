@@ -12,7 +12,7 @@ export async function sendQuotationWhatsApp(
       phone,
       saveAsAlternate: Boolean(saveAsAlternate),
     },
-    { skipSuccessToast: true }
+    { skipSuccessToast: true, skipErrorToast: true }
   );
   return data;
 }
