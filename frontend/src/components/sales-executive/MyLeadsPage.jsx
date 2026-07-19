@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, TrendingUp, RefreshCw, Users } from 'lucide-react';
+import { Search, Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, TrendingUp, RefreshCw, Users, Plus } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import API from '../../api/axios';
@@ -231,8 +231,17 @@ export default function MyLeadsPage() {
                   Auto-highlighted: budget &gt; ₹50K · travel within 30 days · repeat customers
                 </div>
               )}
-              <div className="flex items-center gap-2 text-sm font-semibold text-[#5D5FEF] bg-[#5D5FEF]/10 px-3 py-1.5 rounded-full ring-1 ring-[#5D5FEF]/20">
-                <TrendingUp className="w-4 h-4" /> Your pipeline
+              <div className="flex items-center gap-2 flex-wrap">
+                <Link
+                  to="/sales-executive/leads/add"
+                  className="inline-flex items-center gap-2 h-9 px-3.5 rounded-full bg-[#5D5FEF] hover:bg-[#4F51E0] text-white text-sm font-semibold shadow-md shadow-[#5D5FEF]/25 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Lead
+                </Link>
+                <div className="flex items-center gap-2 text-sm font-semibold text-[#5D5FEF] bg-[#5D5FEF]/10 px-3 py-1.5 rounded-full ring-1 ring-[#5D5FEF]/20">
+                  <TrendingUp className="w-4 h-4" /> Your pipeline
+                </div>
               </div>
             </div>
           </motion.div>
