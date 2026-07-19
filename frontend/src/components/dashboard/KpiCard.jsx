@@ -28,17 +28,24 @@ export default function KpiCard({
       className={cn(
         'group relative flex flex-col justify-between rounded-2xl border border-subtle bg-surface shadow-sm',
         'hover:shadow-md transition-all duration-300',
-        compact ? 'p-4 min-h-[120px]' : 'p-5 min-h-[148px]'
+        compact ? 'p-3 min-h-[88px]' : 'p-5 min-h-[148px]'
       )}
     >
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div className={cn('w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm', iconColor)}>
-          <Icon className="w-[18px] h-[18px] text-white" strokeWidth={2} />
+      <div className={cn('flex items-start justify-between gap-2', compact ? 'mb-2' : 'mb-3')}>
+        <div
+          className={cn(
+            'rounded-full flex items-center justify-center shrink-0 shadow-sm',
+            iconColor,
+            compact ? 'w-8 h-8' : 'w-10 h-10'
+          )}
+        >
+          <Icon className={cn('text-white', compact ? 'w-3.5 h-3.5' : 'w-[18px] h-[18px]')} strokeWidth={2} />
         </div>
         {change !== undefined && (
           <span
             className={cn(
-              'inline-flex items-center gap-0.5 text-[11px] font-semibold shrink-0',
+              'inline-flex items-center gap-0.5 font-semibold shrink-0',
+              compact ? 'text-[10px]' : 'text-[11px]',
               isNeutral ? 'text-content-muted' : isUp ? 'text-emerald-600' : 'text-red-500'
             )}
           >
@@ -48,16 +55,26 @@ export default function KpiCard({
         )}
       </div>
 
-      <p className="text-xs font-medium text-content-muted mb-1">{label}</p>
-      <p className="text-2xl font-bold text-content-primary metric-tabular tracking-tight leading-none mb-1">
+      <p className={cn('font-medium text-content-muted mb-0.5', compact ? 'text-[10px]' : 'text-xs')}>{label}</p>
+      <p
+        className={cn(
+          'font-bold text-content-primary metric-tabular tracking-tight leading-none',
+          compact ? 'text-xl mb-0.5' : 'text-2xl mb-1'
+        )}
+      >
         {value}
       </p>
       {change !== undefined && changeLabel && (
-        <p className="text-[11px] text-content-muted mb-2">{changeLabel}</p>
+        <p className={cn('text-content-muted', compact ? 'text-[10px] mb-1' : 'text-[11px] mb-2')}>{changeLabel}</p>
       )}
 
       {chartData.length > 0 && (
-        <div className="h-10 -mx-1 mt-auto opacity-70 group-hover:opacity-100 transition-opacity">
+        <div
+          className={cn(
+            '-mx-1 mt-auto opacity-70 group-hover:opacity-100 transition-opacity',
+            compact ? 'h-7' : 'h-10'
+          )}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
               <defs>

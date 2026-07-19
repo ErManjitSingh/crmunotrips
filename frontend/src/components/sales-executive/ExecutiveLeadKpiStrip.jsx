@@ -61,7 +61,7 @@ export default function ExecutiveLeadKpiStrip() {
   const counts = useSidebarCounts();
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 w-full">
       {CARDS.map(({ key, label, path, icon: Icon, card, iconWrap, labelClass, valueClass, blob }, i) => {
         const value = getCount(counts, key);
         return (
@@ -74,19 +74,19 @@ export default function ExecutiveLeadKpiStrip() {
             <Link
               to={path}
               className={cn(
-                'relative block overflow-hidden rounded-2xl p-4 min-h-[112px] shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl',
+                'relative block overflow-hidden rounded-xl p-3 min-h-[84px] shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg',
                 card
               )}
             >
-              <div className={cn('pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full', blob)} />
-              <div className={cn('pointer-events-none absolute -bottom-8 -left-4 h-20 w-20 rounded-full', blob)} />
+              <div className={cn('pointer-events-none absolute -right-5 -top-6 h-16 w-16 rounded-full', blob)} />
+              <div className={cn('pointer-events-none absolute -bottom-6 -left-3 h-14 w-14 rounded-full', blob)} />
 
               <div className="relative z-[1]">
-                <div className={cn('inline-flex w-10 h-10 items-center justify-center rounded-xl mb-3', iconWrap)}>
-                  <Icon className="w-5 h-5" strokeWidth={2.25} />
+                <div className={cn('inline-flex w-8 h-8 items-center justify-center rounded-lg mb-2', iconWrap)}>
+                  <Icon className="w-4 h-4" strokeWidth={2.25} />
                 </div>
-                <p className={cn('text-[11px] font-semibold leading-tight', labelClass)}>{label}</p>
-                <p className={cn('text-3xl font-bold tabular-nums mt-1 leading-none tracking-tight', valueClass)}>
+                <p className={cn('text-[10px] font-semibold leading-tight', labelClass)}>{label}</p>
+                <p className={cn('text-2xl font-bold tabular-nums mt-0.5 leading-none tracking-tight', valueClass)}>
                   {value}
                 </p>
               </div>

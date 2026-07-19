@@ -52,7 +52,7 @@ const cardThemes = {
 
 export default function FollowUpKpiCards({ kpis, onFilter, activeFilter }) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 mb-5">
       {KPI_CONFIG.map((cfg, i) => {
         const Icon = cfg.icon;
         const value = kpis[cfg.key];
@@ -65,23 +65,23 @@ export default function FollowUpKpiCards({ kpis, onFilter, activeFilter }) {
             type="button"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -3, scale: 1.02 }}
+            whileHover={{ y: -2, scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
             transition={{ delay: i * 0.05 }}
             onClick={() => onFilter?.(cfg.key)}
             className={cn(
-              'relative overflow-hidden rounded-2xl border p-4 text-left transition-all duration-300',
-              'bg-gradient-to-br backdrop-blur-sm shadow-sm hover:shadow-lg',
+              'relative overflow-hidden rounded-xl border p-3 text-left transition-all duration-300 min-h-[88px]',
+              'bg-gradient-to-br backdrop-blur-sm shadow-sm hover:shadow-md',
               theme.gradient,
               theme.border,
               isActive && theme.activeRing
             )}
           >
-            <div className={cn('absolute -right-4 -top-4 w-20 h-20 rounded-full blur-2xl pointer-events-none', theme.glow)} />
+            <div className={cn('absolute -right-4 -top-4 w-16 h-16 rounded-full blur-2xl pointer-events-none', theme.glow)} />
 
-            <div className="relative flex items-start justify-between mb-3">
-              <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', theme.icon)}>
-                <Icon className="w-5 h-5" strokeWidth={2.25} />
+            <div className="relative flex items-start justify-between mb-2">
+              <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', theme.icon)}>
+                <Icon className="w-4 h-4" strokeWidth={2.25} />
               </div>
               {isActive && (
                 <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/60 dark:bg-black/30 text-content-primary">
@@ -90,10 +90,10 @@ export default function FollowUpKpiCards({ kpis, onFilter, activeFilter }) {
               )}
             </div>
 
-            <p className={cn('relative text-3xl font-black metric-tabular tracking-tight leading-none', theme.value)}>
+            <p className={cn('relative text-2xl font-black metric-tabular tracking-tight leading-none', theme.value)}>
               {value}{cfg.suffix || ''}
             </p>
-            <p className={cn('relative text-xs font-semibold mt-2 leading-snug', theme.label)}>{cfg.label}</p>
+            <p className={cn('relative text-[10px] font-semibold mt-1.5 leading-snug', theme.label)}>{cfg.label}</p>
           </motion.button>
         );
       })}

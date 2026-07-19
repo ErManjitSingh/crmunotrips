@@ -9,7 +9,7 @@ const ICONS = { totalLeads: Users, totalConversions: Trophy, conversionRate: Tre
 
 export default function ReportsKpiCards({ summary }) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2.5 mb-5">
       {REPORT_KPI_CONFIG.map((cfg, i) => {
         const theme = KPI_THEMES[cfg.color];
         const Icon = ICONS[cfg.key];
@@ -23,15 +23,15 @@ export default function ReportsKpiCards({ summary }) {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.04 }}
-            className={cn('relative overflow-hidden rounded-2xl border bg-gradient-to-br backdrop-blur-sm p-4 shadow-sm', theme.gradient, theme.border)}
+            className={cn('relative overflow-hidden rounded-xl border bg-gradient-to-br backdrop-blur-sm p-3 min-h-[88px] shadow-sm', theme.gradient, theme.border)}
           >
-            <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center mb-3 shadow-lg', theme.icon)}>
-              <Icon className="w-4 h-4 text-white" />
+            <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center mb-2 shadow-md', theme.icon)}>
+              <Icon className="w-3.5 h-3.5 text-white" />
             </div>
-            <p className={cn('text-2xl font-black metric-tabular tracking-tight', theme.text)}>{value}</p>
-            <p className="text-xs font-medium text-content-muted mt-1">{cfg.label}</p>
+            <p className={cn('text-xl font-black metric-tabular tracking-tight', theme.text)}>{value}</p>
+            <p className="text-[10px] font-medium text-content-muted mt-1">{cfg.label}</p>
             {spark.length > 0 && (
-              <div className="h-8 mt-2 -mx-1 opacity-60">
+              <div className="h-6 mt-1.5 -mx-1 opacity-60">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={spark.map((v, idx) => ({ idx, v }))}>
                     <Area type="monotone" dataKey="v" stroke="#6366f1" strokeWidth={1.5} fill="#6366f1" fillOpacity={0.1} dot={false} />

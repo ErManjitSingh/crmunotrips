@@ -50,9 +50,9 @@ const KPI_ITEMS = [
 export default function TransportKpiStrip({ summary, loading }) {
   if (loading && !summary) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 mb-5">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="rounded-2xl bg-white border border-subtle animate-pulse h-[148px]" />
+          <div key={i} className="rounded-xl bg-white border border-subtle animate-pulse h-[88px]" />
         ))}
       </div>
     );
@@ -61,7 +61,7 @@ export default function TransportKpiStrip({ summary, loading }) {
   if (!summary) return null;
 
   return (
-    <div className={cn('grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6')}>
+    <div className={cn('grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 mb-5')}>
       {KPI_ITEMS.map((item, i) => (
         <KpiCard
           key={item.key}
@@ -79,6 +79,7 @@ export default function TransportKpiStrip({ summary, loading }) {
           sparkColor={item.sparkColor}
           sparkData={buildSparkline(summary[item.key])}
           index={i}
+          compact
         />
       ))}
     </div>

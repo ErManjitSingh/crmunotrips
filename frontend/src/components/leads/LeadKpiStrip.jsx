@@ -21,9 +21,9 @@ export default function LeadKpiStrip() {
 
   if (isLoading && !stats) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 mb-5">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-[148px] rounded-2xl bg-white border border-subtle animate-pulse" />
+          <div key={i} className="h-[88px] rounded-xl bg-white border border-subtle animate-pulse" />
         ))}
       </div>
     );
@@ -71,7 +71,7 @@ export default function LeadKpiStrip() {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 mb-5">
       {items.map((item, i) => (
         <KpiCard
           key={item.label}
@@ -84,6 +84,7 @@ export default function LeadKpiStrip() {
           sparkColor={item.sparkColor}
           sparkData={buildSparkline(typeof item.spark === 'number' ? item.spark : 0)}
           index={i}
+          compact
         />
       ))}
     </div>

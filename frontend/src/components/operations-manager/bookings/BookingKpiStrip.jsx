@@ -77,13 +77,12 @@ export default function BookingKpiStrip({ summary, status = 'pending', loading }
   const items = resolveItems(status, summary);
   const colClass =
     items.length >= 6 ? 'xl:grid-cols-6' : items.length >= 5 ? 'xl:grid-cols-5' : 'xl:grid-cols-4';
-  const compact = status === 'active' || status === 'completed';
 
   if (loading && !summary) {
     return (
-      <div className={cn('grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6', colClass)}>
+      <div className={cn('grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-5', colClass)}>
         {[...Array(items.length || 4)].map((_, i) => (
-          <div key={i} className={cn('rounded-2xl bg-white border border-subtle animate-pulse', compact ? 'h-[120px]' : 'h-[148px]')} />
+          <div key={i} className="rounded-xl bg-white border border-subtle animate-pulse h-[88px]" />
         ))}
       </div>
     );
@@ -92,7 +91,7 @@ export default function BookingKpiStrip({ summary, status = 'pending', loading }
   if (!summary) return null;
 
   return (
-    <div className={cn('grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6', colClass)}>
+    <div className={cn('grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-5', colClass)}>
       {items.map((item, i) => (
         <KpiCard
           key={item.key}
@@ -106,7 +105,7 @@ export default function BookingKpiStrip({ summary, status = 'pending', loading }
           sparkColor={item.sparkColor}
           sparkData={buildSparkline(summary[item.key])}
           index={i}
-          compact={compact}
+          compact
         />
       ))}
     </div>

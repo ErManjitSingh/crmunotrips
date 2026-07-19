@@ -47,7 +47,7 @@ const CARDS = [
 
 export default function ExecutiveFollowUpKpiStrip({ counts = {}, onSelect, activeKey }) {
   return (
-    <div className="relative grid grid-cols-2 xl:grid-cols-5 gap-3">
+    <div className="relative grid grid-cols-2 xl:grid-cols-5 gap-2.5">
       {CARDS.map(({ key, label, hint, icon: Icon, card, iconWrap, valueClass, hintClass }, i) => {
         const value = counts[key] ?? 0;
         const active = activeKey === key;
@@ -60,31 +60,31 @@ export default function ExecutiveFollowUpKpiStrip({ counts = {}, onSelect, activ
             transition={{ delay: i * 0.04 }}
             onClick={() => onSelect?.(key)}
             className={cn(
-              'relative overflow-hidden rounded-2xl border p-4 text-left min-h-[118px] shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md',
+              'relative overflow-hidden rounded-xl border p-3 text-left min-h-[88px] shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md',
               card,
               active && 'ring-2 ring-[#5D5FEF]/40 ring-offset-2 ring-offset-[var(--color-bg-app)]'
             )}
           >
-            <div className={cn('inline-flex w-10 h-10 items-center justify-center rounded-xl mb-3', iconWrap)}>
-              <Icon className="w-5 h-5" strokeWidth={2.25} />
+            <div className={cn('inline-flex w-8 h-8 items-center justify-center rounded-lg mb-2', iconWrap)}>
+              <Icon className="w-4 h-4" strokeWidth={2.25} />
             </div>
-            <p className="text-[11px] font-semibold text-content-secondary leading-tight">{label}</p>
-            <p className={cn('text-3xl font-bold tabular-nums mt-1 leading-none tracking-tight', valueClass)}>
+            <p className="text-[10px] font-semibold text-content-secondary leading-tight">{label}</p>
+            <p className={cn('text-2xl font-bold tabular-nums mt-0.5 leading-none tracking-tight', valueClass)}>
               {value}
             </p>
-            <p className={cn('text-[10px] font-medium mt-1.5', hintClass)}>{hint}</p>
+            <p className={cn('text-[10px] font-medium mt-1', hintClass)}>{hint}</p>
           </motion.button>
         );
       })}
 
-      <div className="hidden xl:flex relative overflow-hidden rounded-2xl border border-violet-100 dark:border-violet-900/40 bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/40 dark:via-slate-900 dark:to-indigo-950/30 items-end justify-center min-h-[118px] shadow-sm">
+      <div className="hidden xl:flex relative overflow-hidden rounded-xl border border-violet-100 dark:border-violet-900/40 bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/40 dark:via-slate-900 dark:to-indigo-950/30 items-end justify-center min-h-[88px] shadow-sm">
         <div className="absolute inset-0 opacity-60 pointer-events-none bg-[radial-gradient(circle_at_70%_30%,rgba(93,95,239,0.2),transparent_55%)]" />
-        <div className="relative pb-3 px-3 text-center">
-          <div className="mx-auto mb-2 w-14 h-14 rounded-2xl bg-white shadow-md border border-violet-100 flex items-center justify-center">
-            <CalendarDays className="w-7 h-7 text-[#5D5FEF]" />
+        <div className="relative pb-2.5 px-3 text-center">
+          <div className="mx-auto mb-1.5 w-10 h-10 rounded-xl bg-white shadow-md border border-violet-100 flex items-center justify-center">
+            <CalendarDays className="w-5 h-5 text-[#5D5FEF]" />
           </div>
-          <p className="text-[11px] font-semibold text-violet-700 dark:text-violet-300">Stay on schedule</p>
-          <p className="text-[10px] text-content-muted mt-0.5">Never miss a callback</p>
+          <p className="text-[10px] font-semibold text-violet-700 dark:text-violet-300">Stay on schedule</p>
+          <p className="text-[9px] text-content-muted mt-0.5">Never miss a callback</p>
         </div>
       </div>
     </div>
