@@ -3,8 +3,8 @@ import { FileText, ClipboardCheck } from 'lucide-react';
 export const WIZARD_STEP_COUNT = 2;
 
 export const WIZARD_STEPS = [
-  { id: 1, key: 'form', title: 'Lead Form', subtitle: 'All details', icon: FileText },
-  { id: 2, key: 'review', title: 'Review', subtitle: 'Confirm & save', icon: ClipboardCheck },
+  { id: 1, key: 'form', title: 'Lead Form', subtitle: 'Fill all lead details.', icon: FileText },
+  { id: 2, key: 'review', title: 'Review', subtitle: 'Confirm & save.', icon: ClipboardCheck },
 ];
 
 export const LEAD_SOURCES = [
