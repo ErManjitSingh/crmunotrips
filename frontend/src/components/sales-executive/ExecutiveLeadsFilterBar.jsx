@@ -89,7 +89,7 @@ export default function ExecutiveLeadsFilterBar({
 
           {showAddLead && (
             <Link
-              to="/leads/new"
+              to="/sales-executive/leads/add"
               className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-[#5D5FEF] hover:bg-[#4F51E0] text-white text-sm font-semibold shadow-md shadow-[#5D5FEF]/25 transition-colors"
             >
               <Plus className="w-4 h-4" />

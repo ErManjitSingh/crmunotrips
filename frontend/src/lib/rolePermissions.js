@@ -51,7 +51,7 @@ const ROLE_PERMISSIONS = {
   },
   sales_executive: {
     ...noPerms(),
-    leads: { view: true, create: false, edit: false, delete: false },
+    leads: { view: true, create: true, edit: true, delete: false },
     customers: { view: true, create: false, edit: false, delete: false },
     quotations: { view: true, create: true, edit: true, delete: false, approve: false },
     reports: { view: true, export: false },

@@ -4,7 +4,7 @@ import { useSidebarCounts } from '../../hooks/useSidebarCounts';
 
 const CARDS = [
   { key: 'all', label: 'Total Leads', icon: Users, iconBg: 'bg-[#5D5FEF]' },
-  { key: 'new', label: 'New Leads', icon: Sparkles, iconBg: 'bg-sky-400' },
+  { key: 'new', label: 'Today Lead', icon: Sparkles, iconBg: 'bg-sky-400' },
   { key: 'followUp', label: 'Follow-ups', icon: CalendarClock, iconBg: 'bg-orange-400' },
   { key: 'converted', label: 'Converted', icon: Trophy, iconBg: 'bg-emerald-500' },
   { key: 'urgent', label: 'Urgent', icon: AlertTriangle, iconBg: 'bg-rose-400' },

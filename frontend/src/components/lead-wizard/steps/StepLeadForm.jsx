@@ -141,7 +141,7 @@ export default function StepLeadForm({ isEdit, leadId }) {
     >
       <div className="relative overflow-hidden rounded-xl border border-brand-500/20 bg-gradient-to-r from-brand-600/12 via-teal-500/8 to-amber-500/10 px-4 py-3">
         <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-brand-500/15 blur-2xl pointer-events-none" />
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-600/80">New lead</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-600/80">Today lead</p>
         <h2 className="text-lg sm:text-xl font-bold text-content-primary tracking-tight mt-0.5">
           Customer journey starts here
         </h2>
@@ -156,7 +156,11 @@ export default function StepLeadForm({ isEdit, leadId }) {
               canCreateAnyway={canCreateAnyway}
               canMerge={canCreateAnyway}
               onCreateAnyway={() => setForceCreate(true)}
-              onMerge={() => navigate(`/leads/${duplicate._id}`)}
+              onMerge={() => navigate(
+                user?.role === 'sales_executive'
+                  ? `/sales-executive/leads/${duplicate._id}/view`
+                  : `/leads/${duplicate._id}`
+              )}
             />
           </motion.div>
         )}

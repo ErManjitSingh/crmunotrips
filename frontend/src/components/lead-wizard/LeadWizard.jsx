@@ -9,12 +9,30 @@ import WizardFormBody from './WizardFormBody';
 import { useLeadWizard } from './useLeadWizard';
 import { DRAFT_STORAGE_KEY } from './constants';
 import { leadToWizardValues, wizardValuesToPayload } from './leadWizardUtils';
+import { useAuth } from '../../context/AuthContext';
+
+function leadListPath(role) {
+  if (role === 'sales_executive') return '/sales-executive/leads/all';
+  if (role === 'sales_manager') return '/sales-manager/leads';
+  if (role === 'team_leader') return '/team-leader/leads';
+  return '/leads';
+}
+
+function leadDetailPath(role, leadId) {
+  if (role === 'sales_executive') return `/sales-executive/leads/${leadId}/view`;
+  if (role === 'sales_manager') return `/sales-manager/leads/${leadId}`;
+  if (role === 'team_leader') return `/team-leader/leads/${leadId}/view`;
+  return `/leads/${leadId}`;
+}
 
 export default function LeadWizard() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
+  const { user } = useAuth();
   const draftKey = isEdit ? `${DRAFT_STORAGE_KEY}-edit-${id}` : DRAFT_STORAGE_KEY;
+  const listPath = leadListPath(user?.role);
+  const backPath = listPath;
 
   const [initialValues, setInitialValues] = useState(null);
   const [loadingLead, setLoadingLead] = useState(isEdit);
@@ -61,9 +79,9 @@ export default function LeadWizard() {
         setStep(1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else if (action === 'open') {
-        navigate(`/leads/${saved._id}`);
+        navigate(leadDetailPath(user?.role, saved._id));
       } else {
-        navigate('/leads');
+        navigate(listPath);
       }
     } catch (err) {
       const apiMsg = err.response?.data?.message;
@@ -86,7 +104,7 @@ export default function LeadWizard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div className="flex items-start gap-2.5">
           <Link
-            to="/leads"
+            to={backPath}
             className="mt-0.5 p-2 rounded-xl border border-brand-500/30 bg-brand-500/10 hover:bg-brand-500/20 text-brand-600 transition-colors shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />

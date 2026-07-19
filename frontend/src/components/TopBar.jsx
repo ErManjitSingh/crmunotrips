@@ -80,7 +80,7 @@ export default function TopBar({ onMenuClick }) {
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
   const { toggleTheme, isDark } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const { unreadCount, openDrawer } = useNotifications();
   const { selectedBranchId, availableBranches } = useSelector((s) => s.branch);
   const navigate = useNavigate();
@@ -88,6 +88,7 @@ export default function TopBar({ onMenuClick }) {
   const accent = getTopBarAccent(location.pathname);
   const profilePath = getProfilePath(location.pathname);
   const isAdmin = user?.role === 'admin';
+  const canAddLead = isAdmin || hasPermission?.('leads', 'create');
   const selectedBranch = availableBranches.find((b) => b._id === selectedBranchId);
   const selectedBranchLabel = formatBranchLabel(selectedBranch?.name);
   const adminRoleLine = isAdmin
@@ -281,9 +282,9 @@ export default function TopBar({ onMenuClick }) {
             </div>
           )}
 
-          {isAdmin && (
+          {canAddLead && (
             <Link
-              to="/leads/new"
+              to={user?.role === 'sales_executive' ? '/sales-executive/leads/add' : '/leads/new'}
               className="inline-flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 shadow-md shadow-blue-500/25 transition-all active:scale-[0.98] hidden sm:inline-flex"
             >
               <Plus className="w-4 h-4" />
@@ -294,9 +295,9 @@ export default function TopBar({ onMenuClick }) {
 
           <AttendanceTopBarAction accent={accent} />
 
-          {isAdmin && (
+          {canAddLead && (
             <Link
-              to="/leads/new"
+              to={user?.role === 'sales_executive' ? '/sales-executive/leads/add' : '/leads/new'}
               className="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl text-white bg-blue-500 shadow-md"
               aria-label="Add Lead"
             >

@@ -2,7 +2,7 @@ export { formatBudget, formatCurrency, STATUS_STYLES } from '../sales-manager/ma
 
 export const LEAD_FILTERS = {
   all: { title: 'All Leads', desc: 'Complete pipeline — every lead assigned to you', icon: 'Users' },
-  new: { title: 'New Leads', desc: 'Fresh inquiries assigned to you — act fast', icon: 'Sparkles' },
+  new: { title: 'Today Lead', desc: 'Fresh inquiries assigned to you — act fast', icon: 'Sparkles' },
   contacted: { title: 'Contacted Leads', desc: 'Leads you have reached out to', icon: 'Phone' },
   'follow-up': { title: 'Follow-up Leads', desc: 'Active pipeline requiring nurturing', icon: 'CalendarClock' },
   hot: { title: 'Hot Leads', desc: 'High budget, urgent travel, or repeat customers', icon: 'Flame' },
