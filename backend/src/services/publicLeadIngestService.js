@@ -1,5 +1,6 @@
 const Lead = require('../models/Lead');
 const Branch = require('../models/Branch');
+const User = require('../models/User');
 const ApiError = require('../utils/apiError');
 const { normalizeLeadInput } = require('../utils/normalizeLeadInput');
 const { detectLeadType } = require('../services/leadTypeDetectionService');
@@ -8,6 +9,26 @@ const { runLeadAutoAssignment } = require('../services/leadAutoAssignmentService
 const { LEAD_AUTO_ASSIGNMENT_ENABLED } = require('../config/assignment');
 const { logLeadActivity } = require('./leadActivityService');
 const { invalidate: invalidateDashboardCache } = require('./dashboardCacheService');
+
+let cachedSystemUserId = null;
+
+async function resolveSystemCreatorId() {
+  if (cachedSystemUserId) return cachedSystemUserId;
+  const fromEnv = process.env.PUBLIC_LEAD_CREATED_BY;
+  if (fromEnv) {
+    cachedSystemUserId = fromEnv;
+    return cachedSystemUserId;
+  }
+  const admin = await User.findOne({ role: 'admin', status: { $ne: 'disabled' } })
+    .select('_id')
+    .sort({ createdAt: 1 })
+    .lean();
+  if (!admin?._id) {
+    throw new ApiError(503, 'No admin user available to own public leads');
+  }
+  cachedSystemUserId = admin._id;
+  return cachedSystemUserId;
+}
 
 function digitsPhone(raw = '') {
   const digits = String(raw).replace(/\D/g, '');
@@ -130,6 +151,7 @@ async function ingestPublicLead(raw = {}) {
   data.leadTypeSource = typeDetection.leadTypeSource;
 
   data.branchId = await resolvePublicBranchId(raw.branchId);
+  data.createdBy = await resolveSystemCreatorId();
 
   await applyLeadMetrics(data);
   const lead = await Lead.create(data);
@@ -139,7 +161,7 @@ async function ingestPublicLead(raw = {}) {
     branchId: lead.branchId,
     type: 'lead_created',
     description: `Lead captured from ${sourceLabel}${captureType === 'chatbot' ? ' (chatbot)' : ''}`,
-    actor: null,
+    actor: { _id: data.createdBy, name: 'Meta Landing' },
     meta: {
       source: 'facebook_ads',
       channel,
