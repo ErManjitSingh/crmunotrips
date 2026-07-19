@@ -9,8 +9,10 @@ import { useAuth } from '../../context/AuthContext';
 import { openWhatsApp } from '../../lib/whatsappContact';
 import {
   buildQuotationWhatsAppMessage,
+  copyText,
   extractSendErrorMessage,
   generateQuotationPdfBlob,
+  isDesktopWhatsAppFlow,
   shareOrDownloadQuotationPdf,
 } from '../../lib/quotationPdfBlob';
 import { sendQuotationWhatsApp } from '../../services/quotationSendApi';
@@ -66,7 +68,7 @@ export default function SendQuotationModal({
     setCustomPhone('');
     setSaveAsAlternate(true);
     setPreviewReady(false);
-    const t = setTimeout(() => setPreviewReady(true), 900);
+    const t = setTimeout(() => setPreviewReady(true), 1200);
     return () => clearTimeout(t);
   }, [open, quote?._id, phoneOptions]);
 
@@ -82,6 +84,7 @@ export default function SendQuotationModal({
     quote,
     userName: user?.name,
   });
+  const desktopWa = isDesktopWhatsAppFlow();
 
   const handleSend = async () => {
     if (!leadId || !quote?._id) return;
@@ -89,10 +92,13 @@ export default function SendQuotationModal({
       toast.error('Enter a valid 10-digit mobile number');
       return;
     }
+    if (!pdfRef.current || !previewReady) {
+      toast.error('Preparing quotation… wait 1 second and try again');
+      return;
+    }
 
     setSubmitting(true);
     try {
-      // 1) Persist send on server first (clear API errors)
       await sendQuotationWhatsApp(
         leadId,
         {
@@ -103,44 +109,51 @@ export default function SendQuotationModal({
         contactEndpoint
       );
 
-      // 2) Best-effort PDF for the agent to attach / share
       let sharedViaSheet = false;
-      if (pdfRef.current && previewReady) {
+      let pdfDownloaded = false;
+
+      try {
+        const { blob, filename } = await generateQuotationPdfBlob(
+          pdfRef.current,
+          quote.quoteNumber
+        );
+        const shareResult = await shareOrDownloadQuotationPdf({
+          blob,
+          filename,
+          message,
+          title: `Quotation ${quote.quoteNumber || ''}`,
+        });
+        if (shareResult.aborted) {
+          toast.info('Share cancelled — opening WhatsApp chat');
+        } else if (shareResult.shared) {
+          sharedViaSheet = true;
+          toast.success('Quotation PDF shared via WhatsApp');
+        } else if (shareResult.downloaded) {
+          pdfDownloaded = true;
+        }
+      } catch (pdfErr) {
+        console.warn('Quotation PDF export failed, falling back to print', pdfErr);
         try {
-          const { blob, filename } = await generateQuotationPdfBlob(
-            pdfRef.current,
-            quote.quoteNumber
-          );
-          const shareResult = await shareOrDownloadQuotationPdf({
-            blob,
-            filename,
-            message,
-            title: `Quotation ${quote.quoteNumber || ''}`,
-          });
-          if (shareResult.aborted) {
-            toast.info('Share cancelled — opening WhatsApp chat');
-          } else if (shareResult.shared) {
-            sharedViaSheet = true;
-            toast.success('Quotation PDF shared');
-          }
-        } catch (pdfErr) {
-          console.warn('Quotation PDF export failed, falling back to print', pdfErr);
-          try {
-            await printQuotation(pdfRef.current, quote.quoteNumber);
-            toast.info('Use the print dialog → Save as PDF, then attach in WhatsApp');
-          } catch {
-            /* ignore — still open WhatsApp */
-          }
+          await printQuotation(pdfRef.current, quote.quoteNumber);
+          toast.info('Print dialog opened — choose Save as PDF, then attach in WhatsApp');
+        } catch {
+          toast.error(pdfErr?.message || 'Could not prepare PDF');
         }
       }
 
-      // 3) Open WhatsApp chat (skip if native share sheet already handed off to WA)
       if (!sharedViaSheet) {
+        await copyText(message);
         const opened = openWhatsApp(selectedPhone, message);
         if (!opened) {
           toast.error('Quotation logged, but WhatsApp could not open');
+        } else if (desktopWa && pdfDownloaded) {
+          toast.success(
+            'PDF downloaded + WhatsApp opened. Click 📎 Attach → select the PDF from Downloads.'
+          );
+        } else if (pdfDownloaded) {
+          toast.success('PDF ready — attach it in WhatsApp and send.');
         } else {
-          toast.success('PDF ready. Attach it in WhatsApp and send.');
+          toast.success('WhatsApp opened with quotation message');
         }
       }
 
@@ -161,12 +174,13 @@ export default function SendQuotationModal({
             className="pointer-events-none"
             style={{
               position: 'fixed',
-              left: 0,
+              left: -12000,
               top: 0,
               width: 794,
               zIndex: -1,
-              opacity: 0.01,
-              overflow: 'hidden',
+              opacity: 1,
+              overflow: 'visible',
+              background: '#fff',
             }}
           >
             <div className="quote-pdf-preview-paper bg-white" style={{ width: 794 }}>
@@ -273,12 +287,20 @@ export default function SendQuotationModal({
             </div>
           )}
 
-          <p className="text-xs text-content-muted leading-relaxed">
-            CRM will log the send, prepare the quotation PDF, and open WhatsApp for{' '}
-            <span className="font-semibold text-content-primary">
-              {selectedPhone ? `+91 ${selectedPhone}` : 'the selected number'}
-            </span>
-            .
+          <p className="text-xs text-content-muted leading-relaxed rounded-xl border border-amber-200/70 bg-amber-50/80 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2.5">
+            {desktopWa ? (
+              <>
+                <span className="font-semibold text-content-primary">WhatsApp Web note: </span>
+                Meta does not allow CRM to auto-attach a PDF in WhatsApp Web. We download the PDF and
+                open the chat — then click <span className="font-semibold">📎 Attach</span> and pick
+                the file from your Downloads folder.
+              </>
+            ) : (
+              <>
+                On mobile, if the share sheet opens, choose WhatsApp to send the PDF directly.
+                Otherwise attach the downloaded PDF in the chat.
+              </>
+            )}
           </p>
         </div>
 

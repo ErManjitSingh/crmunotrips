@@ -1,6 +1,9 @@
 /**
- * Build a PDF Blob from a quotation preview DOM node (html2canvas + jsPDF).
+ * Build a PDF Blob from a quotation preview DOM node.
+ * Uses a dedicated iframe + print CSS (same as Save as PDF) so html2canvas
+ * never runs on a detached clone or a transformed modal ancestor.
  */
+import { buildQuotationPrintDocument } from '../components/quotations/printQuotation';
 import { cloneWithEmbeddedImages, waitForImages } from '../components/quotations/embedPrintImages';
 
 function safePdfFilename(quoteNumber) {
@@ -9,65 +12,108 @@ function safePdfFilename(quoteNumber) {
 
 function canvasToImageData(canvas) {
   try {
-    return canvas.toDataURL('image/jpeg', 0.82);
+    return { data: canvas.toDataURL('image/jpeg', 0.84), format: 'JPEG' };
   } catch {
-    try {
-      return canvas.toDataURL('image/png', 0.92);
-    } catch (err) {
-      throw new Error(
-        err?.message ||
-          'Could not export quotation PDF (image security). Try Save as PDF from the PDF preview instead.'
-      );
-    }
+    return { data: canvas.toDataURL('image/png', 0.92), format: 'PNG' };
   }
 }
 
-export async function generateQuotationPdfBlob(contentEl, quoteNumber = 'UNO') {
-  if (!contentEl) throw new Error('Quotation preview is not ready yet');
+function waitForIframeDocument(doc, win) {
+  return new Promise((resolve) => {
+    const done = () => resolve();
+    if (doc.readyState === 'complete') {
+      setTimeout(done, 400);
+      return;
+    }
+    win.addEventListener('load', () => setTimeout(done, 400), { once: true });
+    setTimeout(done, 3000);
+  });
+}
 
-  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-    import('html2canvas'),
-    import('jspdf'),
-  ]);
+async function renderQuoteHtmlToCanvas(html) {
+  const [{ default: html2canvas }] = await Promise.all([import('html2canvas')]);
 
-  const embedded = (await cloneWithEmbeddedImages(contentEl)) || contentEl;
-  await waitForImages(embedded, 10000);
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('title', 'Quotation PDF Export');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.cssText =
+    'position:fixed;left:-12000px;top:0;width:794px;height:1200px;border:0;opacity:1;pointer-events:none;background:#fff;';
+  document.body.appendChild(iframe);
 
-  // Keep canvas under browser size limits on long quotations
-  const width = Math.max(embedded.scrollWidth || 794, 794);
-  const scale = width > 900 ? 1 : 1.25;
+  const win = iframe.contentWindow;
+  const doc = iframe.contentDocument || win.document;
 
-  let canvas;
   try {
-    canvas = await html2canvas(embedded, {
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    await waitForIframeDocument(doc, win);
+    await waitForImages(doc.body, 12000);
+
+    const target = doc.body;
+    target.style.margin = '0';
+    target.style.padding = '0';
+    target.style.background = '#ffffff';
+    target.style.width = '794px';
+
+    // Expand iframe to full content height so capture is not clipped
+    const contentHeight = Math.max(target.scrollHeight, target.offsetHeight, 800);
+    iframe.style.height = `${contentHeight + 40}px`;
+
+    // Soften CSS that html2canvas struggles with
+    doc.querySelectorAll('*').forEach((el) => {
+      if (!(el instanceof win.HTMLElement)) return;
+      const style = win.getComputedStyle(el);
+      if (style.backdropFilter && style.backdropFilter !== 'none') {
+        el.style.backdropFilter = 'none';
+      }
+      if (style.filter && style.filter !== 'none') {
+        el.style.filter = 'none';
+      }
+    });
+
+    const scale = contentHeight > 12000 ? 1 : 1.2;
+    const canvas = await html2canvas(target, {
       scale,
       useCORS: true,
       allowTaint: false,
       backgroundColor: '#ffffff',
       logging: false,
       imageTimeout: 15000,
-      windowWidth: width,
+      windowWidth: 794,
+      width: 794,
+      height: contentHeight,
       scrollX: 0,
       scrollY: 0,
-      onclone: (doc) => {
-        // Avoid transformed ancestors / dark-mode filters affecting capture
-        const root = doc.body;
-        if (root) {
-          root.style.transform = 'none';
-          root.style.filter = 'none';
-        }
-      },
     });
+
+    if (!canvas?.width || !canvas?.height) {
+      throw new Error('Quotation PDF render produced an empty page');
+    }
+    return canvas;
+  } finally {
+    iframe.remove();
+  }
+}
+
+export async function generateQuotationPdfBlob(contentEl, quoteNumber = 'UNO') {
+  if (!contentEl) throw new Error('Quotation preview is not ready yet');
+
+  const [{ jsPDF }] = await Promise.all([import('jspdf')]);
+
+  const embedded = (await cloneWithEmbeddedImages(contentEl)) || contentEl;
+  const html = buildQuotationPrintDocument(embedded.outerHTML, quoteNumber);
+
+  let canvas;
+  try {
+    canvas = await renderQuoteHtmlToCanvas(html);
   } catch (err) {
-    throw new Error(err?.message || 'Failed to render quotation for PDF');
+    const detail = err?.message || String(err || '');
+    throw new Error(detail ? `PDF render failed: ${detail}` : 'Failed to render quotation for PDF');
   }
 
-  if (!canvas?.width || !canvas?.height) {
-    throw new Error('Quotation PDF render produced an empty page');
-  }
-
-  const imgData = canvasToImageData(canvas);
-  const format = imgData.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+  const { data: imgData, format } = canvasToImageData(canvas);
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -89,8 +135,7 @@ export async function generateQuotationPdfBlob(contentEl, quoteNumber = 'UNO') {
   }
 
   const filename = safePdfFilename(quoteNumber);
-  const blob = pdf.output('blob');
-  return { blob, filename, pdf };
+  return { blob: pdf.output('blob'), filename, pdf };
 }
 
 export function downloadBlob(blob, filename) {
@@ -102,7 +147,7 @@ export function downloadBlob(blob, filename) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  setTimeout(() => URL.revokeObjectURL(url), 8000);
 }
 
 export async function shareOrDownloadQuotationPdf({ blob, filename, message, title }) {
@@ -127,6 +172,18 @@ export async function shareOrDownloadQuotationPdf({ blob, filename, message, tit
 
   downloadBlob(blob, filename);
   return { shared: false, downloaded: true };
+}
+
+export async function copyText(text) {
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
 }
 
 export function buildQuotationWhatsAppMessage({ lead, quote, userName } = {}) {
@@ -162,8 +219,8 @@ export function buildQuotationWhatsAppMessage({ lead, quote, userName } = {}) {
     total ? `💰 Total: ${total}` : null,
     quoteNumber ? `🔖 Ref: ${quoteNumber}` : null,
     '',
-    'Please find the quotation PDF attached / shared with this message.',
-    'Reply here if you would like any changes.',
+    'I am sharing the quotation PDF with you.',
+    'Please review and reply if you would like any changes.',
     '',
     `Thank you — ${userName || 'UNO Trips'}`,
   ]
@@ -177,4 +234,10 @@ export function extractSendErrorMessage(err) {
   if (typeof data?.error === 'string' && data.error.trim()) return data.error.trim();
   if (typeof err?.message === 'string' && err.message.trim()) return err.message.trim();
   return 'Could not send quotation. Please try again.';
+}
+
+/** WhatsApp Web / wa.me cannot attach files — agents must attach the downloaded PDF. */
+export function isDesktopWhatsAppFlow() {
+  if (typeof navigator === 'undefined') return true;
+  return !/Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
