@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  MoreHorizontal, Eye, Phone, MessageCircle,
+  MoreVertical, Eye, Phone, MessageCircle,
   CalendarClock, RefreshCw, FileText,
 } from 'lucide-react';
 import {
@@ -20,8 +20,12 @@ export default function LeadActionsMenu({ lead, onScheduleFollowUp, onChangeStat
   return (
     <DropdownMenuRoot modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-          <MoreHorizontal className="w-4 h-4" />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-9 w-9 p-0 rounded-xl text-content-muted hover:text-content-primary hover:bg-slate-100 dark:hover:bg-slate-800"
+        >
+          <MoreVertical className="w-4 h-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">

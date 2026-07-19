@@ -9,20 +9,21 @@ import { useRoleLeadsQuery } from '../../hooks/useRoleLeadsQuery';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import ExecutivePageShell from './ExecutivePageShell';
 import { Button } from '../ui/button';
-import { executiveCardHover } from './executivePageStyles';
-import PriorityBadge from '../sales-manager/PriorityBadge';
 import ExecutiveLeadKpiStrip from './ExecutiveLeadKpiStrip';
 import ExecutiveLeadsFilterBar from './ExecutiveLeadsFilterBar';
 import ExecutivePipelineCta from './ExecutivePipelineCta';
 import {
-  LeadIdPill,
-  DestinationChip,
-  BudgetBadge,
-  ManagerStatusBadge,
-  CustomerCell,
-  TravelDateCell,
-} from '../sales-manager/LeadListBadges';
-import { LEAD_FILTERS, formatFollowUpDate } from './executiveUtils';
+  ExecLeadIdCell,
+  ExecCustomerCell,
+  ExecContactCell,
+  ExecDestinationCell,
+  ExecDateCell,
+  ExecBudgetCell,
+  ExecStatusCell,
+  ExecPriorityCell,
+  ExecFollowUpCell,
+} from './ExecutiveLeadListCells';
+import { LEAD_FILTERS } from './executiveUtils';
 import LeadActionsMenu, { ActionModal } from './LeadActionsMenu';
 import VirtualizedRoleTable from '../ui/VirtualizedRoleTable';
 import AddFollowUpModal from '../followups/AddFollowUpModal';
@@ -121,64 +122,57 @@ export default function MyLeadsPage() {
   const columns = useMemo(() => [
     columnHelper.accessor('leadId', {
       header: 'Lead ID',
-      cell: (i) => <LeadIdPill id={i.getValue()} />,
+      cell: ({ row }) => <ExecLeadIdCell lead={row.original} />,
     }),
     columnHelper.accessor('name', {
-      header: 'Customer Name',
-      cell: ({ row }) => (
-        <div className="space-y-1.5">
-          <Link
-            to={`/sales-executive/leads/${row.original._id}/view`}
-            className="block rounded-lg -m-1 p-1 hover:bg-sky-500/5 transition-colors"
-          >
-            <CustomerCell name={row.original.name} lead={row.original} />
-          </Link>
-          {row.original.isHot && <PriorityBadge lead={row.original} />}
-        </div>
-      ),
+      header: 'Customer',
+      cell: ({ row }) => <ExecCustomerCell lead={row.original} />,
     }),
-    columnHelper.accessor('phone', {
-      header: 'Phone',
-      cell: (i) => <span className="text-xs text-content-secondary font-mono">{i.getValue()}</span>,
+    columnHelper.display({
+      id: 'contact',
+      header: 'Contact',
+      cell: ({ row }) => <ExecContactCell lead={row.original} />,
     }),
     columnHelper.accessor('destination', {
       header: 'Destination',
-      cell: (i) => <DestinationChip name={i.getValue()} />,
+      cell: (i) => <ExecDestinationCell name={i.getValue()} />,
     }),
     columnHelper.accessor('travelDate', {
       header: 'Travel Date',
-      cell: (i) => <TravelDateCell date={i.getValue()} />,
+      cell: (i) => <ExecDateCell date={i.getValue()} />,
     }),
     columnHelper.accessor('budget', {
       header: 'Budget',
-      cell: (i) => <BudgetBadge amount={i.getValue()} />,
+      cell: (i) => <ExecBudgetCell amount={i.getValue()} />,
     }),
     columnHelper.accessor('status', {
       header: 'Status',
-      cell: ({ row }) => <ManagerStatusBadge status={row.original.status} lead={row.original} />,
+      cell: ({ row }) => <ExecStatusCell lead={row.original} />,
     }),
     columnHelper.accessor('priority', {
       header: 'Priority',
-      cell: ({ row }) => <PriorityBadge lead={row.original} />,
+      cell: ({ row }) => <ExecPriorityCell lead={row.original} />,
     }),
     columnHelper.accessor('nextFollowUp', {
       header: 'Next Follow-up',
-      cell: (i) => <span className="text-xs text-content-secondary">{formatFollowUpDate(i.getValue())}</span>,
+      cell: (i) => <ExecFollowUpCell date={i.getValue()} />,
     }),
     columnHelper.display({
       id: 'actions',
-      header: 'Actions',
+      header: '',
       cell: ({ row }) => (
-        <LeadActionsMenu
-          lead={row.original}
-          canChangeStatus={!isLeadStatusLocked(row.original.status)}
-          onScheduleFollowUp={(lead) => { setModal({ type: 'followup', lead }); }}
-          onChangeStatus={(lead) => {
-            setModal({ type: 'status', lead });
-            setModalStatus(lead.status);
-            setModalStatusReason(lead.statusReason || '');
-          }}
-        />
+        <div className="flex justify-end pr-1">
+          <LeadActionsMenu
+            lead={row.original}
+            canChangeStatus={!isLeadStatusLocked(row.original.status)}
+            onScheduleFollowUp={(lead) => { setModal({ type: 'followup', lead }); }}
+            onChangeStatus={(lead) => {
+              setModal({ type: 'status', lead });
+              setModalStatus(lead.status);
+              setModalStatusReason(lead.statusReason || '');
+            }}
+          />
+        </div>
       ),
     }),
   ], []);
@@ -223,7 +217,14 @@ export default function MyLeadsPage() {
         pageCount={pageCount}
         total={total}
         onPaginationChange={setPagination}
-        rowClassName={executiveCardHover}
+        estimateRowHeight={88}
+        maxHeight="min(72vh, 720px)"
+        containerClassName="rounded-2xl border border-subtle bg-white dark:bg-slate-900 shadow-sm overflow-hidden ring-1 ring-black/[0.02]"
+        headerRowClassName="border-b border-subtle"
+        thClassName="text-left px-4 py-3.5 text-[10px] font-bold uppercase tracking-[0.08em] text-content-muted whitespace-nowrap bg-slate-50/90 dark:bg-slate-950/40 backdrop-blur-sm"
+        tdClassName="px-4 py-4 align-middle text-sm"
+        rowClassName="hover:bg-[#5D5FEF]/[0.03] transition-colors border-b border-subtle/70 last:border-0"
+        getRowClassName={(lead) => (lead?.isHot ? 'bg-orange-500/[0.03]' : undefined)}
       />
 
       <ExecutivePipelineCta />
