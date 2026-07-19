@@ -1,9 +1,10 @@
 import { useWizardForm } from '../WizardFormContext';
 import { motion } from 'framer-motion';
-import { LEAD_SOURCES, PRIORITIES } from '../constants';
+import { LEAD_SOURCES, PRIORITIES, getLeadSourcesForRole } from '../constants';
 import { cn } from '../../../lib/utils';
 import { useAuth } from '../../../context/AuthContext';
 import { useSelector } from 'react-redux';
+import { useMemo } from 'react';
 
 export default function StepLeadInformation() {
   const { register, watch, setValue, formState: { errors } } = useWizardForm();
@@ -13,6 +14,14 @@ export default function StepLeadInformation() {
   const leadSource = watch('leadSource');
   const branchId = watch('branchId');
   const isAdmin = user?.role === 'admin';
+  const sourceOptions = useMemo(() => {
+    const base = getLeadSourcesForRole(user?.role);
+    if (leadSource && !base.some((s) => s.value === leadSource)) {
+      const current = LEAD_SOURCES.find((s) => s.value === leadSource);
+      return current ? [current, ...base] : base;
+    }
+    return base;
+  }, [user?.role, leadSource]);
 
   return (
     <motion.div
@@ -32,7 +41,7 @@ export default function StepLeadInformation() {
         </label>
         {errors.leadSource && <p className="text-xs text-red-500 mb-2">{errors.leadSource.message}</p>}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {LEAD_SOURCES.map((src) => (
+          {sourceOptions.map((src) => (
             <button
               key={src.value}
               type="button"

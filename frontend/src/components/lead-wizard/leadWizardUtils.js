@@ -41,6 +41,7 @@ export function leadToWizardValues(lead) {
     phone: lead.phone || '',
     whatsapp: lead.whatsapp || lead.phone?.replace(/\D/g, '').slice(-10) || '',
     email: lead.email || '',
+    alternateEmail: lead.alternateEmail || '',
     city: lead.city || '',
     state: lead.state || '',
     destination: lead.destination || '',
@@ -64,6 +65,7 @@ export function leadToWizardValues(lead) {
     budget: lead.budget || '',
     budgetRange: lead.budgetRange || inferBudgetRange(lead.budget || 0),
     customBudget: lead.budgetRange === 'custom' ? String(lead.budget || '') : '',
+    alternatePhone: lead.alternatePhone || '',
   };
 }
 
@@ -82,8 +84,10 @@ export function wizardValuesToPayload(values) {
   return {
     name: values.name,
     phone: values.phone,
+    alternatePhone: values.alternatePhone || undefined,
     whatsapp: values.whatsapp || values.phone,
     email: values.email || undefined,
+    alternateEmail: values.alternateEmail || undefined,
     city: values.city,
     state: values.state,
     destination: values.destination,

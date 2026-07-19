@@ -13,6 +13,7 @@ import WizardField, { WizardInput, WizardSelect } from '../WizardField';
 import {
   INDIAN_STATES, DESTINATIONS, LEAD_TYPES, LEAD_SOURCES, PRIORITIES, BUDGET_RANGE_OPTIONS,
   HOTEL_CATEGORY_OPTIONS, CAB_TYPE_OPTIONS,
+  getLeadSourcesForRole, defaultLeadSourceForRole,
 } from '../constants';
 import { calcTourDays } from '../leadWizardUtils';
 import API from '../../../api/axios';
@@ -71,6 +72,16 @@ export default function StepLeadForm({ isEdit, leadId }) {
   const travelDate = watch('travelDate');
   const returnDate = watch('returnDate');
   const isAdmin = user?.role === 'admin';
+  const isSalesExecutive = user?.role === 'sales_executive';
+  const lockIdentity = isEdit && isSalesExecutive;
+  const sourceOptions = useMemo(() => {
+    const base = getLeadSourcesForRole(user?.role);
+    if (isEdit && leadSource && !base.some((s) => s.value === leadSource)) {
+      const current = LEAD_SOURCES.find((s) => s.value === leadSource);
+      return current ? [current, ...base] : base;
+    }
+    return base;
+  }, [user?.role, isEdit, leadSource]);
 
   const [searching, setSearching] = useState(false);
   const [duplicate, setDuplicate] = useState(null);
@@ -84,6 +95,13 @@ export default function StepLeadForm({ isEdit, leadId }) {
     const days = calcTourDays(travelDate, returnDate);
     if (days) setValue('tourDays', days);
   }, [travelDate, returnDate, setValue]);
+
+  useEffect(() => {
+    if (isEdit || !isSalesExecutive) return;
+    if (!sourceOptions.some((s) => s.value === leadSource)) {
+      setValue('leadSource', defaultLeadSourceForRole('sales_executive'));
+    }
+  }, [isEdit, isSalesExecutive, leadSource, sourceOptions, setValue]);
 
   useEffect(() => {
     if (forceCreate) return;
@@ -169,16 +187,38 @@ export default function StepLeadForm({ isEdit, leadId }) {
       <FormSection icon={User} title="Customer" accent="bg-gradient-to-r from-brand-500 to-teal-400">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
           <WizardField label="Name" required error={errors.name?.message} className="col-span-2 sm:col-span-1">
-            <WizardInput {...register('name')} placeholder="Full name" error={errors.name} className="h-9" />
+            <WizardInput
+              {...register('name')}
+              placeholder="Full name"
+              error={errors.name}
+              className="h-9"
+              readOnly={lockIdentity}
+              disabled={lockIdentity}
+            />
           </WizardField>
-          <WizardField label="Phone" required error={errors.phone?.message} hint="10-digit mobile">
-            <WizardInput {...register('phone')} placeholder="98765 43210" error={errors.phone} className="h-9" />
+          <WizardField label="Phone" required error={errors.phone?.message} hint={lockIdentity ? 'Locked — add another below' : '10-digit mobile'}>
+            <WizardInput
+              {...register('phone')}
+              placeholder="98765 43210"
+              error={errors.phone}
+              className="h-9"
+              readOnly={lockIdentity}
+              disabled={lockIdentity}
+            />
           </WizardField>
           <WizardField label="WhatsApp" hint="Blank = phone">
             <WizardInput {...register('whatsapp')} placeholder="Same as phone" className="h-9" />
           </WizardField>
-          <WizardField label="Email" error={errors.email?.message}>
-            <WizardInput {...register('email')} type="email" placeholder="email@domain.com" error={errors.email} className="h-9" />
+          <WizardField label="Email" error={errors.email?.message} hint={lockIdentity ? 'Locked — add another below' : undefined}>
+            <WizardInput
+              {...register('email')}
+              type="email"
+              placeholder="email@domain.com"
+              error={errors.email}
+              className="h-9"
+              readOnly={lockIdentity}
+              disabled={lockIdentity}
+            />
           </WizardField>
           <WizardField label="City" error={errors.city?.message}>
             <WizardInput {...register('city')} placeholder="Mumbai" error={errors.city} className="h-9" />
@@ -189,7 +229,25 @@ export default function StepLeadForm({ isEdit, leadId }) {
               {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
             </WizardSelect>
           </WizardField>
+          <WizardField
+            label={lockIdentity ? 'Add another phone' : 'Alternate phone'}
+            hint={lockIdentity ? 'Primary phone cannot be changed' : 'Optional'}
+          >
+            <WizardInput {...register('alternatePhone')} placeholder="Extra mobile number" className="h-9" />
+          </WizardField>
+          <WizardField
+            label={lockIdentity ? 'Add another email' : 'Alternate email'}
+            hint={lockIdentity ? 'Primary email cannot be changed' : 'Optional'}
+          >
+            <WizardInput {...register('alternateEmail')} type="email" placeholder="second@email.com" className="h-9" />
+          </WizardField>
         </div>
+
+        {lockIdentity && (
+          <p className="mt-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
+            Name, primary phone and primary email are locked. You can still add another phone / email and update travel details.
+          </p>
+        )}
 
         {(nameMatches.length > 0 || searching) && (
           <div className="mt-2.5 rounded-lg border border-subtle bg-surface/70 p-2.5">
@@ -407,7 +465,7 @@ export default function StepLeadForm({ isEdit, leadId }) {
             Source {errors.leadSource && <span className="text-red-500">— {errors.leadSource.message}</span>}
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {LEAD_SOURCES.map((src) => (
+            {sourceOptions.map((src) => (
               <Chip
                 key={src.value}
                 active={leadSource === src.value}

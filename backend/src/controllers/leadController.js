@@ -248,6 +248,12 @@ const createLead = asyncHandler(async (req, res) => {
   if (!data.name?.trim() || !data.phone?.trim()) {
     throw new ApiError(400, 'Customer name and phone are required');
   }
+  if (req.user.role === 'sales_executive') {
+    const blocked = new Set(['website', 'google_ads', 'organic']);
+    if (blocked.has(data.source) || blocked.has(data.leadSource)) {
+      throw new ApiError(400, 'This lead source is not available for sales executives');
+    }
+  }
   if (!data.destination?.trim()) {
     data.destination = 'Not specified';
   }

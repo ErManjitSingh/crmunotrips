@@ -30,7 +30,9 @@ export default function LeadCustomerPanel({ lead }) {
       <Card title="Customer Overview">
         <InfoRow label="Full Name" value={lead.name} />
         <InfoRow label="Phone" value={lead.phone} />
+        {lead.alternatePhone ? <InfoRow label="Alt. Phone" value={lead.alternatePhone} /> : null}
         <InfoRow label="Email" value={lead.email} />
+        {lead.alternateEmail ? <InfoRow label="Alt. Email" value={lead.alternateEmail} /> : null}
         <InfoRow label="Location" value={[lead.city, lead.state].filter(Boolean).join(', ') || '—'} />
         <InfoRow label="Lead Age" value={computeLeadAge(lead.createdAt)} />
         <InfoRow label="Last Contacted" value={lastContacted} />

@@ -159,6 +159,8 @@ export default function ExecutiveLeadDetailPage() {
           setStatusModalOpen(true);
         } : undefined}
         canChangeStatus={!isLeadStatusLocked(lead.status)}
+        canEditLead
+        editHref={`/sales-executive/leads/${id}/edit`}
       />
 
       <AddFollowUpModal

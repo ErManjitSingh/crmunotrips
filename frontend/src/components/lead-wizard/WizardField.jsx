@@ -16,14 +16,17 @@ export default function WizardField({ label, required, error, hint, children, cl
   );
 }
 
-export function WizardInput({ className, error, ...props }) {
+export function WizardInput({ className, error, readOnly, disabled, ...props }) {
   return (
     <input
       className={cn(
         'input-premium w-full h-10 rounded-xl text-sm',
         error && 'border-red-500/50 focus:ring-red-500/30',
+        (readOnly || disabled) && 'bg-slate-100 text-content-muted cursor-not-allowed dark:bg-slate-800',
         className
       )}
+      readOnly={readOnly}
+      disabled={disabled}
       {...props}
     />
   );

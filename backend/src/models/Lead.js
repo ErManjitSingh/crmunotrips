@@ -40,6 +40,7 @@ const leadSchema = new mongoose.Schema(
     leadId: { type: String, unique: true, sparse: true },
     name: { type: String, required: true, trim: true },
     email: { type: String, trim: true },
+    alternateEmail: { type: String, trim: true },
     phone: { type: String, required: true, trim: true, index: true },
     alternatePhone: { type: String, trim: true, index: true },
     branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', index: true },

@@ -57,7 +57,9 @@ function normalizeLeadInput(body = {}, { isUpdate = false } = {}) {
   const normalized = {
     name: body.name?.trim(),
     email: body.email?.trim() || undefined,
+    alternateEmail: body.alternateEmail?.trim() || '',
     phone: body.phone?.trim(),
+    alternatePhone: body.alternatePhone?.trim() || '',
     whatsapp: body.whatsapp?.trim() || body.phone?.trim(),
     city: body.city?.trim(),
     state: body.state?.trim(),

@@ -153,6 +153,7 @@ function App() {
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<ExecutiveDashboard />} />
               <Route path="leads/add" element={<LeadForm />} />
+              <Route path="leads/:id/edit" element={<LeadForm />} />
               <Route path="leads/:id/view" element={<ExecutiveLeadDetailPage />} />
               <Route path="leads/:filter" element={<MyLeadsPage />} />
               <Route path="follow-ups" element={<ExecutiveFollowUpsPage />} />

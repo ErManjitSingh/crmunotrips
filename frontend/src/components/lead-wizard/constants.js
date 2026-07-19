@@ -18,6 +18,21 @@ export const LEAD_SOURCES = [
   { value: 'social', label: 'Social' },
 ];
 
+/** Hidden for sales executive when creating / picking a source */
+export const SE_HIDDEN_LEAD_SOURCES = new Set(['website', 'google_ads', 'organic']);
+
+export function getLeadSourcesForRole(role) {
+  if (role === 'sales_executive') {
+    return LEAD_SOURCES.filter((s) => !SE_HIDDEN_LEAD_SOURCES.has(s.value));
+  }
+  return LEAD_SOURCES;
+}
+
+export function defaultLeadSourceForRole(role) {
+  if (role === 'sales_executive') return 'phone';
+  return 'website';
+}
+
 export const PRIORITIES = [
   { value: 'low', label: 'Low', color: 'text-slate-600 bg-slate-500/10 border-slate-500/30' },
   { value: 'medium', label: 'Medium', color: 'text-sky-600 bg-sky-500/10 border-sky-500/30' },
@@ -104,4 +119,6 @@ export const defaultWizardValues = {
   branchId: '',
   leadType: 'fit',
   companyName: '',
+  alternatePhone: '',
+  alternateEmail: '',
 };

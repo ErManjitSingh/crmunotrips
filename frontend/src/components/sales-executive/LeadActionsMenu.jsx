@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  MoreVertical, Eye, Phone, MessageCircle,
+  MoreVertical, Eye, Phone, MessageCircle, Pencil,
   CalendarClock, RefreshCw, FileText,
 } from 'lucide-react';
 import {
@@ -32,6 +32,11 @@ export default function LeadActionsMenu({ lead, onScheduleFollowUp, onChangeStat
         <DropdownMenuItem asChild>
           <Link to={`/sales-executive/leads/${lead._id}/view`} className="flex items-center gap-2 cursor-pointer">
             <Eye className="w-4 h-4" /> View Lead
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to={`/sales-executive/leads/${lead._id}/edit`} className="flex items-center gap-2 cursor-pointer">
+            <Pencil className="w-4 h-4" /> Edit Lead
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

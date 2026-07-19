@@ -48,6 +48,7 @@ const {
 } = require('../services/executiveScopeService');
 const { resolvePackageReference } = require('../utils/packageRef');
 const { getExecutiveFollowUpSummary, getMissedFollowUpsPreview } = require('../services/followUpSummaryService');
+const { normalizeLeadInput } = require('../utils/normalizeLeadInput');
 const { ROLE_LABELS } = require('../config/roles');
 const { getOrSetFresh, cacheKey } = require('../services/dashboardCacheService');
 const {
@@ -180,7 +181,7 @@ const getLeadNotesList = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
-/** Executives may only update pipeline status — not edit lead details. */
+/** Executives can change status OR edit lead details (name/phone/email stay locked). */
 const updateLead = asyncHandler(async (req, res) => {
   const lead = await Lead.findOne({
     _id: req.params.id,
@@ -190,74 +191,119 @@ const updateLead = asyncHandler(async (req, res) => {
   if (!lead) throw new ApiError(404, 'Lead not found');
 
   const { status, statusReason, advanceAmount, tokenAmount, paymentMethod, sendReceipt } = req.body;
-  const allowedExtra = new Set(['advanceAmount', 'tokenAmount', 'paymentMethod', 'sendReceipt']);
-  const otherFields = Object.keys(req.body).filter(
-    (k) => !['status', 'statusReason'].includes(k) && !allowedExtra.has(k)
-  );
-  if (otherFields.length > 0) {
-    throw new ApiError(403, 'You can only change lead status, not edit lead details');
-  }
-  if (!status) throw new ApiError(400, 'Status is required');
-  if (!LEAD_STATUSES.includes(status)) throw new ApiError(400, 'Invalid lead status');
-  const trimmedReason = typeof statusReason === 'string' ? statusReason.trim() : '';
-  if (['lost', 'booked_from_another_company'].includes(status) && !trimmedReason) {
-    throw new ApiError(400, 'Reason is required for this status');
-  }
-  if (status === 'converted') {
-    const advance = Number(advanceAmount ?? tokenAmount);
-    if (!Number.isFinite(advance) || advance < 0) {
-      throw new ApiError(400, 'Enter advance / token amount received (₹)');
+  const statusOnlyKeys = new Set([
+    'status',
+    'statusReason',
+    'advanceAmount',
+    'tokenAmount',
+    'paymentMethod',
+    'sendReceipt',
+  ]);
+  const otherFields = Object.keys(req.body).filter((k) => !statusOnlyKeys.has(k));
+  const isStatusOnlyUpdate = Boolean(status) && otherFields.length === 0;
+
+  if (isStatusOnlyUpdate) {
+    if (!LEAD_STATUSES.includes(status)) throw new ApiError(400, 'Invalid lead status');
+    const trimmedReason = typeof statusReason === 'string' ? statusReason.trim() : '';
+    if (['lost', 'booked_from_another_company'].includes(status) && !trimmedReason) {
+      throw new ApiError(400, 'Reason is required for this status');
     }
-  }
-  if (isLeadStatusLocked(lead.status)) {
-    throw new ApiError(400, 'Lead status cannot be changed after conversion or closure');
+    if (status === 'converted') {
+      const advance = Number(advanceAmount ?? tokenAmount);
+      if (!Number.isFinite(advance) || advance < 0) {
+        throw new ApiError(400, 'Enter advance / token amount received (₹)');
+      }
+    }
+    if (isLeadStatusLocked(lead.status)) {
+      throw new ApiError(400, 'Lead status cannot be changed after conversion or closure');
+    }
+
+    const prevStatus = lead.status;
+    lead.status = status;
+    lead.statusReason = trimmedReason;
+    lead.statusReasonUpdatedAt = new Date();
+    await lead.save();
+
+    if (status !== prevStatus) {
+      const typeMap = {
+        lost: 'lead_lost',
+        booked_from_another_company: 'lead_lost',
+        converted: 'lead_converted',
+        quotation_sent: 'quotation_sent',
+        reactivated: 'lead_reactivated',
+      };
+      const statusLabel = status.replace(/_/g, ' ');
+      await logLeadActivity({
+        leadId: lead._id,
+        branchId: lead.branchId,
+        type: typeMap[status] || 'status_changed',
+        description: `Status changed from ${prevStatus.replace(/_/g, ' ')} to ${statusLabel}${trimmedReason ? ` — ${trimmedReason}` : ''}`,
+        actor: req.user,
+        meta: {
+          from: prevStatus,
+          to: status,
+          reason: trimmedReason || undefined,
+          advanceAmount: status === 'converted' ? Number(advanceAmount ?? tokenAmount) : undefined,
+        },
+      });
+    }
+
+    if (status === 'converted' && prevStatus !== 'converted') {
+      await onLeadConverted(lead, req.user, {
+        advanceAmount: Number(advanceAmount ?? tokenAmount),
+        paymentMethod,
+        sendReceipt: sendReceipt !== false,
+      }).catch((err) => {
+        console.error('[LeadConversion]', err.message);
+      });
+    } else if (status !== prevStatus) {
+      invalidateDashboardCache('sales_executive');
+      invalidateDashboardCache('sales_manager');
+      invalidateDashboardCache('team_leader');
+      invalidateDashboardCache('admin');
+      invalidateDashboardCache('nav:');
+    }
+
+    const populated = await Lead.findById(lead._id).populate(LEAD_POPULATE).lean();
+    const paymentSummary = await getLeadPaymentSummary(lead._id);
+    res.json({ ...enrichLead(populated), paymentSummary });
+    return;
   }
 
-  const prevStatus = lead.status;
-  lead.status = status;
-  lead.statusReason = trimmedReason;
-  lead.statusReasonUpdatedAt = new Date();
+  const data = normalizeLeadInput(req.body, { isUpdate: true });
+
+  // Identity locks for sales executive
+  delete data.name;
+  delete data.phone;
+  delete data.email;
+  delete data.status;
+  delete data.assignedTo;
+  delete data.branchId;
+
+  const lockedAttempt =
+    (req.body.name != null && String(req.body.name).trim() !== String(lead.name || '').trim()) ||
+    (req.body.phone != null && String(req.body.phone).trim() !== String(lead.phone || '').trim()) ||
+    (req.body.email != null && String(req.body.email || '').trim() !== String(lead.email || '').trim());
+  if (lockedAttempt) {
+    throw new ApiError(403, 'Name, phone and email cannot be changed. You can add another phone or email.');
+  }
+
+  Object.keys(data).forEach((key) => {
+    if (data[key] !== undefined) lead[key] = data[key];
+  });
+
   await lead.save();
-
-  if (status !== prevStatus) {
-    const typeMap = {
-      lost: 'lead_lost',
-      booked_from_another_company: 'lead_lost',
-      converted: 'lead_converted',
-      quotation_sent: 'quotation_sent',
-      reactivated: 'lead_reactivated',
-    };
-    const statusLabel = status.replace(/_/g, ' ');
-    await logLeadActivity({
-      leadId: lead._id,
-      branchId: lead.branchId,
-      type: typeMap[status] || 'status_changed',
-      description: `Status changed from ${prevStatus.replace(/_/g, ' ')} to ${statusLabel}${trimmedReason ? ` — ${trimmedReason}` : ''}`,
-      actor: req.user,
-      meta: {
-        from: prevStatus,
-        to: status,
-        reason: trimmedReason || undefined,
-        advanceAmount: status === 'converted' ? Number(advanceAmount ?? tokenAmount) : undefined,
-      },
-    });
-  }
-
-  if (status === 'converted' && prevStatus !== 'converted') {
-    await onLeadConverted(lead, req.user, {
-      advanceAmount: Number(advanceAmount ?? tokenAmount),
-      paymentMethod,
-      sendReceipt: sendReceipt !== false,
-    }).catch((err) => {
-      console.error('[LeadConversion]', err.message);
-    });
-  } else if (status !== prevStatus) {
-    invalidateDashboardCache('sales_executive');
-    invalidateDashboardCache('sales_manager');
-    invalidateDashboardCache('team_leader');
-    invalidateDashboardCache('admin');
-    invalidateDashboardCache('nav:');
-  }
+  await logLeadActivity({
+    leadId: lead._id,
+    branchId: lead.branchId,
+    type: 'lead_edited',
+    description: 'Lead details updated by sales executive',
+    actor: req.user,
+    meta: {
+      alternatePhone: lead.alternatePhone || undefined,
+      alternateEmail: lead.alternateEmail || undefined,
+    },
+  });
 
   const populated = await Lead.findById(lead._id).populate(LEAD_POPULATE).lean();
   const paymentSummary = await getLeadPaymentSummary(lead._id);

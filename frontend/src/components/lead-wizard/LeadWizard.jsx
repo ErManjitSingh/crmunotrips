@@ -7,7 +7,7 @@ import WizardStepProgress from './WizardStepProgress';
 import WizardDraftIndicator from './WizardDraftIndicator';
 import WizardFormBody from './WizardFormBody';
 import { useLeadWizard } from './useLeadWizard';
-import { DRAFT_STORAGE_KEY } from './constants';
+import { DRAFT_STORAGE_KEY, defaultLeadSourceForRole, defaultWizardValues } from './constants';
 import { leadToWizardValues, wizardValuesToPayload } from './leadWizardUtils';
 import { useAuth } from '../../context/AuthContext';
 
@@ -25,6 +25,11 @@ function leadDetailPath(role, leadId) {
   return `/leads/${leadId}`;
 }
 
+function leadApiBase(role) {
+  if (role === 'sales_executive') return '/sales-executive/leads';
+  return '/leads';
+}
+
 export default function LeadWizard() {
   const { id } = useParams();
   const isEdit = Boolean(id);
@@ -32,20 +37,28 @@ export default function LeadWizard() {
   const { user } = useAuth();
   const draftKey = isEdit ? `${DRAFT_STORAGE_KEY}-edit-${id}` : DRAFT_STORAGE_KEY;
   const listPath = leadListPath(user?.role);
-  const backPath = listPath;
+  const backPath = isEdit ? leadDetailPath(user?.role, id) : listPath;
+  const apiBase = leadApiBase(user?.role);
 
-  const [initialValues, setInitialValues] = useState(null);
+  const [initialValues, setInitialValues] = useState(() => (
+    isEdit
+      ? null
+      : {
+          ...defaultWizardValues,
+          leadSource: defaultLeadSourceForRole(user?.role),
+        }
+  ));
   const [loadingLead, setLoadingLead] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!isEdit) return;
-    API.get(`/leads/${id}`)
+    API.get(`${apiBase}/${id}`)
       .then((res) => setInitialValues(leadToWizardValues(res.data)))
       .catch((err) => setError(err.response?.data?.message || 'Failed to load lead'))
       .finally(() => setLoadingLead(false));
-  }, [id, isEdit]);
+  }, [id, isEdit, apiBase]);
 
   const wizard = useLeadWizard({ initialValues, draftKey, isEdit });
   const { formApi, step, maxReachable, draftStatus, lastSaved, goNext, goBack, goToStep, clearDraft, setStep, getValues, reset } = wizard;
@@ -66,7 +79,12 @@ export default function LeadWizard() {
       let saved;
       if (isEdit) {
         const { status, ...updatePayload } = payload;
-        const res = await API.put(`/leads/${id}`, updatePayload);
+        if (user?.role === 'sales_executive') {
+          delete updatePayload.name;
+          delete updatePayload.phone;
+          delete updatePayload.email;
+        }
+        const res = await API.put(`${apiBase}/${id}`, updatePayload);
         saved = res.data;
       } else {
         const res = await API.post('/leads', payload);
@@ -75,13 +93,16 @@ export default function LeadWizard() {
       clearDraft();
 
       if (action === 'another') {
-        reset();
+        reset({
+          ...defaultWizardValues,
+          leadSource: defaultLeadSourceForRole(user?.role),
+        });
         setStep(1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else if (action === 'open') {
         navigate(leadDetailPath(user?.role, saved._id));
       } else {
-        navigate(listPath);
+        navigate(isEdit ? leadDetailPath(user?.role, saved._id || id) : listPath);
       }
     } catch (err) {
       const apiMsg = err.response?.data?.message;
