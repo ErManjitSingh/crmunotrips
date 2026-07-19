@@ -90,25 +90,29 @@ export default function SidebarNavItem({ item, isActive, nested = false }) {
         <>
           <span className="flex-1 truncate">{item.label}</span>
           <div className="flex items-center gap-1.5 shrink-0">
-            {item.badge !== undefined && item.badge > 0 && (
-              <span
-                className={cn(
-                  'text-[10px] font-bold tabular-nums min-w-[1.25rem] text-center px-1.5 py-0.5 rounded-md',
-                  isActive
-                    ? 'bg-white/20 text-white'
-                    : accentStyle
-                      ? accentStyle.badge
-                      : accent.badge || 'bg-[#5D5FEF]/20 text-violet-300'
-                )}
-              >
-                {item.badge > 999 ? '999+' : item.badge}
-              </span>
-            )}
+            {(() => {
+              const n = item.badge ?? item.count;
+              if (n === undefined || n <= 0) return null;
+              return (
+                <span
+                  className={cn(
+                    'text-[10px] font-bold tabular-nums min-w-[1.25rem] text-center px-1.5 py-0.5 rounded-md',
+                    isActive
+                      ? 'bg-white/20 text-white'
+                      : accentStyle
+                        ? accentStyle.badge
+                        : accent.badge || 'bg-[#5D5FEF]/20 text-violet-300'
+                  )}
+                >
+                  {n > 999 ? '999+' : n}
+                </span>
+              );
+            })()}
           </div>
         </>
       )}
 
-      {collapsed && item.badge > 0 && (
+      {collapsed && (item.badge > 0 || item.count > 0) && (
         <span
           className={cn(
             'absolute top-1.5 right-2 w-2 h-2 rounded-full ring-2 ring-[#0f172a]',
@@ -129,7 +133,7 @@ export default function SidebarNavItem({ item, isActive, nested = false }) {
         <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
         <TooltipContent side="right" className="flex items-center gap-2 font-medium">
           {item.label}
-          {item.badge > 0 ? ` (${item.badge})` : ''}
+          {(item.badge > 0 || item.count > 0) ? ` (${item.badge ?? item.count})` : ''}
         </TooltipContent>
       </Tooltip>
     );

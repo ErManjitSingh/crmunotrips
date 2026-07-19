@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Search, Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, TrendingUp, RefreshCw, Users, Plus } from 'lucide-react';
+import { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Plus, ChevronDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import API from '../../api/axios';
@@ -10,16 +9,11 @@ import { useRoleLeadsQuery } from '../../hooks/useRoleLeadsQuery';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import ExecutivePageShell from './ExecutivePageShell';
 import { Button } from '../ui/button';
-import {
-  executiveCardHover,
-  executiveInput,
-  executiveBanner,
-  executiveIconAccent,
-} from './executivePageStyles';
+import { executiveCardHover } from './executivePageStyles';
 import PriorityBadge from '../sales-manager/PriorityBadge';
 import ExecutiveLeadKpiStrip from './ExecutiveLeadKpiStrip';
-import ExecutivePipelineCard from './ExecutivePipelineCard';
 import ExecutiveLeadsFilterBar from './ExecutiveLeadsFilterBar';
+import ExecutivePipelineCta from './ExecutivePipelineCta';
 import {
   LeadIdPill,
   DestinationChip,
@@ -28,7 +22,7 @@ import {
   CustomerCell,
   TravelDateCell,
 } from '../sales-manager/LeadListBadges';
-import { LEAD_FILTERS, EXEC_FILTER_THEMES, formatFollowUpDate } from './executiveUtils';
+import { LEAD_FILTERS, formatFollowUpDate } from './executiveUtils';
 import LeadActionsMenu, { ActionModal } from './LeadActionsMenu';
 import VirtualizedRoleTable from '../ui/VirtualizedRoleTable';
 import AddFollowUpModal from '../followups/AddFollowUpModal';
@@ -66,7 +60,6 @@ export default function MyLeadsPage() {
   const [paymentMethod, setPaymentMethod] = useState('upi');
 
   const meta = LEAD_FILTERS[filter] || LEAD_FILTERS.new;
-  const theme = EXEC_FILTER_THEMES[filter] || EXEC_FILTER_THEMES.new;
   const Icon = ICONS[meta.icon] || Sparkles;
 
   const isAllView = filter === 'all';
@@ -77,8 +70,8 @@ export default function MyLeadsPage() {
     search: debouncedSearch,
     skipDebounce: true,
     status: isAllView ? statusFilter : '',
-    destination: isAllView ? destinationFilter : '',
-    priority: isAllView ? priorityFilter : '',
+    destination: destinationFilter,
+    priority: priorityFilter,
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
   });
@@ -87,19 +80,20 @@ export default function MyLeadsPage() {
   const total = data?.pagination?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pagination.pageSize) || 1);
 
-  const fetchLeads = () => queryClient.invalidateQueries({ queryKey: ['leads', '/sales-executive/leads'] });
+  const fetchLeads = () => {
+    queryClient.invalidateQueries({ queryKey: ['leads', '/sales-executive/leads'] });
+    queryClient.invalidateQueries({ queryKey: ['nav-counts'] });
+  };
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
   }, [filter, debouncedSearch, statusFilter, destinationFilter, priorityFilter]);
 
   useEffect(() => {
-    if (!isAllView) {
-      setStatusFilter('');
-      setDestinationFilter('');
-      setPriorityFilter('');
-    }
-  }, [isAllView]);
+    setStatusFilter('');
+    setDestinationFilter('');
+    setPriorityFilter('');
+  }, [filter]);
 
   const handleChangeStatus = async () => {
     if (!modal?.lead) return;
@@ -190,75 +184,36 @@ export default function MyLeadsPage() {
   ], []);
 
   return (
-    <ExecutivePageShell title={meta.title} description={meta.desc} icon={Icon} showDate={false}>
-      {isAllView ? (
-        <>
-          <div className="flex flex-col xl:flex-row gap-4 items-stretch">
-            <ExecutiveLeadKpiStrip />
-            <ExecutivePipelineCard />
-          </div>
-
-          <ExecutiveLeadsFilterBar
-            search={search}
-            onSearchChange={setSearch}
-            statusFilter={statusFilter}
-            onStatusChange={setStatusFilter}
-            destinationFilter={destinationFilter}
-            onDestinationChange={setDestinationFilter}
-            priorityFilter={priorityFilter}
-            onPriorityChange={setPriorityFilter}
-          />
-        </>
-      ) : (
-        <>
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`${executiveBanner} backdrop-blur-xl`}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-2xl bg-white/80 dark:bg-slate-900/60 shadow-sm ${theme.icon}`}>
-                  <Icon className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-content-primary tabular-nums">{isLoading ? '—' : total}</p>
-                  <p className="text-sm text-content-secondary">{meta.title}</p>
-                </div>
-              </div>
-              {filter === 'hot' && (
-                <div className="text-xs text-content-secondary max-w-sm">
-                  Auto-highlighted: budget &gt; ₹50K · travel within 30 days · repeat customers
-                </div>
-              )}
-              <div className="flex items-center gap-2 flex-wrap">
-                <Link
-                  to="/sales-executive/leads/add"
-                  className="inline-flex items-center gap-2 h-9 px-3.5 rounded-full bg-[#5D5FEF] hover:bg-[#4F51E0] text-white text-sm font-semibold shadow-md shadow-[#5D5FEF]/25 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Lead
-                </Link>
-                <div className="flex items-center gap-2 text-sm font-semibold text-[#5D5FEF] bg-[#5D5FEF]/10 px-3 py-1.5 rounded-full ring-1 ring-[#5D5FEF]/20">
-                  <TrendingUp className="w-4 h-4" /> Your pipeline
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <div className="flex flex-col gap-3 max-w-md">
-            <div className="relative flex-1 max-w-md">
-              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${executiveIconAccent}`} />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, destination, phone…"
-                className={`w-full pl-10 pr-4 py-2.5 ${executiveInput}`}
-              />
-            </div>
-          </div>
-        </>
+    <ExecutivePageShell
+      title={meta.title}
+      description={meta.desc}
+      icon={Icon}
+      showDate={false}
+      action={(
+        <Link
+          to="/sales-executive/leads/add"
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-[#5D5FEF] hover:bg-[#4F51E0] text-white text-sm font-semibold shadow-md shadow-[#5D5FEF]/25 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          New Lead
+          <ChevronDown className="w-3.5 h-3.5 opacity-80" />
+        </Link>
       )}
+    >
+      <ExecutiveLeadKpiStrip />
+
+      <ExecutiveLeadsFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        statusFilter={isAllView ? statusFilter : ''}
+        onStatusChange={setStatusFilter}
+        destinationFilter={destinationFilter}
+        onDestinationChange={setDestinationFilter}
+        priorityFilter={priorityFilter}
+        onPriorityChange={setPriorityFilter}
+        showStatusFilter={isAllView}
+        showAddLead={false}
+      />
 
       <VirtualizedRoleTable
         data={leads}
@@ -270,6 +225,8 @@ export default function MyLeadsPage() {
         onPaginationChange={setPagination}
         rowClassName={executiveCardHover}
       />
+
+      <ExecutivePipelineCta />
 
       <ActionModal open={modal?.type === 'status'} title="Change Status" onClose={() => setModal(null)}>
         <select

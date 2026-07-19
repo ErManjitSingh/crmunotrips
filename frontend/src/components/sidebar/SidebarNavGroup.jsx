@@ -29,7 +29,11 @@ export default function SidebarNavGroup({ group, defaultOpen = false }) {
   const [open, setOpen] = useState(isChildActive || defaultOpen);
 
   const childBadgeSum = useMemo(
-    () => children.reduce((sum, c) => sum + (c.badge || 0), 0),
+    () =>
+      children.reduce((sum, c) => {
+        const n = Number(c.badge);
+        return sum + (Number.isFinite(n) && n > 0 ? n : 0);
+      }, 0),
     [children]
   );
 

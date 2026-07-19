@@ -22,6 +22,7 @@ export default function ExecutiveLeadsFilterBar({
   onDestinationChange,
   priorityFilter,
   onPriorityChange,
+  showStatusFilter = true,
   showAddLead = true,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -35,40 +36,43 @@ export default function ExecutiveLeadsFilterBar({
           <input
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search by name, destination, phone…"
+            placeholder="Search by name, destination, phone, email, or budget…"
             className={`w-full h-10 pl-10 pr-4 ${executiveInput}`}
           />
         </div>
-
-        <select
-          value={statusFilter}
-          onChange={(e) => onStatusChange(e.target.value)}
-          className={`h-10 px-3 min-w-[140px] ${executiveInput}`}
-        >
-          <option value="">All statuses</option>
-          {LEAD_STATUSES.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
-        </select>
 
         <select
           value={destinationFilter}
           onChange={(e) => onDestinationChange(e.target.value)}
           className={`h-10 px-3 min-w-[150px] ${executiveInput}`}
         >
-          <option value="">All destinations</option>
+          <option value="">Destination</option>
           {DESTINATIONS.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
+
+        {showStatusFilter && (
+          <select
+            value={statusFilter}
+            onChange={(e) => onStatusChange(e.target.value)}
+            className={`h-10 px-3 min-w-[140px] ${executiveInput}`}
+          >
+            <option value="">Status</option>
+            {LEAD_STATUSES.map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+        )}
 
         <select
           value={priorityFilter}
           onChange={(e) => onPriorityChange(e.target.value)}
           className={`h-10 px-3 min-w-[140px] ${executiveInput}`}
         >
-          {PRIORITY_OPTIONS.map((p) => (
-            <option key={p.value || 'all'} value={p.value}>{p.label}</option>
+          <option value="">Priority</option>
+          {PRIORITY_OPTIONS.filter((p) => p.value).map((p) => (
+            <option key={p.value} value={p.value}>{p.label}</option>
           ))}
         </select>
 
@@ -79,7 +83,7 @@ export default function ExecutiveLeadsFilterBar({
             className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-subtle bg-white dark:bg-slate-900 text-sm font-medium text-content-primary hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
             <SlidersHorizontal className="w-4 h-4 text-content-muted" />
-            Filters
+            More Filters
             {activeExtraFilters && (
               <span className="ml-0.5 px-1.5 py-0.5 text-[10px] bg-[#5D5FEF] text-white rounded-full font-bold">
                 !
