@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Send, FileText, CheckCircle2 } from 'lucide-react';
+import {
+  Send,
+  Plus,
+  CheckCircle2,
+  MapPin,
+  Calendar,
+  MoreHorizontal,
+  Phone,
+} from 'lucide-react';
 import API from '../../api/axios';
 import { unwrapList } from '../../utils/apiHelpers';
 import ExecutivePageShell from './ExecutivePageShell';
+import ExecutiveQuotationKpiStrip from './ExecutiveQuotationKpiStrip';
 import { Button } from '../ui/button';
-import {
-  executiveCard,
-  executiveCardHover,
-  executiveTabActive,
-  executiveTabInactive,
-  executiveLink,
-} from './executivePageStyles';
 import { cn } from '../../lib/utils';
 import { formatCurrency, QUOTE_STATUS_STYLES } from './executiveUtils';
 import QuotationFiltersPanel from '../quotations/QuotationFiltersPanel';
@@ -36,9 +38,47 @@ const STATUS_LABELS = {
   rejected: 'Rejected',
 };
 
+function avatarTone(name = '') {
+  const tones = ['bg-orange-500', 'bg-violet-500', 'bg-sky-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500'];
+  return tones[(name.charCodeAt(0) || 0) % tones.length];
+}
+
+function formatCreatedOn(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+function phoneDisplay(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return null;
+  const last10 = digits.slice(-10);
+  return last10.length === 10 ? `+91 ${last10}` : `+${digits}`;
+}
+
+function startOfMonth() {
+  const d = new Date();
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 export default function ExecutiveQuotationsPage() {
   const location = useLocation();
   const [quotes, setQuotes] = useState([]);
+  const [kpiCounts, setKpiCounts] = useState({
+    total: 0,
+    sent: 0,
+    approved: 0,
+    pending_approval: 0,
+    rejected: 0,
+  });
   const [statusTab, setStatusTab] = useState('all');
   const [draftFilters, setDraftFilters] = useState(emptyQuotationFilters);
   const [appliedFilters, setAppliedFilters] = useState(emptyQuotationFilters);
@@ -46,6 +86,8 @@ export default function ExecutiveQuotationsPage() {
   const [flash, setFlash] = useState(location.state?.message || '');
   const [selected, setSelected] = useState(null);
   const [showPdf, setShowPdf] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const pdfRef = useRef(null);
 
   const debouncedSearch = useDebouncedValue(appliedFilters.search, 350);
@@ -56,13 +98,35 @@ export default function ExecutiveQuotationsPage() {
       { ignoreStatus: true }
     );
     if (statusTab !== 'all') params.status = statusTab;
-    return { page: 1, limit: 100, ...params };
+    return { page: 1, limit: 200, ...params };
   }, [appliedFilters, debouncedSearch, statusTab]);
+
+  const fetchKpis = () => {
+    API.get('/sales-executive/quotations', {
+      params: { page: 1, limit: 200 },
+      skipSuccessToast: true,
+    })
+      .then((r) => {
+        const rows = unwrapList(r.data);
+        const monthStart = startOfMonth();
+        setKpiCounts({
+          total: rows.length,
+          sent: rows.filter((q) => q.status === 'sent' || q.status === 'viewed').length,
+          approved: rows.filter((q) => q.status === 'approved').length,
+          pending_approval: rows.filter((q) => q.status === 'pending_approval').length,
+          rejected: rows.filter(
+            (q) => q.status === 'rejected' && new Date(q.updatedAt || q.createdAt) >= monthStart
+          ).length,
+        });
+      })
+      .catch(() => {});
+  };
 
   const fetchQuotes = () => {
     setLoading(true);
     API.get('/sales-executive/quotations', { params: queryParams, skipSuccessToast: true })
       .then((r) => setQuotes(unwrapList(r.data)))
+      .catch(() => setQuotes([]))
       .finally(() => setLoading(false));
   };
 
@@ -71,17 +135,30 @@ export default function ExecutiveQuotationsPage() {
   }, [queryParams]);
 
   useEffect(() => {
+    fetchKpis();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusTab, appliedFilters, debouncedSearch, pageSize]);
+
+  useEffect(() => {
     if (location.state?.message) {
       setFlash(location.state.message);
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
 
+  const refreshAll = () => {
+    fetchQuotes();
+    fetchKpis();
+  };
+
   const handleSend = async (id) => {
     try {
       await API.put(`/sales-executive/quotations/${id}`, { action: 'send' });
-      fetchQuotes();
-    } catch (err) {
+      refreshAll();
+    } catch {
       /* toast via axios */
     }
   };
@@ -89,13 +166,19 @@ export default function ExecutiveQuotationsPage() {
   const handleSubmit = async (id) => {
     try {
       await API.put(`/sales-executive/quotations/${id}`, { action: 'submit' });
-      fetchQuotes();
-    } catch (err) {
+      refreshAll();
+    } catch {
       /* toast via axios */
     }
   };
 
   const hasActiveFilters = countQuotationActiveFilters(appliedFilters) > 0;
+  const total = quotes.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize) || 1);
+  const safePage = Math.min(page, pageCount);
+  const pageRows = quotes.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const from = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const to = Math.min(safePage * pageSize, total);
 
   return (
     <ExecutivePageShell
@@ -103,13 +186,12 @@ export default function ExecutiveQuotationsPage() {
       description="Your quotes — submitted to Team Leader for approval before sending to customers"
       action={(
         <Link to="/sales-executive/quotations/new">
-          <Button size="sm" className="rounded-xl bg-violet-600 hover:bg-violet-700">
-            <FileText className="w-3.5 h-3.5 mr-1" /> Create Quotation
+          <Button className="rounded-xl shrink-0 gap-1.5 bg-[#5D5FEF] hover:bg-[#4f51e5] text-white border-0 shadow-md shadow-[#5D5FEF]/25">
+            <Plus className="w-4 h-4" /> Create Quotation
           </Button>
         </Link>
       )}
     >
-
       {flash && (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -120,20 +202,35 @@ export default function ExecutiveQuotationsPage() {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        {STATUS_TABS.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setStatusTab(s)}
-            className={cn(
-              'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-              statusTab === s ? executiveTabActive : executiveTabInactive
-            )}
-          >
-            {STATUS_LABELS[s] || s}
-          </button>
-        ))}
+      <ExecutiveQuotationKpiStrip
+        counts={kpiCounts}
+        activeKey={statusTab}
+        onSelect={setStatusTab}
+      />
+
+      <div className="flex items-center gap-1 border-b border-subtle overflow-x-auto">
+        {STATUS_TABS.map((s) => {
+          const active = statusTab === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setStatusTab(s)}
+              className={cn(
+                'relative px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors',
+                active ? 'text-[#5D5FEF]' : 'text-content-muted hover:text-content-primary'
+              )}
+            >
+              {STATUS_LABELS[s]}
+              {active && (
+                <motion.span
+                  layoutId="exec-quote-tab"
+                  className="absolute left-2 right-2 -bottom-px h-0.5 rounded-full bg-[#5D5FEF]"
+                />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <QuotationFiltersPanel
@@ -144,20 +241,21 @@ export default function ExecutiveQuotationsPage() {
           setDraftFilters(emptyQuotationFilters);
           setAppliedFilters(emptyQuotationFilters);
         }}
-        onRefresh={fetchQuotes}
+        onRefresh={refreshAll}
         hasActiveFilters={hasActiveFilters}
         segmentLabel={STATUS_LABELS[statusTab]}
+        className="rounded-xl border-subtle bg-white dark:bg-slate-900"
       />
 
-      <div className={`${executiveCard} overflow-hidden`}>
+      <div className="rounded-2xl border border-subtle bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-subtle bg-violet-50/50 dark:bg-violet-950/20">
-                {['Quote #', 'Customer', 'Destination', 'Amount', 'Status', 'Created by', 'Actions'].map((h) => (
+              <tr className="border-b border-subtle bg-slate-50/80 dark:bg-slate-800/40">
+                {['Quote #', 'Customer', 'Destination', 'Amount', 'Status', 'Created by', 'Created on', 'Actions'].map((h) => (
                   <th
                     key={h}
-                    className="text-left px-4 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted whitespace-nowrap"
+                    className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-content-muted whitespace-nowrap"
                   >
                     {h}
                   </th>
@@ -167,60 +265,161 @@ export default function ExecutiveQuotationsPage() {
             <tbody className="divide-y divide-subtle">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center text-content-muted">
-                    Loading…
-                  </td>
+                  <td colSpan={8} className="p-12 text-center text-content-muted">Loading…</td>
                 </tr>
-              ) : quotes.length === 0 ? (
+              ) : pageRows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="p-12 text-center text-content-muted">
                     No quotations match your filters
                   </td>
                 </tr>
               ) : (
-                quotes.map((q) => (
-                  <tr
-                    key={q._id}
-                    className={`${executiveCardHover} cursor-pointer`}
-                    onClick={() => setSelected(q)}
-                  >
-                    <td className={`px-4 py-3.5 font-mono text-xs font-medium ${executiveLink}`}>{q.quoteNumber}</td>
-                    <td className="px-4 py-3.5 font-medium text-content-primary">{q.lead?.name}</td>
-                    <td className="px-4 py-3.5 text-content-secondary">{q.lead?.destination}</td>
-                    <td className="px-4 py-3.5 font-semibold tabular-nums">{formatCurrency(q.pricing?.total)}</td>
-                    <td className="px-4 py-3.5">
-                      <span
-                        className={cn(
-                          'text-[10px] font-medium uppercase px-2 py-1 rounded-full ring-1 ring-inset',
-                          QUOTE_STATUS_STYLES[q.status] || QUOTE_STATUS_STYLES.draft
-                        )}
-                      >
-                        {(q.status || 'draft').replace(/_/g, ' ')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-content-secondary">{q.createdByExecutive?.name || q.createdBy?.name || '—'}</td>
-                    <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex flex-wrap gap-1">
-                        {q.status === 'draft' && (
-                          <Button size="sm" variant="outline" onClick={() => handleSubmit(q._id)}>
-                            Submit for Approval
+                pageRows.map((q) => {
+                  const customer = q.lead?.name || '—';
+                  const initial = customer.trim().charAt(0).toUpperCase() || '?';
+                  const phone = phoneDisplay(q.lead?.phone || q.lead?.whatsapp);
+                  const creator = q.createdByExecutive?.name || q.createdBy?.name || '—';
+
+                  return (
+                    <tr
+                      key={q._id}
+                      className="hover:bg-violet-50/40 dark:hover:bg-violet-950/20 cursor-pointer transition-colors"
+                      onClick={() => setSelected(q)}
+                    >
+                      <td className="px-4 py-3.5">
+                        <span className="font-mono text-xs font-bold text-[#5D5FEF]">{q.quoteNumber}</span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2.5 min-w-[160px]">
+                          <div
+                            className={cn(
+                              'w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0',
+                              avatarTone(customer)
+                            )}
+                          >
+                            {initial}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-content-primary truncate">{customer}</p>
+                            {phone ? (
+                              <p className="text-[11px] text-content-muted flex items-center gap-1 mt-0.5">
+                                <Phone className="w-3 h-3" />
+                                {phone}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="inline-flex items-center gap-1 text-content-secondary capitalize">
+                          <MapPin className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                          {q.lead?.destination || q.packageSnapshot?.destination || '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 font-bold tabular-nums text-content-primary whitespace-nowrap">
+                        {formatCurrency(q.pricing?.total)}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span
+                          className={cn(
+                            'text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ring-1 ring-inset whitespace-nowrap',
+                            QUOTE_STATUS_STYLES[q.status] || QUOTE_STATUS_STYLES.draft
+                          )}
+                        >
+                          {(q.status || 'draft').replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-xs font-medium text-content-secondary whitespace-nowrap">
+                        {creator}
+                      </td>
+                      <td className="px-4 py-3.5 text-xs text-content-muted whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-violet-400" />
+                          {formatCreatedOn(q.createdAt)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          {q.status === 'draft' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-lg h-8 text-[11px]"
+                              onClick={() => handleSubmit(q._id)}
+                            >
+                              Submit
+                            </Button>
+                          )}
+                          {q.status === 'approved' && (
+                            <Button
+                              size="sm"
+                              className="rounded-lg h-8 gap-1 bg-sky-500 hover:bg-sky-600 text-white border-0"
+                              onClick={() => handleSend(q._id)}
+                              title="Send to customer"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="rounded-lg h-8 w-8 p-0 text-content-muted"
+                            onClick={() => setSelected(q)}
+                            title="More"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
                           </Button>
-                        )}
-                        {q.status === 'approved' && (
-                          <Button size="sm" variant="outline" onClick={() => handleSend(q._id)}>
-                            <Send className="w-3 h-3 mr-1" /> Send to Customer
-                          </Button>
-                        )}
-                        {q.status === 'pending_approval' && (
-                          <span className="text-xs text-amber-600 font-medium px-2 py-1">Awaiting TL approval</span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 border-t border-subtle bg-slate-50/50 dark:bg-slate-800/30">
+          <p className="text-xs text-content-muted">
+            Showing <span className="font-semibold text-content-primary">{from}</span> to{' '}
+            <span className="font-semibold text-content-primary">{to}</span> of{' '}
+            <span className="font-semibold text-content-primary">{total}</span> quotations
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-xs text-content-muted flex items-center gap-2">
+              Rows per page
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="h-8 rounded-lg border border-subtle bg-white dark:bg-slate-900 px-2 text-xs font-semibold"
+              >
+                {[10, 25, 50].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-lg h-8"
+              disabled={safePage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </Button>
+            <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-[#5D5FEF] text-white text-xs font-bold px-2">
+              {safePage}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-lg h-8"
+              disabled={safePage >= pageCount}
+              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       </div>
 
