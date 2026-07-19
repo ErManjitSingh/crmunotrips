@@ -47,6 +47,17 @@ echo "==> Redis (optional cache)..."
 systemctl enable redis-server 2>/dev/null || true
 systemctl start redis-server 2>/dev/null || true
 
+echo "==> Ensure META_LEAD_API_KEY in backend .env..."
+cd ${APP_ROOT}/backend
+if ! grep -q '^META_LEAD_API_KEY=' .env 2>/dev/null; then
+  echo 'META_LEAD_API_KEY=unotrips-meta-lead-2026-secure' >> .env
+fi
+if grep -q '^CORS_ORIGINS=' .env 2>/dev/null; then
+  sed -i 's|^CORS_ORIGINS=.*|CORS_ORIGINS=https://testing.unotrips.com,https://unotrips.com,https://www.unotrips.com|' .env
+else
+  echo 'CORS_ORIGINS=https://testing.unotrips.com,https://unotrips.com,https://www.unotrips.com' >> .env
+fi
+
 echo "==> Backend install..."
 cd ${APP_ROOT}/backend
 if grep -q UNO_HOTELS_API_BASE_URL .env 2>/dev/null; then

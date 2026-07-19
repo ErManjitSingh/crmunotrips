@@ -85,4 +85,7 @@ router.use('/destination-assignment', destinationAssignmentRoutes);
 router.use('/skill-assignment', skillAssignmentRoutes);
 router.use('/assignment', assignmentConfigRoutes);
 
+const publicLeadRoutes = require('./publicLeadRoutes');
+router.use('/public', publicLeadRoutes);
+
 module.exports = router;
