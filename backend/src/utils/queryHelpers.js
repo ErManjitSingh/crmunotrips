@@ -42,6 +42,15 @@ const FOLLOWUP_POPULATE = [
   { path: 'createdBy', select: 'name email' },
 ];
 
+/** Lightweight populate for paginated follow-up lists */
+const FOLLOWUP_LIST_POPULATE = [
+  {
+    path: 'lead',
+    select: 'name phone destination status budget travelDate priority isHot leadId',
+  },
+  { path: 'assignedTo', select: 'name email' },
+];
+
 const QUOTATION_POPULATE = [
   {
     path: 'lead',
@@ -53,6 +62,25 @@ const QUOTATION_POPULATE = [
   { path: 'teamLeader', select: 'name email' },
   { path: 'approvedBy', select: 'name email' },
 ];
+
+/** Lightweight populate for paginated quotation lists — skips itinerary/snapshot blobs */
+const QUOTATION_LIST_POPULATE = [
+  {
+    path: 'lead',
+    select: 'name phone email destination status budget travelDate assignedTo leadId',
+  },
+  { path: 'package', select: 'name destination duration nights days' },
+  { path: 'createdBy', select: 'name email role' },
+  { path: 'createdByExecutive', select: 'name email' },
+  { path: 'teamLeader', select: 'name email' },
+  { path: 'approvedBy', select: 'name email' },
+];
+
+const QUOTATION_LIST_SELECT =
+  'quoteNumber status pricing destination travelDate adults children nights createdAt updatedAt lead package createdBy createdByExecutive teamLeader approvedBy branchId rejectionReason approvalNote sentAt approvedAt';
+
+const FOLLOWUP_LIST_SELECT =
+  'scheduledAt completedAt status priority category notes outcome lead assignedTo createdBy branchId createdAt updatedAt';
 
 const { computeExecutiveStallFlags } = require('../services/leadExecutiveStallService');
 
@@ -171,7 +199,11 @@ module.exports = {
   LEAD_POPULATE,
   LEAD_LIST_POPULATE,
   FOLLOWUP_POPULATE,
+  FOLLOWUP_LIST_POPULATE,
+  FOLLOWUP_LIST_SELECT,
   QUOTATION_POPULATE,
+  QUOTATION_LIST_POPULATE,
+  QUOTATION_LIST_SELECT,
   enrichLead,
   buildLeadSearchFilter,
   buildFollowUpTabFilter,

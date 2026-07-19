@@ -1,6 +1,6 @@
 const Lead = require('../models/Lead');
 const Quotation = require('../models/Quotation');
-const { QUOTATION_POPULATE, buildLeadSearchFilter } = require('../utils/queryHelpers');
+const { QUOTATION_LIST_POPULATE, QUOTATION_LIST_SELECT, buildLeadSearchFilter } = require('../utils/queryHelpers');
 const { parsePagination, parseSort, paginatedResponse } = require('../utils/pagination');
 const { withBranch } = require('../utils/branchScope');
 
@@ -65,12 +65,18 @@ async function applyQuotationQueryFilters(filter, query = {}, branchId) {
 }
 
 async function findQuotationsPaginated(query = {}, { branchId } = {}) {
-  const { page, limit, skip } = parsePagination(query);
+  const { page, limit, skip } = parsePagination(query, { defaultLimit: 20, maxLimit: 200 });
   const sort = parseSort(query, { createdAt: -1 });
   const filter = await applyQuotationQueryFilters(withBranch({}, branchId), query, branchId);
 
   const [rows, total] = await Promise.all([
-    Quotation.find(filter).populate(QUOTATION_POPULATE).sort(sort).skip(skip).limit(limit).lean(),
+    Quotation.find(filter)
+      .select(QUOTATION_LIST_SELECT)
+      .populate(QUOTATION_LIST_POPULATE)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
     Quotation.countDocuments(filter),
   ]);
 

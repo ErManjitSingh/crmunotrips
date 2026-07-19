@@ -1,8 +1,10 @@
+import { lazy, Suspense } from 'react';
 import { useDashboardQuery } from '../../features/dashboard/hooks/useDashboardQuery';
 import OperationsDashboardHeader from './dashboard/OperationsDashboardHeader';
 import OperationsExecutionHub from './dashboard/OperationsExecutionHub';
 import OperationsKpiCards from './dashboard/OperationsKpiCards';
-import OperationsDashboardCharts from './dashboard/OperationsDashboardCharts';
+
+const OperationsDashboardCharts = lazy(() => import('./dashboard/OperationsDashboardCharts'));
 
 export default function OperationsDashboard() {
   const { data, isLoading, isFetching, isError, error, refetch } = useDashboardQuery('/operations-manager/dashboard');
@@ -50,11 +52,15 @@ export default function OperationsDashboard() {
         loading={isLoading}
       />
 
-      <OperationsDashboardCharts
-        branchStats={data?.branchStats}
-        bookingsByStatus={data?.bookingsByStatus}
-        todaySchedule={data?.todaySchedule}
-      />
+      <Suspense
+        fallback={<div className="h-64 animate-pulse rounded-2xl border border-subtle bg-surface" />}
+      >
+        <OperationsDashboardCharts
+          branchStats={data?.branchStats}
+          bookingsByStatus={data?.bookingsByStatus}
+          todaySchedule={data?.todaySchedule}
+        />
+      </Suspense>
     </div>
   );
 }

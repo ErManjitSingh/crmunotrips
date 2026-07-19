@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { SidebarProvider } from '../../context/SidebarContext';
@@ -5,6 +6,7 @@ import AppSidebar from '../sidebar/AppSidebar';
 import MobileSidebarDrawer from '../sidebar/MobileSidebarDrawer';
 import TopBar from '../TopBar';
 import MissedFollowUpAlert from '../notifications/MissedFollowUpAlert';
+import RouteFallback from '../ui/RouteFallback';
 import { teamLeaderNavItems } from './sidebar-config';
 
 function TeamLeaderShell() {
@@ -32,7 +34,9 @@ function TeamLeaderShell() {
         <main className="flex-1 overflow-auto">
           <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
             <MissedFollowUpAlert />
-            <Outlet />
+            <Suspense fallback={<RouteFallback />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>

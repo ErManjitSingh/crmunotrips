@@ -3,11 +3,11 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import { authStorage } from '../auth/authStorage';
 import { NOTIFICATIONS_ENABLED } from '../config/notifications';
@@ -116,43 +116,54 @@ export function NotificationProvider({ children }) {
         socketRef.current = null;
       }
       setConnected(false);
-      return;
+      return undefined;
     }
 
     loadUnreadOnly();
 
     const token = authStorage.getToken();
-    if (!token) return;
+    if (!token) return undefined;
 
-    const socket = io(getSocketUrl(), {
-      path: '/socket.io',
-      auth: { token },
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 10,
-    });
+    let cancelled = false;
 
-    socketRef.current = socket;
+    (async () => {
+      const { io } = await import('socket.io-client');
+      if (cancelled) return;
 
-    socket.on('connect', () => setConnected(true));
-    socket.on('disconnect', () => setConnected(false));
-    socket.on('notification:new', handleIncoming);
-    socket.on('notification:unread', ({ count }) => {
-      if (typeof count === 'number') {
-        setUnreadCount(count);
-        window.dispatchEvent(new CustomEvent('notifications:unread', { detail: count }));
-      }
-    });
-    socket.on('notification:history', (history) => {
-      if (Array.isArray(history) && history.length) {
-        setNotifications(history);
-      }
-    });
+      const socket = io(getSocketUrl(), {
+        path: '/socket.io',
+        auth: { token },
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 10,
+      });
+
+      socketRef.current = socket;
+
+      socket.on('connect', () => setConnected(true));
+      socket.on('disconnect', () => setConnected(false));
+      socket.on('notification:new', handleIncoming);
+      socket.on('notification:unread', ({ count }) => {
+        if (typeof count === 'number') {
+          setUnreadCount(count);
+          window.dispatchEvent(new CustomEvent('notifications:unread', { detail: count }));
+        }
+      });
+      socket.on('notification:history', (history) => {
+        if (Array.isArray(history) && history.length) {
+          setNotifications(history);
+        }
+      });
+    })();
 
     return () => {
-      socket.off('notification:new', handleIncoming);
-      socket.disconnect();
-      socketRef.current = null;
+      cancelled = true;
+      const socket = socketRef.current;
+      if (socket) {
+        socket.off('notification:new', handleIncoming);
+        socket.disconnect();
+        socketRef.current = null;
+      }
       setConnected(false);
     };
   }, [user, loadUnreadOnly, handleIncoming]);
@@ -217,23 +228,39 @@ export function NotificationProvider({ children }) {
 
   const refresh = useCallback(() => loadUnreadOnly(), [loadUnreadOnly]);
 
+  const value = useMemo(
+    () => ({
+      notifications,
+      unreadCount,
+      drawerOpen,
+      connected,
+      loading,
+      openDrawer,
+      closeDrawer,
+      markRead,
+      handleNotificationClick,
+      markAllRead,
+      refresh,
+      requestBrowserPermission,
+    }),
+    [
+      notifications,
+      unreadCount,
+      drawerOpen,
+      connected,
+      loading,
+      openDrawer,
+      closeDrawer,
+      markRead,
+      handleNotificationClick,
+      markAllRead,
+      refresh,
+      requestBrowserPermission,
+    ]
+  );
+
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        drawerOpen,
-        connected,
-        loading,
-        openDrawer,
-        closeDrawer,
-        markRead,
-        handleNotificationClick,
-        markAllRead,
-        refresh,
-        requestBrowserPermission,
-      }}
-    >
+    <NotificationContext.Provider value={value}>
       {children}
       {NOTIFICATIONS_ENABLED && (
         <>

@@ -1,7 +1,8 @@
 const FollowUp = require('../models/FollowUp');
 const Lead = require('../models/Lead');
 const {
-  FOLLOWUP_POPULATE,
+  FOLLOWUP_LIST_POPULATE,
+  FOLLOWUP_LIST_SELECT,
   buildFollowUpTabFilter,
   buildFollowUpCategoryFilter,
   buildLeadSearchFilter,
@@ -28,7 +29,7 @@ function buildFollowUpListFilter(query = {}) {
 }
 
 async function findFollowUpsPaginated(query = {}) {
-  const { page, limit, skip } = parsePagination(query);
+  const { page, limit, skip } = parsePagination(query, { defaultLimit: 20, maxLimit: 200 });
   const sort = parseSort(query, { scheduledAt: 1 });
   const filter = buildFollowUpListFilter(query);
 
@@ -40,7 +41,13 @@ async function findFollowUpsPaginated(query = {}) {
   }
 
   const [rows, total] = await Promise.all([
-    FollowUp.find(filter).populate(FOLLOWUP_POPULATE).sort(sort).skip(skip).limit(limit).lean(),
+    FollowUp.find(filter)
+      .select(FOLLOWUP_LIST_SELECT)
+      .populate(FOLLOWUP_LIST_POPULATE)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
     FollowUp.countDocuments(filter),
   ]);
 

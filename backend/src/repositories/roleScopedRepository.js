@@ -5,8 +5,10 @@ const Quotation = require('../models/Quotation');
 const {
   LEAD_POPULATE,
   LEAD_LIST_POPULATE,
-  FOLLOWUP_POPULATE,
-  QUOTATION_POPULATE,
+  FOLLOWUP_LIST_POPULATE,
+  FOLLOWUP_LIST_SELECT,
+  QUOTATION_LIST_POPULATE,
+  QUOTATION_LIST_SELECT,
   enrichLead,
   buildLeadSearchFilter,
   buildFollowUpTabFilter,
@@ -16,6 +18,8 @@ const {
 const { parsePagination, parseSort, paginatedResponse } = require('../utils/pagination');
 const { withBranch } = require('../utils/branchScope');
 const { applyQuotationQueryFilters } = require('./quotationRepository');
+
+const LIST_PAGINATION = { defaultLimit: 20, maxLimit: 200 };
 
 function applyReactivationQueryFilters(mongoFilter, query = {}) {
   const stage = query.reactivationStage || query.stage;
@@ -178,7 +182,7 @@ async function resolveLeadIdsForSearch(search, options = {}) {
 }
 
 async function findScopedFollowUpsPaginated(baseFilter, query = {}, options = {}) {
-  const { page, limit, skip } = parsePagination(query);
+  const { page, limit, skip } = parsePagination(query, LIST_PAGINATION);
   const sort = parseSort(query, { scheduledAt: 1 });
 
   const filter = {
@@ -194,7 +198,13 @@ async function findScopedFollowUpsPaginated(baseFilter, query = {}, options = {}
   if (leadIds) filter.lead = { $in: leadIds };
 
   const [rows, total] = await Promise.all([
-    FollowUp.find(filter).populate(FOLLOWUP_POPULATE).sort(sort).skip(skip).limit(limit).lean(),
+    FollowUp.find(filter)
+      .select(FOLLOWUP_LIST_SELECT)
+      .populate(FOLLOWUP_LIST_POPULATE)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
     FollowUp.countDocuments(filter),
   ]);
 
@@ -202,12 +212,18 @@ async function findScopedFollowUpsPaginated(baseFilter, query = {}, options = {}
 }
 
 async function findScopedQuotationsPaginated(baseFilter, query = {}, { mapRow, branchId } = {}) {
-  const { page, limit, skip } = parsePagination(query);
+  const { page, limit, skip } = parsePagination(query, LIST_PAGINATION);
   const sort = parseSort(query, { createdAt: -1 });
   const filter = await applyQuotationQueryFilters(withBranch(baseFilter, branchId), query, branchId);
 
   const [rows, total] = await Promise.all([
-    Quotation.find(filter).populate(QUOTATION_POPULATE).sort(sort).skip(skip).limit(limit).lean(),
+    Quotation.find(filter)
+      .select(QUOTATION_LIST_SELECT)
+      .populate(QUOTATION_LIST_POPULATE)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
     Quotation.countDocuments(filter),
   ]);
 

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight, Target, IndianRupee, UserRound, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar } from '../../context/SidebarContext';
@@ -103,10 +103,17 @@ function ActionLinks({ actions, onNavigate }) {
 
 export default function SidebarQuickActions({ actions }) {
   const { collapsed, setMobileOpen } = useSidebar();
+  const { pathname } = useLocation();
   const showHighlights = actions === undefined;
   const showCustomActions = Array.isArray(actions) && actions.length > 0;
+  const onDashboard =
+    pathname === '/' ||
+    pathname === '/dashboard' ||
+    pathname.endsWith('/dashboard');
 
-  const { data: stats } = useDashboardQuery('/dashboard/stats', {}, { enabled: showHighlights && !collapsed });
+  const { data: stats } = useDashboardQuery('/dashboard/stats', {}, {
+    enabled: showHighlights && !collapsed && onDashboard,
+  });
 
   if (collapsed) return null;
   if (!showHighlights && !showCustomActions) return null;

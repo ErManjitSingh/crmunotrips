@@ -66,6 +66,11 @@ cd ${APP_ROOT}
 pm2 start deploy/ecosystem.config.cjs --update-env
 pm2 save
 
+echo "==> Nginx config sync..."
+if [ -f ${APP_ROOT}/deploy/nginx/testing.unotrips.com.conf ]; then
+  cp ${APP_ROOT}/deploy/nginx/testing.unotrips.com.conf /etc/nginx/sites-available/testing.unotrips.com
+fi
+
 echo "==> Nginx reload..."
 nginx -t && systemctl reload nginx
 

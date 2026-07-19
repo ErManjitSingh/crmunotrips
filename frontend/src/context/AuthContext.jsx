@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { canAccess } from '../lib/permissions';
 import { authService, AuthError } from '../auth';
 import { authStorage } from '../auth/authStorage';
@@ -77,22 +77,21 @@ export const AuthProvider = ({ children }) => {
     [user]
   );
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        logout,
-        getCurrentUser,
-        hasPermission,
-        getDashboardPath,
-        AuthError,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      loading,
+      login,
+      logout,
+      getCurrentUser,
+      hasPermission,
+      getDashboardPath,
+      AuthError,
+    }),
+    [user, loading, login, logout, getCurrentUser, hasPermission, getDashboardPath]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

@@ -1,9 +1,11 @@
+import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { SidebarProvider } from '../../context/SidebarContext';
 import AppSidebar from '../sidebar/AppSidebar';
 import MobileSidebarDrawer from '../sidebar/MobileSidebarDrawer';
 import TopBar from '../TopBar';
+import RouteFallback from '../ui/RouteFallback';
 import { operationsManagerNavItems, operationsQuickActions } from './sidebar-config';
 
 function OperationsManagerShell() {
@@ -30,7 +32,9 @@ function OperationsManagerShell() {
         <TopBar />
         <main className="flex-1 overflow-auto">
           <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
-            <Outlet />
+            <Suspense fallback={<RouteFallback />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>

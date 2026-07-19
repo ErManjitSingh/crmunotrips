@@ -3,6 +3,7 @@ const User = require('../models/User');
 const ApiError = require('../utils/apiError');
 const asyncHandler = require('../utils/asyncHandler');
 const { logActivity, getClientIp } = require('../services/activityService');
+const { invalidateRolePermissions } = require('../services/permissionsService');
 
 const attachUserCount = async (role) => {
   const userCount = await User.countDocuments({ roleId: role._id });
@@ -52,6 +53,7 @@ const updateRole = asyncHandler(async (req, res) => {
     if (req.body.permissions) {
       role.permissions = req.body.permissions;
       await role.save();
+      invalidateRolePermissions(role._id);
       return res.json(await attachUserCount(role));
     }
     const { name, slug, description, ...rest } = req.body;
@@ -63,6 +65,7 @@ const updateRole = asyncHandler(async (req, res) => {
 
   Object.assign(role, req.body);
   await role.save();
+  invalidateRolePermissions(role._id);
   res.json(await attachUserCount(role));
 });
 
@@ -75,6 +78,7 @@ const deleteRole = asyncHandler(async (req, res) => {
   if (inUse) throw new ApiError(400, 'Role is assigned to users');
 
   await role.deleteOne();
+  invalidateRolePermissions(role._id);
   res.json({ message: 'Role deleted' });
 });
 

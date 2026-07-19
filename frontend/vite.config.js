@@ -1,20 +1,37 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+function manualChunks(id) {
+  if (!id.includes('node_modules')) return undefined
+
+  if (id.includes('recharts') || id.includes('d3-')) return 'charts'
+  if (id.includes('framer-motion') || id.includes('motion-dom') || id.includes('motion-utils')) {
+    return 'motion'
+  }
+  if (id.includes('@fullcalendar')) return 'calendar'
+  if (id.includes('@dnd-kit')) return 'dnd'
+  if (id.includes('socket.io')) return 'socket'
+  if (id.includes('@reduxjs') || id.includes('react-redux') || id.includes('redux')) return 'redux'
+  if (id.includes('@tanstack/react-query') || id.includes('@tanstack/query-core')) return 'query'
+  if (id.includes('@tanstack/react-table') || id.includes('@tanstack/react-virtual')) return 'table'
+  if (id.includes('lucide-react')) return 'icons'
+  if (id.includes('jspdf') || id.includes('html2canvas')) return 'pdf'
+  if (id.includes('react-dom') || id.includes('/react/') || id.includes('react-router')) {
+    return 'vendor'
+  }
+  return undefined
+}
+
 export default defineConfig({
   plugins: [react()],
   build: {
+    target: 'es2020',
+    minify: 'esbuild',
+    cssCodeSplit: true,
+    modulePreload: { polyfill: true },
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          query: ['@tanstack/react-query'],
-          table: ['@tanstack/react-table'],
-          charts: ['recharts'],
-          motion: ['framer-motion'],
-          icons: ['lucide-react'],
-          calendar: ['@fullcalendar/core', '@fullcalendar/react', '@fullcalendar/daygrid', '@fullcalendar/timegrid'],
-        },
+        manualChunks,
       },
     },
     chunkSizeWarningLimit: 600,

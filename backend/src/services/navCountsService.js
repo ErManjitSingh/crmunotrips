@@ -264,7 +264,6 @@ async function aggregateExecutiveLeadCounts(userId, branchId) {
           { $match: { $or: [{ status: 'converted' }, { isRepeatCustomer: true }] } },
           { $count: 'n' },
         ],
-        leadIds: [{ $project: { _id: 1 } }],
       },
     },
   ]);
@@ -282,24 +281,21 @@ async function aggregateExecutiveLeadCounts(userId, branchId) {
       urgent: facetCount(row, 'urgent'),
     },
     customers: facetCount(row, 'customers'),
-    leadIds: (row?.leadIds || []).map((l) => l._id),
   };
 }
 
 async function buildExecutiveNavCounts(userId, { branchId } = {}) {
-  const [aggregated, followUpsDue, notificationsUnread] = await Promise.all([
+  const [aggregated, followUpsDue, notificationsUnread, quotationsTotal] = await Promise.all([
     aggregateExecutiveLeadCounts(userId, branchId),
     countFollowUpsDue({ assignedTo: userId }, branchId),
     unreadNotifications(userId, branchId),
+    Quotation.countDocuments({
+      ...(branchId ? { branchId } : {}),
+      createdByExecutive: userId,
+    }),
   ]);
 
-  const { leads, customers, leadIds } = aggregated;
-  const quotationsTotal = leadIds.length
-    ? await Quotation.countDocuments({
-        ...(branchId ? { branchId } : {}),
-        $or: [{ createdByExecutive: userId }, { lead: { $in: leadIds } }],
-      })
-    : 0;
+  const { leads, customers } = aggregated;
 
   return {
     leads,
@@ -361,7 +357,6 @@ async function aggregateTeamLeaderLeadCounts(squadFilter) {
           },
           { $count: 'n' },
         ],
-        leadIds: [{ $project: { _id: 1 } }],
       },
     },
   ]);
@@ -375,7 +370,6 @@ async function aggregateTeamLeaderLeadCounts(squadFilter) {
     lost: facetCount(row, 'lost'),
     reactivated: facetCount(row, 'reactivated'),
     escalations: facetCount(row, 'escalations'),
-    leadIds: (row?.leadIds || []).map((l) => l._id),
   };
 }
 
@@ -383,8 +377,12 @@ async function buildTeamLeaderNavCounts(userId, { branchId } = {}) {
   const execIds = await getExecutiveIdsForLeader(userId);
   const squadFilter = withBranch(execIds.length ? { assignedTo: { $in: execIds } } : { assignedTo: null }, branchId);
   const aggregated = await aggregateTeamLeaderLeadCounts(squadFilter);
-  const { leadIds } = aggregated;
-  const quoteFilter = leadIds.length ? { lead: { $in: leadIds } } : { lead: null };
+
+  const quoteBase = execIds.length
+    ? {
+        $or: [{ teamLeader: userId }, { createdByExecutive: { $in: execIds } }],
+      }
+    : { teamLeader: userId };
 
   const squadFollowFilter = execIds.length
     ? { assignedTo: { $in: execIds } }
@@ -399,10 +397,10 @@ async function buildTeamLeaderNavCounts(userId, { branchId } = {}) {
     notificationsUnread,
   ] = await Promise.all([
     countFollowUpsDue(squadFollowFilter, branchId),
-    Quotation.countDocuments(withBranch({ ...quoteFilter, status: 'pending_approval' }, branchId)),
-    Quotation.countDocuments(withBranch({ ...quoteFilter, status: 'negotiation' }, branchId)),
-    Quotation.countDocuments(withBranch({ ...quoteFilter, status: 'approved' }, branchId)),
-    Quotation.countDocuments(withBranch({ ...quoteFilter, status: 'rejected' }, branchId)),
+    Quotation.countDocuments(withBranch({ ...quoteBase, status: 'pending_approval' }, branchId)),
+    Quotation.countDocuments(withBranch({ ...quoteBase, status: 'negotiation' }, branchId)),
+    Quotation.countDocuments(withBranch({ ...quoteBase, status: 'approved' }, branchId)),
+    Quotation.countDocuments(withBranch({ ...quoteBase, status: 'rejected' }, branchId)),
     unreadNotifications(userId, branchId),
   ]);
 

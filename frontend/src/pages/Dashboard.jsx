@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Info } from 'lucide-react';
 import API from '../api/axios';
@@ -15,15 +15,20 @@ import DashboardHeader, {
 import {
   DashboardHero,
   DashboardSkeleton,
-  TodayFollowUps,
-  ExecutivePerformancePanel,
-  LeadSourceChart,
-  LeadTrendChart,
-  RemindersAlertsPanel,
 } from '../components/dashboard';
-import LeadStatusDonut from '../components/dashboard/LeadStatusDonut';
-import ConversionRateChart from '../components/dashboard/ConversionRateChart';
-import RevenueVsBookingsChart from '../components/dashboard/RevenueVsBookingsChart';
+
+const LeadTrendChart = lazy(() => import('../components/dashboard/LeadTrendChart'));
+const LeadStatusDonut = lazy(() => import('../components/dashboard/LeadStatusDonut'));
+const LeadSourceChart = lazy(() => import('../components/dashboard/LeadSourceChart'));
+const ConversionRateChart = lazy(() => import('../components/dashboard/ConversionRateChart'));
+const ExecutivePerformancePanel = lazy(() =>
+  import('../components/dashboard/ExecutivePerformancePanel')
+);
+const RevenueVsBookingsChart = lazy(() =>
+  import('../components/dashboard/RevenueVsBookingsChart')
+);
+const TodayFollowUps = lazy(() => import('../components/dashboard/TodayFollowUps'));
+const RemindersAlertsPanel = lazy(() => import('../components/dashboard/RemindersAlertsPanel'));
 
 function PanelSkeleton() {
   return <div className="h-52 animate-pulse rounded-2xl border border-subtle bg-surface sm:h-56" />;
@@ -93,7 +98,9 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-12">
         <div className="min-w-0 xl:col-span-5">
-          <LeadTrendChart stats={stats} />
+          <Suspense fallback={<PanelSkeleton />}>
+            <LeadTrendChart stats={stats} />
+          </Suspense>
         </div>
         <div className="min-w-0 lg:col-span-1 xl:col-span-3">
           <Suspense fallback={<PanelSkeleton />}>
