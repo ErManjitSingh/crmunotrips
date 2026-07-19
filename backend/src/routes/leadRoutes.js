@@ -26,7 +26,10 @@ const { protect } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/requirePermission');
 const { authorize } = require('../middleware/rbac');
 const { validatePaginationQuery } = require('../validators/paginationValidator');
-const { initiateWhatsAppContact } = require('../controllers/whatsappContactController');
+const {
+  initiateWhatsAppContact,
+  sendQuotationWhatsApp,
+} = require('../controllers/whatsappContactController');
 const { sendLeadEmail, listLeadEmailHistory } = require('../controllers/emailController');
 const {
   checkDuplicate,
@@ -86,6 +89,7 @@ router.post('/:id/reassign-reactivated', authorize('admin', 'sales_manager', 'te
 router.patch('/:id/reactivation-stage', authorize('admin', 'sales_manager', 'team_leader'), updateReactivationStage);
 router.post('/:id/notes', addLeadNote);
 router.post('/:id/whatsapp-contact', requirePermission('whatsapp', 'use'), initiateWhatsAppContact);
+router.post('/:id/send-quotation-whatsapp', requirePermission('whatsapp', 'use'), sendQuotationWhatsApp);
 router.post('/:id/send-email', requirePermission('email', 'send'), sendLeadEmail);
 router.get('/:id/email-history', requirePermission('email', 'send'), listLeadEmailHistory);
 router.get('/', validatePaginationQuery, listLeads);

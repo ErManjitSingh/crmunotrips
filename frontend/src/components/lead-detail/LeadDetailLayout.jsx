@@ -109,6 +109,10 @@ export default function LeadDetailLayout({
             loading={timelineLoading}
             quotations={quotations}
             highlightQuotationId={highlightQuotationId}
+            lead={lead}
+            leadId={leadId}
+            contactEndpoint={contactEndpoint || relatedBasePath || '/leads'}
+            onQuotationSent={onContactLogged}
           />
         </main>
 

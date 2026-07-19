@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download } from 'lucide-react';
+import { Download, Send } from 'lucide-react';
 import { ACTIVITY_CONFIG, findQuotationForActivity } from './leadDetailData';
 import QuotationPdfOverlay from '../quotations/QuotationPdfOverlay';
+import SendQuotationModal from './SendQuotationModal';
 import { Button } from '../ui/button';
 import { DETAIL_CARD } from './leadDetailUtils';
 import { cn } from '../../lib/utils';
@@ -48,8 +49,13 @@ export default function LeadActivityTimeline({
   loading = false,
   quotations = [],
   highlightQuotationId = null,
+  lead = null,
+  leadId = null,
+  contactEndpoint = '/leads',
+  onQuotationSent,
 }) {
   const [pdfQuote, setPdfQuote] = useState(null);
+  const [sendQuote, setSendQuote] = useState(null);
   const pdfRef = useRef(null);
   const highlightRef = useRef(null);
   const sorted = [...activities].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -86,6 +92,11 @@ export default function LeadActivityTimeline({
                   const isQuote = item.type?.startsWith('quotation_');
                   const quote = isQuote ? findQuotationForActivity(item, quotations) : null;
                   const canDownload = Boolean(quote?._id && (quote.pricing || quote.packageSnapshot));
+                  const canSend =
+                    canDownload &&
+                    lead &&
+                    leadId &&
+                    !['draft', 'pending_approval', 'rejected'].includes(quote?.status);
                   const isHighlight =
                     highlightQuotationId &&
                     (String(item.meta?.quotationId) === String(highlightQuotationId) ||
@@ -116,15 +127,27 @@ export default function LeadActivityTimeline({
                             </p>
                           </div>
                           {canDownload && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setPdfQuote(quote)}
-                              className="rounded-lg h-7 gap-1 text-[11px] text-violet-700 border-violet-200 bg-violet-50 hover:bg-violet-100"
-                            >
-                              <Download className="w-3 h-3" /> PDF
-                            </Button>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPdfQuote(quote)}
+                                className="rounded-lg h-7 gap-1 text-[11px] text-violet-700 border-violet-200 bg-violet-50 hover:bg-violet-100"
+                              >
+                                <Download className="w-3 h-3" /> PDF
+                              </Button>
+                              {canSend && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => setSendQuote(quote)}
+                                  className="rounded-lg h-7 gap-1 text-[11px] bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0"
+                                >
+                                  <Send className="w-3 h-3" /> Send
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </div>
                         {isQuote && <QuoteMetaChips item={item} quote={quote} />}
@@ -148,6 +171,16 @@ export default function LeadActivityTimeline({
         open={!!pdfQuote}
         onClose={() => setPdfQuote(null)}
         pdfRef={pdfRef}
+      />
+
+      <SendQuotationModal
+        open={!!sendQuote}
+        onClose={() => setSendQuote(null)}
+        lead={lead}
+        leadId={leadId}
+        quote={sendQuote}
+        contactEndpoint={contactEndpoint}
+        onSent={onQuotationSent}
       />
     </>
   );
