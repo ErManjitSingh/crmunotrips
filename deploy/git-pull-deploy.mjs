@@ -55,7 +55,7 @@ fi
 if ! grep -q '^FACEBOOK_VERIFY_TOKEN=' .env 2>/dev/null; then
   echo 'FACEBOOK_VERIFY_TOKEN=unotrips-fb-verify-2026' >> .env
 fi
-if (!grep -q '^FACEBOOK_DEFAULT_DESTINATION=' .env 2>/dev/null; then
+if ! grep -q '^FACEBOOK_DEFAULT_DESTINATION=' .env 2>/dev/null; then
   echo 'FACEBOOK_DEFAULT_DESTINATION=Not specified' >> .env
 fi
 if ! grep -q '^WHATSAPP_VERIFY_TOKEN=' .env 2>/dev/null; then
