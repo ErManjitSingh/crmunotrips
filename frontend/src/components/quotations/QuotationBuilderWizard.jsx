@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, ExternalLink, Search } from 'lucide-react';
 import API from '../../api/axios';
@@ -23,6 +24,11 @@ import { unwrapList } from '../../utils/apiHelpers';
 import PackageBuilderWorkspace from './PackageBuilderWorkspace';
 import PackageBuilderOpeningOverlay from './PackageBuilderOpeningOverlay';
 import { cn } from '../../lib/utils';
+import {
+  invalidateLeadDetail,
+  invalidateLeadLists,
+  invalidateNavCounts,
+} from '../../lib/queryInvalidation';
 
 const ADMIN_CONFIG = {
   leadsPath: '/leads',
@@ -101,6 +107,7 @@ function emailEndpointForMode(mode) {
 export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const config = CONFIG_BY_MODE[mode] || EXECUTIVE_CONFIG;
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const initialLeadId = searchParams.get('leadId');
   const [step, setStep] = useState(1);
@@ -492,19 +499,38 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         customizations: state.customizations,
       };
       const res = await API.post(config.savePath, payload);
-      const successUrl =
-        mode === 'executive'
+      const savedStatus = res.data?.status;
+      const leadId = state.leadId || res.data?.lead?._id || res.data?.lead;
+      const message =
+        savedStatus === 'approved'
+          ? 'First quotation created and approved. You can send it to the customer.'
+          : savedStatus === 'pending_approval'
+            ? 'Quotation submitted for approval. It is now on the lead activity timeline.'
+            : savedStatus === 'sent'
+              ? 'Quotation saved and sent. Check the lead activity timeline.'
+              : 'Quotation saved as draft.';
+
+      if (leadId) {
+        await Promise.all([
+          invalidateLeadDetail(queryClient, leadId),
+          invalidateLeadLists(queryClient),
+          invalidateNavCounts(queryClient),
+          queryClient.invalidateQueries({ queryKey: ['lead-quotations'] }),
+        ]);
+      }
+
+      const successUrl = leadId
+        ? config.leadViewPath(String(leadId))
+        : mode === 'executive'
           ? config.successPath
           : `${config.successPath}?view=${res.data._id}`;
-      const savedStatus = res.data?.status;
+
       navigate(successUrl, {
+        replace: true,
         state: {
-          message:
-            savedStatus === 'approved'
-              ? 'First quotation created and approved. You can send it to the customer.'
-              : savedStatus === 'pending_approval'
-                ? 'Quotation submitted to Team Leader for approval.'
-                : 'Quotation saved as draft.',
+          message,
+          focusTimeline: Boolean(leadId),
+          quotationId: res.data?._id,
         },
       });
     } catch (err) {

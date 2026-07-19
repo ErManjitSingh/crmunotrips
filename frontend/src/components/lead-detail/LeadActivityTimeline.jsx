@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Download } from 'lucide-react';
 import { ACTIVITY_CONFIG, findQuotationForActivity } from './leadDetailData';
 import QuotationPdfOverlay from '../quotations/QuotationPdfOverlay';
 import { Button } from '../ui/button';
 import { DETAIL_CARD } from './leadDetailUtils';
+import { cn } from '../../lib/utils';
 
 function formatActivityDate(iso) {
   const d = new Date(iso);
@@ -14,14 +15,56 @@ function formatActivityDate(iso) {
   };
 }
 
-export default function LeadActivityTimeline({ activities, loading = false, quotations = [] }) {
+function QuoteMetaChips({ item, quote }) {
+  const amount = item.meta?.amount ?? quote?.pricing?.total ?? quote?.costing?.grandTotal;
+  const quoteNumber = item.meta?.quoteNumber || quote?.quoteNumber;
+  const status = item.meta?.status || quote?.status;
+
+  if (!quoteNumber && amount == null && !status) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      {quoteNumber && (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#5D5FEF]/10 text-[11px] font-bold text-[#5D5FEF]">
+          {quoteNumber}
+        </span>
+      )}
+      {amount != null && Number(amount) > 0 && (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-500/10 text-[11px] font-bold text-emerald-700 tabular-nums">
+          ₹{Number(amount).toLocaleString('en-IN')}
+        </span>
+      )}
+      {status && (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-300 capitalize">
+          {String(status).replace(/_/g, ' ')}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export default function LeadActivityTimeline({
+  activities,
+  loading = false,
+  quotations = [],
+  highlightQuotationId = null,
+}) {
   const [pdfQuote, setPdfQuote] = useState(null);
   const pdfRef = useRef(null);
+  const highlightRef = useRef(null);
   const sorted = [...activities].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  useEffect(() => {
+    if (!highlightQuotationId || !highlightRef.current) return undefined;
+    const t = setTimeout(() => {
+      highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 250);
+    return () => clearTimeout(t);
+  }, [highlightQuotationId, sorted.length]);
 
   return (
     <>
-      <div className={`${DETAIL_CARD} overflow-hidden`}>
+      <div id="lead-activity-timeline" className={`${DETAIL_CARD} overflow-hidden scroll-mt-24`}>
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">Activity Timeline</h3>
         </div>
@@ -40,18 +83,25 @@ export default function LeadActivityTimeline({ activities, loading = false, quot
                   const cfg = ACTIVITY_CONFIG[item.type] || ACTIVITY_CONFIG.status_changed;
                   const Icon = cfg.icon;
                   const { date, time } = formatActivityDate(item.date);
-                  const quote = item.type?.startsWith('quotation_')
-                    ? findQuotationForActivity(item, quotations)
-                    : null;
+                  const isQuote = item.type?.startsWith('quotation_');
+                  const quote = isQuote ? findQuotationForActivity(item, quotations) : null;
                   const canDownload = Boolean(quote?._id && (quote.pricing || quote.packageSnapshot));
+                  const isHighlight =
+                    highlightQuotationId &&
+                    (String(item.meta?.quotationId) === String(highlightQuotationId) ||
+                      String(quote?._id) === String(highlightQuotationId));
 
                   return (
                     <motion.div
                       key={item.id}
+                      ref={isHighlight ? highlightRef : undefined}
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.04 }}
-                      className="relative flex gap-4 py-3 group"
+                      className={cn(
+                        'relative flex gap-4 py-3 group rounded-xl transition-colors',
+                        isHighlight && 'bg-violet-50/80 dark:bg-violet-950/30 ring-1 ring-[#5D5FEF]/25 px-2 -mx-2'
+                      )}
                     >
                       <div className={`relative z-10 w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-slate-100 ${cfg.color}`}>
                         <Icon className="w-4 h-4" />
@@ -77,6 +127,7 @@ export default function LeadActivityTimeline({ activities, loading = false, quot
                             </Button>
                           )}
                         </div>
+                        {isQuote && <QuoteMetaChips item={item} quote={quote} />}
                         {item.notes && (
                           <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
                             {item.notes}

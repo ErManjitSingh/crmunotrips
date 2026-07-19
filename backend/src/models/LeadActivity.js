@@ -13,6 +13,7 @@ const LEAD_ACTIVITY_TYPES = [
   'followup_completed',
   'followup_missed',
   'quotation_created',
+  'quotation_submitted',
   'quotation_sent',
   'quotation_approved',
   'quotation_rejected',

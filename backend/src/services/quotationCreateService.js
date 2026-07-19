@@ -72,7 +72,36 @@ async function persistQuotation({
     },
   });
 
-  if (status === 'pending_approval' && lead.status === 'quotation_sent') {
+  if (status === 'pending_approval') {
+    await logLeadActivity({
+      leadId: lead._id,
+      branchId,
+      type: 'quotation_submitted',
+      title: 'Quotation Submitted',
+      description: `${quotation.quoteNumber} submitted for approval · ${pkgName} · ${priceLabel}`,
+      actor: req.user,
+      meta: {
+        quotationId: quotation._id,
+        quoteNumber: quotation.quoteNumber,
+        status,
+        amount: quoteTotal,
+      },
+    });
+  } else if (status === 'approved') {
+    await logLeadActivity({
+      leadId: lead._id,
+      branchId,
+      type: 'quotation_approved',
+      description: `${quotation.quoteNumber} approved · ${pkgName} · ${priceLabel}`,
+      actor: req.user,
+      meta: {
+        quotationId: quotation._id,
+        quoteNumber: quotation.quoteNumber,
+        status,
+        amount: quoteTotal,
+      },
+    });
+  } else if (status === 'sent') {
     await logLeadActivity({
       leadId: lead._id,
       branchId,

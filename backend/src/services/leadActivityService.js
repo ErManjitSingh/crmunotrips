@@ -14,6 +14,7 @@ const ACTIVITY_TITLES = {
   followup_completed: 'Follow-up Completed',
   followup_missed: 'Follow-up Missed',
   quotation_created: 'Quotation Created',
+  quotation_submitted: 'Quotation Submitted',
   quotation_sent: 'Quotation Sent',
   quotation_approved: 'Quotation Approved',
   quotation_rejected: 'Quotation Rejected',

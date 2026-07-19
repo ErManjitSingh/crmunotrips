@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import API from '../../api/axios';
 import { Button } from '../ui/button';
@@ -26,8 +26,11 @@ const STATUSES = [
 export default function ExecutiveLeadDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [lead, setLead] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [flashMessage, setFlashMessage] = useState(location.state?.message || '');
+  const [highlightQuotationId] = useState(location.state?.quotationId || null);
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [modalStatus, setModalStatus] = useState('contacted');
@@ -37,7 +40,10 @@ export default function ExecutiveLeadDetailPage() {
 
   const loadLead = useCallback(({ silent = false } = {}) => {
     if (!silent) setLoading(true);
-    return API.get(`/sales-executive/leads/${id}`, { skipSuccessToast: true })
+    return API.get(`/sales-executive/leads/${id}`, {
+      params: { includeRelated: 1 },
+      skipSuccessToast: true,
+    })
       .then((res) => setLead(res.data))
       .catch(() => setLead(null))
       .finally(() => {
@@ -52,6 +58,20 @@ export default function ExecutiveLeadDetailPage() {
     main?.scrollTo({ top: 0, left: 0 });
     loadLead();
   }, [loadLead]);
+
+  useEffect(() => {
+    if (!location.state?.message && !location.state?.focusTimeline) return undefined;
+    setFlashMessage(location.state.message || '');
+    if (location.state.focusTimeline) {
+      const t = setTimeout(() => {
+        document.getElementById('lead-activity-timeline')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 400);
+      navigate(location.pathname, { replace: true, state: {} });
+      return () => clearTimeout(t);
+    }
+    navigate(location.pathname, { replace: true, state: {} });
+    return undefined;
+  }, [location.state, location.pathname, navigate]);
 
   useDataRefresh(['leads'], loadLead);
 
@@ -127,6 +147,8 @@ export default function ExecutiveLeadDetailPage() {
         backHref="/sales-executive/leads/all"
         backLabel="Back to Leads"
         contactEndpoint="/sales-executive/leads"
+        flashMessage={flashMessage}
+        highlightQuotationId={highlightQuotationId}
         onCreateQuote={() => navigate(`/sales-executive/quotations/new?leadId=${id}`)}
         onScheduleFollowUp={() => setFollowUpModalOpen(true)}
         onContactLogged={loadLead}

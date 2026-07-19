@@ -37,6 +37,8 @@ export default function LeadDetailLayout({
   sidebarExtra,
   bottomExtra,
   receiptEndpoint,
+  flashMessage,
+  highlightQuotationId,
 }) {
   const detail = getLeadDetailData(lead);
   const followups = lead.followups || lead.followUps || detail.followUps || [];
@@ -70,6 +72,11 @@ export default function LeadDetailLayout({
         receiptEndpoint={paymentReceiptEndpoint}
       />
       {headerExtra}
+      {flashMessage && (
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+          {flashMessage}
+        </div>
+      )}
       <LeadStatusPipeline status={lead.status} />
       <LeadConvertedBanner
         status={lead.status}
@@ -101,6 +108,7 @@ export default function LeadDetailLayout({
             activities={activities}
             loading={timelineLoading}
             quotations={quotations}
+            highlightQuotationId={highlightQuotationId}
           />
         </main>
 
