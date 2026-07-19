@@ -1,10 +1,47 @@
-export function calculatePricing({ baseCost = 0, hotelCost = 0, cabCost = 0, flightCost = 0, activityCost = 0, taxes = 0, markup = 0, discount = 0 }) {
-  const subtotal = Number(baseCost) + Number(hotelCost) + Number(cabCost) + Number(flightCost) + Number(activityCost) + Number(taxes);
-  const total = subtotal + Number(markup) - Number(discount);
-  const costBeforeMarkup = subtotal;
-  const profit = Number(markup) - Number(discount);
-  const profitMargin = costBeforeMarkup > 0 ? Math.round((profit / total) * 1000) / 10 : 0;
-  return { subtotal, total: Math.max(0, total), profitMargin };
+export function calculatePricing({
+  baseCost = 0,
+  hotelCost = 0,
+  cabCost = 0,
+  flightCost = 0,
+  activityCost = 0,
+  taxes = 0,
+  markup = 0,
+  discount = 0,
+  gstEnabled = false,
+  markupPercent = 0,
+} = {}) {
+  const costs =
+    Number(baseCost || 0) +
+    Number(hotelCost || 0) +
+    Number(cabCost || 0) +
+    Number(flightCost || 0) +
+    Number(activityCost || 0);
+
+  const computedTaxes = gstEnabled
+    ? Math.round(costs * 0.05 * 100) / 100
+    : 0;
+
+  const pct = Number(markupPercent) || 0;
+  const computedMarkup =
+    pct > 0
+      ? Math.round((costs + computedTaxes) * (pct / 100) * 100) / 100
+      : Math.max(0, Number(markup) || 0);
+
+  const subtotal = costs + computedTaxes + computedMarkup;
+  const disc = Math.max(0, Number(discount) || 0);
+  const total = Math.max(0, subtotal - disc);
+  const youSave = disc;
+  const profit = computedMarkup - disc;
+  const profitMargin = total > 0 ? Math.round((profit / total) * 1000) / 10 : 0;
+
+  return {
+    subtotal,
+    total,
+    profitMargin,
+    taxes: computedTaxes,
+    markup: computedMarkup,
+    youSave,
+  };
 }
 
 export function formatINR(n) {
@@ -43,7 +80,9 @@ export const defaultPricing = {
   flightCost: 0,
   activityCost: 0,
   taxes: 0,
+  gstEnabled: false,
   markup: 0,
+  markupPercent: 0,
   discount: 0,
   total: 0,
   profitMargin: 0,

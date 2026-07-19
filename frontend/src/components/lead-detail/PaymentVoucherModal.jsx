@@ -330,39 +330,15 @@ export default function PaymentVoucherModal({
               <MoneyCard icon={FileText} label="Balance Due" value={v.balanceDue} tone="balance" />
             </div>
 
-            {v.grandTotal != null ? (
-              <div className="mt-4 rounded-2xl border border-slate-100 overflow-hidden">
-                <div className="grid grid-cols-[1fr_auto] gap-x-4 px-4 py-2 bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                  <span>Particulars</span>
-                  <span>Amount (₹)</span>
-                </div>
-                {[
-                  { label: 'Token Amount', value: v.subTotal },
-                  { label: 'Sub Total', value: v.subTotal, decimals: 0 },
-                  { label: `CGST ${v.cgstRate ?? 2.5}%`, value: v.cgst, decimals: 0 },
-                  { label: `SGST ${v.sgstRate ?? 2.5}%`, value: v.sgst, decimals: 0 },
-                ].map((row) => (
-                  <div key={row.label} className="grid grid-cols-[1fr_auto] gap-x-4 px-4 py-2.5 border-t border-slate-100 text-xs">
-                    <span className="text-slate-700">{row.label}</span>
-                    <span className="font-bold text-slate-900 metric-tabular">
-                      {Number(row.value || 0).toLocaleString('en-IN', {
-                        minimumFractionDigits: row.decimals ?? 2,
-                        maximumFractionDigits: row.decimals ?? 2,
-                      })}
-                    </span>
-                  </div>
-                ))}
-                <div className="grid grid-cols-[1fr_auto] gap-x-4 px-4 py-3 border-t border-emerald-100 bg-emerald-50 text-sm font-extrabold text-emerald-950">
-                  <span>Grand Total</span>
-                  <span className="metric-tabular">
-                    {Number(v.grandTotal || 0).toLocaleString('en-IN', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                </div>
+            <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3.5 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-700">Advance / Token</p>
+                <p className="text-xs text-emerald-800/80 mt-0.5">GST included — no separate tax added</p>
               </div>
-            ) : null}
+              <p className="text-lg font-extrabold text-emerald-950 metric-tabular">
+                {formatINR(v.advanceReceived)}
+              </p>
+            </div>
 
             {v.company?.bankName ? (
               <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5">

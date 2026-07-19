@@ -9,7 +9,7 @@ const { isEmailConfigured, normalizeRecipients } = require('./emailService');
 const { invalidateMailboxCache } = require('./emailMailboxCache');
 
 /** Bump when HTML layout changes so stored receipts regenerate. */
-const RECEIPT_TEMPLATE_VERSION = 6;
+const RECEIPT_TEMPLATE_VERSION = 7;
 
 const COMPANY = {
   name: 'UNO Trips',
@@ -97,13 +97,10 @@ function leadBadge(leadId) {
   return `Lead ${digits}`;
 }
 
-/** Token amount is taxable; add CGST+SGST @ 2.5% each (matches UNO Trips tax invoice). */
+/** Advance is GST-inclusive — do not add CGST/SGST on top. */
 function computeTokenGst(tokenAmount) {
-  const subTotal = Math.round((Number(tokenAmount) || 0) * 100) / 100;
-  const cgst = Math.round(subTotal * (COMPANY.cgstRate / 100) * 100) / 100;
-  const sgst = Math.round(subTotal * (COMPANY.sgstRate / 100) * 100) / 100;
-  const grandTotal = Math.round((subTotal + cgst + sgst) * 100) / 100;
-  return { subTotal, cgst, sgst, grandTotal };
+  const grandTotal = Math.round((Number(tokenAmount) || 0) * 100) / 100;
+  return { subTotal: grandTotal, cgst: 0, sgst: 0, grandTotal, gstInclusive: true };
 }
 
 function buildVoucherPayload({ lead, payment, booking, quotation }) {
@@ -377,11 +374,8 @@ function buildPaymentReceiptHtml({
     <div class="tax">
       <table>
         <tr><th style="width:70%">Particulars</th><th class="tar" style="text-align:right;width:30%">Amount (₹)</th></tr>
-        <tr><td>Token Amount</td><td class="tar">${escapeHtml(formatAmount(v.subTotal))}</td></tr>
-        <tr><td>Sub Total</td><td class="tar">${escapeHtml(formatAmount(v.subTotal, 0))}</td></tr>
-        <tr><td>CGST ${COMPANY.cgstRate}%</td><td class="tar">${escapeHtml(formatAmount(v.cgst, 0))}</td></tr>
-        <tr><td>SGST ${COMPANY.sgstRate}%</td><td class="tar">${escapeHtml(formatAmount(v.sgst, 0))}</td></tr>
-        <tr><td>Grand Total</td><td class="tar">${escapeHtml(formatAmount(v.grandTotal))}</td></tr>
+        <tr><td>Advance / Token (GST included)</td><td class="tar">${escapeHtml(formatAmount(v.advanceReceived))}</td></tr>
+        <tr><td>Grand Total</td><td class="tar">${escapeHtml(formatAmount(v.advanceReceived))}</td></tr>
       </table>
     </div>
 

@@ -437,9 +437,41 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     const cabCost = Number(selectedUnoCab?.totalAmount || selectedUnoCab?.cost || 0);
     const flightCost = flights.filter((f) => state.selectedFlightIds.includes(f._id)).reduce((s, f) => s + (f.cost || 0), 0);
     const activityCost = activities.filter((a) => state.selectedActivityIds.includes(a._id)).reduce((s, a) => s + (a.price || 0), 0);
-    const calc = calculatePricing({ ...state.pricing, hotelCost, cabCost, flightCost, activityCost });
-    setState((s) => ({ ...s, pricing: { ...s.pricing, hotelCost, cabCost, flightCost, activityCost, total: calc.total, profitMargin: calc.profitMargin } }));
-  }, [selectedUnoCab, state.selectedFlightIds, state.selectedActivityIds, flights, activities, state.pricing.baseCost, state.pricing.taxes, state.pricing.markup, state.pricing.discount, dayWiseHotels]);
+    const calc = calculatePricing({
+      ...state.pricing,
+      hotelCost,
+      cabCost,
+      flightCost,
+      activityCost,
+    });
+    setState((s) => ({
+      ...s,
+      pricing: {
+        ...s.pricing,
+        hotelCost,
+        cabCost,
+        flightCost,
+        activityCost,
+        taxes: calc.taxes,
+        markup: calc.markup,
+        total: calc.total,
+        profitMargin: calc.profitMargin,
+      },
+    }));
+  }, [
+    selectedUnoCab,
+    state.selectedFlightIds,
+    state.selectedActivityIds,
+    flights,
+    activities,
+    state.pricing.baseCost,
+    state.pricing.taxes,
+    state.pricing.markup,
+    state.pricing.discount,
+    state.pricing.gstEnabled,
+    state.pricing.markupPercent,
+    dayWiseHotels,
+  ]);
 
   const handleSave = async (saveAs) => {
     if (!state.leadId || !state.packageId) return;

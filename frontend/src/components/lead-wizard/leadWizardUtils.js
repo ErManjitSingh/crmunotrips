@@ -19,10 +19,21 @@ function inferBudgetRange(budget) {
   return 'above_100000';
 }
 
+/** Inclusive tour days from start → end dates. */
+export function calcTourDays(start, end) {
+  if (!start || !end) return '';
+  const s = new Date(start);
+  const e = new Date(end);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e < s) return '';
+  return Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+}
+
 export function leadToWizardValues(lead) {
   const adults = lead.adults ?? Math.max(1, (lead.travelers || 2) - (lead.children || 0));
   const children = lead.children ?? 0;
   const infants = lead.infants ?? 0;
+  const travelDate = lead.travelDate ? String(lead.travelDate).split('T')[0] : '';
+  const returnDate = lead.returnDate ? String(lead.returnDate).split('T')[0] : '';
 
   return {
     ...defaultWizardValues,
@@ -33,7 +44,13 @@ export function leadToWizardValues(lead) {
     city: lead.city || '',
     state: lead.state || '',
     destination: lead.destination || '',
-    travelDate: lead.travelDate ? String(lead.travelDate).split('T')[0] : '',
+    travelDate,
+    returnDate,
+    tourDays: lead.tourDays || calcTourDays(travelDate, returnDate) || '',
+    pickupPoint: lead.pickupPoint || '',
+    dropPoint: lead.dropPoint || '',
+    numberOfRooms: lead.numberOfRooms || 1,
+    cabType: lead.cabType || lead.transportRequirement || 'sedan',
     adults,
     children,
     infants,
@@ -58,6 +75,10 @@ export function wizardValuesToPayload(values) {
     values.budgetRange === 'custom'
       ? Number(values.customBudget) || 0
       : Number(values.budget) || 0;
+
+  const tourDays =
+    Number(values.tourDays) || calcTourDays(values.travelDate, values.returnDate) || 0;
+
   return {
     name: values.name,
     phone: values.phone,
@@ -69,6 +90,13 @@ export function wizardValuesToPayload(values) {
     leadType: values.leadType || 'fit',
     companyName: values.companyName || undefined,
     travelDate: values.travelDate ? new Date(values.travelDate).toISOString() : undefined,
+    returnDate: values.returnDate ? new Date(values.returnDate).toISOString() : undefined,
+    tourDays,
+    pickupPoint: values.pickupPoint || undefined,
+    dropPoint: values.dropPoint || undefined,
+    numberOfRooms: Math.max(1, Number(values.numberOfRooms) || 1),
+    cabType: values.cabType || undefined,
+    transportRequirement: values.cabType || undefined,
     adults: Number(values.adults) || 2,
     children: Number(values.children) || 0,
     infants: Number(values.infants) || 0,

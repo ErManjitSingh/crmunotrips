@@ -55,7 +55,26 @@ export const BUDGET_RANGE_OPTIONS = [
   { value: 'custom', label: 'Custom', amount: '' },
 ];
 
-export const DRAFT_STORAGE_KEY = 'uno-crm-lead-wizard-draft-v8';
+export const HOTEL_CATEGORY_OPTIONS = [
+  { value: '1_star', label: '1 Star' },
+  { value: '2_star', label: '2 Star' },
+  { value: '3_star', label: '3 Star' },
+  { value: '4_star', label: '4 Star' },
+  { value: '5_star', label: '5 Star' },
+];
+
+export const CAB_TYPE_OPTIONS = [
+  { value: 'sedan', label: 'Sedan' },
+  { value: 'suv', label: 'SUV' },
+  { value: 'innova', label: 'Innova' },
+  { value: 'innova_crysta', label: 'Innova Crysta' },
+  { value: 'tempo_traveller', label: 'Tempo Traveller' },
+  { value: 'bus', label: 'Bus' },
+  { value: 'hatchback', label: 'Hatchback' },
+  { value: 'not_required', label: 'Not required' },
+];
+
+export const DRAFT_STORAGE_KEY = 'uno-crm-lead-wizard-draft-v9';
 
 export const defaultWizardValues = {
   name: '',
@@ -66,6 +85,12 @@ export const defaultWizardValues = {
   state: '',
   destination: '',
   travelDate: '',
+  returnDate: '',
+  tourDays: '',
+  pickupPoint: '',
+  dropPoint: '',
+  numberOfRooms: 1,
+  cabType: 'sedan',
   adults: 2,
   children: 0,
   infants: 0,

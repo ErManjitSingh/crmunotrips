@@ -15,8 +15,6 @@ import {
   Wifi,
   ParkingSquare,
   ShieldCheck,
-  SlidersHorizontal,
-  ChevronDown,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AppDrawer from '../ui/AppDrawer';
@@ -538,6 +536,7 @@ export default function PackageResourcePickerDrawer({
   basePrice = 0,
 }) {
   const [query, setQuery] = useState('');
+  const [starFilter, setStarFilter] = useState(0); // 0 = all, 1-5 = star rating
   const [step, setStep] = useState('hotel');
   const [packageHotel, setPackageHotel] = useState(null);
   const [hotelDetail, setHotelDetail] = useState(null);
@@ -551,6 +550,7 @@ export default function PackageResourcePickerDrawer({
   useEffect(() => {
     if (!open) {
       setQuery('');
+      setStarFilter(0);
       setStep('hotel');
       setPackageHotel(null);
       setHotelDetail(null);
@@ -562,15 +562,19 @@ export default function PackageResourcePickerDrawer({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return options;
     return options.filter((opt) => {
+      if (starFilter > 0) {
+        const stars = Number(opt.starRating || opt.starCategory || 0);
+        if (Math.round(stars) !== starFilter) return false;
+      }
+      if (!q) return true;
       const hay = [opt.name, opt.location, opt.tierName, opt.meals, opt.seatingCapacity && `${opt.seatingCapacity} seats`]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [options, query]);
+  }, [options, query, starFilter]);
 
   const rooms = hotelDetail?.rooms?.length
     ? hotelDetail.rooms
@@ -761,12 +765,21 @@ export default function PackageResourcePickerDrawer({
                       <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-[11px] font-semibold text-slate-600">
                         <MapPin className="w-3.5 h-3.5 text-violet-500" />
                         {locationLabel}
-                        <ChevronDown className="w-3 h-3 text-slate-400" />
                       </span>
-                      <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-violet-200 bg-violet-50 text-[11px] font-semibold text-violet-700">
-                        <SlidersHorizontal className="w-3.5 h-3.5" />
-                        Filters
-                      </span>
+                      {[0, 1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setStarFilter(star)}
+                          className={`inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border text-[11px] font-semibold transition-colors ${
+                            starFilter === star
+                              ? 'border-violet-300 bg-violet-50 text-violet-700'
+                              : 'border-slate-200 bg-white text-slate-600 hover:border-violet-200'
+                          }`}
+                        >
+                          {star === 0 ? 'All' : `${star}★`}
+                        </button>
+                      ))}
                       <span className="ml-auto text-[11px] font-bold uppercase tracking-wide text-slate-400">
                         {filtered.length} hotel{filtered.length === 1 ? '' : 's'} found
                       </span>

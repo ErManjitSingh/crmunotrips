@@ -12,7 +12,9 @@ import { useSelector } from 'react-redux';
 import WizardField, { WizardInput, WizardSelect } from '../WizardField';
 import {
   INDIAN_STATES, DESTINATIONS, LEAD_TYPES, LEAD_SOURCES, PRIORITIES, BUDGET_RANGE_OPTIONS,
+  HOTEL_CATEGORY_OPTIONS, CAB_TYPE_OPTIONS,
 } from '../constants';
+import { calcTourDays } from '../leadWizardUtils';
 import API from '../../../api/axios';
 import { cn } from '../../../lib/utils';
 
@@ -66,6 +68,8 @@ export default function StepLeadForm({ isEdit, leadId }) {
   const priority = watch('priority');
   const leadSource = watch('leadSource');
   const branchId = watch('branchId');
+  const travelDate = watch('travelDate');
+  const returnDate = watch('returnDate');
   const isAdmin = user?.role === 'admin';
 
   const [searching, setSearching] = useState(false);
@@ -75,6 +79,11 @@ export default function StepLeadForm({ isEdit, leadId }) {
   const [destinationOptions, setDestinationOptions] = useState(DESTINATIONS);
   const navigate = useNavigate();
   const canCreateAnyway = ['admin', 'sales_manager'].includes(user?.role);
+
+  useEffect(() => {
+    const days = calcTourDays(travelDate, returnDate);
+    if (days) setValue('tourDays', days);
+  }, [travelDate, returnDate, setValue]);
 
   useEffect(() => {
     if (forceCreate) return;
@@ -262,20 +271,64 @@ export default function StepLeadForm({ isEdit, leadId }) {
             </div>
           </WizardField>
 
-          <WizardField label="Travel date" error={errors.travelDate?.message}>
+          <WizardField label="Tour start" error={errors.travelDate?.message}>
             <div className="relative">
               <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-content-muted pointer-events-none" />
               <WizardInput {...register('travelDate')} type="date" className="pl-8 h-9" error={errors.travelDate} />
             </div>
           </WizardField>
 
-          <WizardField label="Hotel">
+          <WizardField label="Tour end" error={errors.returnDate?.message}>
+            <div className="relative">
+              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-content-muted pointer-events-none" />
+              <WizardInput {...register('returnDate')} type="date" className="pl-8 h-9" error={errors.returnDate} />
+            </div>
+          </WizardField>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-2.5">
+          <WizardField label="Tour days">
+            <WizardInput
+              {...register('tourDays')}
+              type="number"
+              min={1}
+              className="h-9 text-center font-semibold metric-tabular"
+              placeholder="Auto"
+            />
+          </WizardField>
+
+          <WizardField label="No. of rooms">
+            <WizardInput
+              {...register('numberOfRooms')}
+              type="number"
+              min={1}
+              className="h-9 text-center font-semibold metric-tabular"
+            />
+          </WizardField>
+
+          <WizardField label="Hotel (1–5★)">
             <select {...register('hotelCategory')} className="input-premium h-9 w-full rounded-xl text-sm">
-              <option value="3_star">3 Star</option>
-              <option value="4_star">4 Star</option>
-              <option value="5_star">5 Star</option>
-              <option value="luxury">Luxury</option>
+              {HOTEL_CATEGORY_OPTIONS.map((h) => (
+                <option key={h.value} value={h.value}>{h.label}</option>
+              ))}
             </select>
+          </WizardField>
+
+          <WizardField label="Cab type">
+            <select {...register('cabType')} className="input-premium h-9 w-full rounded-xl text-sm">
+              {CAB_TYPE_OPTIONS.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </WizardField>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2.5">
+          <WizardField label="Pickup point">
+            <WizardInput {...register('pickupPoint')} placeholder="Airport / Hotel / City" className="h-9" />
+          </WizardField>
+          <WizardField label="Drop point">
+            <WizardInput {...register('dropPoint')} placeholder="Airport / Hotel / City" className="h-9" />
           </WizardField>
         </div>
 

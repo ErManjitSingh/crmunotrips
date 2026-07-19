@@ -1,5 +1,5 @@
 import { User, Plane, Megaphone } from 'lucide-react';
-import { LEAD_SOURCES, PRIORITIES, LEAD_TYPES, defaultWizardValues } from '../constants';
+import { LEAD_SOURCES, PRIORITIES, LEAD_TYPES, CAB_TYPE_OPTIONS, HOTEL_CATEGORY_OPTIONS, defaultWizardValues } from '../constants';
 
 function ReviewSection({ icon: Icon, title, children, accent }) {
   return (
@@ -37,7 +37,9 @@ export default function StepReview({ data }) {
   const sourceLabel = LEAD_SOURCES.find((s) => s.value === v.leadSource)?.label || v.leadSource;
   const priorityLabel = PRIORITIES.find((p) => p.value === v.priority)?.label || v.priority;
   const budgetValue = v.budgetRange === 'custom' ? v.customBudget : v.budget;
-  const hotelLabel = String(v.hotelCategory || '').replace('_', ' ');
+  const hotelLabel = HOTEL_CATEGORY_OPTIONS.find((h) => h.value === v.hotelCategory)?.label
+    || String(v.hotelCategory || '').replace('_', ' ');
+  const cabLabel = CAB_TYPE_OPTIONS.find((c) => c.value === v.cabType)?.label || v.cabType;
 
   return (
     <div className="space-y-3.5">
@@ -60,7 +62,13 @@ export default function StepReview({ data }) {
         <Row label="Lead Type" value={LEAD_TYPES.find((t) => t.value === v.leadType)?.label || v.leadType} />
         {v.leadType === 'corporate' && <Row label="Company" value={v.companyName} />}
         <Row label="Destination" value={v.destination} />
-        <Row label="Travel Date" value={v.travelDate} />
+        <Row label="Tour start" value={v.travelDate} />
+        <Row label="Tour end" value={v.returnDate} />
+        <Row label="Tour days" value={v.tourDays} />
+        <Row label="Rooms" value={v.numberOfRooms} />
+        <Row label="Pickup" value={v.pickupPoint} />
+        <Row label="Drop" value={v.dropPoint} />
+        <Row label="Cab" value={cabLabel} />
         <Row label="Travelers" value={`${v.adults}A · ${v.children}C · ${v.infants}I`} />
         <Row label="Hotel" value={hotelLabel} />
         <Row label="Budget" value={budgetValue ? `₹${Number(budgetValue).toLocaleString('en-IN')}` : ''} />

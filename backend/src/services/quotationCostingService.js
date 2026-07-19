@@ -95,9 +95,24 @@ function calculateQuotationPricing({
     { subtotal: 0, baseCost: 0, hotelCost: 0, cabCost: 0, flightCost: 0, activityCost: 0 }
   );
 
-  const taxes = toNumber(pricingInput.taxes);
-  const markup = toNumber(pricingInput.markup);
+  const markupInput = toNumber(pricingInput.markup);
+  const markupPercent = toNumber(pricingInput.markupPercent);
   const discount = toNumber(pricingInput.discount);
+  const gstEnabled = Boolean(pricingInput.gstEnabled);
+
+  const costs =
+    categoryTotals.baseCost +
+    categoryTotals.hotelCost +
+    categoryTotals.cabCost +
+    categoryTotals.flightCost +
+    categoryTotals.activityCost;
+
+  const taxes = gstEnabled ? Math.round(costs * 0.05 * 100) / 100 : 0;
+  const markup =
+    markupPercent > 0
+      ? Math.round((costs + taxes) * (markupPercent / 100) * 100) / 100
+      : markupInput;
+
   const gross = categoryTotals.subtotal + taxes + markup;
   const total = Math.max(0, gross - discount);
   const profitAmount = total - (categoryTotals.subtotal + taxes);
@@ -111,7 +126,9 @@ function calculateQuotationPricing({
       flightCost: categoryTotals.flightCost,
       activityCost: categoryTotals.activityCost,
       taxes,
+      gstEnabled,
       markup,
+      markupPercent,
       discount,
       total,
       profitMargin,
@@ -123,7 +140,9 @@ function calculateQuotationPricing({
       })),
       subtotal: categoryTotals.subtotal,
       taxes,
+      gstEnabled,
       markup,
+      markupPercent,
       discount,
       grandTotal: total,
       profitMargin,

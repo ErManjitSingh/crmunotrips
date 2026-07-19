@@ -302,6 +302,7 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
   const [hotelDetail, setHotelDetail] = useState(null);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [starFilter, setStarFilter] = useState(0);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);
@@ -316,6 +317,7 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
         destination,
         limit: debouncedSearch ? 50 : 24,
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
+        ...(starFilter > 0 ? { star_category: starFilter } : {}),
       },
       skipErrorToast: true,
     })
@@ -331,7 +333,7 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
     return () => {
       cancelled = true;
     };
-  }, [destination, debouncedSearch]);
+  }, [destination, debouncedSearch, starFilter]);
 
   const selectHotel = async (hotel) => {
     setLoadingDetail(true);
@@ -412,6 +414,22 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
                 placeholder="Search hotel name, city, category..."
                 className="w-full h-10 pl-10 pr-4 rounded-xl border border-subtle bg-white text-sm text-content-primary placeholder:text-content-muted outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500/40 transition-all"
               />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {[0, 1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setStarFilter(star)}
+                  className={`h-8 px-2.5 rounded-lg border text-[11px] font-semibold transition-colors ${
+                    starFilter === star
+                      ? 'border-amber-400 bg-amber-50 text-amber-800'
+                      : 'border-subtle bg-white text-content-muted hover:border-amber-300'
+                  }`}
+                >
+                  {star === 0 ? 'All' : `${star}★`}
+                </button>
+              ))}
             </div>
           </div>
 

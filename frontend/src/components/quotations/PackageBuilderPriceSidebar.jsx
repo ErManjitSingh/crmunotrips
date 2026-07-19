@@ -10,6 +10,8 @@ import { motion } from 'framer-motion';
 import { calculatePricing, formatINR } from './quotationUtils';
 import ActionTile from '../ui/ActionTile';
 
+const READONLY_COST_KEYS = new Set(['hotelCost', 'cabCost', 'activityCost', 'flightCost', 'baseCost']);
+
 export default function PackageBuilderPriceSidebar({
   lead,
   pkg,
@@ -28,36 +30,36 @@ export default function PackageBuilderPriceSidebar({
   submitLabel = 'Review & Continue',
 }) {
   const computed = useMemo(() => calculatePricing(pricing || {}), [pricing]);
+  const youSave = Number(computed.youSave ?? pricing?.discount ?? 0) || 0;
 
-  const update = (key, val) => {
-    const next = { ...pricing, [key]: Number(val) || 0 };
+  const applyPricing = (partial) => {
+    const next = { ...pricing, ...partial };
     const calc = calculatePricing(next);
-    onPricingChange?.({ ...next, total: calc.total, profitMargin: calc.profitMargin });
+    onPricingChange?.({
+      ...next,
+      taxes: calc.taxes,
+      markup: calc.markup,
+      total: calc.total,
+      profitMargin: calc.profitMargin,
+    });
   };
 
-  const subtotalBeforeDiscount =
-    Number(pricing?.baseCost || 0) +
-    Number(pricing?.hotelCost || 0) +
-    Number(pricing?.cabCost || 0) +
-    Number(pricing?.flightCost || 0) +
-    Number(pricing?.activityCost || 0) +
-    Number(pricing?.taxes || 0) +
-    Number(pricing?.markup || 0);
+  const updateNumber = (key, val) => {
+    applyPricing({ [key]: Number(val) || 0 });
+  };
 
-  const discount = Number(pricing?.discount || 0);
+  const subtotalBeforeDiscount = Number(computed.subtotal || 0);
   const savePct =
-    subtotalBeforeDiscount > 0 && discount > 0
-      ? Math.round((discount / subtotalBeforeDiscount) * 100)
+    subtotalBeforeDiscount > 0 && youSave > 0
+      ? Math.round((youSave / subtotalBeforeDiscount) * 100)
       : 0;
 
   const rows = [
-    { key: 'baseCost', label: 'Basic Package Cost' },
-    { key: 'cabCost', label: 'Transport Cost' },
-    { key: 'hotelCost', label: 'Hotel Cost' },
-    { key: 'activityCost', label: 'Activity Cost' },
-    { key: 'taxes', label: 'Taxes & Fees' },
-    { key: 'discount', label: 'Discount', negative: true },
-    { key: 'markup', label: 'Markup' },
+    { key: 'hotelCost', label: 'Hotel Cost', readOnly: true },
+    { key: 'cabCost', label: 'Transport Cost', readOnly: true },
+    { key: 'activityCost', label: 'Activities', readOnly: true },
+    { key: 'taxes', label: 'GST (5%)', readOnly: true },
+    { key: 'markup', label: 'Markup', readOnly: true },
   ];
 
   const actions = [
@@ -88,7 +90,7 @@ export default function PackageBuilderPriceSidebar({
               </span>
             )}
           </div>
-          {discount > 0 && (
+          {youSave > 0 && (
             <p className="text-sm text-white/50 line-through metric-tabular mt-1">
               {formatINR(subtotalBeforeDiscount)}
             </p>
@@ -105,20 +107,66 @@ export default function PackageBuilderPriceSidebar({
         </div>
 
         <div className="px-5 py-4 space-y-2.5 bg-white/60">
-          {rows.map(({ key, label, negative }) => (
+          <label className="flex items-center justify-between gap-3 rounded-lg bg-violet-50 border border-violet-100 px-2.5 py-2 cursor-pointer">
+            <div>
+              <p className="text-xs font-semibold text-slate-700">Add 5% GST</p>
+              <p className="text-[10px] text-slate-500">Optional — sales executive choice</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={Boolean(pricing?.gstEnabled)}
+              onChange={(e) => applyPricing({ gstEnabled: e.target.checked })}
+              className="h-4 w-4 rounded border-violet-300 text-violet-600 focus:ring-violet-500"
+            />
+          </label>
+
+          {rows.map(({ key, label, readOnly }) => (
             <div key={key} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50/80 border border-slate-100 px-2 py-1.5">
               <span className="text-xs font-semibold text-slate-600">{label}</span>
-              <input
-                type="number"
-                min={0}
-                value={pricing?.[key] || ''}
-                onChange={(e) => update(key, e.target.value)}
-                className={`w-[108px] h-8 rounded-lg border border-violet-200 bg-white px-2 text-right text-sm font-semibold metric-tabular focus:outline-none focus:ring-2 focus:ring-violet-500/20 ${
-                  negative ? 'text-emerald-600' : 'text-slate-800'
-                }`}
-              />
+              {readOnly || READONLY_COST_KEYS.has(key) || key === 'taxes' || key === 'markup' ? (
+                <span className="w-[108px] h-8 inline-flex items-center justify-end px-2 text-sm font-semibold metric-tabular text-slate-800">
+                  {formatINR(key === 'taxes' ? computed.taxes : key === 'markup' ? computed.markup : pricing?.[key] || 0)}
+                </span>
+              ) : (
+                <input
+                  type="number"
+                  min={0}
+                  value={pricing?.[key] || ''}
+                  onChange={(e) => updateNumber(key, e.target.value)}
+                  className="w-[108px] h-8 rounded-lg border border-violet-200 bg-white px-2 text-right text-sm font-semibold metric-tabular focus:outline-none focus:ring-2 focus:ring-violet-500/20 text-slate-800"
+                />
+              )}
             </div>
           ))}
+
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50/80 border border-slate-100 px-2 py-1.5">
+            <span className="text-xs font-semibold text-slate-600">Markup %</span>
+            <input
+              type="number"
+              min={0}
+              step={0.1}
+              value={pricing?.markupPercent || ''}
+              onChange={(e) => updateNumber('markupPercent', e.target.value)}
+              className="w-[108px] h-8 rounded-lg border border-violet-200 bg-white px-2 text-right text-sm font-semibold metric-tabular focus:outline-none focus:ring-2 focus:ring-violet-500/20 text-slate-800"
+              placeholder="0"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-violet-50 border border-violet-100 px-2 py-2">
+            <span className="text-xs font-bold text-violet-800">Total Cost</span>
+            <span className="text-sm font-black text-violet-900 metric-tabular">{formatINR(computed.total + youSave)}</span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-emerald-50/80 border border-emerald-100 px-2 py-1.5">
+            <span className="text-xs font-semibold text-emerald-700">Discount</span>
+            <input
+              type="number"
+              min={0}
+              value={pricing?.discount || ''}
+              onChange={(e) => updateNumber('discount', e.target.value)}
+              className="w-[108px] h-8 rounded-lg border border-emerald-200 bg-white px-2 text-right text-sm font-semibold metric-tabular text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+          </div>
         </div>
 
         <div className="px-5 pb-4">
@@ -126,12 +174,12 @@ export default function PackageBuilderPriceSidebar({
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">You Save</p>
               <p className="text-sm font-bold text-emerald-700 metric-tabular">
-                {formatINR(discount)}
+                {formatINR(youSave)}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500">Total Margin</p>
-              <p className="text-sm font-bold text-violet-800">{computed.profitMargin}%</p>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500">Final Total</p>
+              <p className="text-sm font-bold text-violet-800 metric-tabular">{formatINR(computed.total)}</p>
             </div>
           </div>
         </div>

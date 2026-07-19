@@ -40,16 +40,34 @@ export default function LeadCustomerPanel({ lead }) {
       <Card title="Travel Information">
         <InfoRow label="Destination" value={lead.destination} />
         <InfoRow
-          label="Travel Date"
+          label="Tour Start"
           value={lead.travelDate
             ? new Date(lead.travelDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
             : '—'}
         />
+        <InfoRow
+          label="Tour End"
+          value={lead.returnDate
+            ? new Date(lead.returnDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+            : '—'}
+        />
+        <InfoRow label="Tour Days" value={lead.tourDays || '—'} />
+        <InfoRow label="Rooms" value={lead.numberOfRooms || '—'} />
+        <InfoRow label="Pickup" value={lead.pickupPoint || '—'} />
+        <InfoRow label="Drop" value={lead.dropPoint || '—'} />
+        <InfoRow
+          label="Cab"
+          value={String(lead.cabType || lead.transportRequirement || '—').replace(/_/g, ' ')}
+        />
         <InfoRow label="Adults" value={lead.adults ?? Math.max(1, (lead.travelers || 2) - (lead.children || 0))} />
         <InfoRow label="Children" value={lead.children ?? 0} />
+        <InfoRow
+          label="Hotel"
+          value={String(lead.hotelCategory || '—').replace(/_/g, ' ')}
+        />
         <InfoRow label="Budget" value={lead.budget ? `₹${Number(lead.budget).toLocaleString('en-IN')}` : '—'} />
         <InfoRow label="Source" value={formatSource(lead)} />
-        <InfoRow label="Package Type" value={lead.leadType?.replace(/_/g, ' ') || lead.hotelCategory || '—'} />
+        <InfoRow label="Package Type" value={lead.leadType?.replace(/_/g, ' ') || '—'} />
       </Card>
     </div>
   );
