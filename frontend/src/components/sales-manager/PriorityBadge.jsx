@@ -4,7 +4,7 @@ import { cn } from '../../lib/utils';
 const configs = {
   urgent: { label: 'Urgent', icon: Clock, className: 'bg-gradient-to-r from-rose-500/25 to-red-500/15 text-rose-700 ring-rose-400/40 shadow-sm shadow-rose-500/10' },
   high: { label: 'High Budget', icon: Flame, className: 'bg-gradient-to-r from-amber-500/25 to-orange-500/15 text-amber-700 ring-amber-400/40 shadow-sm shadow-amber-500/10' },
-  repeat: { label: 'Repeat', icon: Star, className: 'bg-gradient-to-r from-violet-500/25 to-purple-500/15 text-violet-700 ring-violet-400/40 shadow-sm shadow-violet-500/10' },
+  repeat: { label: 'Repeated Lead', icon: Star, className: 'bg-gradient-to-r from-violet-500/25 to-purple-500/15 text-violet-700 ring-violet-400/40 shadow-sm shadow-violet-500/10' },
   hot: { label: 'Hot', icon: Flame, className: 'bg-gradient-to-r from-orange-500/25 to-rose-500/15 text-orange-700 ring-orange-400/40 shadow-sm shadow-orange-500/10' },
 };
 

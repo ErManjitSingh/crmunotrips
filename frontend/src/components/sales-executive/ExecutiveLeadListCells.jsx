@@ -93,7 +93,7 @@ export function ExecLeadIdCell({ lead }) {
 export function ExecCustomerCell({ lead }) {
   const name = lead?.name || 'Unknown';
   const source = getLeadSourceShortLabel(lead?.source, lead?.sourceLabel);
-  const isReturning = lead?.isRepeatCustomer || lead?.isVip;
+  const isRepeated = lead?.isRepeatCustomer || lead?.isVip;
 
   return (
     <Link
@@ -107,13 +107,13 @@ export function ExecCustomerCell({ lead }) {
           {source && (
             <span className="text-[11px] font-medium text-content-muted truncate">{source}</span>
           )}
-          {!isReturning ? (
+          {!isRepeated ? (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-500/12 text-[10px] font-bold text-emerald-700 ring-1 ring-inset ring-emerald-500/20">
               New Lead
             </span>
           ) : (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-violet-500/12 text-[10px] font-bold text-violet-700 ring-1 ring-inset ring-violet-500/20">
-              Returning
+              Repeated Lead
             </span>
           )}
         </div>

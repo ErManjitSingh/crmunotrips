@@ -50,6 +50,7 @@ const { stampExecutiveAssignment } = require('../services/leadExecutiveStallServ
 const { invalidateExecutiveLeadIdsCache } = require('../services/executiveScopeService');
 const { logAudit, diffLeadChanges } = require('../services/leadAuditService');
 const { applyLeadMetrics } = require('../services/leadScoringService');
+const { findDuplicateLeads } = require('../services/duplicateDetectionService');
 const {
   getLeaderLeadScopeFilter,
   getExecutiveIdsForLeader,
@@ -280,6 +281,15 @@ const createLead = asyncHandler(async (req, res) => {
     data.assignedTo = req.user._id;
   }
 
+  const prior = await findDuplicateLeads({
+    phone: data.phone,
+    alternatePhone: data.alternatePhone,
+    branchId: data.branchId,
+  });
+  if (prior.length) {
+    data.isRepeatCustomer = true;
+  }
+
   await applyLeadMetrics(data);
   const lead = await Lead.create(data);
 
@@ -287,9 +297,11 @@ const createLead = asyncHandler(async (req, res) => {
     leadId: lead._id,
     branchId: lead.branchId,
     type: 'lead_created',
-    description: `Lead created from ${data.sourceLabel || data.source || 'CRM'}`,
+    description: data.isRepeatCustomer
+      ? `Repeated lead created from ${data.sourceLabel || data.source || 'CRM'} (matching phone)`
+      : `Lead created from ${data.sourceLabel || data.source || 'CRM'}`,
     actor: req.user,
-    meta: { source: data.source },
+    meta: { source: data.source, isRepeatCustomer: Boolean(data.isRepeatCustomer) },
   });
   await logAudit({
     entityType: 'lead',

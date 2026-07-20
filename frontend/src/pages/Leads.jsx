@@ -51,7 +51,6 @@ export default function Leads() {
   const [previewLead, setPreviewLead] = useState(null);
   const [transferLead, setTransferLead] = useState(null);
   const [transferSubmitting, setTransferSubmitting] = useState(false);
-  const [seedingDemo, setSeedingDemo] = useState(false);
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
   const [pageCursors, setPageCursors] = useState({});
   const { confirm, dialogNode } = useConfirmDialog();
@@ -212,34 +211,11 @@ export default function Leads() {
         ? pagination.pageIndex + 2
         : pagination.pageIndex + 1;
 
-  const handleSeedDemoLeads = async () => {
-    const ok = await confirm({
-      title: 'Add 10 demo leads?',
-      message: 'Ten sample leads will be added to New Leads for testing and training.',
-      confirmLabel: 'Add Demo Leads',
-      cancelLabel: 'Cancel',
-      tone: 'default',
-    });
-    if (!ok) return;
-    setSeedingDemo(true);
-    try {
-      const res = await API.post('/leads/seed-demo');
-      toast.success(res.data?.message || 'Demo leads added');
-      invalidateLeads();
-    } catch {
-      /* toast via axios */
-    } finally {
-      setSeedingDemo(false);
-    }
-  };
-
   return (
     <div className="animate-fade-up">
       <LeadPageHeader
         title={config.title}
         total={totalLeads ?? undefined}
-        onSeedDemo={isAdmin && location.pathname === '/leads/new-leads' ? handleSeedDemoLeads : undefined}
-        seedingDemo={seedingDemo}
       />
 
       {isAllLeadsPage && <LeadKpiStrip />}

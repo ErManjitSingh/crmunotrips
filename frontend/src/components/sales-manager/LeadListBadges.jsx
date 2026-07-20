@@ -144,20 +144,20 @@ export function formatFollowUpDate(date) {
 }
 
 export function CustomerCell({ name, lead, showPhone = false }) {
-  const isReturning = lead?.isRepeatCustomer || lead?.isVip;
+  const isRepeated = lead?.isRepeatCustomer || lead?.isVip;
   return (
     <div className="flex items-start gap-2.5 min-w-0 max-w-[220px]">
       <Avatar name={name} size="sm" className="!w-8 !h-8 !text-[11px] shrink-0 mt-0.5" />
       <div className="min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-semibold text-sm text-content-primary truncate">{name}</p>
-          {!isReturning ? (
+          {!isRepeated ? (
             <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[#5D5FEF]/10 text-[10px] font-semibold text-[#5D5FEF]">
               New
             </span>
           ) : (
-            <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-[10px] font-semibold text-emerald-600">
-              Returning
+            <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-violet-500/10 text-[10px] font-semibold text-violet-700">
+              Repeated Lead
             </span>
           )}
         </div>

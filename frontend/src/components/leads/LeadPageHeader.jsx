@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Upload, Download, Plus, Sparkles } from 'lucide-react';
+import { Upload, Download, Plus } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 
-export default function LeadPageHeader({ title, total, onSeedDemo, seedingDemo }) {
+export default function LeadPageHeader({ title, total }) {
   const { can } = usePermissions();
   const canCreateLead = can('leads', 'create');
 
@@ -42,17 +42,6 @@ export default function LeadPageHeader({ title, total, onSeedDemo, seedingDemo }
           <Download className="w-4 h-4 text-content-muted" />
           Export
         </button>
-        {onSeedDemo && (
-          <button
-            type="button"
-            onClick={onSeedDemo}
-            disabled={seedingDemo}
-            className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-amber-200 bg-amber-50 text-sm font-medium text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-70"
-          >
-            <Sparkles className="w-4 h-4" />
-            {seedingDemo ? 'Adding…' : 'Add 10 Demo Leads'}
-          </button>
-        )}
         {canCreateLead && (
           <Link
             to="/leads/new"

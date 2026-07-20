@@ -9,6 +9,7 @@ const { runLeadAutoAssignment } = require('../services/leadAutoAssignmentService
 const { LEAD_AUTO_ASSIGNMENT_ENABLED } = require('../config/assignment');
 const { logLeadActivity } = require('./leadActivityService');
 const { invalidate: invalidateDashboardCache } = require('./dashboardCacheService');
+const { findDuplicateLeads } = require('./duplicateDetectionService');
 
 let cachedSystemUserId = null;
 
@@ -216,6 +217,15 @@ async function ingestPublicLead(raw = {}) {
   data.branchId = await resolvePublicBranchId(raw.branchId);
   data.createdBy = await resolveSystemCreatorId();
 
+  const prior = await findDuplicateLeads({
+    phone,
+    alternatePhone: data.alternatePhone,
+    branchId: data.branchId,
+  });
+  if (prior.length) {
+    data.isRepeatCustomer = true;
+  }
+
   await applyLeadMetrics(data);
   const lead = await Lead.create(data);
 
@@ -224,7 +234,9 @@ async function ingestPublicLead(raw = {}) {
     leadId: lead._id,
     branchId: lead.branchId,
     type: 'lead_created',
-    description: `Lead captured from ${originLabel}${captureType === 'chatbot' ? ' (chatbot)' : ''}`,
+    description: lead.isRepeatCustomer
+      ? `Repeated lead captured from ${originLabel}${captureType === 'chatbot' ? ' (chatbot)' : ''} (matching phone)`
+      : `Lead captured from ${originLabel}${captureType === 'chatbot' ? ' (chatbot)' : ''}`,
     actor: { _id: data.createdBy, name: sourceLabel },
     meta: {
       source,
@@ -234,6 +246,7 @@ async function ingestPublicLead(raw = {}) {
       landingPage: landingPage || undefined,
       package: packageTitle || undefined,
       externalLeadId: data.externalLeadId || undefined,
+      isRepeatCustomer: Boolean(lead.isRepeatCustomer),
     },
   });
 
