@@ -14,7 +14,6 @@ import PriorityBadge from './PriorityBadge';
 import AssignTeamLeadModal from './teams/AssignTeamLeadModal';
 import AdminAssignLeadModal from '../leads/AdminAssignLeadModal';
 import { useLeadAssign } from '../../hooks/useLeadAssign';
-import { compactTable, compactTh, compactTd } from '../ui/compactTable';
 import {
   LeadIdPill,
   SourceBadge,
@@ -24,7 +23,7 @@ import {
   CustomerCell,
   FILTER_THEMES,
 } from './LeadListBadges';
-import { leadListRowClass } from '../leads/leadListStyles';
+import { leadListRowClass, LEAD_LIST_TD } from '../leads/leadListStyles';
 import { cn } from '../../lib/utils';
 
 const AUTO_RULES = [
@@ -195,18 +194,18 @@ export default function LeadAssignmentPage() {
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search unassigned leads…" className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-amber-500/25 bg-surface/80 text-sm outline-none focus:ring-2 focus:ring-amber-500/30" />
       </div>
 
-      <div className={`rounded-2xl border ${theme.border} bg-surface/80 backdrop-blur-xl overflow-hidden shadow-lg shadow-amber-500/5`}>
+      <div className="rounded-2xl border border-subtle bg-white shadow-sm overflow-hidden">
         <div ref={scrollRef} className="overflow-auto max-h-[min(70vh,680px)]">
-          <table className={compactTable}>
+          <table className="w-full text-sm table-auto border-collapse min-w-[900px]">
             <thead className="sticky top-0 z-10">
-              <tr className={`border-b ${theme.border} bg-gradient-to-r ${theme.header}`}>
-                <th className={`${compactTh} w-8`}>
+              <tr className="border-b border-subtle bg-slate-50">
+                <th className="text-left px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 w-8">
                   <button type="button" onClick={toggleAll} className="text-amber-600 hover:text-amber-500">
                     {selected.length === leads.length && leads.length ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
                   </button>
                 </th>
                 {columns.map((h) => (
-                  <th key={h} className={compactTh}>{h}</th>
+                  <th key={h} className="text-left px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -235,19 +234,19 @@ export default function LeadAssignmentPage() {
                               : leadListRowClass(i)
                         )}
                       >
-                        <td className={compactTd}>
+                        <td className={LEAD_LIST_TD}>
                           <button type="button" onClick={() => toggle(lead._id)} className="text-content-muted hover:text-amber-600">
                             {selected.includes(lead._id) ? <CheckSquare className="w-3.5 h-3.5 text-amber-600" /> : <Square className="w-3.5 h-3.5" />}
                           </button>
                         </td>
-                        <td className={compactTd}><LeadIdPill id={lead.leadId} /></td>
-                        <td className={compactTd}><div className="flex items-center gap-1 min-w-0 flex-wrap"><CustomerCell name={lead.name} lead={lead} /><PriorityBadge lead={lead} /></div></td>
-                        <td className={compactTd}><DestinationChip name={lead.destination} /></td>
-                        <td className={compactTd}><BudgetBadge amount={lead.budget} /></td>
-                        <td className={compactTd}><SourceBadge source={lead.source} label={lead.sourceLabel} /></td>
-                        <td className={compactTd}><PriorityBadge lead={lead} /></td>
-                        <td className={compactTd}><ManagerStatusBadge status={lead.status} /></td>
-                        <td className={compactTd}>
+                        <td className={LEAD_LIST_TD}><LeadIdPill id={lead.leadId} /></td>
+                        <td className={LEAD_LIST_TD}><div className="flex items-center gap-1 min-w-0 flex-wrap"><CustomerCell name={lead.name} lead={lead} /><PriorityBadge lead={lead} /></div></td>
+                        <td className={LEAD_LIST_TD}><DestinationChip name={lead.destination} /></td>
+                        <td className={LEAD_LIST_TD}><BudgetBadge amount={lead.budget} /></td>
+                        <td className={LEAD_LIST_TD}><SourceBadge source={lead.source} label={lead.sourceLabel} /></td>
+                        <td className={LEAD_LIST_TD}><PriorityBadge lead={lead} /></td>
+                        <td className={LEAD_LIST_TD}><ManagerStatusBadge status={lead.status} /></td>
+                        <td className={LEAD_LIST_TD}>
                           <div className="flex items-center gap-1">
                             <Link to={`/sales-manager/leads/${lead._id}/view`} className="inline-flex items-center h-7 px-2 rounded-md border border-subtle text-[11px] font-medium hover:bg-surface-elevated">
                               <Eye className="w-3 h-3 mr-0.5" /> View
