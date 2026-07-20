@@ -9,21 +9,14 @@ function formatCurrency(n) {
   return `₹${n.toLocaleString('en-IN')}`;
 }
 
-function buildSparkline(base, points = 8) {
-  if (!base || base <= 0) return Array(points).fill(0);
-  return Array.from({ length: points }, (_, i) =>
-    Math.round((base / points) * (0.6 + (i / points) * 0.9 + Math.sin(i) * 0.12))
-  );
-}
-
 export default function LeadKpiStrip() {
   const { data: stats, isLoading } = useDashboardQuery();
 
   if (isLoading && !stats) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 mb-5">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 mb-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-[88px] rounded-xl bg-white border border-subtle animate-pulse" />
+          <div key={i} className="h-[52px] rounded-xl bg-white border border-subtle animate-pulse" />
         ))}
       </div>
     );
@@ -71,7 +64,7 @@ export default function LeadKpiStrip() {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 mb-5">
+    <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 mb-4">
       {items.map((item, i) => (
         <KpiCard
           key={item.label}
@@ -82,7 +75,7 @@ export default function LeadKpiStrip() {
           icon={item.icon}
           iconColor={item.iconColor}
           sparkColor={item.sparkColor}
-          sparkData={buildSparkline(typeof item.spark === 'number' ? item.spark : 0)}
+          sparkData={[]}
           index={i}
           compact
         />
