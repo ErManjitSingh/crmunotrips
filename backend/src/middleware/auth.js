@@ -36,14 +36,16 @@ const protect = asyncHandler(async (req, res, next) => {
   const branchIdFromQuery = typeof req.query?.branchId === 'string' ? req.query.branchId.trim() : '';
   const requestedBranchId = branchIdFromQuery || branchIdFromHeader || null;
   const userBranchId = user.branchId?.toString?.();
-  if (user.role !== 'admin' && requestedBranchId && requestedBranchId !== userBranchId) {
+  // HR portal is company-wide — do not block on branch header/query mismatch
+  const skipBranchGuard = user.role === 'admin' || user.role === 'hr_admin';
+  if (!skipBranchGuard && requestedBranchId && requestedBranchId !== userBranchId) {
     throw new ApiError(403, 'Access denied for selected branch');
   }
 
   req.user = user;
   req.permissions = await resolveUserPermissions(user);
   req.branchId =
-    user.role === 'admin'
+    user.role === 'admin' || user.role === 'hr_admin'
       ? requestedBranchId || userBranchId || null
       : userBranchId || null;
   if (req.branchId) {

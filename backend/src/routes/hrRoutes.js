@@ -9,6 +9,13 @@ const router = express.Router();
 router.use(protect);
 router.use(authorize('hr_admin'));
 router.use(requirePermission('hr', 'view'));
+// HR is company-wide — ignore auto-injected branch filter from the client
+router.use((req, _res, next) => {
+  if (req.query && Object.prototype.hasOwnProperty.call(req.query, 'branchId')) {
+    delete req.query.branchId;
+  }
+  next();
+});
 
 router.get('/dashboard', ctrl.getDashboard);
 

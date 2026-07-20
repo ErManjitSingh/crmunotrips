@@ -7,16 +7,27 @@ import { hrApi } from '../../services/hrApi';
 
 export default function HrDesignationsPage() {
   const qc = useQueryClient();
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ['hr', 'designations'], queryFn: () => hrApi.designations() });
-  const { data: departments = [] } = useQuery({ queryKey: ['hr', 'departments'], queryFn: hrApi.departments });
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['hr', 'designations'],
+    queryFn: () => hrApi.designations(),
+  });
+  const rows = Array.isArray(data) ? data : [];
+  const { data: deptData = [] } = useQuery({ queryKey: ['hr', 'departments'], queryFn: hrApi.departments });
+  const departments = Array.isArray(deptData) ? deptData : [];
   const [name, setName] = useState('');
   const [departmentId, setDepartmentId] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const add = async () => {
-    if (!name.trim()) return;
-    await hrApi.createDesignation({ name, departmentId: departmentId || null });
-    setName('');
-    qc.invalidateQueries({ queryKey: ['hr', 'designations'] });
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    try {
+      await hrApi.createDesignation({ name: name.trim(), departmentId: departmentId || null });
+      setName('');
+      await qc.invalidateQueries({ queryKey: ['hr', 'designations'] });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const remove = async (id) => {
@@ -29,12 +40,20 @@ export default function HrDesignationsPage() {
     <div className="animate-fade-up space-y-5">
       <PageHeader title="Designations" description="Job titles and levels across departments" breadcrumbs={['HR', 'Designations']} />
       <div className="flex flex-col gap-2 rounded-2xl border border-subtle bg-white p-4 shadow-sm sm:flex-row">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Designation name" className="h-10 flex-1 rounded-xl border border-slate-200 px-3 text-sm" />
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && add()}
+          placeholder="Designation name"
+          className="h-10 flex-1 rounded-xl border border-slate-200 px-3 text-sm"
+        />
         <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} className="h-10 rounded-xl border border-slate-200 px-3 text-sm">
           <option value="">Any department</option>
           {departments.map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}
         </select>
-        <Button onClick={add} className="h-10 rounded-xl bg-[#5D5FEF] text-white"><Plus className="h-4 w-4 mr-1" /> Add</Button>
+        <Button type="button" onClick={add} disabled={saving || !name.trim()} className="h-10 rounded-xl bg-[#5D5FEF] text-white">
+          <Plus className="h-4 w-4 mr-1" /> {saving ? 'Saving…' : 'Add'}
+        </Button>
       </div>
       <div className="overflow-hidden rounded-2xl border border-subtle bg-white shadow-sm">
         <table className="w-full text-sm">
@@ -49,6 +68,13 @@ export default function HrDesignationsPage() {
           <tbody>
             {isLoading ? (
               <tr><td colSpan={4} className="px-4 py-10 text-center text-slate-400">Loading…</td></tr>
+            ) : isError ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-10 text-center">
+                  <p className="text-rose-600 text-sm mb-2">{error?.response?.data?.message || 'Failed to load designations'}</p>
+                  <button type="button" onClick={() => refetch()} className="text-sm font-semibold text-[#5D5FEF] hover:underline">Retry</button>
+                </td>
+              </tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={4} className="px-4 py-10 text-center text-slate-400">No designations yet</td></tr>
             ) : rows.map((r, i) => (
