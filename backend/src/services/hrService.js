@@ -4,10 +4,51 @@ const HrDesignation = require('../models/hr/HrDesignation');
 const HrLeaveRequest = require('../models/hr/HrLeaveRequest');
 const HrHoliday = require('../models/hr/HrHoliday');
 const Attendance = require('../models/Attendance');
+const HrPayrollRun = require('../models/hr/HrPayrollRun');
 const ApiError = require('../utils/apiError');
 const { startOfDay, endOfDay } = require('../utils/queryHelpers');
 const { countPendingPayroll } = require('./hrPhase2Service');
-const { countUpcomingInterviews } = require('./hrTalentService');
+const { countUpcomingInterviews, listInterviews } = require('./hrTalentService');
+
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function monthsAgo(n) {
+  const d = new Date();
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  d.setMonth(d.getMonth() - n);
+  return d;
+}
+
+async function buildEmployeeGrowth() {
+  const start = monthsAgo(5);
+  const rows = await HrEmployee.aggregate([
+    {
+      $match: {
+        isDeleted: { $ne: true },
+        joiningDate: { $gte: start },
+      },
+    },
+    {
+      $group: {
+        _id: { y: { $year: '$joiningDate' }, m: { $month: '$joiningDate' } },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+  const map = Object.fromEntries(rows.map((r) => [`${r._id.y}-${r._id.m}`, r.count]));
+  const points = [];
+  for (let i = 5; i >= 0; i -= 1) {
+    const d = monthsAgo(i);
+    const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+    points.push({
+      label: `${MONTH_LABELS[d.getMonth()]} ${d.getFullYear()}`,
+      shortLabel: MONTH_LABELS[d.getMonth()],
+      employees: map[key] || 0,
+    });
+  }
+  return points;
+}
 
 const EMP_POPULATE = [
   { path: 'departmentId', select: 'name code' },
@@ -334,7 +375,38 @@ async function getHrDashboard() {
     ? Math.round((presentToday / activeEmployees) * 1000) / 10
     : 0;
   const payrollPending = await countPendingPayroll();
-  const upcomingInterviews = await countUpcomingInterviews();
+  const upcomingInterviewsCount = await countUpcomingInterviews();
+  const upcomingInterviews = await listInterviews({ upcoming: 'true', limit: 5 });
+
+  const [employeeGrowth, resignations, leavesTakenAgg, latestPayroll] = await Promise.all([
+    buildEmployeeGrowth(),
+    HrEmployee.countDocuments({
+      isDeleted: { $ne: true },
+      status: 'terminated',
+      updatedAt: { $gte: monthStart, $lte: todayEnd },
+    }),
+    HrLeaveRequest.aggregate([
+      {
+        $match: {
+          isDeleted: { $ne: true },
+          status: { $in: ['approved', 'manager_approved'] },
+          fromDate: { $gte: monthStart, $lte: todayEnd },
+        },
+      },
+      { $group: { _id: null, total: { $sum: '$days' } } },
+    ]),
+    HrPayrollRun.findOne({
+      isDeleted: { $ne: true },
+      year: todayStart.getFullYear(),
+      month: todayStart.getMonth() + 1,
+    })
+      .sort({ updatedAt: -1 })
+      .lean(),
+  ]);
+
+  const leavesTaken = leavesTakenAgg[0]?.total || 0;
+  const payrollNet = latestPayroll?.totals?.net || 0;
+  const payrollProcessedOn = latestPayroll?.processedAt || latestPayroll?.updatedAt || null;
 
   return {
     kpis: {
@@ -348,12 +420,27 @@ async function getHrDashboard() {
       birthdays: todayBirthdays.length,
       workAnniversaries: todayAnniversaries.length,
       pendingLeaves,
-      upcomingInterviews,
+      upcomingInterviews: upcomingInterviewsCount,
       payrollPending,
       attendancePct,
       averageAttendance: attendancePct,
       attritionRate: 0,
       monthlyHiring: newJoinings,
+      presentPct: activeEmployees ? Math.round((presentToday / activeEmployees) * 1000) / 10 : 0,
+      onLeavePct: activeEmployees ? Math.round((todayLeaves / activeEmployees) * 1000) / 10 : 0,
+      absentPct: activeEmployees
+        ? Math.round((Math.max(0, activeEmployees - presentToday - todayLeaves) / activeEmployees) * 1000) / 10
+        : 0,
+    },
+    employeeGrowth,
+    upcomingInterviews,
+    overview: {
+      newJoinings,
+      resignations,
+      averageAttendance: attendancePct,
+      leavesTaken,
+      payrollThisMonth: payrollNet,
+      payrollProcessedOn,
     },
     departmentDistribution: deptDist.map((d) => ({
       name: d._id ? deptMap[String(d._id)] || 'Unassigned' : 'Unassigned',
