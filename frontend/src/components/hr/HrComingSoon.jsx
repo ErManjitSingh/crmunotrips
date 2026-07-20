@@ -34,7 +34,7 @@ export default function HrComingSoon({
           <h2 className="text-xl font-bold text-slate-900">{title}</h2>
           <p className="mt-2 text-sm text-slate-500">
             This module ships next with a Darwinbox / Keka-style experience.
-            Core HR, payroll, documents, assets, and expenses are live now.
+            Core HR, payroll, talent (performance & recruitment), documents, assets, and expenses are live now.
           </p>
           {features.length > 0 && (
             <ul className="mt-6 grid w-full gap-2 text-left sm:grid-cols-2">

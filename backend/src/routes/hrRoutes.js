@@ -62,4 +62,30 @@ router.post('/expenses', requirePermission('hr', 'create'), ctrl.createExpense);
 router.patch('/expenses/:id/review', requirePermission('hr', 'edit'), ctrl.reviewExpense);
 router.delete('/expenses/:id', requirePermission('hr', 'delete'), ctrl.deleteExpense);
 
+router.get('/performance', ctrl.listPerformance);
+router.post('/performance', requirePermission('hr', 'create'), ctrl.createPerformance);
+router.put('/performance/:id', requirePermission('hr', 'edit'), ctrl.updatePerformance);
+router.delete('/performance/:id', requirePermission('hr', 'delete'), ctrl.deletePerformance);
+
+router.get('/jobs', ctrl.listJobs);
+router.post('/jobs', requirePermission('hr', 'create'), ctrl.createJob);
+router.put('/jobs/:id', requirePermission('hr', 'edit'), ctrl.updateJob);
+router.delete('/jobs/:id', requirePermission('hr', 'delete'), ctrl.deleteJob);
+
+router.get('/candidates', ctrl.listCandidates);
+router.get('/candidates/funnel', ctrl.recruitmentFunnel);
+router.post('/candidates', requirePermission('hr', 'create'), ctrl.createCandidate);
+router.put('/candidates/:id', requirePermission('hr', 'edit'), ctrl.updateCandidate);
+router.delete('/candidates/:id', requirePermission('hr', 'delete'), ctrl.deleteCandidate);
+
+router.get('/interviews', ctrl.listInterviews);
+router.post('/interviews', requirePermission('hr', 'create'), ctrl.createInterview);
+router.put('/interviews/:id', requirePermission('hr', 'edit'), ctrl.updateInterview);
+router.delete('/interviews/:id', requirePermission('hr', 'delete'), ctrl.deleteInterview);
+
+router.get('/incentives', ctrl.listIncentives);
+router.post('/incentives', requirePermission('hr', 'create'), ctrl.createIncentive);
+router.patch('/incentives/:id/review', requirePermission('hr', 'edit'), ctrl.reviewIncentive);
+router.delete('/incentives/:id', requirePermission('hr', 'delete'), ctrl.deleteIncentive);
+
 module.exports = router;

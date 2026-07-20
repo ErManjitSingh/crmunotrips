@@ -1,6 +1,7 @@
 const asyncHandler = require('../utils/asyncHandler');
 const hr = require('../services/hrService');
 const hr2 = require('../services/hrPhase2Service');
+const talent = require('../services/hrTalentService');
 
 const getDashboard = asyncHandler(async (req, res) => {
   const data = await hr.getHrDashboard();
@@ -156,6 +157,74 @@ const deleteExpense = asyncHandler(async (req, res) => {
   res.json(await hr2.deleteExpense(req.params.id));
 });
 
+const listPerformance = asyncHandler(async (req, res) => {
+  res.json(await talent.listPerformance(req.query));
+});
+const createPerformance = asyncHandler(async (req, res) => {
+  res.status(201).json(await talent.createPerformance(req.body, req.user));
+});
+const updatePerformance = asyncHandler(async (req, res) => {
+  res.json(await talent.updatePerformance(req.params.id, req.body));
+});
+const deletePerformance = asyncHandler(async (req, res) => {
+  res.json(await talent.deletePerformance(req.params.id));
+});
+
+const listJobs = asyncHandler(async (req, res) => {
+  res.json(await talent.listJobs(req.query));
+});
+const createJob = asyncHandler(async (req, res) => {
+  res.status(201).json(await talent.createJob(req.body, req.user));
+});
+const updateJob = asyncHandler(async (req, res) => {
+  res.json(await talent.updateJob(req.params.id, req.body));
+});
+const deleteJob = asyncHandler(async (req, res) => {
+  res.json(await talent.deleteJob(req.params.id));
+});
+
+const listCandidates = asyncHandler(async (req, res) => {
+  res.json(await talent.listCandidates(req.query));
+});
+const createCandidate = asyncHandler(async (req, res) => {
+  res.status(201).json(await talent.createCandidate(req.body));
+});
+const updateCandidate = asyncHandler(async (req, res) => {
+  res.json(await talent.updateCandidate(req.params.id, req.body));
+});
+const deleteCandidate = asyncHandler(async (req, res) => {
+  res.json(await talent.deleteCandidate(req.params.id));
+});
+const recruitmentFunnel = asyncHandler(async (req, res) => {
+  res.json(await talent.recruitmentFunnel());
+});
+
+const listInterviews = asyncHandler(async (req, res) => {
+  res.json(await talent.listInterviews(req.query));
+});
+const createInterview = asyncHandler(async (req, res) => {
+  res.status(201).json(await talent.createInterview(req.body, req.user));
+});
+const updateInterview = asyncHandler(async (req, res) => {
+  res.json(await talent.updateInterview(req.params.id, req.body));
+});
+const deleteInterview = asyncHandler(async (req, res) => {
+  res.json(await talent.deleteInterview(req.params.id));
+});
+
+const listIncentives = asyncHandler(async (req, res) => {
+  res.json(await talent.listIncentives(req.query));
+});
+const createIncentive = asyncHandler(async (req, res) => {
+  res.status(201).json(await talent.createIncentive(req.body, req.user));
+});
+const reviewIncentive = asyncHandler(async (req, res) => {
+  res.json(await talent.reviewIncentive(req.params.id, req.body, req.user));
+});
+const deleteIncentive = asyncHandler(async (req, res) => {
+  res.json(await talent.deleteIncentive(req.params.id));
+});
+
 module.exports = {
   getDashboard,
   listEmployees,
@@ -198,4 +267,25 @@ module.exports = {
   createExpense,
   reviewExpense,
   deleteExpense,
+  listPerformance,
+  createPerformance,
+  updatePerformance,
+  deletePerformance,
+  listJobs,
+  createJob,
+  updateJob,
+  deleteJob,
+  listCandidates,
+  createCandidate,
+  updateCandidate,
+  deleteCandidate,
+  recruitmentFunnel,
+  listInterviews,
+  createInterview,
+  updateInterview,
+  deleteInterview,
+  listIncentives,
+  createIncentive,
+  reviewIncentive,
+  deleteIncentive,
 };

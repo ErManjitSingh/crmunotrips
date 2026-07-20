@@ -47,4 +47,30 @@ export const hrApi = {
   createExpense: (body) => API.post('/hr/expenses', body).then((r) => r.data),
   reviewExpense: (id, body) => API.patch(`/hr/expenses/${id}/review`, body).then((r) => r.data),
   deleteExpense: (id) => API.delete(`/hr/expenses/${id}`).then((r) => r.data),
+
+  performance: (params) => API.get('/hr/performance', { params, skipSuccessToast: true }).then((r) => r.data),
+  createPerformance: (body) => API.post('/hr/performance', body).then((r) => r.data),
+  updatePerformance: (id, body) => API.put(`/hr/performance/${id}`, body).then((r) => r.data),
+  deletePerformance: (id) => API.delete(`/hr/performance/${id}`).then((r) => r.data),
+
+  jobs: (params) => API.get('/hr/jobs', { params, skipSuccessToast: true }).then((r) => r.data),
+  createJob: (body) => API.post('/hr/jobs', body).then((r) => r.data),
+  updateJob: (id, body) => API.put(`/hr/jobs/${id}`, body).then((r) => r.data),
+  deleteJob: (id) => API.delete(`/hr/jobs/${id}`).then((r) => r.data),
+
+  candidates: (params) => API.get('/hr/candidates', { params, skipSuccessToast: true }).then((r) => r.data),
+  recruitmentFunnel: () => API.get('/hr/candidates/funnel', { skipSuccessToast: true }).then((r) => r.data),
+  createCandidate: (body) => API.post('/hr/candidates', body).then((r) => r.data),
+  updateCandidate: (id, body) => API.put(`/hr/candidates/${id}`, body).then((r) => r.data),
+  deleteCandidate: (id) => API.delete(`/hr/candidates/${id}`).then((r) => r.data),
+
+  interviews: (params) => API.get('/hr/interviews', { params, skipSuccessToast: true }).then((r) => r.data),
+  createInterview: (body) => API.post('/hr/interviews', body).then((r) => r.data),
+  updateInterview: (id, body) => API.put(`/hr/interviews/${id}`, body).then((r) => r.data),
+  deleteInterview: (id) => API.delete(`/hr/interviews/${id}`).then((r) => r.data),
+
+  incentives: (params) => API.get('/hr/incentives', { params, skipSuccessToast: true }).then((r) => r.data),
+  createIncentive: (body) => API.post('/hr/incentives', body).then((r) => r.data),
+  reviewIncentive: (id, body) => API.patch(`/hr/incentives/${id}/review`, body).then((r) => r.data),
+  deleteIncentive: (id) => API.delete(`/hr/incentives/${id}`).then((r) => r.data),
 };

@@ -1,31 +1,6 @@
 import HrComingSoon from './HrComingSoon';
 
 const MODULES = {
-  incentives: {
-    title: 'Incentives',
-    description: 'Sales incentives, bonuses and commissions',
-    features: ['Sales incentive plans', 'Bonus cycles', 'Approvals'],
-  },
-  performance: {
-    title: 'Performance',
-    description: 'Reviews, KPIs, feedback and promotion insights',
-    features: ['Monthly / quarterly reviews', 'KPI tracking', '360 feedback'],
-  },
-  recruitment: {
-    title: 'Recruitment',
-    description: 'Hiring pipeline from application to offer',
-    features: ['Candidate pipeline', 'Resume bank', 'Offer letters'],
-  },
-  'job-openings': {
-    title: 'Job Openings',
-    description: 'Publish and manage open positions',
-    features: ['Job posts', 'Hiring managers', 'Headcount plans'],
-  },
-  interviews: {
-    title: 'Interviews',
-    description: 'Schedule rounds and capture interviewer feedback',
-    features: ['Interview calendar', 'Scorecards', 'Feedback forms'],
-  },
   events: {
     title: 'Events',
     description: 'Office events, celebrations and townhalls',
