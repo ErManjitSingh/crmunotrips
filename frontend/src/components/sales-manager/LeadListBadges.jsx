@@ -1,4 +1,4 @@
-import { MapPin, User, Users, MessageCircle, Calendar } from 'lucide-react';
+import { MapPin, User, Users, MessageCircle, Calendar, Clock } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getLeadSourceShortLabel } from '../../lib/leadSourceLabels';
 import Avatar from '../ui/Avatar';
@@ -31,6 +31,44 @@ const DEST_COLORS = [
 function destStyle(name = '') {
   const i = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % DEST_COLORS.length;
   return DEST_COLORS[i];
+}
+
+/** Compact “when lead arrived” under customer name. */
+export function formatLeadArrivedAt(date) {
+  if (!date) return null;
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const ms = Date.now() - d.getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+
+  return d.toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+export function leadArrivedFullTitle(date) {
+  if (!date) return undefined;
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
 }
 
 export function LeadIdPill({ id }) {
@@ -146,11 +184,22 @@ export function formatFollowUpDate(date) {
 
 export function CustomerCell({ name, lead, showPhone = false }) {
   const isRepeated = lead?.isRepeatCustomer || lead?.isVip;
+  const arrived = formatLeadArrivedAt(lead?.createdAt);
+  const arrivedTitle = leadArrivedFullTitle(lead?.createdAt);
   return (
     <div className="flex items-start gap-2.5 min-w-0 max-w-[240px]">
       <Avatar name={name} size="sm" className="!w-8 !h-8 !text-[11px] shrink-0 mt-0.5" />
       <div className="min-w-0">
         <p className="font-semibold text-sm text-content-primary truncate">{name}</p>
+        {arrived && (
+          <p
+            className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500 leading-tight"
+            title={arrivedTitle}
+          >
+            <Clock className="w-3 h-3 shrink-0 text-slate-400" />
+            <span className="truncate">{arrived}</span>
+          </p>
+        )}
         <div className="mt-1 flex items-center gap-1.5 flex-wrap">
           {isRepeated ? (
             <RepeatedLeadBadge size="sm" />

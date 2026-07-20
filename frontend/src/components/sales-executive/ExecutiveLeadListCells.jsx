@@ -13,6 +13,7 @@ import { getLeadSourceShortLabel } from '../../lib/leadSourceLabels';
 import Avatar from '../ui/Avatar';
 import { STATUS_STYLES, formatBudget } from '../sales-manager/managerUtils';
 import RepeatedLeadBadge from '../leads/RepeatedLeadBadge';
+import { formatLeadArrivedAt, leadArrivedFullTitle } from '../sales-manager/LeadListBadges';
 
 function formatCreatedAt(date) {
   if (!date) return null;
@@ -95,6 +96,8 @@ export function ExecCustomerCell({ lead }) {
   const name = lead?.name || 'Unknown';
   const source = getLeadSourceShortLabel(lead?.source, lead?.sourceLabel);
   const isRepeated = lead?.isRepeatCustomer || lead?.isVip;
+  const arrived = formatLeadArrivedAt(lead?.createdAt);
+  const arrivedTitle = leadArrivedFullTitle(lead?.createdAt);
 
   return (
     <Link
@@ -104,6 +107,15 @@ export function ExecCustomerCell({ lead }) {
       <Avatar name={name} size="sm" className="!w-10 !h-10 !text-xs shrink-0 shadow-sm ring-2 ring-white dark:ring-slate-900" />
       <div className="min-w-0 pt-0.5">
         <p className="text-sm font-semibold text-content-primary truncate leading-tight">{name}</p>
+        {arrived && (
+          <p
+            className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500 leading-tight"
+            title={arrivedTitle}
+          >
+            <Clock className="w-3 h-3 shrink-0 text-slate-400" />
+            <span className="truncate">{arrived}</span>
+          </p>
+        )}
         <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
           {source && (
             <span className="text-[11px] font-medium text-content-muted truncate">{source}</span>
