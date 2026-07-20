@@ -1,9 +1,16 @@
-import { Link } from 'react-router-dom';
-import { Bell, CalendarDays, Moon, Sun, Search, Command } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Bell, CalendarDays, Moon, Sun, Search, Command, ChevronDown, LogOut, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useSidebar } from '../../context/SidebarContext';
-import { cn } from '../../lib/utils';
+import {
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '../ui/dropdown-menu';
 
 function getInitials(name) {
   return name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'HA';
@@ -18,9 +25,15 @@ function formatToday() {
 }
 
 export default function HrTopBar() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { toggleTheme, isDark } = useTheme();
   const { toggleMobileOpen } = useSidebar();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/hr/login', { replace: true });
+  };
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
@@ -73,12 +86,31 @@ export default function HrTopBar() {
             {isDark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
           </button>
 
-          <Link
-            to="/hr/profile"
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#5D5FEF] to-indigo-600 text-xs font-bold text-white shadow-md shadow-violet-500/25"
-          >
-            {getInitials(user?.name)}
-          </Link>
+          <DropdownMenuRoot>
+            <DropdownMenuTrigger className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-left shadow-sm outline-none transition hover:border-violet-200">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#5D5FEF] to-indigo-600 text-xs font-bold text-white shadow-md shadow-violet-500/25">
+                {getInitials(user?.name)}
+              </div>
+              <div className="hidden sm:block min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-800">{user?.name || 'HR Admin'}</p>
+                <p className="truncate text-[11px] text-slate-400">{user?.roleName || 'HR Admin'}</p>
+              </div>
+              <ChevronDown className="hidden sm:block h-4 w-4 text-slate-400" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel>
+                <p className="font-semibold text-slate-800">{user?.name || 'HR Admin'}</p>
+                <p className="mt-0.5 text-[11px] font-normal text-slate-500">{user?.email || ''}</p>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/hr/profile')} className="gap-2">
+                <User className="h-4 w-4" /> Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout} className="gap-2 text-rose-600">
+                <LogOut className="h-4 w-4" /> Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenuRoot>
         </div>
       </div>
     </header>
