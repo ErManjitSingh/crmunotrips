@@ -20,6 +20,9 @@ function HrShell() {
     brandSubtitle: 'HR Management',
     accent: 'violet',
     profilePath: '/hr/profile',
+    // HR portal me "Key Highlights" strip nahi chahiye.
+    // Empty array => SidebarQuickActions render nahi karega.
+    quickActions: [],
     sidebarFooter: <HrSidebarFooter user={user} />,
   };
 
