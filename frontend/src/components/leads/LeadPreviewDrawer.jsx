@@ -26,6 +26,7 @@ import Avatar from '../ui/Avatar';
 import AppDrawer from '../ui/AppDrawer';
 import { formatLeadId } from './constants';
 import { cn } from '../../lib/utils';
+import RepeatedLeadBadge from './RepeatedLeadBadge';
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -194,9 +195,9 @@ export default function LeadPreviewDrawer({
                   </div>
                   <h2 className="mt-2 text-xl font-bold text-slate-900 leading-tight break-words">{lead.name}</h2>
                   {(lead.isRepeatCustomer || lead.isVip) && (
-                    <span className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-violet-100 text-violet-800 text-[11px] font-bold uppercase tracking-wide ring-1 ring-inset ring-violet-300">
-                      Repeated Lead
-                    </span>
+                    <div className="mt-2">
+                      <RepeatedLeadBadge size="md" />
+                    </div>
                   )}
                 </div>
               </div>

@@ -28,6 +28,7 @@ import {
 } from './leadDetailUtils';
 import { toast } from '../../context/ToastContext';
 import { cn } from '../../lib/utils';
+import RepeatedLeadBadge from '../leads/RepeatedLeadBadge';
 
 function formatTravelRange(lead) {
   const start = lead?.travelDate || lead?.travelStartDate;
@@ -225,15 +226,15 @@ export default function LeadDetailHeader({
               </div>
 
               <div className="flex-1 min-w-0">
+                {(lead.isRepeatCustomer || lead.isVip) && (
+                  <div className="mb-2">
+                    <RepeatedLeadBadge size="lg" />
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                   <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                     {lead.name}
                   </h1>
-                  {(lead.isRepeatCustomer || lead.isVip) && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-violet-100 text-violet-800 text-xs font-bold tracking-wide uppercase ring-1 ring-inset ring-violet-300">
-                      Repeated Lead
-                    </span>
-                  )}
                   <LeadStatusBadge status={status} pulse={status === 'new'} />
                   {(lead.isHot || temperature.toLowerCase() === 'hot') && (
                     <Star className="w-4 h-4 text-amber-400 fill-amber-400" />

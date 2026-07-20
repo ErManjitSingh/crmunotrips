@@ -12,6 +12,7 @@ import { cn } from '../../lib/utils';
 import { getLeadSourceShortLabel } from '../../lib/leadSourceLabels';
 import Avatar from '../ui/Avatar';
 import { STATUS_STYLES, formatBudget } from '../sales-manager/managerUtils';
+import RepeatedLeadBadge from '../leads/RepeatedLeadBadge';
 
 function formatCreatedAt(date) {
   if (!date) return null;
@@ -98,7 +99,7 @@ export function ExecCustomerCell({ lead }) {
   return (
     <Link
       to={`/sales-executive/leads/${lead._id}/view`}
-      className="flex items-start gap-3 min-w-[200px] max-w-[260px] rounded-xl -m-1 p-1.5 hover:bg-[#5D5FEF]/[0.04] transition-colors"
+      className="flex items-start gap-3 min-w-[200px] max-w-[280px] rounded-xl -m-1 p-1.5 hover:bg-[#5D5FEF]/[0.04] transition-colors"
     >
       <Avatar name={name} size="sm" className="!w-10 !h-10 !text-xs shrink-0 shadow-sm ring-2 ring-white dark:ring-slate-900" />
       <div className="min-w-0 pt-0.5">
@@ -107,13 +108,11 @@ export function ExecCustomerCell({ lead }) {
           {source && (
             <span className="text-[11px] font-medium text-content-muted truncate">{source}</span>
           )}
-          {!isRepeated ? (
+          {isRepeated ? (
+            <RepeatedLeadBadge size="sm" />
+          ) : (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-500/12 text-[10px] font-bold text-emerald-700 ring-1 ring-inset ring-emerald-500/20">
               New Lead
-            </span>
-          ) : (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-violet-500/12 text-[10px] font-bold text-violet-700 ring-1 ring-inset ring-violet-500/20">
-              Repeated Lead
             </span>
           )}
         </div>

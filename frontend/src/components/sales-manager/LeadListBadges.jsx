@@ -3,6 +3,7 @@ import { cn } from '../../lib/utils';
 import { getLeadSourceShortLabel } from '../../lib/leadSourceLabels';
 import Avatar from '../ui/Avatar';
 import { STATUS_STYLES, formatBudget } from './managerUtils';
+import RepeatedLeadBadge from '../leads/RepeatedLeadBadge';
 
 const SOURCE_STYLES = {
   website: 'bg-gradient-to-r from-sky-500/20 to-blue-500/15 text-sky-700 dark:text-sky-300 ring-sky-400/40',
@@ -146,18 +147,16 @@ export function formatFollowUpDate(date) {
 export function CustomerCell({ name, lead, showPhone = false }) {
   const isRepeated = lead?.isRepeatCustomer || lead?.isVip;
   return (
-    <div className="flex items-start gap-2.5 min-w-0 max-w-[220px]">
+    <div className="flex items-start gap-2.5 min-w-0 max-w-[240px]">
       <Avatar name={name} size="sm" className="!w-8 !h-8 !text-[11px] shrink-0 mt-0.5" />
       <div className="min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="font-semibold text-sm text-content-primary truncate">{name}</p>
-          {!isRepeated ? (
+        <p className="font-semibold text-sm text-content-primary truncate">{name}</p>
+        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+          {isRepeated ? (
+            <RepeatedLeadBadge size="sm" />
+          ) : (
             <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[#5D5FEF]/10 text-[10px] font-semibold text-[#5D5FEF]">
               New
-            </span>
-          ) : (
-            <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-violet-500/10 text-[10px] font-semibold text-violet-700">
-              Repeated Lead
             </span>
           )}
         </div>
