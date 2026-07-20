@@ -217,14 +217,9 @@ export default function MyLeadsPage() {
         pageCount={pageCount}
         total={total}
         onPaginationChange={setPagination}
-        estimateRowHeight={88}
+        estimateRowHeight={72}
         maxHeight="min(72vh, 720px)"
-        containerClassName="rounded-2xl border border-subtle bg-white dark:bg-slate-900 shadow-sm overflow-hidden ring-1 ring-black/[0.02]"
-        headerRowClassName="border-b border-subtle"
-        thClassName="text-left px-4 py-3.5 text-[10px] font-bold uppercase tracking-[0.08em] text-content-muted whitespace-nowrap bg-slate-50/90 dark:bg-slate-950/40 backdrop-blur-sm"
-        tdClassName="px-4 py-4 align-middle text-sm"
-        rowClassName="hover:bg-[#5D5FEF]/[0.03] transition-colors border-b border-subtle/70 last:border-0"
-        getRowClassName={(lead) => (lead?.isHot ? 'bg-orange-500/[0.03]' : undefined)}
+        getRowClassName={(lead) => (lead?.isHot ? 'bg-orange-50' : undefined)}
       />
 
       <ExecutivePipelineCta />

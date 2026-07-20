@@ -7,9 +7,13 @@ import { useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import TablePagination from './TablePagination';
 import { cn } from '../../lib/utils';
-
-const defaultTh = 'text-left px-4 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted whitespace-nowrap bg-violet-50/50 dark:bg-violet-950/20';
-const defaultTd = 'px-4 py-3.5 align-middle text-sm';
+import {
+  LEAD_LIST_CONTAINER,
+  LEAD_LIST_TH,
+  LEAD_LIST_TD,
+  LEAD_LIST_ROW_HOVER,
+  leadListRowBg,
+} from '../leads/leadListStyles';
 
 export default function VirtualizedRoleTable({
   data,
@@ -22,13 +26,13 @@ export default function VirtualizedRoleTable({
   onPaginationChange,
   totalLabel = 'leads',
   paginationAccent = 'violet',
-  rowClassName = 'hover:bg-violet-50/40 dark:hover:bg-violet-950/20 transition-colors',
-  tableClassName = 'w-full text-sm',
-  containerClassName = 'rounded-2xl border border-subtle bg-white dark:bg-slate-900 shadow-sm overflow-hidden',
+  rowClassName = LEAD_LIST_ROW_HOVER,
+  tableClassName = 'w-full text-sm table-auto border-collapse min-w-[900px]',
+  containerClassName = LEAD_LIST_CONTAINER,
   headerRowClassName = 'border-b border-subtle',
-  thClassName = defaultTh,
-  tdClassName = defaultTd,
-  estimateRowHeight = 56,
+  thClassName = LEAD_LIST_TH,
+  tdClassName = LEAD_LIST_TD,
+  estimateRowHeight = 72,
   maxHeight = 'min(70vh, 680px)',
   getRowClassName,
 }) {
@@ -72,7 +76,7 @@ export default function VirtualizedRoleTable({
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y divide-subtle">
+          <tbody>
             {isLoading ? (
               <tr>
                 <td colSpan={columns.length} className="p-12 text-center text-content-muted">
@@ -94,14 +98,13 @@ export default function VirtualizedRoleTable({
                 )}
                 {virtualRows.map((virtualRow) => {
                   const row = tableRows[virtualRow.index];
-                  const isOdd = virtualRow.index % 2 === 0;
+                  const stallOrExtra = getRowClassName?.(row.original);
                   return (
                     <tr
                       key={row.id}
                       className={cn(
                         rowClassName,
-                        isOdd ? 'bg-sky-50' : 'bg-white',
-                        getRowClassName?.(row.original)
+                        stallOrExtra || leadListRowBg(virtualRow.index)
                       )}
                     >
                       {row.getVisibleCells().map((cell) => (

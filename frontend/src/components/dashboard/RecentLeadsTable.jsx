@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Phone, Inbox } from 'lucide-react';
+import { ArrowUpRight, Inbox } from 'lucide-react';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
-import Avatar from '../ui/Avatar';
 import DashboardPanel from './DashboardPanel';
+import { CustomerCell, DestinationChip, BudgetBadge, TravelDateCell, SourceBadge } from '../sales-manager/LeadListBadges';
+import { LEAD_LIST_TH, LEAD_LIST_TD, leadListRowClass } from '../leads/leadListStyles';
 
 export default function RecentLeadsTable({
   leads = [],
@@ -20,15 +21,15 @@ export default function RecentLeadsTable({
   const hasMore = total > visibleLeads.length;
 
   const columns = [
-    { key: 'customer', label: 'Customer', className: 'min-w-[180px] w-[28%]' },
-    { key: 'destination', label: 'Destination', className: 'min-w-[110px] w-[14%]' },
-    { key: 'budget', label: 'Budget', className: 'min-w-[100px] w-[12%]' },
-    { key: 'travelDate', label: 'Travel Date', className: 'min-w-[100px] w-[12%]' },
+    { key: 'customer', label: 'Customer' },
+    { key: 'destination', label: 'Destination' },
+    { key: 'budget', label: 'Budget' },
+    { key: 'travelDate', label: 'Travel Date' },
     ...(showAgent
-      ? [{ key: 'agent', label: 'Agent', className: 'min-w-[100px] w-[14%]' }]
-      : [{ key: 'created', label: 'Created', className: 'min-w-[100px] w-[14%]' }]),
-    { key: 'status', label: 'Status', className: 'min-w-[110px] w-[12%]' },
-    { key: 'source', label: 'Source', className: 'min-w-[90px] w-[10%]' },
+      ? [{ key: 'agent', label: 'Agent' }]
+      : [{ key: 'created', label: 'Created' }]),
+    { key: 'status', label: 'Status' },
+    { key: 'source', label: 'Source' },
   ];
 
   const tableBody = visibleLeads.length === 0 ? (
@@ -38,14 +39,11 @@ export default function RecentLeadsTable({
     </div>
   ) : (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] table-fixed border-collapse">
+      <table className="w-full min-w-[760px] table-auto border-collapse">
         <thead>
-          <tr className="border-b border-subtle bg-surface-elevated/70">
+          <tr>
             {columns.map((col) => (
-              <th
-                key={col.key}
-                className={`text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-content-muted whitespace-nowrap first:pl-5 last:pr-5 ${col.className}`}
-              >
+              <th key={col.key} className={LEAD_LIST_TH}>
                 {col.label}
               </th>
             ))}
@@ -53,53 +51,47 @@ export default function RecentLeadsTable({
         </thead>
         <tbody>
           {visibleLeads.map((lead, i) => (
-            <tr
-              key={lead._id}
-              className={`border-b border-subtle last:border-0 hover:bg-brand-500/[0.04] transition-colors align-middle ${
-                i % 2 === 1 ? 'bg-surface-elevated/30' : ''
-              }`}
-            >
-              <td className="px-4 py-3.5 first:pl-5">
-                <Link to={`/leads/${lead._id}`} className="flex items-center gap-2.5 group min-w-0">
-                  <Avatar name={lead.name} size="sm" className="!w-8 !h-8 !text-xs shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-content-primary truncate group-hover:text-brand-600 transition-colors">
-                      {lead.name}
-                    </p>
-                    <p className="text-[11px] text-content-muted flex items-center gap-1 truncate">
-                      <Phone className="w-3 h-3 shrink-0" />
-                      {lead.phone}
-                    </p>
-                  </div>
+            <tr key={lead._id} className={leadListRowClass(i, 'cursor-pointer')}>
+              <td className={LEAD_LIST_TD}>
+                <Link to={`/leads/${lead._id}`} className="block min-w-0">
+                  <CustomerCell name={lead.name} lead={lead} />
                 </Link>
               </td>
-              <td className="px-4 py-3.5 text-sm text-content-secondary truncate">{lead.destination || '—'}</td>
-              <td className="px-4 py-3.5 text-sm font-semibold metric-tabular whitespace-nowrap">
-                ₹{(lead.budget || 0).toLocaleString('en-IN')}
+              <td className={LEAD_LIST_TD}>
+                <DestinationChip name={lead.destination} />
               </td>
-              <td className="px-4 py-3.5 text-sm text-content-muted whitespace-nowrap">
-                {lead.travelDate
-                  ? new Date(lead.travelDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                  : '—'}
+              <td className={LEAD_LIST_TD}>
+                <BudgetBadge amount={lead.budget} />
+              </td>
+              <td className={LEAD_LIST_TD}>
+                <TravelDateCell date={lead.travelDate} />
               </td>
               {showAgent ? (
-                <td className="px-4 py-3.5 text-xs text-content-secondary truncate">
+                <td className={`${LEAD_LIST_TD} text-xs text-content-secondary truncate`}>
                   {lead.assignedTo?.name || 'Unassigned'}
                 </td>
               ) : (
-                <td className="px-4 py-3.5 text-xs text-content-muted whitespace-nowrap">
+                <td className={`${LEAD_LIST_TD} text-xs text-content-muted whitespace-nowrap`}>
                   {lead.createdAt
-                    ? new Date(lead.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                    ? new Date(lead.createdAt).toLocaleString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true,
+                      })
                     : '—'}
                 </td>
               )}
-              <td className="px-4 py-3.5">
+              <td className={LEAD_LIST_TD}>
                 <LeadStatusBadge status={lead.status} pulse={lead.status === 'new'} size="sm" />
               </td>
-              <td className="px-4 py-3.5 last:pr-5">
-                <span className="text-xs text-content-muted truncate block">
-                  {lead.sourceShort || lead.sourceLabel || lead.source || '—'}
-                </span>
+              <td className={LEAD_LIST_TD}>
+                <SourceBadge
+                  source={lead.source}
+                  label={lead.sourceLabel}
+                  sourceShort={lead.sourceShort}
+                />
               </td>
             </tr>
           ))}

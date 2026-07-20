@@ -24,6 +24,8 @@ import {
   CustomerCell,
   FILTER_THEMES,
 } from './LeadListBadges';
+import { leadListRowClass } from '../leads/leadListStyles';
+import { cn } from '../../lib/utils';
 
 const AUTO_RULES = [
   { id: 'destination-match', name: 'Destination Match', desc: 'Auto-assign on lead create (currently disabled — manual assign only)', enabled: false, color: 'from-emerald-500/20 to-teal-500/15 border-emerald-500/25' },
@@ -224,7 +226,14 @@ export default function LeadAssignmentPage() {
                     return (
                       <tr
                         key={lead._id}
-                        className={`group border-b border-subtle/60 last:border-0 hover:bg-sky-100/70 ${selected.includes(lead._id) ? 'bg-amber-100' : lead.isHot ? 'bg-orange-50' : i % 2 === 0 ? 'bg-sky-50' : 'bg-white'}`}
+                        className={cn(
+                          'group border-b border-slate-100 last:border-0',
+                          selected.includes(lead._id)
+                            ? 'bg-amber-100 hover:bg-amber-100'
+                            : lead.isHot
+                              ? 'bg-orange-50 hover:bg-sky-100/80'
+                              : leadListRowClass(i)
+                        )}
                       >
                         <td className={compactTd}>
                           <button type="button" onClick={() => toggle(lead._id)} className="text-content-muted hover:text-amber-600">

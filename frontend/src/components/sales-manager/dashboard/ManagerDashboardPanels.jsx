@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Medal, Clock, FileCheck } from 'lucide-react';
 import { formatCurrency, STATUS_STYLES } from '../managerUtils';
 import PriorityBadge from '../PriorityBadge';
+import { CustomerCell } from '../LeadListBadges';
+import { leadListRowClass } from '../../leads/leadListStyles';
 
 export default function ManagerDashboardPanels({ data }) {
   if (!data) return null;
@@ -10,21 +12,29 @@ export default function ManagerDashboardPanels({ data }) {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
       <Panel title="Recent Leads" link="/sales-manager/leads/all" delay={0.3}>
-        <div className="divide-y divide-subtle">
-          {data.recentLeads?.map((lead) => (
-            <div key={lead._id} className="py-3 flex items-center gap-3 first:pt-0 last:pb-0">
+        <div className="rounded-xl border border-subtle overflow-hidden">
+          {data.recentLeads?.length ? data.recentLeads.map((lead, i) => (
+            <Link
+              key={lead._id}
+              to={`/sales-manager/leads/${lead._id}/view`}
+              className={`flex items-center gap-3 px-3 py-2.5 border-b border-slate-100 last:border-0 ${leadListRowClass(i)}`}
+            >
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-sm text-content-primary">{lead.name}</span>
-                  {lead.isHot && <PriorityBadge lead={lead} />}
-                </div>
-                <p className="text-xs text-content-muted mt-0.5">{lead.destination} · {formatCurrency(lead.budget)} · {lead.executive}</p>
+                <CustomerCell name={lead.name} lead={lead} />
+                <p className="text-xs text-content-muted mt-0.5 pl-10 truncate">
+                  {lead.destination} · {formatCurrency(lead.budget)} · {lead.executive}
+                </p>
               </div>
-              <span className={`text-[10px] font-semibold px-2 py-1 rounded-lg ring-1 ring-inset capitalize ${STATUS_STYLES[lead.status] || STATUS_STYLES.new}`}>
-                {lead.status?.replace(/_/g, ' ')}
-              </span>
-            </div>
-          ))}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {lead.isHot && <PriorityBadge lead={lead} />}
+                <span className={`text-[10px] font-semibold px-2 py-1 rounded-lg ring-1 ring-inset capitalize ${STATUS_STYLES[lead.status] || STATUS_STYLES.new}`}>
+                  {lead.status?.replace(/_/g, ' ')}
+                </span>
+              </div>
+            </Link>
+          )) : (
+            <p className="text-sm text-content-muted py-8 text-center">No recent leads</p>
+          )}
         </div>
       </Panel>
 

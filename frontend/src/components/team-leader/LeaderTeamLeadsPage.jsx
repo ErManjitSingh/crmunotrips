@@ -298,8 +298,6 @@ export default function LeaderTeamLeadsPage() {
           total={total}
           onPaginationChange={setPagination}
           emptyMessage={filter === 'lost' ? 'No lost leads' : 'No leads in this view'}
-          containerClassName={`rounded-2xl border ${isAllView ? 'border-subtle bg-white dark:bg-slate-900 shadow-sm' : showRecoveryUi ? 'border-teal-500/25 shadow-lg shadow-teal-500/5' : 'border-subtle'} bg-surface/80 backdrop-blur-xl`}
-          headerRowClassName={isAllView ? 'border-b border-subtle bg-slate-50/80 dark:bg-slate-900/80' : showRecoveryUi ? `border-b bg-gradient-to-r ${theme.header} ${theme.border}` : 'border-b border-subtle bg-surface-elevated/50'}
           getRowClassName={executiveStallRowClass}
         />
       </TooltipProvider>

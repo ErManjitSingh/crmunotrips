@@ -23,6 +23,13 @@ import {
 } from '../sales-manager/LeadListBadges';
 import TablePagination, { DEFAULT_PAGE_SIZE } from '../ui/TablePagination';
 import { cn } from '../../lib/utils';
+import {
+  LEAD_LIST_CONTAINER,
+  LEAD_LIST_TH,
+  LEAD_LIST_TD,
+  LEAD_LIST_ROW_HOVER,
+  leadListRowBg,
+} from './leadListStyles';
 
 const defaultMenuActions = {
   view: true,
@@ -32,8 +39,8 @@ const defaultMenuActions = {
   delete: true,
 };
 
-const leadsTh = 'text-left px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap bg-slate-50 border-b border-subtle';
-const leadsTd = 'px-3 py-3.5 align-middle text-sm border-b border-slate-100';
+const leadsTh = LEAD_LIST_TH;
+const leadsTd = LEAD_LIST_TD;
 
 export default function LeadDataTable({
   leads,
@@ -210,7 +217,7 @@ export default function LeadDataTable({
   }
 
   return (
-    <div className="rounded-2xl border border-subtle bg-white shadow-sm overflow-hidden">
+    <div className={LEAD_LIST_CONTAINER}>
       <div ref={scrollRef} className="overflow-auto max-h-[min(70vh,680px)]">
         <table className="w-full text-sm table-auto border-collapse min-w-[1100px]">
           <thead className="sticky top-0 z-20">
@@ -245,13 +252,12 @@ export default function LeadDataTable({
             {virtualRows.map((virtualRow) => {
               const row = tableRows[virtualRow.index];
               const isOdd = virtualRow.index % 2 === 0;
-              const rowBg = isOdd ? 'bg-sky-50' : 'bg-white';
-              const hoverBg = 'hover:bg-sky-100/80';
+              const rowBg = leadListRowBg(virtualRow.index);
               return (
                 <tr
                   key={row.id}
                   onClick={() => onRowClick(row.original)}
-                  className={cn('group cursor-pointer transition-colors', rowBg, hoverBg)}
+                  className={cn('group cursor-pointer', rowBg, LEAD_LIST_ROW_HOVER)}
                 >
                   {row.getVisibleCells().map((cell) => {
                     const colId = cell.column.id;

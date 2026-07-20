@@ -12,8 +12,7 @@ import { cn } from '../../lib/utils';
 import { getLeadSourceShortLabel } from '../../lib/leadSourceLabels';
 import Avatar from '../ui/Avatar';
 import { STATUS_STYLES, formatBudget } from '../sales-manager/managerUtils';
-import RepeatedLeadBadge from '../leads/RepeatedLeadBadge';
-import { formatLeadArrivedAt, leadArrivedFullTitle } from '../sales-manager/LeadListBadges';
+import { CustomerCell } from '../sales-manager/LeadListBadges';
 
 function formatCreatedAt(date) {
   if (!date) return null;
@@ -93,42 +92,13 @@ export function ExecLeadIdCell({ lead }) {
 }
 
 export function ExecCustomerCell({ lead }) {
-  const name = lead?.name || 'Unknown';
-  const source = getLeadSourceShortLabel(lead?.source, lead?.sourceLabel);
-  const isRepeated = lead?.isRepeatCustomer || lead?.isVip;
-  const arrived = formatLeadArrivedAt(lead?.createdAt);
-  const arrivedTitle = leadArrivedFullTitle(lead?.createdAt);
-
   return (
     <Link
       to={`/sales-executive/leads/${lead._id}/view`}
-      className="flex items-start gap-3 min-w-[200px] max-w-[300px] rounded-xl -m-1 p-1.5 hover:bg-[#5D5FEF]/[0.04] transition-colors"
+      className="block rounded-xl -m-1 p-1.5 hover:bg-[#5D5FEF]/[0.04] transition-colors min-w-[200px] max-w-[300px]"
+      onClick={(e) => e.stopPropagation()}
     >
-      <Avatar name={name} size="sm" className="!w-10 !h-10 !text-xs shrink-0 shadow-sm ring-2 ring-white dark:ring-slate-900" />
-      <div className="min-w-0 pt-0.5">
-        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <p className="text-sm font-semibold text-content-primary truncate leading-tight">{name}</p>
-          {isRepeated ? (
-            <RepeatedLeadBadge size="sm" />
-          ) : (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-500/12 text-[10px] font-bold text-emerald-700 ring-1 ring-inset ring-emerald-500/20 shrink-0">
-              New
-            </span>
-          )}
-        </div>
-        {arrived && (
-          <p
-            className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500 leading-tight"
-            title={arrivedTitle}
-          >
-            <Clock className="w-3 h-3 shrink-0 text-slate-400" />
-            <span className="truncate">{arrived}</span>
-          </p>
-        )}
-        {source && (
-          <p className="mt-1 text-[11px] font-medium text-content-muted truncate">{source}</p>
-        )}
-      </div>
+      <CustomerCell name={lead?.name || 'Unknown'} lead={lead} />
     </Link>
   );
 }

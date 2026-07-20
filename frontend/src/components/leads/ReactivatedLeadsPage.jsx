@@ -23,7 +23,8 @@ import {
   ReactivationFiltersPanel,
   ReactivationEmptyState,
 } from './ReactivationPanelUi';
-import { compactTable, compactTh, compactTd } from '../ui/compactTable';
+import { compactTable, compactTd } from '../ui/compactTable';
+import { leadListRowClass } from './leadListStyles';
 
 const STAGES = [
   { value: '', label: 'All Stages' },
@@ -253,9 +254,9 @@ export default function ReactivatedLeadsPage() {
           <div className="overflow-x-auto">
             <table className={compactTable}>
               <thead>
-                <tr className="border-b border-teal-500/20 bg-gradient-to-r from-teal-500/10 via-cyan-500/8 to-emerald-500/10">
+                <tr className="border-b border-subtle bg-slate-50">
                   {['Lead ID', 'Customer', 'Destination', 'Executive', 'Stage', 'Status', 'Reactivated', 'Actions'].map((h) => (
-                    <th key={h} className={compactTh}>{h}</th>
+                    <th key={h} className="text-left px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -263,7 +264,7 @@ export default function ReactivatedLeadsPage() {
                 {rows.map((lead, i) => (
                   <tr
                     key={lead._id}
-                    className={`border-b border-subtle/60 last:border-0 hover:bg-teal-500/[0.04] ${i % 2 === 1 ? 'bg-surface/30' : ''}`}
+                    className={leadListRowClass(i)}
                   >
                     <td className={compactTd}><LeadIdPill id={lead.leadId} /></td>
                     <td className={compactTd}>

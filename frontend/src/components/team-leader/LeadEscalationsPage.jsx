@@ -54,7 +54,7 @@ export default function LeadEscalationsPage() {
               <span className="ml-auto text-sm font-bold tabular-nums text-content-secondary">{items.length}</span>
             </div>
 
-            <div className="rounded-2xl border border-subtle bg-surface/80 backdrop-blur-xl overflow-hidden">
+            <div className="rounded-2xl border border-subtle bg-white shadow-sm overflow-hidden">
               {items.length === 0 ? (
                 <div className="p-8 text-center text-content-muted text-sm">No cases</div>
               ) : (
@@ -62,18 +62,15 @@ export default function LeadEscalationsPage() {
                   items={items}
                   estimateSize={key === 'complaints' ? 100 : 120}
                   maxHeight="min(60vh, 480px)"
-                  renderItem={(item) => (
-                    <div className="p-5 flex flex-col lg:flex-row lg:items-center gap-4 border-b border-subtle last:border-0">
+                  renderItem={(item, index) => (
+                    <div className={`p-4 flex flex-col lg:flex-row lg:items-center gap-4 border-b border-slate-100 last:border-0 ${index % 2 === 0 ? 'bg-sky-50' : 'bg-white'}`}>
                       <div className="flex-1 min-w-0 space-y-2">
                         {key === 'complaints' ? (
                           <>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="font-semibold text-content-primary">{item.name}</p>
-                              <ManagerStatusBadge status={item.status === 'open' ? 'follow_up' : 'converted'} />
-                            </div>
-                            <p className="text-sm text-content-secondary">{item.destination} · {item.executive}</p>
-                            <p className="text-xs text-rose-600 font-medium">{item.reason}</p>
-                            <p className="text-xs text-content-muted">{formatCurrency(item.budget)}</p>
+                            <CustomerCell name={item.name} lead={item} />
+                            <p className="text-sm text-content-secondary pl-10">{item.destination} · {item.executive}</p>
+                            <p className="text-xs text-rose-600 font-medium pl-10">{item.reason}</p>
+                            <p className="text-xs text-content-muted pl-10">{formatCurrency(item.budget)}</p>
                           </>
                         ) : (
                           <>

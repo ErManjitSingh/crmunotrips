@@ -292,9 +292,6 @@ export default function TeamLeadsPage() {
             pageCount={pageCount}
             total={total}
             onPaginationChange={setPagination}
-            containerClassName={`rounded-2xl border ${isAllView ? 'border-subtle' : theme.border} bg-white dark:bg-slate-900 shadow-sm`}
-            headerRowClassName={`border-b ${isAllView ? 'border-subtle bg-slate-50/80 dark:bg-slate-900/80' : `${theme.border} bg-gradient-to-r ${theme.header}`}`}
-            thClassName="text-left px-4 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted whitespace-nowrap bg-slate-50/80 dark:bg-slate-900/80"
             getRowClassName={executiveStallRowClass}
           />
         </TooltipProvider>
