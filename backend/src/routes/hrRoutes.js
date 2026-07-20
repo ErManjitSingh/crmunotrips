@@ -36,4 +36,30 @@ router.get('/leaves', ctrl.listLeaves);
 router.post('/leaves', requirePermission('hr', 'create'), ctrl.createLeave);
 router.patch('/leaves/:id/review', requirePermission('hr', 'edit'), ctrl.reviewLeave);
 
+router.get('/salary-structures', ctrl.listSalaryStructures);
+router.post('/salary-structures', requirePermission('hr', 'create'), ctrl.createSalaryStructure);
+router.put('/salary-structures/:id', requirePermission('hr', 'edit'), ctrl.updateSalaryStructure);
+router.delete('/salary-structures/:id', requirePermission('hr', 'delete'), ctrl.deleteSalaryStructure);
+
+router.get('/payroll', ctrl.listPayrollRuns);
+router.post('/payroll', requirePermission('hr', 'create'), ctrl.createPayrollRun);
+router.get('/payroll/:id', ctrl.getPayrollRun);
+router.patch('/payroll/:id/status', requirePermission('hr', 'edit'), ctrl.updatePayrollStatus);
+router.delete('/payroll/:id', requirePermission('hr', 'delete'), ctrl.deletePayrollRun);
+
+router.get('/documents', ctrl.listDocuments);
+router.post('/documents', requirePermission('hr', 'create'), ctrl.createDocument);
+router.delete('/documents/:id', requirePermission('hr', 'delete'), ctrl.deleteDocument);
+
+router.get('/assets', ctrl.listAssets);
+router.post('/assets', requirePermission('hr', 'create'), ctrl.createAsset);
+router.post('/assets/:id/assign', requirePermission('hr', 'edit'), ctrl.assignAsset);
+router.post('/assets/:id/return', requirePermission('hr', 'edit'), ctrl.returnAsset);
+router.delete('/assets/:id', requirePermission('hr', 'delete'), ctrl.deleteAsset);
+
+router.get('/expenses', ctrl.listExpenses);
+router.post('/expenses', requirePermission('hr', 'create'), ctrl.createExpense);
+router.patch('/expenses/:id/review', requirePermission('hr', 'edit'), ctrl.reviewExpense);
+router.delete('/expenses/:id', requirePermission('hr', 'delete'), ctrl.deleteExpense);
+
 module.exports = router;

@@ -6,6 +6,7 @@ const HrHoliday = require('../models/hr/HrHoliday');
 const Attendance = require('../models/Attendance');
 const ApiError = require('../utils/apiError');
 const { startOfDay, endOfDay } = require('../utils/queryHelpers');
+const { countPendingPayroll } = require('./hrPhase2Service');
 
 const EMP_POPULATE = [
   { path: 'departmentId', select: 'name code' },
@@ -331,6 +332,7 @@ async function getHrDashboard() {
   const attendancePct = activeEmployees
     ? Math.round((presentToday / activeEmployees) * 1000) / 10
     : 0;
+  const payrollPending = await countPendingPayroll();
 
   return {
     kpis: {
@@ -345,7 +347,7 @@ async function getHrDashboard() {
       workAnniversaries: todayAnniversaries.length,
       pendingLeaves,
       upcomingInterviews: 0,
-      payrollPending: 0,
+      payrollPending,
       attendancePct,
       averageAttendance: attendancePct,
       attritionRate: 0,

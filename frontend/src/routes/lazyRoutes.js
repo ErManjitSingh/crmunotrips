@@ -103,4 +103,9 @@ export const HrHolidaysPage = lazy(() => import('../components/hr/HrHolidaysPage
 export const HrLeavesPage = lazy(() => import('../components/hr/HrLeavesPage'));
 export const HrAttendancePage = lazy(() => import('../components/hr/HrAttendancePage'));
 export const HrAnnouncementsPage = lazy(() => import('../components/hr/HrAnnouncementsPage'));
+export const HrPayrollPage = lazy(() => import('../components/hr/HrPayrollPage'));
+export const HrSalaryStructurePage = lazy(() => import('../components/hr/HrSalaryStructurePage'));
+export const HrDocumentsPage = lazy(() => import('../components/hr/HrDocumentsPage'));
+export const HrAssetsPage = lazy(() => import('../components/hr/HrAssetsPage'));
+export const HrExpensesPage = lazy(() => import('../components/hr/HrExpensesPage'));
 export const HrModulePage = lazy(() => import('../components/hr/HrModulePage'));

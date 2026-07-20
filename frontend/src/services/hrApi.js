@@ -21,4 +21,30 @@ export const hrApi = {
   leaves: (params) => API.get('/hr/leaves', { params, skipSuccessToast: true }).then((r) => r.data),
   createLeave: (body) => API.post('/hr/leaves', body).then((r) => r.data),
   reviewLeave: (id, body) => API.patch(`/hr/leaves/${id}/review`, body).then((r) => r.data),
+
+  salaryStructures: () => API.get('/hr/salary-structures', { skipSuccessToast: true }).then((r) => r.data),
+  createSalaryStructure: (body) => API.post('/hr/salary-structures', body).then((r) => r.data),
+  updateSalaryStructure: (id, body) => API.put(`/hr/salary-structures/${id}`, body).then((r) => r.data),
+  deleteSalaryStructure: (id) => API.delete(`/hr/salary-structures/${id}`).then((r) => r.data),
+
+  payrollRuns: (params) => API.get('/hr/payroll', { params, skipSuccessToast: true }).then((r) => r.data),
+  payrollRun: (id) => API.get(`/hr/payroll/${id}`, { skipSuccessToast: true }).then((r) => r.data),
+  createPayrollRun: (body) => API.post('/hr/payroll', body).then((r) => r.data),
+  updatePayrollStatus: (id, body) => API.patch(`/hr/payroll/${id}/status`, body).then((r) => r.data),
+  deletePayrollRun: (id) => API.delete(`/hr/payroll/${id}`).then((r) => r.data),
+
+  documents: (params) => API.get('/hr/documents', { params, skipSuccessToast: true }).then((r) => r.data),
+  createDocument: (body) => API.post('/hr/documents', body).then((r) => r.data),
+  deleteDocument: (id) => API.delete(`/hr/documents/${id}`).then((r) => r.data),
+
+  assets: (params) => API.get('/hr/assets', { params, skipSuccessToast: true }).then((r) => r.data),
+  createAsset: (body) => API.post('/hr/assets', body).then((r) => r.data),
+  assignAsset: (id, body) => API.post(`/hr/assets/${id}/assign`, body).then((r) => r.data),
+  returnAsset: (id, body) => API.post(`/hr/assets/${id}/return`, body).then((r) => r.data),
+  deleteAsset: (id) => API.delete(`/hr/assets/${id}`).then((r) => r.data),
+
+  expenses: (params) => API.get('/hr/expenses', { params, skipSuccessToast: true }).then((r) => r.data),
+  createExpense: (body) => API.post('/hr/expenses', body).then((r) => r.data),
+  reviewExpense: (id, body) => API.patch(`/hr/expenses/${id}/review`, body).then((r) => r.data),
+  deleteExpense: (id) => API.delete(`/hr/expenses/${id}`).then((r) => r.data),
 };

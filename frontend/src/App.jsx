@@ -107,6 +107,11 @@ import {
   HrLeavesPage,
   HrAttendancePage,
   HrAnnouncementsPage,
+  HrPayrollPage,
+  HrSalaryStructurePage,
+  HrDocumentsPage,
+  HrAssetsPage,
+  HrExpensesPage,
   HrModulePage,
 } from './routes/lazyRoutes';
 
@@ -276,16 +281,16 @@ function App() {
               <Route path="hr/departments" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrDepartmentsPage /></PermissionRoute></RoleRoute>} />
               <Route path="hr/designations" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrDesignationsPage /></PermissionRoute></RoleRoute>} />
               <Route path="hr/announcements" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrAnnouncementsPage /></PermissionRoute></RoleRoute>} />
-              <Route path="hr/payroll" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrModulePage moduleKey="payroll" /></PermissionRoute></RoleRoute>} />
-              <Route path="hr/salary-structure" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrModulePage moduleKey="salary-structure" /></PermissionRoute></RoleRoute>} />
+              <Route path="hr/payroll" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrPayrollPage /></PermissionRoute></RoleRoute>} />
+              <Route path="hr/salary-structure" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrSalaryStructurePage /></PermissionRoute></RoleRoute>} />
               <Route path="hr/incentives" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrModulePage moduleKey="incentives" /></PermissionRoute></RoleRoute>} />
               <Route path="hr/performance" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrModulePage moduleKey="performance" /></PermissionRoute></RoleRoute>} />
               <Route path="hr/recruitment" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrModulePage moduleKey="recruitment" /></PermissionRoute></RoleRoute>} />
               <Route path="hr/job-openings" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrModulePage moduleKey="job-openings" /></PermissionRoute></RoleRoute>} />
               <Route path="hr/interviews" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrModulePage moduleKey="interviews" /></PermissionRoute></RoleRoute>} />
-              <Route path="hr/assets" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrModulePage moduleKey="assets" /></PermissionRoute></RoleRoute>} />
-              <Route path="hr/documents" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrModulePage moduleKey="documents" /></PermissionRoute></RoleRoute>} />
-              <Route path="hr/expenses" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrModulePage moduleKey="expenses" /></PermissionRoute></RoleRoute>} />
+              <Route path="hr/assets" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrAssetsPage /></PermissionRoute></RoleRoute>} />
+              <Route path="hr/documents" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrDocumentsPage /></PermissionRoute></RoleRoute>} />
+              <Route path="hr/expenses" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrExpensesPage /></PermissionRoute></RoleRoute>} />
               <Route path="hr/events" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrModulePage moduleKey="events" /></PermissionRoute></RoleRoute>} />
               <Route path="hr/training" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrModulePage moduleKey="training" /></PermissionRoute></RoleRoute>} />
               <Route path="hr/exit" element={<RoleRoute roles={['admin']}><PermissionRoute module="hr"><HrModulePage moduleKey="exit" /></PermissionRoute></RoleRoute>} />
