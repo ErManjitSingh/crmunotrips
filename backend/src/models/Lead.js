@@ -157,11 +157,39 @@ leadSchema.index({ branchId: 1, assignedTo: 1, status: 1 });
 leadSchema.index({ branchId: 1, assignedTo: 1, isHot: 1, status: 1 });
 leadSchema.index({ branchId: 1, 'reactivation.isReactivated': 1, 'reactivation.stage': 1, updatedAt: -1 });
 
+async function nextLeadId(Model) {
+  // Use max numeric suffix — countDocuments() reuses IDs after soft-deletes/gaps
+  // and trips unique leadId (website email still succeeds, CRM push fails).
+  const [row] = await Model.aggregate([
+    { $match: { leadId: { $type: 'string', $regex: /^L-\d+$/ } } },
+    {
+      $group: {
+        _id: null,
+        max: {
+          $max: {
+            $convert: {
+              input: { $arrayElemAt: [{ $split: ['$leadId', '-'] }, 1] },
+              to: 'int',
+              onError: 0,
+              onNull: 0,
+            },
+          },
+        },
+      },
+    },
+  ]);
+  const next = (row?.max || 0) + 1;
+  return `L-${String(next).padStart(4, '0')}`;
+}
+
 leadSchema.pre('save', async function generateLeadId(next) {
   if (this.leadId) return next();
-  const count = await this.constructor.countDocuments();
-  this.leadId = `L-${String(count + 1).padStart(4, '0')}`;
-  next();
+  try {
+    this.leadId = await nextLeadId(this.constructor);
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = mongoose.model('Lead', leadSchema);
