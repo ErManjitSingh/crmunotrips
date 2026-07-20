@@ -88,4 +88,26 @@ router.post('/incentives', requirePermission('hr', 'create'), ctrl.createIncenti
 router.patch('/incentives/:id/review', requirePermission('hr', 'edit'), ctrl.reviewIncentive);
 router.delete('/incentives/:id', requirePermission('hr', 'delete'), ctrl.deleteIncentive);
 
+router.get('/events', ctrl.listEvents);
+router.post('/events', requirePermission('hr', 'create'), ctrl.createEvent);
+router.put('/events/:id', requirePermission('hr', 'edit'), ctrl.updateEvent);
+router.delete('/events/:id', requirePermission('hr', 'delete'), ctrl.deleteEvent);
+
+router.get('/training/courses', ctrl.listCourses);
+router.post('/training/courses', requirePermission('hr', 'create'), ctrl.createCourse);
+router.delete('/training/courses/:id', requirePermission('hr', 'delete'), ctrl.deleteCourse);
+router.get('/training/enrollments', ctrl.listEnrollments);
+router.post('/training/enrollments', requirePermission('hr', 'create'), ctrl.enrollEmployee);
+router.patch('/training/enrollments/:id', requirePermission('hr', 'edit'), ctrl.updateEnrollment);
+
+router.get('/exits', ctrl.listExits);
+router.post('/exits', requirePermission('hr', 'create'), ctrl.createExit);
+router.put('/exits/:id', requirePermission('hr', 'edit'), ctrl.updateExit);
+router.delete('/exits/:id', requirePermission('hr', 'delete'), ctrl.deleteExit);
+
+router.get('/settings', ctrl.getSettings);
+router.put('/settings', requirePermission('hr', 'edit'), ctrl.updateSettings);
+
+router.get('/reports', ctrl.getReports);
+
 module.exports = router;

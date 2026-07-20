@@ -73,4 +73,26 @@ export const hrApi = {
   createIncentive: (body) => API.post('/hr/incentives', body).then((r) => r.data),
   reviewIncentive: (id, body) => API.patch(`/hr/incentives/${id}/review`, body).then((r) => r.data),
   deleteIncentive: (id) => API.delete(`/hr/incentives/${id}`).then((r) => r.data),
+
+  events: (params) => API.get('/hr/events', { params, skipSuccessToast: true }).then((r) => r.data),
+  createEvent: (body) => API.post('/hr/events', body).then((r) => r.data),
+  updateEvent: (id, body) => API.put(`/hr/events/${id}`, body).then((r) => r.data),
+  deleteEvent: (id) => API.delete(`/hr/events/${id}`).then((r) => r.data),
+
+  trainingCourses: (params) => API.get('/hr/training/courses', { params, skipSuccessToast: true }).then((r) => r.data),
+  createCourse: (body) => API.post('/hr/training/courses', body).then((r) => r.data),
+  deleteCourse: (id) => API.delete(`/hr/training/courses/${id}`).then((r) => r.data),
+  trainingEnrollments: (params) => API.get('/hr/training/enrollments', { params, skipSuccessToast: true }).then((r) => r.data),
+  enrollTraining: (body) => API.post('/hr/training/enrollments', body).then((r) => r.data),
+  updateEnrollment: (id, body) => API.patch(`/hr/training/enrollments/${id}`, body).then((r) => r.data),
+
+  exits: (params) => API.get('/hr/exits', { params, skipSuccessToast: true }).then((r) => r.data),
+  createExit: (body) => API.post('/hr/exits', body).then((r) => r.data),
+  updateExit: (id, body) => API.put(`/hr/exits/${id}`, body).then((r) => r.data),
+  deleteExit: (id) => API.delete(`/hr/exits/${id}`).then((r) => r.data),
+
+  settings: () => API.get('/hr/settings', { skipSuccessToast: true }).then((r) => r.data),
+  updateSettings: (body) => API.put('/hr/settings', body).then((r) => r.data),
+
+  reports: () => API.get('/hr/reports', { skipSuccessToast: true }).then((r) => r.data),
 };

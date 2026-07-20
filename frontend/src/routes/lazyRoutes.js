@@ -113,4 +113,8 @@ export const HrIncentivesPage = lazy(() => import('../components/hr/HrIncentives
 export const HrJobOpeningsPage = lazy(() => import('../components/hr/HrJobOpeningsPage'));
 export const HrRecruitmentPage = lazy(() => import('../components/hr/HrRecruitmentPage'));
 export const HrInterviewsPage = lazy(() => import('../components/hr/HrInterviewsPage'));
-export const HrModulePage = lazy(() => import('../components/hr/HrModulePage'));
+export const HrEventsPage = lazy(() => import('../components/hr/HrEventsPage'));
+export const HrTrainingPage = lazy(() => import('../components/hr/HrTrainingPage'));
+export const HrExitPage = lazy(() => import('../components/hr/HrExitPage'));
+export const HrReportsPage = lazy(() => import('../components/hr/HrReportsPage'));
+export const HrSettingsPage = lazy(() => import('../components/hr/HrSettingsPage'));

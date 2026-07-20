@@ -2,6 +2,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const hr = require('../services/hrService');
 const hr2 = require('../services/hrPhase2Service');
 const talent = require('../services/hrTalentService');
+const p4 = require('../services/hrPhase4Service');
 
 const getDashboard = asyncHandler(async (req, res) => {
   const data = await hr.getHrDashboard();
@@ -225,6 +226,62 @@ const deleteIncentive = asyncHandler(async (req, res) => {
   res.json(await talent.deleteIncentive(req.params.id));
 });
 
+const listEvents = asyncHandler(async (req, res) => {
+  res.json(await p4.listEvents(req.query));
+});
+const createEvent = asyncHandler(async (req, res) => {
+  res.status(201).json(await p4.createEvent(req.body, req.user));
+});
+const updateEvent = asyncHandler(async (req, res) => {
+  res.json(await p4.updateEvent(req.params.id, req.body));
+});
+const deleteEvent = asyncHandler(async (req, res) => {
+  res.json(await p4.deleteEvent(req.params.id));
+});
+
+const listCourses = asyncHandler(async (req, res) => {
+  res.json(await p4.listCourses(req.query));
+});
+const createCourse = asyncHandler(async (req, res) => {
+  res.status(201).json(await p4.createCourse(req.body));
+});
+const deleteCourse = asyncHandler(async (req, res) => {
+  res.json(await p4.deleteCourse(req.params.id));
+});
+const listEnrollments = asyncHandler(async (req, res) => {
+  res.json(await p4.listEnrollments(req.query));
+});
+const enrollEmployee = asyncHandler(async (req, res) => {
+  res.status(201).json(await p4.enrollEmployee(req.body));
+});
+const updateEnrollment = asyncHandler(async (req, res) => {
+  res.json(await p4.updateEnrollment(req.params.id, req.body));
+});
+
+const listExits = asyncHandler(async (req, res) => {
+  res.json(await p4.listExits(req.query));
+});
+const createExit = asyncHandler(async (req, res) => {
+  res.status(201).json(await p4.createExit(req.body, req.user));
+});
+const updateExit = asyncHandler(async (req, res) => {
+  res.json(await p4.updateExit(req.params.id, req.body));
+});
+const deleteExit = asyncHandler(async (req, res) => {
+  res.json(await p4.deleteExit(req.params.id));
+});
+
+const getSettings = asyncHandler(async (req, res) => {
+  res.json(await p4.getSettings());
+});
+const updateSettings = asyncHandler(async (req, res) => {
+  res.json(await p4.updateSettings(req.body));
+});
+
+const getReports = asyncHandler(async (req, res) => {
+  res.json(await p4.getReportsSummary());
+});
+
 module.exports = {
   getDashboard,
   listEmployees,
@@ -288,4 +345,21 @@ module.exports = {
   createIncentive,
   reviewIncentive,
   deleteIncentive,
+  listEvents,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  listCourses,
+  createCourse,
+  deleteCourse,
+  listEnrollments,
+  enrollEmployee,
+  updateEnrollment,
+  listExits,
+  createExit,
+  updateExit,
+  deleteExit,
+  getSettings,
+  updateSettings,
+  getReports,
 };
