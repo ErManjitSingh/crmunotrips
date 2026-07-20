@@ -35,6 +35,16 @@ export function getDefaultDashboardFilters() {
 function applyPreset(key) {
   const now = new Date();
   if (key === 'all') return { dateFrom: '', dateTo: '' };
+  if (key === 'today') {
+    const day = toInputDate(now);
+    return { dateFrom: day, dateTo: day };
+  }
+  if (key === 'yesterday') {
+    const y = new Date(now);
+    y.setDate(y.getDate() - 1);
+    const day = toInputDate(y);
+    return { dateFrom: day, dateTo: day };
+  }
   if (key === 'month') {
     return {
       dateFrom: toInputDate(new Date(now.getFullYear(), now.getMonth(), 1)),
@@ -55,16 +65,16 @@ function applyPreset(key) {
 
 function activePreset(filters) {
   if (!filters.dateFrom && !filters.dateTo) return 'all';
-  const month = applyPreset('month');
-  if (filters.dateFrom === month.dateFrom && filters.dateTo === month.dateTo) return 'month';
-  const d30 = applyPreset('30d');
-  if (filters.dateFrom === d30.dateFrom && filters.dateTo === d30.dateTo) return '30d';
-  const m6 = applyPreset('6m');
-  if (filters.dateFrom === m6.dateFrom && filters.dateTo === m6.dateTo) return '6m';
+  for (const key of ['today', 'yesterday', 'month', '30d', '6m']) {
+    const preset = applyPreset(key);
+    if (filters.dateFrom === preset.dateFrom && filters.dateTo === preset.dateTo) return key;
+  }
   return null;
 }
 
 const PRESETS = [
+  { key: 'today', label: 'Today' },
+  { key: 'yesterday', label: 'Yesterday' },
   { key: 'all', label: 'All Time' },
   { key: 'month', label: 'This Month' },
   { key: '30d', label: 'Last 30 Days' },

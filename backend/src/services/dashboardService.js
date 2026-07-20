@@ -503,7 +503,10 @@ async function buildAdminDashboard(options = {}) {
   }));
 
   const withValue = (meta, value) => ({ ...meta, value });
-  const prevPeriodLabel = prevEnd.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+  const sameDayPrev = startOfDay(prevStart).getTime() === startOfDay(prevEnd).getTime();
+  const prevPeriodLabel = sameDayPrev
+    ? prevStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    : `${prevStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – ${prevEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
   const reportKpis = {
     totalLeads: withValue(changeMeta(changeTotal, prevTotalLeads), periodTotalLeads),
     freshLeads: withValue(changeMeta(changeBuckets.fresh, prevBuckets.fresh), valueBuckets.fresh),
