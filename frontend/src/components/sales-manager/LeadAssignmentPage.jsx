@@ -224,7 +224,7 @@ export default function LeadAssignmentPage() {
                     return (
                       <tr
                         key={lead._id}
-                        className={`group border-b border-subtle/60 last:border-0 hover:bg-gradient-to-r hover:from-amber-500/[0.06] hover:to-orange-500/[0.04] ${selected.includes(lead._id) ? 'bg-amber-500/[0.08]' : lead.isHot ? 'bg-rose-500/[0.04]' : i % 2 === 0 ? 'bg-surface/40' : ''}`}
+                        className={`group border-b border-subtle/60 last:border-0 hover:bg-sky-100/70 ${selected.includes(lead._id) ? 'bg-amber-100' : lead.isHot ? 'bg-orange-50' : i % 2 === 0 ? 'bg-sky-50' : 'bg-white'}`}
                       >
                         <td className={compactTd}>
                           <button type="button" onClick={() => toggle(lead._id)} className="text-content-muted hover:text-amber-600">

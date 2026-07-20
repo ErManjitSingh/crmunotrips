@@ -244,17 +244,24 @@ export default function LeadDataTable({
             )}
             {virtualRows.map((virtualRow) => {
               const row = tableRows[virtualRow.index];
+              const isOdd = virtualRow.index % 2 === 0;
+              const rowBg = isOdd ? 'bg-sky-50' : 'bg-white';
+              const hoverBg = 'hover:bg-sky-100/80';
               return (
                 <tr
                   key={row.id}
                   onClick={() => onRowClick(row.original)}
-                  className="group cursor-pointer transition-colors hover:bg-blue-50/40 bg-white"
+                  className={cn('group cursor-pointer transition-colors', rowBg, hoverBg)}
                 >
                   {row.getVisibleCells().map((cell) => {
                     const colId = cell.column.id;
                     const tdClass = cn(
                       leadsTd,
-                      colId === 'rowActions' && 'text-right sticky right-0 bg-white group-hover:bg-blue-50/40 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.04)]'
+                      colId === 'rowActions' &&
+                        cn(
+                          'text-right sticky right-0 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.04)]',
+                          isOdd ? 'bg-sky-50 group-hover:bg-sky-100/80' : 'bg-white group-hover:bg-sky-100/80'
+                        )
                     );
                     return (
                       <td key={cell.id} className={tdClass}>

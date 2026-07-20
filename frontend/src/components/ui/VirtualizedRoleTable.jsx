@@ -94,10 +94,15 @@ export default function VirtualizedRoleTable({
                 )}
                 {virtualRows.map((virtualRow) => {
                   const row = tableRows[virtualRow.index];
+                  const isOdd = virtualRow.index % 2 === 0;
                   return (
                     <tr
                       key={row.id}
-                      className={cn(rowClassName, getRowClassName?.(row.original))}
+                      className={cn(
+                        rowClassName,
+                        isOdd ? 'bg-sky-50' : 'bg-white',
+                        getRowClassName?.(row.original)
+                      )}
                     >
                       {row.getVisibleCells().map((cell) => (
                         <td key={cell.id} className={cn(tdClassName)}>
