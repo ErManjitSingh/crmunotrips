@@ -11,6 +11,7 @@
     "seed:whatsapp-demo": "node src/scripts/seedWhatsappDemo.js",
     "seed:operations-user": "node src/scripts/seedOperationsUser.js",
     "seed:hr-admin": "node src/scripts/seedHrAdmin.js",
+    "seed:hr-demo": "node src/scripts/seedHrDemo.js",
     "seed:operations-demo": "node src/scripts/seedOperationsDemo.js",
     "cleanup:extra-branches": "node src/scripts/cleanupExtraBranches.js",
     "seed:load-test-leads": "node src/scripts/seedLoadTestLeads.js",
