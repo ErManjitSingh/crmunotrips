@@ -1,9 +1,19 @@
 import { getPermissionsForRole } from './rolePermissions';
 
+function mergePermissions(stored, defaults) {
+  if (!defaults) return stored || null;
+  if (!stored) return defaults;
+  const merged = { ...defaults };
+  for (const key of Object.keys(defaults)) {
+    merged[key] = { ...defaults[key], ...(stored?.[key] || {}) };
+  }
+  return merged;
+}
+
 function resolvePermissions(user) {
-  if (user?.permissions) return user.permissions;
-  if (user?.role) return getPermissionsForRole(user.role);
-  return null;
+  const defaults = user?.role ? getPermissionsForRole(user.role) : null;
+  if (user?.permissions) return mergePermissions(user.permissions, defaults);
+  return defaults;
 }
 
 export function canAccess(user, module, action = 'view') {
@@ -22,6 +32,9 @@ function filterSectionItems(items, user) {
 
 export function filterNavItems(items, user) {
   return items.reduce((acc, item) => {
+    if (item.roles?.length && !item.roles.includes(user?.role)) return acc;
+    if (item.permission && !canAccess(user, item.permission.module, item.permission.action)) return acc;
+
     if (item.sections) {
       const sections = item.sections
         .map((section) => ({
@@ -40,8 +53,6 @@ export function filterNavItems(items, user) {
       acc.push({ ...item, children });
       return acc;
     }
-    if (item.roles?.length && !item.roles.includes(user?.role)) return acc;
-    if (item.permission && !canAccess(user, item.permission.module, item.permission.action)) return acc;
     acc.push(item);
     return acc;
   }, []);
@@ -57,4 +68,5 @@ export const ROUTE_PERMISSIONS = {
   packages: { module: 'packages', action: 'view' },
   team: { module: 'users', action: 'view' },
   reports: { module: 'reports', action: 'view' },
+  hr: { module: 'hr', action: 'view' },
 };

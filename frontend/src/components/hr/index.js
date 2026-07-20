@@ -1,0 +1,12 @@
+export { default as HrDashboard } from './HrDashboard';
+export { default as HrEmployeesPage } from './HrEmployeesPage';
+export { default as HrEmployeeProfilePage } from './HrEmployeeProfilePage';
+export { default as HrDepartmentsPage } from './HrDepartmentsPage';
+export { default as HrDesignationsPage } from './HrDesignationsPage';
+export { default as HrHolidaysPage } from './HrHolidaysPage';
+export { default as HrLeavesPage } from './HrLeavesPage';
+export { default as HrAttendancePage } from './HrAttendancePage';
+export { default as HrAnnouncementsPage } from './HrAnnouncementsPage';
+export { default as HrModulePage } from './HrModulePage';
+export { default as HrComingSoon } from './HrComingSoon';
+export { hrManagementSections } from './hr-nav-config';

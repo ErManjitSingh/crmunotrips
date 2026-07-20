@@ -67,6 +67,7 @@ router.use('/email-templates', emailTemplateRoutes);
 router.use('/emails', emailRoutes);
 router.use('/sales-targets', salesTargetRoutes);
 router.use('/announcements', announcementRoutes);
+router.use('/hr', require('./hrRoutes'));
 router.use('/payments', paymentRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/team', teamRoutes);

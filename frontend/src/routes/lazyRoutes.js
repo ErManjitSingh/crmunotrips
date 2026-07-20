@@ -93,3 +93,14 @@ export const OperationsTasksPage = lazy(() => import('../components/operations-m
 export const PaymentsPage = lazy(() => import('../components/payments/PaymentsPage'));
 export const InvoicesPage = lazy(() => import('../components/payments/InvoicesPage'));
 export const RefundsPage = lazy(() => import('../components/payments/RefundsPage'));
+
+export const HrDashboard = lazy(() => import('../components/hr/HrDashboard'));
+export const HrEmployeesPage = lazy(() => import('../components/hr/HrEmployeesPage'));
+export const HrEmployeeProfilePage = lazy(() => import('../components/hr/HrEmployeeProfilePage'));
+export const HrDepartmentsPage = lazy(() => import('../components/hr/HrDepartmentsPage'));
+export const HrDesignationsPage = lazy(() => import('../components/hr/HrDesignationsPage'));
+export const HrHolidaysPage = lazy(() => import('../components/hr/HrHolidaysPage'));
+export const HrLeavesPage = lazy(() => import('../components/hr/HrLeavesPage'));
+export const HrAttendancePage = lazy(() => import('../components/hr/HrAttendancePage'));
+export const HrAnnouncementsPage = lazy(() => import('../components/hr/HrAnnouncementsPage'));
+export const HrModulePage = lazy(() => import('../components/hr/HrModulePage'));

@@ -3,6 +3,7 @@ export function isNavItemActive(pathname, path) {
     return pathname === '/' || pathname === '/admin/dashboard';
   }
   if (path === '/leads') return pathname === '/leads';
+  if (path === '/hr') return pathname === '/hr';
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 

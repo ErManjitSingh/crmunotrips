@@ -8,6 +8,7 @@ export const PERMISSION_MODULES = {
   packages: { label: 'Packages & Inventory', actions: ['view', 'create', 'edit', 'delete'] },
   payments: { label: 'Payments', actions: ['view', 'create', 'edit', 'delete'] },
   operations: { label: 'Operations', actions: ['view', 'create', 'edit', 'delete'] },
+  hr: { label: 'HR Management', actions: ['view', 'create', 'edit', 'delete'] },
   whatsapp: { label: 'WhatsApp', actions: ['use', 'manage'] },
   email: { label: 'Email', actions: ['send', 'manage'] },
 };
