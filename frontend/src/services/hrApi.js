@@ -1,4 +1,4 @@
-import API from '../../api/axios';
+import API from '../api/axios';
 
 export const hrApi = {
   dashboard: () => API.get('/hr/dashboard', { skipSuccessToast: true }).then((r) => r.data),
