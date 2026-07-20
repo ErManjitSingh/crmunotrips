@@ -33,34 +33,11 @@ function destStyle(name = '') {
   return DEST_COLORS[i];
 }
 
-/** Compact “when lead arrived” under customer name. */
+/** Full date + time for when the lead arrived. */
 export function formatLeadArrivedAt(date) {
   if (!date) return null;
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) return null;
-
-  const ms = Date.now() - d.getTime();
-  const mins = Math.floor(ms / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-
-  return d.toLocaleString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  });
-}
-
-export function leadArrivedFullTitle(date) {
-  if (!date) return undefined;
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return undefined;
   return d.toLocaleString('en-IN', {
     day: 'numeric',
     month: 'short',
@@ -69,6 +46,10 @@ export function leadArrivedFullTitle(date) {
     minute: '2-digit',
     hour12: true,
   });
+}
+
+export function leadArrivedFullTitle(date) {
+  return formatLeadArrivedAt(date) || undefined;
 }
 
 export function LeadIdPill({ id }) {
@@ -187,10 +168,19 @@ export function CustomerCell({ name, lead, showPhone = false }) {
   const arrived = formatLeadArrivedAt(lead?.createdAt);
   const arrivedTitle = leadArrivedFullTitle(lead?.createdAt);
   return (
-    <div className="flex items-start gap-2.5 min-w-0 max-w-[240px]">
+    <div className="flex items-start gap-2.5 min-w-0 max-w-[260px]">
       <Avatar name={name} size="sm" className="!w-8 !h-8 !text-[11px] shrink-0 mt-0.5" />
       <div className="min-w-0">
-        <p className="font-semibold text-sm text-content-primary truncate">{name}</p>
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+          <p className="font-semibold text-sm text-content-primary truncate">{name}</p>
+          {isRepeated ? (
+            <RepeatedLeadBadge size="sm" />
+          ) : (
+            <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[#5D5FEF]/10 text-[10px] font-semibold text-[#5D5FEF]">
+              New
+            </span>
+          )}
+        </div>
         {arrived && (
           <p
             className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500 leading-tight"
@@ -200,15 +190,6 @@ export function CustomerCell({ name, lead, showPhone = false }) {
             <span className="truncate">{arrived}</span>
           </p>
         )}
-        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-          {isRepeated ? (
-            <RepeatedLeadBadge size="sm" />
-          ) : (
-            <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[#5D5FEF]/10 text-[10px] font-semibold text-[#5D5FEF]">
-              New
-            </span>
-          )}
-        </div>
         {showPhone && lead?.phone && (
           <p className="text-xs text-content-muted font-mono mt-0.5 truncate">{lead.phone}</p>
         )}
