@@ -94,6 +94,8 @@ export const PaymentsPage = lazy(() => import('../components/payments/PaymentsPa
 export const InvoicesPage = lazy(() => import('../components/payments/InvoicesPage'));
 export const RefundsPage = lazy(() => import('../components/payments/RefundsPage'));
 
+export const HrLayout = lazy(() => import('../components/hr/HrLayout'));
+export const HrLogin = lazy(() => import('../pages/hr/HrLogin'));
 export const HrDashboard = lazy(() => import('../components/hr/HrDashboard'));
 export const HrEmployeesPage = lazy(() => import('../components/hr/HrEmployeesPage'));
 export const HrEmployeeProfilePage = lazy(() => import('../components/hr/HrEmployeeProfilePage'));

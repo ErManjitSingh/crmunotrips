@@ -24,12 +24,12 @@ import {
   Settings,
 } from 'lucide-react';
 
-/** HR Management sidebar sections — admin CRM. */
+/** HR Management sidebar sections — HR portal. */
 export const hrManagementSections = [
   {
     title: 'Overview',
     items: [
-      { path: '/hr', label: 'Dashboard', icon: LayoutDashboard, end: true },
+      { path: '/hr/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
       { path: '/hr/employees', label: 'Employees', icon: Users },
       { path: '/hr/attendance', label: 'Attendance', icon: Clock },
       { path: '/hr/leaves', label: 'Leave Management', icon: CalendarOff },
@@ -80,3 +80,11 @@ export const hrManagementSections = [
     ],
   },
 ];
+
+/** Flat nav items for standalone HR portal sidebar. */
+export const hrPortalNavItems = hrManagementSections.flatMap((section) =>
+  (section.items || []).map((item) => ({
+    ...item,
+    section: section.title,
+  }))
+);

@@ -95,6 +95,16 @@ async function seed() {
     branchId: shimlaBranch._id,
   });
 
+  const hrAdmin = await User.create({
+    name: 'HR Admin',
+    email: 'hr@unotrips.com',
+    password: PASSWORD,
+    role: 'hr_admin',
+    roleId: roleMap.hr_admin,
+    department: 'Human Resources',
+    branchId: shimlaBranch._id,
+  });
+
   // Sales roles — add via Team Management
 
   const pkg = await Package.create({
@@ -277,6 +287,7 @@ async function seed() {
   console.log('Login credentials (password for all):', PASSWORD);
   console.log('  admin@crm.com          — Admin');
   console.log('  ops@crm.com            — Operations Manager');
+  console.log('  hr@unotrips.com        — HR Admin (portal: /hr/login)');
   console.log('\n  Add sales roles via Team Management → Add User.\n');
 
   await mongoose.disconnect();

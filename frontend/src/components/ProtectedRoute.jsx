@@ -38,6 +38,10 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/unauthorized" replace />;
   }
 
+  if (currentUser.role === 'hr_admin' && !location.pathname.startsWith('/hr')) {
+    return <Navigate to="/hr/dashboard" replace />;
+  }
+
   return (
     <>
       <AttendanceLoginGate />

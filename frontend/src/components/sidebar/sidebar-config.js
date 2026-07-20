@@ -6,7 +6,6 @@ import {
   Mail,
   Globe2,
   UsersRound,
-  UserCog,
   BarChart3,
   Bell,
   Settings,
@@ -24,7 +23,6 @@ import {
 } from 'lucide-react';
 import { operationsAdminMenuChildren } from '../operations-manager/operations-nav-config';
 import { leadManagementSections } from './lead-management-config';
-import { hrManagementSections } from '../hr/hr-nav-config';
 
 export const reportsAnalyticsItems = [
   { path: '/reports', label: 'Reports', icon: BarChart3, permission: { module: 'reports', action: 'view' } },
@@ -117,14 +115,6 @@ export const mainNavItems = [
     permission: { module: 'operations', action: 'view' },
     countKey: 'bookings.pending',
     children: operationsAdminMenuChildren,
-  },
-  {
-    id: 'hr-management',
-    label: 'HR Management',
-    icon: UserCog,
-    roles: ['admin'],
-    permission: { module: 'hr', action: 'view' },
-    sections: hrManagementSections,
   },
   {
     path: '/quotations',

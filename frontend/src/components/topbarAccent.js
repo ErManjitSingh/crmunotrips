@@ -53,6 +53,7 @@ export const TOPBAR_ACCENTS = {
 };
 
 export function getTopBarAccent(pathname) {
+  if (pathname.startsWith('/hr')) return TOPBAR_ACCENTS.violet;
   if (pathname.startsWith('/operations-manager')) return TOPBAR_ACCENTS.teal;
   if (pathname.startsWith('/sales-manager')) return TOPBAR_ACCENTS.violet;
   if (pathname.startsWith('/team-leader')) return TOPBAR_ACCENTS.amber;

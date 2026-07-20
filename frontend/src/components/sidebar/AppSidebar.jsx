@@ -70,7 +70,8 @@ export default function AppSidebar({
 
   const resolvedProfilePath =
     profilePath ||
-    (location.pathname.startsWith('/operations-manager') ? '/operations-manager/profile' :
+    (location.pathname.startsWith('/hr') ? '/hr/profile' :
+      location.pathname.startsWith('/operations-manager') ? '/operations-manager/profile' :
       location.pathname.startsWith('/sales-manager') ? '/sales-manager/profile' :
         location.pathname.startsWith('/team-leader') ? '/team-leader/profile' :
           location.pathname.startsWith('/sales-executive') ? '/sales-executive/profile' :

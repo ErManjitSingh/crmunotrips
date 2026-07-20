@@ -33,6 +33,7 @@ function getInitials(name) {
 }
 
 function getProfilePath(pathname) {
+  if (pathname.startsWith('/hr')) return '/hr/profile';
   if (pathname.startsWith('/operations-manager')) return '/operations-manager/profile';
   if (pathname.startsWith('/sales-manager')) return '/sales-manager/profile';
   if (pathname.startsWith('/team-leader')) return '/team-leader/profile';

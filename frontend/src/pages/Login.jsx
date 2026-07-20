@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate, Navigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plane, Sun, Moon, Lock, Mail, ArrowRight } from 'lucide-react';
+import { Plane, Sun, Moon, Lock, Mail, ArrowRight, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { LOGIN_PRESETS } from '../auth';
@@ -176,6 +176,20 @@ export default function Login() {
             Password: <span className="font-mono font-semibold text-slate-700">123456</span>
           </p>
         </div>
+
+        <Link
+          to="/hr/login"
+          className="mt-4 flex items-center gap-3 rounded-2xl border border-[#5D5FEF]/30 bg-white/50 backdrop-blur-lg p-4 shadow-lg shadow-[#5D5FEF]/10 transition-all hover:bg-white/70 hover:border-[#5D5FEF]/50 hover:shadow-[#5D5FEF]/20 group"
+        >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#5D5FEF] to-indigo-600 text-white shadow-md shadow-[#5D5FEF]/25">
+            <Users className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-slate-800">HR Management Portal</p>
+            <p className="text-xs text-slate-500 truncate">Employees, payroll, attendance &amp; more</p>
+          </div>
+          <ArrowRight className="h-4 w-4 shrink-0 text-[#5D5FEF] transition-transform group-hover:translate-x-0.5" />
+        </Link>
       </motion.div>
     </div>
   );

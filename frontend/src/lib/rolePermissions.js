@@ -27,8 +27,14 @@ const fullPerms = () => ({
   email: { send: true, manage: true },
 });
 
+const adminPerms = () => {
+  const perms = fullPerms();
+  perms.hr = { view: false, create: false, edit: false, delete: false };
+  return perms;
+};
+
 const ROLE_PERMISSIONS = {
-  admin: fullPerms(),
+  admin: adminPerms(),
   sales_manager: {
     ...noPerms(),
     users: { view: true, create: false, edit: false, delete: false },
@@ -83,6 +89,11 @@ const ROLE_PERMISSIONS = {
       view_reports: true,
     },
     leads: { view: true, create: false, edit: false, delete: false },
+    reports: { view: true, export: true },
+  },
+  hr_admin: {
+    ...noPerms(),
+    hr: { view: true, create: true, edit: true, delete: true },
     reports: { view: true, export: true },
   },
 };

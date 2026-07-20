@@ -7,7 +7,7 @@ const ctrl = require('../controllers/hrController');
 const router = express.Router();
 
 router.use(protect);
-router.use(authorize('admin'));
+router.use(authorize('hr_admin'));
 router.use(requirePermission('hr', 'view'));
 
 router.get('/dashboard', ctrl.getDashboard);
