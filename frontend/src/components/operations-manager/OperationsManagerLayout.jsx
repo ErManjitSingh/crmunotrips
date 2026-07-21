@@ -6,6 +6,7 @@ import AppSidebar from '../sidebar/AppSidebar';
 import MobileSidebarDrawer from '../sidebar/MobileSidebarDrawer';
 import TopBar from '../TopBar';
 import RouteFallback from '../ui/RouteFallback';
+import PanelMobileNav from '../mobile/PanelMobileNav';
 import { operationsManagerNavItems, operationsQuickActions } from './sidebar-config';
 
 function OperationsManagerShell() {
@@ -30,13 +31,14 @@ function OperationsManagerShell() {
 
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto pb-20 lg:pb-0">
           <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
             <Suspense fallback={<RouteFallback />}>
               <Outlet />
             </Suspense>
           </div>
         </main>
+        <PanelMobileNav />
       </div>
     </div>
   );

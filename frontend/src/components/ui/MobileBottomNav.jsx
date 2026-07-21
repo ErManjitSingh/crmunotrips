@@ -13,13 +13,29 @@ const ACCENT_STYLES = {
     active: 'text-violet-600',
     primary: 'from-violet-600 to-purple-700 shadow-violet-600/40',
   },
+  amber: {
+    active: 'text-amber-600',
+    primary: 'from-amber-500 to-orange-600 shadow-amber-500/40',
+  },
+  teal: {
+    active: 'text-teal-600',
+    primary: 'from-teal-500 to-cyan-700 shadow-teal-500/40',
+  },
+  emerald: {
+    active: 'text-emerald-600',
+    primary: 'from-emerald-500 to-teal-700 shadow-emerald-500/40',
+  },
+  sunset: {
+    active: 'text-orange-600',
+    primary: 'from-orange-500 to-rose-600 shadow-orange-500/40',
+  },
 };
 
 export default function MobileBottomNav({ tabs, isActive, accent = 'brand' }) {
   const styles = ACCENT_STYLES[accent] || ACCENT_STYLES.brand;
 
   return (
-    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 glass-panel border-t border-subtle safe-area-pb">
+    <nav className="glass-panel safe-area-pb fixed inset-x-0 bottom-0 z-30 border-t border-subtle lg:hidden">
       <div className="flex items-center justify-around px-2 py-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
