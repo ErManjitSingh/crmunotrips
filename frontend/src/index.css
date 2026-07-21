@@ -309,11 +309,11 @@
     background: #12162B;
   }
 
-  /* HR portal — Sunset Orange sidebar */
+  /* All CRM portals — Sunset Orange sidebar */
   .sidebar-dark.hr-sidebar-sunset,
   .dark .sidebar-dark.hr-sidebar-sunset {
-    --sidebar-text: #fff7ed;
-    --sidebar-muted: rgba(255, 237, 213, 0.72);
+    --sidebar-text: #ffffff;
+    --sidebar-muted: #ffffff;
     --sidebar-hover: rgba(255, 255, 255, 0.1);
     --sidebar-active: #ffffff;
     --sidebar-border: rgba(255, 255, 255, 0.14);
@@ -335,6 +335,12 @@
 
   .hr-sidebar-sunset nav {
     scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+  }
+
+  .hr-sidebar-sunset .text-slate-300,
+  .hr-sidebar-sunset .text-slate-400,
+  .hr-sidebar-sunset .text-slate-500 {
+    color: #ffffff !important;
   }
 
   /* FullCalendar v6 — premium follow-up calendar */
