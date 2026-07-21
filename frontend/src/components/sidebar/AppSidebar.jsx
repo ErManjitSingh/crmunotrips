@@ -1,6 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useSidebar } from '../../context/SidebarContext';
 import { useAuth } from '../../context/AuthContext';
@@ -37,6 +37,12 @@ function formatBranchLabel(name) {
   return raw;
 }
 
+function getSidebarTimeTheme(hour) {
+  if (hour >= 5 && hour < 12) return 'sidebar-time-morning';
+  if (hour >= 12 && hour < 17) return 'sidebar-time-afternoon';
+  return 'sidebar-time-night';
+}
+
 export default function AppSidebar({
   user,
   className = '',
@@ -55,7 +61,14 @@ export default function AppSidebar({
   const { user: authUser } = useAuth();
   const { selectedBranchId, availableBranches } = useSelector((s) => s.branch);
   const [searchQuery] = useState('');
+  const [timeTheme, setTimeTheme] = useState(() => getSidebarTimeTheme(new Date().getHours()));
   const width = collapsed ? collapsedWidth : expandedWidth;
+
+  useEffect(() => {
+    const syncTheme = () => setTimeTheme(getSidebarTimeTheme(new Date().getHours()));
+    const timer = window.setInterval(syncTheme, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const sidebarCounts = useSidebarCounts();
 
@@ -110,6 +123,7 @@ export default function AppSidebar({
             'border-r border-white/[0.06]',
             'shadow-[4px_0_32px_-8px_rgba(0,0,0,0.4)]',
             sidebarVariant === 'sunset' && 'hr-sidebar-sunset',
+            sidebarVariant === 'sunset' && timeTheme,
             className
           )}
         >
