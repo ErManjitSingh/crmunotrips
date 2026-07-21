@@ -107,7 +107,7 @@ async function main() {
 
   await exec(
     conn,
-    `curl -s -X POST https://testing.unotrips.com/api/public/leads -H "Content-Type: application/json" -H "X-Api-Key: unotrips-meta-lead-2026-secure" -d '{"name":"Meta Sync Test","phone":"9999912345","destination":"Assam","source":"Deploy Smoke Test","captureType":"form"}' || true`
+    `curl -s -X POST https://app.unotrips.com/api/public/leads -H "Content-Type: application/json" -H "X-Api-Key: unotrips-meta-lead-2026-secure" -d '{"name":"Meta Sync Test","phone":"9999912345","destination":"Assam","source":"Deploy Smoke Test","captureType":"form"}' || true`
   );
 
   conn.end();
