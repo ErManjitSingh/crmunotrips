@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { toast } from '../../context/ToastContext';
 import API from '../../api/axios';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import WhatsAppInboxLayout from './WhatsAppInboxLayout';
 import WhatsAppLeadList from './WhatsAppLeadList';
 import WhatsAppConversation from './WhatsAppConversation';
@@ -24,13 +25,14 @@ export default function WhatsAppLeadsPage() {
   const [mobileView, setMobileView] = useState('list');
   const [modals, setModals] = useState({ note: false, status: false, assign: false, followup: false });
   const [creatingLead, setCreatingLead] = useState(false);
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   const conversationsQuery = useQuery({
-    queryKey: ['whatsapp', 'conversations', { statusFilter, search }],
+    queryKey: ['whatsapp', 'conversations', { statusFilter, search: debouncedSearch }],
     queryFn: async () => {
       const params = { page: 1, limit: 50 };
       if (statusFilter) params.status = statusFilter;
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       const res = await API.get('/whatsapp/conversations', { params, skipSuccessToast: true });
       return res.data?.data || [];
     },
@@ -74,10 +76,6 @@ export default function WhatsAppLeadsPage() {
         messagePromise,
         notePromise,
         fuPromise,
-        API.put(`/whatsapp/read/${leadId || 'none'}`, null, {
-          params: conversationId ? { conversationId } : undefined,
-          skipSuccessToast: true,
-        }).catch(() => null),
       ]);
 
       return {
@@ -112,6 +110,12 @@ export default function WhatsAppLeadsPage() {
   const handleSelect = (conv) => {
     setSelected(conv);
     setMobileView('chat');
+    if (conv.unreadCount > 0 || conv.unread) {
+      API.put(`/whatsapp/read/${conv.leadId || 'none'}`, null, {
+        params: conv.conversationId ? { conversationId: conv.conversationId } : undefined,
+        skipSuccessToast: true,
+      }).then(refreshConversations).catch(() => {});
+    }
   };
 
   const handleSend = async (payload) => {

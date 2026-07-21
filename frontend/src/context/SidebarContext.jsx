@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useLayoutEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const SidebarContext = createContext(null);
@@ -28,26 +28,28 @@ export function SidebarProvider({ children }) {
     setMobileOpenState(false);
   }, [location.key]);
 
-  const toggleCollapsed = () => setCollapsed((prev) => !prev);
+  const toggleCollapsed = useCallback(() => setCollapsed((prev) => !prev), []);
   const toggleMobileOpen = useCallback(() => {
     setMobileOpenState((prev) => !prev);
   }, []);
   const effectiveCollapsed = mobileOpen ? false : collapsed;
+  const value = useMemo(
+    () => ({
+      collapsed: effectiveCollapsed,
+      rawCollapsed: collapsed,
+      setCollapsed,
+      toggleCollapsed,
+      mobileOpen,
+      setMobileOpen,
+      toggleMobileOpen,
+      expandedWidth: 240,
+      collapsedWidth: 72,
+    }),
+    [effectiveCollapsed, collapsed, toggleCollapsed, mobileOpen, setMobileOpen, toggleMobileOpen]
+  );
 
   return (
-    <SidebarContext.Provider
-      value={{
-        collapsed: effectiveCollapsed,
-        rawCollapsed: collapsed,
-        setCollapsed,
-        toggleCollapsed,
-        mobileOpen,
-        setMobileOpen,
-        toggleMobileOpen,
-        expandedWidth: 240,
-        collapsedWidth: 72,
-      }}
-    >
+    <SidebarContext.Provider value={value}>
       {children}
     </SidebarContext.Provider>
   );

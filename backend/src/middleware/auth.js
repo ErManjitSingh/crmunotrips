@@ -8,14 +8,29 @@ const { ROLE_LABELS, ROLE_DASHBOARD_PATHS } = require('../config/roles');
 
 const userCache = new Map();
 const USER_CACHE_MS = 45_000;
+const USER_CACHE_MAX = 1000;
+
+function trimUserCache() {
+  const now = Date.now();
+  for (const [key, entry] of userCache) {
+    if (entry.expiresAt <= now) userCache.delete(key);
+  }
+  while (userCache.size >= USER_CACHE_MAX) {
+    const oldestKey = userCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    userCache.delete(oldestKey);
+  }
+}
 
 async function loadAuthUser(userId) {
   const key = String(userId);
   const hit = userCache.get(key);
   if (hit && hit.expiresAt > Date.now()) return hit.user;
+  if (hit) userCache.delete(key);
 
   const user = await User.findById(userId).select('-password');
   if (user) {
+    trimUserCache();
     userCache.set(key, { user, expiresAt: Date.now() + USER_CACHE_MS });
   }
   return user;

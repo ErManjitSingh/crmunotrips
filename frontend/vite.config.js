@@ -4,7 +4,6 @@ import react from '@vitejs/plugin-react'
 function manualChunks(id) {
   if (!id.includes('node_modules')) return undefined
 
-  if (id.includes('recharts') || id.includes('d3-')) return 'charts'
   if (id.includes('framer-motion') || id.includes('motion-dom') || id.includes('motion-utils')) {
     return 'motion'
   }
@@ -14,8 +13,6 @@ function manualChunks(id) {
   if (id.includes('@reduxjs') || id.includes('react-redux') || id.includes('redux')) return 'redux'
   if (id.includes('@tanstack/react-query') || id.includes('@tanstack/query-core')) return 'query'
   if (id.includes('@tanstack/react-table') || id.includes('@tanstack/react-virtual')) return 'table'
-  if (id.includes('lucide-react')) return 'icons'
-  if (id.includes('jspdf') || id.includes('html2canvas')) return 'pdf'
   if (id.includes('react-dom') || id.includes('/react/') || id.includes('react-router')) {
     return 'vendor'
   }

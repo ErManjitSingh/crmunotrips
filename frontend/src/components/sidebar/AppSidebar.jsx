@@ -43,6 +43,17 @@ function getSidebarTimeTheme(hour) {
   return 'sidebar-time-night';
 }
 
+function msUntilNextSidebarTheme(now) {
+  const boundaries = [
+    new Date(now.getFullYear(), now.getMonth(), now.getDate(), 5),
+    new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12),
+    new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17),
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 5),
+  ];
+  const next = boundaries.find((boundary) => boundary > now);
+  return Math.max(1000, next.getTime() - now.getTime() + 1000);
+}
+
 export default function AppSidebar({
   user,
   className = '',
@@ -65,9 +76,15 @@ export default function AppSidebar({
   const width = collapsed ? collapsedWidth : expandedWidth;
 
   useEffect(() => {
-    const syncTheme = () => setTimeTheme(getSidebarTimeTheme(new Date().getHours()));
-    const timer = window.setInterval(syncTheme, 60_000);
-    return () => window.clearInterval(timer);
+    let timer;
+    const scheduleNextTheme = () => {
+      const now = new Date();
+      const nextTheme = getSidebarTimeTheme(now.getHours());
+      setTimeTheme((current) => (current === nextTheme ? current : nextTheme));
+      timer = window.setTimeout(scheduleNextTheme, msUntilNextSidebarTheme(now));
+    };
+    scheduleNextTheme();
+    return () => window.clearTimeout(timer);
   }, []);
 
   const sidebarCounts = useSidebarCounts();

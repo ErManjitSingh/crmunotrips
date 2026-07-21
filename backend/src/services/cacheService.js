@@ -1,14 +1,23 @@
 const { getRedisClient } = require('../config/redis');
 
 const memory = new Map();
+const inFlight = new Map();
+const cancelledInFlight = new WeakSet();
 const DEFAULT_TTL_MS = 60_000;
-const MEMORY_MAX_KEYS = 5000;
+const MEMORY_MAX_KEYS = 2000;
 
 function trimMemory() {
+  const now = Date.now();
+  for (const [key, entry] of memory) {
+    if (entry.expiresAt <= now) memory.delete(key);
+  }
   if (memory.size <= MEMORY_MAX_KEYS) return;
-  const overflow = memory.size - MEMORY_MAX_KEYS;
-  const keys = [...memory.keys()].slice(0, overflow);
-  keys.forEach((key) => memory.delete(key));
+  let overflow = memory.size - MEMORY_MAX_KEYS;
+  for (const key of memory.keys()) {
+    memory.delete(key);
+    overflow -= 1;
+    if (overflow <= 0) break;
+  }
 }
 
 async function scanAndDelete(redis, pattern) {
@@ -64,14 +73,27 @@ async function set(key, value, ttlMs = DEFAULT_TTL_MS) {
 async function getOrSet(key, factory, ttlMs = DEFAULT_TTL_MS) {
   const cached = await get(key);
   if (cached !== null) return cached;
-  const value = await factory();
-  await set(key, value, ttlMs);
-  return value;
+  if (inFlight.has(key)) return inFlight.get(key);
+
+  const promise = (async () => {
+    const value = await factory();
+    if (!cancelledInFlight.has(promise)) await set(key, value, ttlMs);
+    return value;
+  })();
+  inFlight.set(key, promise);
+
+  try {
+    return await promise;
+  } finally {
+    if (inFlight.get(key) === promise) inFlight.delete(key);
+  }
 }
 
 async function invalidate(prefix) {
   if (!prefix) {
     memory.clear();
+    for (const promise of inFlight.values()) cancelledInFlight.add(promise);
+    inFlight.clear();
     const redis = getRedisClient();
     if (redis) {
       try {
@@ -85,6 +107,12 @@ async function invalidate(prefix) {
 
   for (const key of memory.keys()) {
     if (key.startsWith(prefix)) memory.delete(key);
+  }
+  for (const key of inFlight.keys()) {
+    if (key.startsWith(prefix)) {
+      cancelledInFlight.add(inFlight.get(key));
+      inFlight.delete(key);
+    }
   }
 
   const redis = getRedisClient();

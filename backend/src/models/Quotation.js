@@ -70,6 +70,7 @@ const quotationSchema = new mongoose.Schema(
 
 quotationSchema.index({ lead: 1, status: 1 });
 quotationSchema.index({ status: 1, createdAt: -1 });
+quotationSchema.index({ branchId: 1, status: 1, lead: 1, updatedAt: -1 });
 
 module.exports = mongoose.model('Quotation', quotationSchema);
 module.exports.QUOTE_STATUSES = QUOTE_STATUSES;

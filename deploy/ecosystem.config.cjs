@@ -4,9 +4,9 @@ module.exports = {
       name: 'testing-unotrips-api',
       script: 'src/server.js',
       cwd: '/var/www/testing-unotrips-crm/backend',
-      instances: 'max',
-      exec_mode: 'cluster',
-      max_memory_restart: '512M',
+      instances: 1,
+      exec_mode: 'fork',
+      max_memory_restart: '768M',
       env: {
         NODE_ENV: 'production',
         PORT: 5000,

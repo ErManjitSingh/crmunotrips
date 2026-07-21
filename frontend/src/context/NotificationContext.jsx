@@ -1,5 +1,7 @@
 import {
   createContext,
+  lazy,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -18,8 +20,8 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from '../api/notificationApi';
-import NotificationDrawer from '../components/notifications/NotificationDrawer';
-import NotificationDetailModal from '../components/notifications/NotificationDetailModal';
+const NotificationDrawer = lazy(() => import('../components/notifications/NotificationDrawer'));
+const NotificationDetailModal = lazy(() => import('../components/notifications/NotificationDetailModal'));
 
 const NotificationContext = createContext(null);
 
@@ -57,6 +59,7 @@ export function NotificationProvider({ children }) {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const socketRef = useRef(null);
+  const lastListLoadedAtRef = useRef(0);
 
   const handleIncoming = useCallback((notification) => {
     if (!notification?._id) return;
@@ -90,12 +93,14 @@ export function NotificationProvider({ children }) {
     }
   }, [user]);
 
-  const loadNotificationsList = useCallback(async () => {
+  const loadNotificationsList = useCallback(async (force = false) => {
     if (!user) return;
+    if (!force && Date.now() - lastListLoadedAtRef.current < 60_000) return;
     setLoading(true);
     try {
       const list = await fetchNotifications(50);
       setNotifications(list);
+      lastListLoadedAtRef.current = Date.now();
     } catch {
       /* offline / unauthorized */
     } finally {
@@ -111,6 +116,7 @@ export function NotificationProvider({ children }) {
     if (!user) {
       setNotifications([]);
       setUnreadCount(0);
+      lastListLoadedAtRef.current = 0;
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -263,14 +269,16 @@ export function NotificationProvider({ children }) {
     <NotificationContext.Provider value={value}>
       {children}
       {NOTIFICATIONS_ENABLED && (
-        <>
-          <NotificationDrawer />
-          <NotificationDetailModal
-            notification={detailNotification}
-            onClose={() => setDetailNotification(null)}
-            onViewLead={navigateToNotification}
-          />
-        </>
+        <Suspense fallback={null}>
+          {drawerOpen ? <NotificationDrawer /> : null}
+          {detailNotification ? (
+            <NotificationDetailModal
+              notification={detailNotification}
+              onClose={() => setDetailNotification(null)}
+              onViewLead={navigateToNotification}
+            />
+          ) : null}
+        </Suspense>
       )}
     </NotificationContext.Provider>
   );

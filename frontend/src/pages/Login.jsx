@@ -9,7 +9,6 @@ import { AuthError } from '../auth/authService';
 import { cn } from '../lib/utils';
 import { APP_BRAND_NAME } from '../config/branding';
 
-const BG_IMAGE = '/login-bg.jpg';
 const [brandLead, ...brandRest] = APP_BRAND_NAME.split(' ');
 const brandTail = brandRest.join(' ');
 
@@ -61,11 +60,7 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-5 sm:p-8 overflow-hidden">
-      {/* Background image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
-        style={{ backgroundImage: `url(${BG_IMAGE})` }}
-      />
+      <div className="absolute inset-0 bg-gradient-to-br from-sky-100 via-violet-50 to-orange-100" />
       <div className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" />
       <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-violet-500/10" />
 

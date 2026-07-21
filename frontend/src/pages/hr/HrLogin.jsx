@@ -14,8 +14,6 @@ const HR_PRESET = {
   roleName: 'HR Admin',
 };
 
-const BG_IMAGE = '/login-bg.jpg';
-
 export default function HrLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -72,10 +70,7 @@ export default function HrLogin() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-5 sm:p-8 overflow-hidden">
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
-        style={{ backgroundImage: `url(${BG_IMAGE})` }}
-      />
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-100 via-rose-50 to-violet-100" />
       <div className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" />
       <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-[#5D5FEF]/10" />
 

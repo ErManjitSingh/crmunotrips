@@ -78,16 +78,16 @@ if grep -q UNO_HOTELS_API_BASE_URL .env 2>/dev/null; then
 else
   echo 'UNO_HOTELS_API_BASE_URL=http://127.0.0.1:8000' >> .env
 fi
-npm install --omit=dev
+npm ci --omit=dev --no-audit --no-fund
 
 echo "==> Frontend build..."
 cd ${APP_ROOT}/frontend
-npm install
+npm ci --no-audit --no-fund
 npm run build
 
 echo "==> PM2 restart..."
 cd ${APP_ROOT}
-pm2 start deploy/ecosystem.config.cjs --update-env
+pm2 startOrReload deploy/ecosystem.config.cjs --update-env
 pm2 save
 
 echo "==> Nginx config sync..."

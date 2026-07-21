@@ -1,5 +1,4 @@
 import API from '../api/axios';
-import { emitDataChanged } from './dataRefresh';
 import { invalidateLeadLists } from './queryInvalidation';
 
 const FRESH_PARAMS = { fresh: 1 };
@@ -48,11 +47,10 @@ async function refetchActiveNavCounts(queryClient) {
   );
 }
 
-/** Manual top-bar refresh — bypasses server cache and notifies legacy listeners. */
+/** Manual top-bar refresh — bypasses server cache once per active query family. */
 export async function refreshAppData(queryClient) {
   await Promise.all([
     invalidateLeadLists(queryClient),
-    queryClient.refetchQueries({ queryKey: ['leads'], type: 'active' }),
     refetchActiveDashboards(queryClient),
     refetchActiveNavCounts(queryClient),
     queryClient.refetchQueries({ queryKey: ['followups'], type: 'active' }),
@@ -60,6 +58,4 @@ export async function refreshAppData(queryClient) {
     queryClient.refetchQueries({ queryKey: ['reports'], type: 'active' }),
     queryClient.refetchQueries({ queryKey: ['whatsapp'], type: 'active' }),
   ]);
-
-  emitDataChanged(['leads', 'dashboard', 'nav-counts', 'followups', 'quotations', 'reports', 'whatsapp']);
 }

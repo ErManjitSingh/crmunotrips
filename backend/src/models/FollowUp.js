@@ -38,5 +38,6 @@ const followUpSchema = new mongoose.Schema(
 
 followUpSchema.index({ lead: 1, scheduledAt: -1 });
 followUpSchema.index({ status: 1, scheduledAt: 1 });
+followUpSchema.index({ branchId: 1, assignedTo: 1, status: 1, scheduledAt: 1 });
 
 module.exports = mongoose.model('FollowUp', followUpSchema);

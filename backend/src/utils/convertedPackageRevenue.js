@@ -1,14 +1,20 @@
 const Quotation = require('../models/Quotation');
 
-/** Approved package quotation on a converted lead = realized team revenue. */
-function packageQuotationMatch(extraLeadMatch = {}) {
+function quotationSideMatch({ branchId } = {}) {
   return {
     status: 'approved',
-    'leadDoc.status': 'converted',
     $or: [
       { package: { $exists: true, $ne: null } },
       { 'packageSnapshot.name': { $exists: true, $nin: [null, ''] } },
     ],
+    ...(branchId ? { branchId } : {}),
+  };
+}
+
+/** Approved package quotation on a converted lead = realized team revenue. */
+function packageQuotationMatch(extraLeadMatch = {}) {
+  return {
+    'leadDoc.status': 'converted',
     ...extraLeadMatch,
   };
 }
@@ -23,6 +29,7 @@ function buildExecutiveLeadMatch({ assigneeId, assigneeIds, branchId } = {}) {
 
 async function sumConvertedPackageRevenue(options = {}) {
   const rows = await Quotation.aggregate([
+    { $match: quotationSideMatch(options) },
     {
       $lookup: {
         from: 'leads',
@@ -55,6 +62,7 @@ async function aggregateConvertedPackageRevenueByMonth(options = {}) {
   const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   const rows = await Quotation.aggregate([
+    { $match: quotationSideMatch(options) },
     {
       $lookup: {
         from: 'leads',
