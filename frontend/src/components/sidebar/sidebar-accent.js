@@ -69,6 +69,24 @@ export const SIDEBAR_ACCENTS = {
     subtitleBorder: 'border-amber-500/25',
     overlay: 'from-transparent to-transparent',
   },
+  sunset: {
+    ...DARK_NAVY,
+    indicator: 'bg-[#FF8A65]',
+    iconActive: 'text-[#A33B32]',
+    iconInactive: 'text-orange-100/80 group-hover:text-white',
+    itemIdle: 'text-orange-50/90 hover:text-white hover:bg-white/[0.10]',
+    itemActive: 'bg-white text-[#8F352F] shadow-lg shadow-[#3A1720]/25',
+    groupActive: 'text-white bg-white/[0.10]',
+    avatarGradient: 'from-[#FF8A65] to-[#D95045]',
+    badge: 'bg-white/15 text-orange-50',
+    headerBg: 'from-transparent to-transparent',
+    headerBorder: 'border-white/15',
+    titleGradient: 'text-white',
+    subtitleBg: 'bg-white/10',
+    subtitleText: 'text-orange-100/80',
+    subtitleBorder: 'border-white/15',
+    overlay: 'from-transparent to-transparent',
+  },
 };
 
 export function getSidebarAccent(key = 'brand') {

@@ -44,8 +44,10 @@ export default function AppSidebar({
   brandTitle,
   brandSubtitle,
   accent = 'brand',
+  sidebarVariant,
   profilePath,
   quickActions,
+  sidebarHero,
   sidebarFooter,
 }) {
   const location = useLocation();
@@ -104,11 +106,13 @@ export default function AppSidebar({
             'sidebar-dark relative flex flex-col h-full shrink-0 overflow-hidden',
             'border-r border-white/[0.06]',
             'shadow-[4px_0_32px_-8px_rgba(0,0,0,0.4)]',
+            sidebarVariant === 'sunset' && 'hr-sidebar-sunset',
             className
           )}
         >
           <div className="relative z-10 flex flex-col h-full min-h-0">
             <SidebarBrand title={resolvedBrandTitle} subtitle={resolvedBrandSubtitle} />
+            {sidebarHero}
 
             <nav className="relative flex-1 px-2 py-2 space-y-0.5 overflow-y-auto overflow-x-hidden scrollbar-thin">
               {navItems.length === 0 && searchQuery && !collapsed && (

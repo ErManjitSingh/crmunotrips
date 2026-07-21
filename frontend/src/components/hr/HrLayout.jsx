@@ -7,6 +7,7 @@ import MobileSidebarDrawer from '../sidebar/MobileSidebarDrawer';
 import RouteFallback from '../ui/RouteFallback';
 import HrTopBar from './HrTopBar';
 import HrSidebarFooter from './HrSidebarFooter';
+import HrSidebarHero from './HrSidebarHero';
 import { hrPortalNavItems } from './hr-nav-config';
 import { APP_BRAND_NAME } from '../../config/branding';
 
@@ -18,18 +19,20 @@ function HrShell() {
     navItems: hrPortalNavItems,
     brandTitle: APP_BRAND_NAME,
     brandSubtitle: 'HR Management',
-    accent: 'violet',
+    accent: 'sunset',
+    sidebarVariant: 'sunset',
     profilePath: '/hr/profile',
     // HR portal me "Key Highlights" strip nahi chahiye.
     // Empty array => SidebarQuickActions render nahi karega.
     quickActions: [],
+    sidebarHero: <HrSidebarHero user={user} />,
     sidebarFooter: <HrSidebarFooter user={user} />,
   };
 
   return (
     <div className="flex min-h-screen bg-[#F0F2F8]">
       <div className="hidden lg:block h-screen sticky top-0">
-        <AppSidebar {...sidebarProps} className="h-screen border-r-[#5D5FEF]/10" />
+        <AppSidebar {...sidebarProps} className="h-screen border-r-orange-200/20" />
       </div>
 
       <MobileSidebarDrawer sidebarProps={sidebarProps} />

@@ -60,7 +60,9 @@ export default function SidebarNavItem({ item, isActive, nested = false }) {
             ? accentStyle.active
             : cn(accent.itemActive)
           : cn(
-              accentStyle ? accentStyle.idle : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.06]'
+              accentStyle
+                ? accentStyle.idle
+                : accent.itemIdle || 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.06]'
             )
       )}
     >
@@ -78,10 +80,12 @@ export default function SidebarNavItem({ item, isActive, nested = false }) {
           'shrink-0',
           nested ? 'w-4 h-4' : 'w-[18px] h-[18px]',
           isActive
-            ? 'text-white'
+            ? accentStyle
+              ? 'text-white'
+              : accent.iconActive || 'text-white'
             : accentStyle
               ? accentStyle.iconIdle
-              : 'text-slate-400 group-hover:text-slate-200'
+              : accent.iconInactive || 'text-slate-400 group-hover:text-slate-200'
         )}
         strokeWidth={isActive ? 2.25 : 2}
       />
