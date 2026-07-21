@@ -87,6 +87,11 @@ npm run build
 
 echo "==> PM2 restart..."
 cd ${APP_ROOT}
+CURRENT_EXEC_MODE=$(pm2 jlist | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const app=JSON.parse(s).find(x=>x.name==='testing-unotrips-api');process.stdout.write(app?.pm2_env?.exec_mode||'')}catch{}})")
+if [ "$CURRENT_EXEC_MODE" = "cluster_mode" ]; then
+  echo "==> Migrating API from cluster to fork mode..."
+  pm2 delete testing-unotrips-api
+fi
 pm2 startOrReload deploy/ecosystem.config.cjs --update-env
 pm2 save
 
