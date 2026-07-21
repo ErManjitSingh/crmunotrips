@@ -16,8 +16,8 @@ import {
   QuotationSyncBanner,
   BookingHotelsEditor,
   BookingTransportEditor,
-  BookingItineraryTimeline,
 } from './BookingFulfillmentSections';
+import OperationsItineraryBuilder from './OperationsItineraryBuilder';
 
 const DOC_TYPES = [
   { value: 'customer_id', label: 'Customer ID' },
@@ -343,7 +343,7 @@ export default function BookingDetailPage() {
         <div className="xl:col-span-8 space-y-6">
           <QuotationSummary meta={quoteMeta} />
 
-          <BookingItineraryTimeline
+          <OperationsItineraryBuilder
             itinerary={itinerary}
             onChange={setItinerary}
             onSave={saveItinerary}
@@ -353,6 +353,7 @@ export default function BookingDetailPage() {
             pdfUrl={itineraryPdfUrl}
             catalogHotels={catalogHotels}
             catalogCabs={catalogCabs}
+            destination={booking.destination}
           />
 
           <BookingHotelsEditor

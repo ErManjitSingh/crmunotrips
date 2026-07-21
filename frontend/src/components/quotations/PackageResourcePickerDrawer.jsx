@@ -508,6 +508,19 @@ async function fetchHotelDetailForOption(option, destination) {
 }
 
 function buildFallbackRooms(option) {
+  if (option.rooms?.length) {
+    return option.rooms.map((room, index) => ({
+      id: room.id || room._id || `${option.id || option.name}-room-${index}`,
+      name: room.name || room.roomType || `Room ${index + 1}`,
+      description: room.description || 'Hotel room option',
+      pricePerNight: Number(room.pricePerNight ?? room.baseRate ?? room.price ?? 0),
+      mealPlanOptions: room.mealPlanOptions?.length ? room.mealPlanOptions : FALLBACK_MEAL_PLANS,
+      images: room.images || option.images || (option.image ? [option.image] : []),
+      bedType: room.bedType,
+      maxOccupancy: room.maxOccupancy,
+      fromPackage: true,
+    }));
+  }
   return [
     {
       id: option.roomTypeId || `pkg-room-${option.id || option.name}`,
