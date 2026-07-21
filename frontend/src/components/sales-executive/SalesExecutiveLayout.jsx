@@ -8,6 +8,7 @@ import TopBar from '../TopBar';
 import MissedFollowUpAlert from '../notifications/MissedFollowUpAlert';
 import RouteFallback from '../ui/RouteFallback';
 import SalesExecutiveMobileNav from './SalesExecutiveMobileNav';
+import ExecutiveSidebarFooter from './ExecutiveSidebarFooter';
 import { salesExecutiveNavItems } from './sidebar-config';
 
 function SalesExecutiveShell() {
@@ -20,6 +21,7 @@ function SalesExecutiveShell() {
     accent: 'violet',
     profilePath: '/sales-executive/profile',
     quickActions: [],
+    sidebarFooter: <ExecutiveSidebarFooter />,
   };
 
   return (
