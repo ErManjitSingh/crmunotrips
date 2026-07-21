@@ -135,6 +135,7 @@ function SortableDayCard({
   onDuplicate,
   onOpenHotelPicker,
   onChangeCab,
+  renderHotelActions,
   canRemove,
   isLastDay,
   colorIndex = 0,
@@ -251,6 +252,7 @@ function SortableDayCard({
             onOpenPicker={() => onOpenHotelPicker?.(day)}
             emptyLabel={isLastDay ? 'Departure day · no overnight stay' : 'Hotel not linked'}
           />
+          {renderHotelActions?.(day)}
           {packageCab && day.day === 1 && <CabCard packageCab={packageCab} onChangeCab={onChangeCab} />}
         </div>
 
@@ -273,6 +275,7 @@ export default function PackageBuilderDayTimeline({
   onChange,
   onOpenHotelPicker,
   onChangeCab,
+  renderHotelActions,
   destination = 'Destination',
   embedded = false,
 }) {
@@ -347,6 +350,7 @@ export default function PackageBuilderDayTimeline({
                   onDuplicate={() => duplicateDay(idx)}
                   onOpenHotelPicker={onOpenHotelPicker}
                   onChangeCab={onChangeCab}
+                  renderHotelActions={renderHotelActions}
                   canRemove={itinerary.length > 1}
                   isLastDay={idx === itinerary.length - 1}
                   colorIndex={idx}

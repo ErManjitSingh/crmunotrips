@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Car, ExternalLink, FileText, Loader2, Save } from 'lucide-react';
+import { Car, ExternalLink, Eye, FileText, Loader2, Save, Send, Ticket } from 'lucide-react';
 import PackageBuilderDayTimeline from '../../quotations/PackageBuilderDayTimeline';
 import PackageResourcePickerDrawer from '../../quotations/PackageResourcePickerDrawer';
 import { Button } from '../../ui/button';
@@ -129,6 +129,11 @@ export default function OperationsItineraryBuilder({
   catalogHotels = [],
   quotationHotels = [],
   catalogCabs = [],
+  hotels = [],
+  vouchers = [],
+  onHotelsChange,
+  onSendHotelVoucher,
+  sendingHotelVoucher,
   destination,
 }) {
   const [picker, setPicker] = useState(null);
@@ -168,6 +173,93 @@ export default function OperationsItineraryBuilder({
       }
     : null;
   const emitChange = (days) => onChange(days.map(stripTimelineUi));
+
+  const hotelForDay = (day) => {
+    const name = String(day.dayHotel?.hotelName || day.hotel || '').trim().toLowerCase();
+    if (!name) return null;
+    const dayNumber = Number(day.day);
+    return hotels.find((hotel) => {
+      if (String(hotel.hotelName || '').trim().toLowerCase() !== name) return false;
+      if (!hotel.day) return true;
+      const start = Number(hotel.day);
+      const end = start + Math.max(1, Number(hotel.nights) || 1) - 1;
+      return dayNumber >= start && dayNumber <= end;
+    }) || hotels.find((hotel) => String(hotel.hotelName || '').trim().toLowerCase() === name);
+  };
+
+  const updateGroupedHotelEmail = (assignment, email) => {
+    const name = String(assignment.hotelName || '').trim().toLowerCase();
+    onHotelsChange?.(hotels.map((hotel) => (
+      String(hotel.hotelName || '').trim().toLowerCase() === name
+        ? { ...hotel, email }
+        : hotel
+    )));
+  };
+
+  const renderHotelVoucherActions = (day) => {
+    const assignment = hotelForDay(day);
+    if (!day.dayHotel?.hotelName && !day.hotel) return null;
+    const voucher = assignment?.voucherId
+      ? vouchers.find((item) => String(item._id) === String(assignment.voucherId))
+      : null;
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+              <Ticket className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-black text-slate-800">Day {day.day} hotel voucher</p>
+              <p className="text-[10px] text-slate-500">
+                {assignment?.voucherSentAt ? 'Sent · same hotel days grouped' : 'Same hotel days will use one voucher'}
+              </p>
+            </div>
+          </div>
+          <input
+            type="email"
+            value={assignment?.email || ''}
+            onChange={(event) => assignment && updateGroupedHotelEmail(assignment, event.target.value)}
+            placeholder={assignment ? 'Hotel email' : 'Save itinerary first'}
+            disabled={!assignment}
+            className="h-9 min-w-0 rounded-lg border border-amber-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-amber-400 sm:w-52"
+          />
+          <div className="flex gap-2">
+            {voucher?.pdfUrl ? (
+              <a
+                href={voucher.pdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-[11px] font-bold text-amber-700"
+              >
+                <Eye className="h-3.5 w-3.5" /> View
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                title="Voucher will be available after it is sent"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-amber-200 bg-white px-3 text-[11px] font-bold text-amber-400 opacity-60"
+              >
+                <Eye className="h-3.5 w-3.5" /> View
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => assignment && onSendHotelVoucher?.(assignment)}
+              disabled={!assignment?._id || !assignment?.email || sendingHotelVoucher === assignment?._id}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-amber-500 px-3 text-[11px] font-bold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {sendingHotelVoucher === assignment?._id
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Send className="h-3.5 w-3.5" />}
+              {assignment?.voucherSentAt ? 'Resend' : 'Send'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const selectHotel = (option) => {
     if (!picker?.day) return;
@@ -264,6 +356,7 @@ export default function OperationsItineraryBuilder({
         onChange={emitChange}
         onOpenHotelPicker={(day) => setPicker({ type: 'hotel', day })}
         onChangeCab={() => setPicker({ type: 'cab' })}
+        renderHotelActions={renderHotelVoucherActions}
         destination={destination || 'Destination'}
         embedded
       />

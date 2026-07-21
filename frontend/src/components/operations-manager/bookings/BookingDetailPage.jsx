@@ -14,7 +14,6 @@ import { formatINR, formatDate, formatPax, formatTravelRange } from '../operatio
 import { cn } from '../../../lib/utils';
 import {
   QuotationSyncBanner,
-  BookingHotelsEditor,
   BookingTransportEditor,
 } from './BookingFulfillmentSections';
 import OperationsItineraryBuilder from './OperationsItineraryBuilder';
@@ -191,7 +190,6 @@ export default function BookingDetailPage() {
   const [hotels, setHotels] = useState([]);
   const [transport, setTransport] = useState([]);
   const [savingItinerary, setSavingItinerary] = useState(false);
-  const [savingHotels, setSavingHotels] = useState(false);
   const [savingTransport, setSavingTransport] = useState(false);
   const [syncingQuote, setSyncingQuote] = useState(false);
   const [docForm, setDocForm] = useState({ type: 'hotel_confirmation', fileName: '', fileUrl: '' });
@@ -241,13 +239,6 @@ export default function BookingDetailPage() {
     setHotels(itineraryHotels);
     fetchBooking();
     setSavingItinerary(false);
-  };
-
-  const saveHotels = async () => {
-    setSavingHotels(true);
-    await API.put(`/operations-manager/bookings/${id}`, { hotels });
-    fetchBooking();
-    setSavingHotels(false);
   };
 
   const saveTransport = async () => {
@@ -419,17 +410,12 @@ export default function BookingDetailPage() {
             catalogHotels={catalogHotels}
             quotationHotels={quoteMeta?.selectedHotels || []}
             catalogCabs={catalogCabs}
-            destination={booking.destination}
-          />
-
-          <BookingHotelsEditor
             hotels={hotels}
-            onChange={setHotels}
-            onSave={saveHotels}
-            saving={savingHotels}
-            catalogHotels={catalogHotels}
-            onSendVoucher={sendHotelVoucher}
-            sendingVoucher={sendingVoucher}
+            vouchers={booking.vouchers || []}
+            onHotelsChange={setHotels}
+            onSendHotelVoucher={sendHotelVoucher}
+            sendingHotelVoucher={sendingVoucher}
+            destination={booking.destination}
           />
 
           <BookingTransportEditor
