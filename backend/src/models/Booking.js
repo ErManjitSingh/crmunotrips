@@ -51,6 +51,8 @@ const transportAssignmentSchema = new mongoose.Schema(
   {
     vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' },
     vendorName: String,
+    day: { type: Number, min: 1 },
+    days: [{ type: Number, min: 1 }],
     vehicleType: {
       type: String,
       enum: ['sedan', 'suv', 'innova', 'tempo_traveller', 'bus', 'other'],
@@ -58,6 +60,9 @@ const transportAssignmentSchema = new mongoose.Schema(
     },
     driverName: String,
     driverPhone: String,
+    contactPerson: { type: String, trim: true, default: '' },
+    phone: { type: String, trim: true, default: '' },
+    email: { type: String, trim: true, lowercase: true, default: '' },
     vehicleNumber: String,
     pickupLocation: String,
     dropLocation: String,
@@ -68,6 +73,7 @@ const transportAssignmentSchema = new mongoose.Schema(
       default: 'pending',
     },
     voucherId: { type: mongoose.Schema.Types.ObjectId, ref: 'Voucher' },
+    voucherSentAt: Date,
     notes: String,
   },
   { _id: true }

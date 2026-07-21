@@ -455,6 +455,8 @@ export function BookingHotelsEditor({
               <input value={h.destination || ''} onChange={(e) => update(i, 'destination', e.target.value)} placeholder="Destination / city" className="input-premium h-10 rounded-xl text-sm" />
               <input value={h.roomType || ''} onChange={(e) => update(i, 'roomType', e.target.value)} placeholder="Room type" className="input-premium h-10 rounded-xl text-sm" />
               <input value={h.mealPlan || ''} onChange={(e) => update(i, 'mealPlan', e.target.value)} placeholder="Meal plan (MAP/CP)" className="input-premium h-10 rounded-xl text-sm" />
+              <input type="number" min="1" value={h.day || ''} onChange={(e) => update(i, 'day', Number(e.target.value) || undefined)} placeholder="Starting day" className="input-premium h-10 rounded-xl text-sm" />
+              <input type="number" min="1" value={h.nights || 1} onChange={(e) => update(i, 'nights', Number(e.target.value) || 1)} placeholder="Nights" className="input-premium h-10 rounded-xl text-sm" />
               <input value={h.contactPerson || ''} onChange={(e) => update(i, 'contactPerson', e.target.value)} placeholder="Hotel contact person" className="input-premium h-10 rounded-xl text-sm" />
               <input value={h.phone || ''} onChange={(e) => update(i, 'phone', e.target.value)} placeholder="Hotel phone" className="input-premium h-10 rounded-xl text-sm" />
               <input type="email" value={h.email || ''} onChange={(e) => update(i, 'email', e.target.value)} placeholder="Hotel email" className="input-premium h-10 rounded-xl text-sm" />
@@ -473,8 +475,10 @@ export function BookingHotelsEditor({
                   {h.voucherSentAt ? 'Hotel voucher sent' : h.voucherId ? 'Voucher generated' : 'Hotel voucher'}
                 </p>
                 <p className="mt-0.5 truncate text-[10px] text-content-muted">
+                  {h.day ? `Day ${h.day}${Number(h.nights) > 1 ? `–${Number(h.day) + Number(h.nights) - 1}` : ''} · ` : ''}
                   {h.email || 'Add hotel email to send'}{h.voucherSentAt ? ` · ${formatDate(h.voucherSentAt)}` : ''}
                 </p>
+                <p className="mt-0.5 text-[9px] text-content-muted">Same hotel on multiple days is combined into one voucher.</p>
               </div>
               <Button
                 type="button"
@@ -495,7 +499,15 @@ export function BookingHotelsEditor({
   );
 }
 
-export function BookingTransportEditor({ transport, onChange, onSave, saving, catalogCabs = [] }) {
+export function BookingTransportEditor({
+  transport,
+  onChange,
+  onSave,
+  saving,
+  catalogCabs = [],
+  onSendVoucher,
+  sendingVoucher,
+}) {
   const update = (i, field, value) => {
     onChange(transport.map((t, idx) => (idx === i ? { ...t, [field]: value } : t)));
   };
@@ -568,6 +580,37 @@ export function BookingTransportEditor({ transport, onChange, onSave, saving, ca
               <input value={t.vehicleNumber || ''} onChange={(e) => update(i, 'vehicleNumber', e.target.value)} placeholder="Vehicle number" className="input-premium h-10 rounded-xl text-sm" />
               <input value={t.pickupLocation || ''} onChange={(e) => update(i, 'pickupLocation', e.target.value)} placeholder="Pickup location" className="input-premium h-10 rounded-xl text-sm" />
               <input value={t.dropLocation || ''} onChange={(e) => update(i, 'dropLocation', e.target.value)} placeholder="Drop location" className="input-premium h-10 rounded-xl text-sm" />
+              <input
+                value={(t.days || []).join(', ')}
+                onChange={(e) => update(i, 'days', e.target.value.split(',').map((day) => Number(day.trim())).filter(Boolean))}
+                placeholder="Service days (e.g. 1, 2, 4)"
+                className="input-premium h-10 rounded-xl text-sm"
+              />
+              <input value={t.contactPerson || ''} onChange={(e) => update(i, 'contactPerson', e.target.value)} placeholder="Vendor contact person" className="input-premium h-10 rounded-xl text-sm" />
+              <input value={t.phone || ''} onChange={(e) => update(i, 'phone', e.target.value)} placeholder="Vendor phone" className="input-premium h-10 rounded-xl text-sm" />
+              <input type="email" value={t.email || ''} onChange={(e) => update(i, 'email', e.target.value)} placeholder="Vendor email" className="input-premium h-10 rounded-xl text-sm" />
+            </div>
+            <div className="flex flex-col gap-2 rounded-xl border border-sky-500/20 bg-sky-500/[0.05] p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-xs font-bold text-content-primary">
+                  <Ticket className="h-3.5 w-3.5 text-sky-600" />
+                  {t.voucherSentAt ? 'Cab voucher sent' : t.voucherId ? 'Cab voucher generated' : 'Day-wise cab voucher'}
+                </p>
+                <p className="mt-0.5 truncate text-[10px] text-content-muted">
+                  {(t.days || []).length ? `Days ${(t.days || []).join(', ')} · ` : ''}{t.email || 'Add vendor email to send'}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 rounded-xl gap-1.5 border-sky-500/30"
+                disabled={!t._id || !t.email || saving || sendingVoucher === t._id}
+                onClick={() => onSendVoucher?.(t, i)}
+              >
+                {sendingVoucher === t._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                {t.voucherSentAt ? 'Resend Voucher' : 'Send Cab Voucher'}
+              </Button>
             </div>
           </div>
         ))}

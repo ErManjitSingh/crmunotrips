@@ -131,11 +131,16 @@ function mapQuoteTransport(quotation) {
   const selected = quotation?.selectedCabs || [];
   return selected.map((t) => ({
     vendorName: t.vendorName || t.vendor || '',
+    day: Number(t.day) || undefined,
+    days: Array.isArray(t.days) ? t.days.map(Number).filter(Boolean) : [],
     vehicleType: normalizeVehicleType(t.vehicleType || t.type || 'suv'),
     pickupLocation: t.pickup || t.pickupLocation || '',
     dropLocation: t.drop || t.dropLocation || '',
     driverName: t.driverName || '',
     driverPhone: t.driverPhone || '',
+    contactPerson: t.contactPerson || t.contact?.name || '',
+    phone: t.phone || t.contact?.phone || t.driverPhone || '',
+    email: t.email || t.contact?.email || '',
     vehicleNumber: t.vehicleNumber || '',
     status: 'pending',
   }));

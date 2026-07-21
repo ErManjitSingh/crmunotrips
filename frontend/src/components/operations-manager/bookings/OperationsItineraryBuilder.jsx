@@ -11,35 +11,71 @@ function textValue(value) {
 }
 
 function hotelOption(hotel) {
-  const stars = Number(String(hotel.category || '').match(/\d+/)?.[0] || 0);
-  const rooms = hotel.roomTypes?.length
-    ? hotel.roomTypes.map((room, index) => ({
-        id: `${hotel._id}-room-${index}`,
+  const nested = hotel?.hotel && typeof hotel.hotel === 'object' ? hotel.hotel : {};
+  const source = { ...nested, ...hotel };
+  const id = source._id || source.id || source.hotelId || source.uuid || source.name;
+  const stars = Number(
+    source.starRating ||
+    source.starCategory ||
+    String(source.category || '').match(/\d+/)?.[0] ||
+    0
+  );
+  const image =
+    source.image ||
+    source.thumbnailUrl ||
+    source.hotelImages?.[0] ||
+    source.images?.[0] ||
+    source.roomImage ||
+    source.roomImages?.[0] ||
+    source.room?.images?.[0] ||
+    '';
+  const images = [
+    ...(source.images || []),
+    ...(source.hotelImages || []),
+    ...(source.roomImages || []),
+    ...(source.room?.images || []),
+  ].filter(Boolean);
+  const roomList = source.roomTypes?.length
+    ? source.roomTypes
+    : source.rooms?.length
+      ? source.rooms
+      : source.room
+        ? [source.room]
+        : [];
+  const rooms = roomList.length
+    ? roomList.map((room, index) => ({
+        id: room.id || room._id || `${id}-room-${index}`,
         name: room.name,
-        baseRate: room.baseRate,
+        baseRate: room.baseRate ?? room.pricePerNight ?? room.price ?? source.price ?? 0,
         maxOccupancy: room.maxOccupancy,
+        images: room.images || images,
+        mealPlanOptions: room.mealPlanOptions,
       }))
     : [{
-        id: `${hotel._id}-room`,
-        name: hotel.roomType || 'Standard Room',
-        baseRate: hotel.price || 0,
+        id: `${id}-room`,
+        name: textValue(source.roomType) || textValue(source.tierName) || 'Standard Room',
+        baseRate: source.price || source.priceDelta || 0,
+        images,
       }];
   return {
-    id: hotel._id,
-    hotelId: hotel._id,
-    name: hotel.name,
-    location: hotel.location || hotel.destination || '',
-    city: hotel.destination || hotel.location || '',
+    id,
+    hotelId: id,
+    name: source.name || source.hotelName,
+    image,
+    images,
+    location: source.location || source.destination || source.city || '',
+    city: source.city || source.destination || source.location || '',
+    slug: source.slug || '',
     starRating: stars,
     tierName: rooms[0]?.name,
-    meals: hotel.mealPlan || '',
-    priceDelta: hotel.price || rooms[0]?.baseRate || 0,
-    startingPrice: hotel.price || rooms[0]?.baseRate || 0,
+    meals: textValue(source.mealPlan) || source.meals || '',
+    priceDelta: source.perNight || source.priceDelta || source.price || rooms[0]?.baseRate || 0,
+    startingPrice: source.startingPrice || source.price || rooms[0]?.baseRate || 0,
     rooms,
-    contactPerson: hotel.contactPerson || '',
-    phone: hotel.phone || '',
-    email: hotel.email || '',
-    address: hotel.address || hotel.location || '',
+    contactPerson: source.contactPerson || source.contact?.name || '',
+    phone: source.phone || source.contact?.phone || '',
+    email: source.email || source.contact?.email || '',
+    address: source.address || source.location || '',
   };
 }
 
@@ -59,7 +95,9 @@ function cabOption(cab) {
 }
 
 function hotelMeta(day, catalogById) {
-  const selected = catalogById.get(String(day.dayHotel?.hotelId || ''));
+  const selected =
+    catalogById.get(String(day.dayHotel?.hotelId || '')) ||
+    catalogById.get(`name:${String(day.dayHotel?.hotelName || '').toLowerCase()}`);
   return {
     name: day.dayHotel?.hotelName || selected?.name || day.accommodation || '',
     image: selected?.image,
@@ -89,14 +127,27 @@ export default function OperationsItineraryBuilder({
   generatingPdf,
   pdfUrl,
   catalogHotels = [],
+  quotationHotels = [],
   catalogCabs = [],
   destination,
 }) {
   const [picker, setPicker] = useState(null);
-  const hotelOptions = useMemo(() => catalogHotels.map(hotelOption), [catalogHotels]);
+  const hotelOptions = useMemo(() => {
+    const merged = [...quotationHotels, ...catalogHotels].map(hotelOption).filter((hotel) => hotel.name);
+    const seen = new Set();
+    return merged.filter((hotel) => {
+      const key = String(hotel.name).trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [catalogHotels, quotationHotels]);
   const cabOptions = useMemo(() => catalogCabs.map(cabOption), [catalogCabs]);
   const hotelsById = useMemo(
-    () => new Map(hotelOptions.map((hotel) => [String(hotel.id), hotel])),
+    () => new Map(hotelOptions.flatMap((hotel) => [
+      [String(hotel.id), hotel],
+      [`name:${String(hotel.name).toLowerCase()}`, hotel],
+    ])),
     [hotelOptions]
   );
 

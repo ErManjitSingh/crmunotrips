@@ -27,6 +27,11 @@ function fmtINR(n) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 }
 
+function fmtDays(days = []) {
+  const list = [...new Set((days || []).map(Number).filter(Boolean))].sort((a, b) => a - b);
+  return list.length ? list.map((day) => `Day ${day}`).join(', ') : 'As per itinerary';
+}
+
 const BASE_STYLES = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; color: #0f172a; background: #f8fafc; padding: 24px; }
@@ -55,6 +60,9 @@ function buildVoucherHtml(voucher, booking) {
   if (type === 'hotel' && booking.hotels?.length) {
     serviceBlock = booking.hotels.map((h) => `
       <div class="field"><label>Hotel</label><p>${esc(h.hotelName || h.name)}</p></div>
+      <div class="field"><label>Applicable Days</label><p>${fmtDays(
+        h.day ? Array.from({ length: Math.max(1, Number(h.nights) || 1) }, (_, index) => Number(h.day) + index) : details.serviceDays
+      )}</p></div>
       <div class="field"><label>Check-in / Check-out</label><p>${fmtDate(h.checkIn)} → ${fmtDate(h.checkOut)}</p></div>
       <div class="field"><label>Room</label><p>${esc(h.roomType || 'Standard')}</p></div>
       <div class="field"><label>Rooms / Meal Plan</label><p>${esc(h.rooms || 1)} room(s) · ${esc(h.mealPlan || 'As booked')}</p></div>
@@ -64,6 +72,9 @@ function buildVoucherHtml(voucher, booking) {
   } else if (type === 'transport' && booking.transport?.length) {
     serviceBlock = booking.transport.map((t) => `
       <div class="field"><label>Vehicle</label><p>${esc((t.vehicleType || '').replace(/_/g, ' '))}</p></div>
+      <div class="field"><label>Applicable Days</label><p>${fmtDays(
+        t.days?.length ? t.days : t.day ? [t.day] : details.serviceDays
+      )}</p></div>
       <div class="field"><label>Route</label><p>${esc(t.pickupLocation)} → ${esc(t.dropLocation)}</p></div>
       <div class="field"><label>Driver</label><p>${esc(t.driverName)} ${t.driverPhone ? `· ${esc(t.driverPhone)}` : ''}</p></div>
     `).join('');
@@ -96,6 +107,7 @@ function buildVoucherHtml(voucher, booking) {
       <div class="field"><label>Destination</label><p>${esc(booking.destination)}</p></div>
       <div class="field"><label>Valid From</label><p>${fmtDate(details.validFrom || booking.travelDate)}</p></div>
       <div class="field"><label>Valid Until</label><p>${fmtDate(details.validUntil || booking.returnDate)}</p></div>
+      <div class="field"><label>Service Days</label><p>${fmtDays(details.serviceDays)}</p></div>
     </div>
     ${details.title ? `<div class="field"><label>Title</label><p>${esc(details.title)}</p></div>` : ''}
     <div class="section"><h2>Service Details</h2><div class="grid">${serviceBlock || '<p>Details as per booking confirmation.</p>'}</div></div>

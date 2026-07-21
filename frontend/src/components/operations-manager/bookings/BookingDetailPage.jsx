@@ -136,6 +136,52 @@ function applyBookingState(data, setters) {
   setTransport(data.transport?.length ? data.transport : []);
 }
 
+function hotelsFromItinerary(days = [], currentHotels = []) {
+  const stays = [];
+  [...days]
+    .sort((a, b) => Number(a.day) - Number(b.day))
+    .forEach((day) => {
+      const selected = day.dayHotel;
+      if (!selected?.hotelName) return;
+      const dayNumber = Number(day.day) || stays.length + 1;
+      const previous = stays[stays.length - 1];
+      const sameAsPrevious =
+        previous &&
+        String(previous.hotelName).toLowerCase() === String(selected.hotelName).toLowerCase() &&
+        previous.day + previous.nights === dayNumber;
+      if (sameAsPrevious) {
+        previous.nights += 1;
+        if (day.date) {
+          const checkout = new Date(day.date);
+          checkout.setDate(checkout.getDate() + 1);
+          previous.checkOut = checkout.toISOString();
+        }
+        return;
+      }
+
+      const existing = currentHotels.find((hotel) => (
+        String(hotel.hotelId || '') === String(selected.hotelId || '') ||
+        String(hotel.hotelName || '').toLowerCase() === String(selected.hotelName).toLowerCase()
+      ));
+      const checkIn = day.date || existing?.checkIn;
+      const checkOut = checkIn ? new Date(new Date(checkIn).setDate(new Date(checkIn).getDate() + 1)).toISOString() : existing?.checkOut;
+      stays.push({
+        ...existing,
+        hotelId: selected.hotelId,
+        hotelName: selected.hotelName,
+        destination: selected.destination || selected.location || '',
+        roomType: selected.roomType || '',
+        mealPlan: selected.mealPlan || '',
+        day: dayNumber,
+        nights: 1,
+        checkIn,
+        checkOut,
+        status: existing?.status || 'pending',
+      });
+    });
+  return stays.length ? stays : currentHotels;
+}
+
 export default function BookingDetailPage() {
   const { id } = useParams();
   const [booking, setBooking] = useState(null);
@@ -155,6 +201,7 @@ export default function BookingDetailPage() {
   const [catalogHotels, setCatalogHotels] = useState([]);
   const [catalogCabs, setCatalogCabs] = useState([]);
   const [sendingVoucher, setSendingVoucher] = useState(null);
+  const [sendingTransportVoucher, setSendingTransportVoucher] = useState(null);
 
   const setters = { setBooking, setItinerary, setHotels, setTransport };
 
@@ -189,7 +236,9 @@ export default function BookingDetailPage() {
 
   const saveItinerary = async () => {
     setSavingItinerary(true);
-    await API.put(`/operations-manager/bookings/${id}`, { itinerary });
+    const itineraryHotels = hotelsFromItinerary(itinerary, hotels);
+    await API.put(`/operations-manager/bookings/${id}`, { itinerary, hotels: itineraryHotels });
+    setHotels(itineraryHotels);
     fetchBooking();
     setSavingItinerary(false);
   };
@@ -273,6 +322,22 @@ export default function BookingDetailPage() {
     }
   };
 
+  const sendTransportVoucher = async (transportRow) => {
+    if (!transportRow?._id || !transportRow.email) return;
+    setSendingTransportVoucher(transportRow._id);
+    try {
+      await API.put(`/operations-manager/bookings/${id}`, { transport });
+      await API.post(`/operations-manager/bookings/${id}/transport/${transportRow._id}/voucher/send`, {
+        email: transportRow.email,
+        phone: transportRow.phone,
+        contactPerson: transportRow.contactPerson,
+      });
+      fetchBooking();
+    } finally {
+      setSendingTransportVoucher(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -352,6 +417,7 @@ export default function BookingDetailPage() {
             generatingPdf={generatingPdf}
             pdfUrl={itineraryPdfUrl}
             catalogHotels={catalogHotels}
+            quotationHotels={quoteMeta?.selectedHotels || []}
             catalogCabs={catalogCabs}
             destination={booking.destination}
           />
@@ -372,6 +438,8 @@ export default function BookingDetailPage() {
             onSave={saveTransport}
             saving={savingTransport}
             catalogCabs={catalogCabs}
+            onSendVoucher={sendTransportVoucher}
+            sendingVoucher={sendingTransportVoucher}
           />
 
           {booking.activities?.length > 0 && (

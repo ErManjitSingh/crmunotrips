@@ -60,6 +60,32 @@ async function enrichHotelContacts(hotels = []) {
   });
 }
 
+async function enrichTransportContacts(rows = []) {
+  const ids = rows.map((row) => row.vendorId).filter(Boolean);
+  const names = rows.map((row) => row.vendorName).filter(Boolean);
+  if (!ids.length && !names.length) return rows;
+  const vendors = await Vendor.find({
+    $or: [
+      ...(ids.length ? [{ _id: { $in: ids } }] : []),
+      ...(names.length ? [{ name: { $in: names } }] : []),
+    ],
+  }).select('name contactPerson phone email').lean();
+  const byId = new Map(vendors.map((vendor) => [String(vendor._id), vendor]));
+  const byName = new Map(vendors.map((vendor) => [serviceKey(vendor.name), vendor]));
+  return rows.map((row) => {
+    const vendor = byId.get(String(row.vendorId)) || byName.get(serviceKey(row.vendorName));
+    if (!vendor) return row;
+    return {
+      ...row,
+      vendorId: row.vendorId || vendor._id,
+      vendorName: row.vendorName || vendor.name,
+      contactPerson: row.contactPerson || vendor.contactPerson || '',
+      phone: row.phone || vendor.phone || '',
+      email: row.email || vendor.email || '',
+    };
+  });
+}
+
 function paymentLedger(payments = []) {
   return payments.flatMap((payment) => {
     if (payment.installments?.length) {
@@ -95,6 +121,51 @@ function paymentLedger(payments = []) {
   }).sort((a, b) => new Date(a.receivedAt) - new Date(b.receivedAt));
 }
 
+function serviceKey(value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+}
+
+function uniqueDays(values = []) {
+  return [...new Set(values.map(Number).filter((day) => Number.isInteger(day) && day > 0))].sort((a, b) => a - b);
+}
+
+function hotelServiceDays(booking, hotels) {
+  const names = new Set(hotels.map((hotel) => serviceKey(hotel.hotelName)));
+  const itineraryDays = (booking.itinerary || [])
+    .filter((day) => names.has(serviceKey(day.dayHotel?.hotelName || day.accommodation)))
+    .map((day) => day.day);
+  const assignmentDays = hotels.flatMap((hotel) => {
+    const start = Number(hotel.day);
+    const nights = Math.max(1, Number(hotel.nights) || 1);
+    return start ? Array.from({ length: nights }, (_, index) => start + index) : [];
+  });
+  return uniqueDays([...itineraryDays, ...assignmentDays]);
+}
+
+function transportServiceDays(booking, transportRows) {
+  const vehicleNumbers = new Set(transportRows.map((row) => serviceKey(row.vehicleNumber)).filter(Boolean));
+  const vehicleTypes = new Set(transportRows.map((row) => serviceKey(row.vehicleType)).filter(Boolean));
+  const itineraryDays = (booking.itinerary || [])
+    .filter((day) => {
+      const cab = day.dayCab || {};
+      return (
+        (cab.vehicleNumber && vehicleNumbers.has(serviceKey(cab.vehicleNumber))) ||
+        (cab.vehicleType && vehicleTypes.has(serviceKey(cab.vehicleType)))
+      );
+    })
+    .map((day) => day.day);
+  const assignmentDays = transportRows.flatMap((row) => [
+    ...(row.days || []),
+    ...(row.day ? [row.day] : []),
+  ]);
+  return uniqueDays([...itineraryDays, ...assignmentDays]);
+}
+
+function dayLabel(days = []) {
+  if (!days.length) return 'As per itinerary';
+  return days.map((day) => `Day ${day}`).join(', ');
+}
+
 const getDashboard = asyncHandler(async (req, res) => {
   // Command center shows org-wide metrics across all branches.
   const data = await ops.getDashboard(null);
@@ -115,7 +186,7 @@ const getBooking = asyncHandler(async (req, res) => {
   let booking = await Booking.findById(req.params.id).lean();
   if (!booking) throw new ApiError(404, 'Booking not found');
   booking = await enrichBookingWithQuotation(booking);
-  const [tasks, documents, payments, vouchers, hotels] = await Promise.all([
+  const [tasks, documents, payments, vouchers, hotels, transport] = await Promise.all([
     ops.listTasks({ bookingId: req.params.id }),
     ops.listDocuments(req.params.id),
     Payment.find({
@@ -126,10 +197,12 @@ const getBooking = asyncHandler(async (req, res) => {
     }).sort({ createdAt: 1 }).lean(),
     Voucher.find({ booking: booking._id }).sort({ createdAt: -1 }).lean(),
     enrichHotelContacts(booking.hotels || []),
+    enrichTransportContacts(booking.transport || []),
   ]);
   res.json({
     ...booking,
     hotels,
+    transport,
     tasks,
     documents,
     payments,
@@ -348,18 +421,25 @@ const sendHotelVoucher = asyncHandler(async (req, res) => {
   if (!booking) throw new ApiError(404, 'Booking not found');
   const hotel = booking.hotels.id(req.params.hotelAssignmentId);
   if (!hotel) throw new ApiError(404, 'Hotel assignment not found');
+  const groupedHotels = booking.hotels.filter(
+    (row) => serviceKey(row.hotelName) === serviceKey(hotel.hotelName)
+  );
+  const serviceDays = hotelServiceDays(booking, groupedHotels);
 
   const recipientEmail = String(req.body.email || hotel.email || '').trim().toLowerCase();
   if (!recipientEmail) throw new ApiError(400, 'Hotel email is required');
 
-  hotel.email = recipientEmail;
-  if (req.body.phone != null) hotel.phone = String(req.body.phone).trim();
-  if (req.body.contactPerson != null) hotel.contactPerson = String(req.body.contactPerson).trim();
-  if (req.body.confirmationNumber != null) {
-    hotel.confirmationNumber = String(req.body.confirmationNumber).trim();
-  }
+  groupedHotels.forEach((row) => {
+    row.email = recipientEmail;
+    if (req.body.phone != null) row.phone = String(req.body.phone).trim();
+    if (req.body.contactPerson != null) row.contactPerson = String(req.body.contactPerson).trim();
+    if (req.body.confirmationNumber != null) {
+      row.confirmationNumber = String(req.body.confirmationNumber).trim();
+    }
+  });
 
-  let voucher = hotel.voucherId ? await Voucher.findById(hotel.voucherId) : null;
+  const existingVoucherId = groupedHotels.find((row) => row.voucherId)?.voucherId;
+  let voucher = existingVoucherId ? await Voucher.findById(existingVoucherId) : null;
   if (!voucher) {
     const count = await Voucher.countDocuments();
     const voucherNumber = `VCH-H-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
@@ -368,7 +448,9 @@ const sendHotelVoucher = asyncHandler(async (req, res) => {
       validFrom: hotel.checkIn || booking.travelDate,
       validUntil: hotel.checkOut || booking.returnDate,
       hotelAssignmentId: hotel._id,
+      hotelAssignmentIds: groupedHotels.map((row) => row._id),
       hotel: hotel.toObject(),
+      serviceDays,
       paidAmount: booking.advanceReceived || 0,
       pendingAmount: booking.pendingAmount || 0,
     };
@@ -389,11 +471,20 @@ const sendHotelVoucher = asyncHandler(async (req, res) => {
     };
     voucherDoc.pdfUrl = generateVoucherDocument(voucherDoc, {
       ...booking.toObject(),
-      hotels: [hotel.toObject()],
+      hotels: groupedHotels.map((row) => row.toObject()),
     });
     voucher = await Voucher.create(voucherDoc);
-    hotel.voucherId = voucher._id;
   }
+  voucher.details = {
+    ...(voucher.details || {}),
+    serviceDays,
+    hotelAssignmentIds: groupedHotels.map((row) => row._id),
+  };
+  voucher.pdfUrl = generateVoucherDocument(voucher.toObject(), {
+    ...booking.toObject(),
+    hotels: groupedHotels.map((row) => row.toObject()),
+  });
+  groupedHotels.forEach((row) => { row.voucherId = voucher._id; });
 
   const subject = String(
     req.body.subject || `Hotel booking voucher ${voucher.voucherNumber} — ${booking.customerName}`
@@ -412,6 +503,7 @@ const sendHotelVoucher = asyncHandler(async (req, res) => {
       html: `<p>${escapeHtml(customMessage || 'Please find the attached hotel booking voucher.')}</p>
         <p><strong>Guest:</strong> ${escapeHtml(booking.customerName)}<br/>
         <strong>Hotel:</strong> ${escapeHtml(hotel.hotelName)}<br/>
+        <strong>Service Days:</strong> ${escapeHtml(dayLabel(serviceDays))}<br/>
         <strong>Stay:</strong> ${emailDate(hotel.checkIn || booking.travelDate)} to ${emailDate(hotel.checkOut || booking.returnDate)}</p>`,
       attachments: [{
         filename: `${voucher.voucherNumber}.html`,
@@ -436,10 +528,135 @@ const sendHotelVoucher = asyncHandler(async (req, res) => {
   voucher.recipientPhone = hotel.phone || '';
   voucher.emailMessageId = mailResult.messageId || '';
   voucher.deliveryError = '';
-  hotel.voucherSentAt = sentAt;
+  groupedHotels.forEach((row) => { row.voucherSentAt = sentAt; });
   await Promise.all([voucher.save(), booking.save(), cacheService.invalidate('ops:')]);
 
-  res.json({ voucher, hotel: hotel.toObject() });
+  res.json({
+    voucher,
+    hotel: hotel.toObject(),
+    groupedHotelIds: groupedHotels.map((row) => row._id),
+    serviceDays,
+  });
+});
+
+const sendTransportVoucher = asyncHandler(async (req, res) => {
+  if (!isEmailConfigured()) throw new ApiError(503, 'Email service is not configured');
+
+  const booking = await Booking.findById(req.params.id);
+  if (!booking) throw new ApiError(404, 'Booking not found');
+  const transport = booking.transport.id(req.params.transportAssignmentId);
+  if (!transport) throw new ApiError(404, 'Transport assignment not found');
+
+  const targetKey = serviceKey(
+    transport.vendorName || transport.vehicleNumber || `${transport.vehicleType}-${transport.driverPhone}`
+  );
+  const groupedTransport = booking.transport.filter((row) => serviceKey(
+    row.vendorName || row.vehicleNumber || `${row.vehicleType}-${row.driverPhone}`
+  ) === targetKey);
+  const serviceDays = transportServiceDays(booking, groupedTransport);
+  const recipientEmail = String(req.body.email || transport.email || '').trim().toLowerCase();
+  if (!recipientEmail) throw new ApiError(400, 'Transport vendor email is required');
+
+  groupedTransport.forEach((row) => {
+    row.email = recipientEmail;
+    if (req.body.phone != null) row.phone = String(req.body.phone).trim();
+    if (req.body.contactPerson != null) row.contactPerson = String(req.body.contactPerson).trim();
+  });
+
+  const existingVoucherId = groupedTransport.find((row) => row.voucherId)?.voucherId;
+  let voucher = existingVoucherId ? await Voucher.findById(existingVoucherId) : null;
+  if (!voucher) {
+    const count = await Voucher.countDocuments();
+    const voucherNumber = `VCH-T-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+    voucher = await Voucher.create({
+      type: 'transport',
+      booking: booking._id,
+      voucherNumber,
+      bookingNumber: booking.bookingNumber,
+      customerName: booking.customerName,
+      branchId: booking.branchId || req.branchId,
+      status: 'issued',
+      issuedAt: new Date(),
+      issuedBy: req.user._id,
+      recipientName: transport.contactPerson || transport.vendorName || 'Transport Vendor',
+      recipientEmail,
+      recipientPhone: transport.phone || transport.driverPhone || '',
+      details: {
+        title: `${transport.vendorName || transport.vehicleType} transport voucher`,
+        validFrom: transport.pickupDate || booking.travelDate,
+        validUntil: booking.returnDate,
+        transportAssignmentId: transport._id,
+        transportAssignmentIds: groupedTransport.map((row) => row._id),
+        serviceDays,
+        paidAmount: booking.advanceReceived || 0,
+        pendingAmount: booking.pendingAmount || 0,
+      },
+    });
+  }
+
+  voucher.details = {
+    ...(voucher.details || {}),
+    serviceDays,
+    transportAssignmentIds: groupedTransport.map((row) => row._id),
+  };
+  voucher.pdfUrl = generateVoucherDocument(voucher.toObject(), {
+    ...booking.toObject(),
+    transport: groupedTransport.map((row) => row.toObject()),
+  });
+  groupedTransport.forEach((row) => { row.voucherId = voucher._id; });
+
+  const subject = String(
+    req.body.subject || `Transport voucher ${voucher.voucherNumber} — ${booking.customerName}`
+  ).trim();
+  const customMessage = String(req.body.message || '').trim();
+  const attachmentHtml = require('fs').readFileSync(
+    require('path').join(__dirname, '../..', voucher.pdfUrl.replace(/^\/uploads\//, 'uploads/')),
+    'utf8'
+  );
+
+  let mailResult;
+  try {
+    mailResult = await sendMailMessage({
+      to: recipientEmail,
+      subject,
+      text: customMessage || `Please find the transport voucher for ${booking.customerName}, booking ${booking.bookingNumber}.`,
+      html: `<p>${escapeHtml(customMessage || 'Please find the attached transport voucher.')}</p>
+        <p><strong>Guest:</strong> ${escapeHtml(booking.customerName)}<br/>
+        <strong>Vehicle:</strong> ${escapeHtml(transport.vehicleType?.replace(/_/g, ' '))}<br/>
+        <strong>Service Days:</strong> ${escapeHtml(dayLabel(serviceDays))}<br/>
+        <strong>Route:</strong> ${escapeHtml(transport.pickupLocation)} to ${escapeHtml(transport.dropLocation)}</p>`,
+      attachments: [{
+        filename: `${voucher.voucherNumber}.html`,
+        content: Buffer.from(attachmentHtml, 'utf8').toString('base64'),
+        contentType: 'text/html',
+      }],
+    });
+  } catch (error) {
+    voucher.deliveryStatus = 'failed';
+    voucher.deliveryError = error.message;
+    await Promise.all([voucher.save(), booking.save()]);
+    throw new ApiError(502, `Voucher email failed: ${error.message}`);
+  }
+
+  const sentAt = new Date();
+  voucher.status = 'sent';
+  voucher.deliveryStatus = 'sent';
+  voucher.sentAt = sentAt;
+  voucher.sentBy = req.user._id;
+  voucher.recipientEmail = recipientEmail;
+  voucher.recipientName = transport.contactPerson || transport.vendorName || 'Transport Vendor';
+  voucher.recipientPhone = transport.phone || transport.driverPhone || '';
+  voucher.emailMessageId = mailResult.messageId || '';
+  voucher.deliveryError = '';
+  groupedTransport.forEach((row) => { row.voucherSentAt = sentAt; });
+  await Promise.all([voucher.save(), booking.save(), cacheService.invalidate('ops:')]);
+
+  res.json({
+    voucher,
+    transport: transport.toObject(),
+    groupedTransportIds: groupedTransport.map((row) => row._id),
+    serviceDays,
+  });
 });
 
 const generateItineraryPdf = asyncHandler(async (req, res) => {
@@ -575,6 +792,7 @@ module.exports = {
   createVoucher,
   updateVoucher,
   sendHotelVoucher,
+  sendTransportVoucher,
   listTickets,
   createTicket,
   updateTicket,

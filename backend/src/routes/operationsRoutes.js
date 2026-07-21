@@ -32,6 +32,7 @@ const {
   createVoucher,
   updateVoucher,
   sendHotelVoucher,
+  sendTransportVoucher,
   listTickets,
   createTicket,
   updateTicket,
@@ -62,6 +63,11 @@ router.post(
   '/bookings/:id/hotels/:hotelAssignmentId/voucher/send',
   requirePermission('operations', 'edit'),
   sendHotelVoucher
+);
+router.post(
+  '/bookings/:id/transport/:transportAssignmentId/voucher/send',
+  requirePermission('operations', 'edit'),
+  sendTransportVoucher
 );
 router.get('/bookings/:id/documents', requirePermission('operations', 'view'), listDocuments);
 router.post('/bookings/:id/documents', requirePermission('operations', 'edit'), addDocument);
