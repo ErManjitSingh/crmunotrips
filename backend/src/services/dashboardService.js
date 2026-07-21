@@ -6,6 +6,7 @@ const Package = require('../models/Package');
 const User = require('../models/User');
 const Team = require('../models/Team');
 const Booking = require('../models/Booking');
+const LeadActivity = require('../models/LeadActivity');
 const { startOfDay, endOfDay, enrichLead } = require('../utils/queryHelpers');
 const {
   sumConvertedPackageRevenue,
@@ -707,6 +708,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
   const yesterdayStart = new Date(todayStart);
   yesterdayStart.setDate(yesterdayStart.getDate() - 1);
   const yesterdayEnd = new Date(todayStart.getTime() - 1);
+  const chartStart = startOfDay(new Date(todayStart.getFullYear(), todayStart.getMonth(), todayStart.getDate() - 20));
 
   const leadScope = withBranch({ assignedTo: execId }, branchId);
   const leadIds = await Lead.find(leadScope).distinct('_id');
@@ -717,6 +719,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
     myLeads,
     hotLeads,
     convertedCount,
+    todayFollowupCount,
     todayFollowups,
     quotesSentCount,
     monthlyRevenueAgg,
@@ -731,10 +734,20 @@ async function buildExecutiveDashboard(userId, options = {}) {
     lastMonthQuotes,
     lastMonthConverted,
     lastMonthRevenueAgg,
+    leadTrendAgg,
+    followupTrendAgg,
+    convertedTrendAgg,
+    todayActivitiesRaw,
+    topLeadsRaw,
   ] = await Promise.all([
     Lead.countDocuments({ ...leadScope, status: { $nin: ['lost', 'booked_from_another_company'] } }),
     Lead.countDocuments({ ...leadScope, isHot: true, status: { $nin: ['converted', 'lost', 'booked_from_another_company'] } }),
     Lead.countDocuments({ ...leadScope, status: 'converted' }),
+    FollowUp.countDocuments({
+      ...followScope,
+      scheduledAt: { $gte: todayStart, $lte: todayEnd },
+      status: 'pending',
+    }),
     FollowUp.find({
       ...followScope,
       scheduledAt: { $gte: todayStart, $lte: todayEnd },
@@ -749,11 +762,20 @@ async function buildExecutiveDashboard(userId, options = {}) {
       status: { $in: ['sent', 'negotiation', 'approved', 'viewed', 'pending_approval'] },
     }),
     Payment.aggregate([
-      { $match: withBranch({ status: { $in: ['paid', 'partial'] }, createdAt: { $gte: monthStart } }, branchId) },
+      {
+        $match: withBranch({
+          status: { $in: ['paid', 'partial'] },
+          lead: { $in: leadIds },
+          $or: [
+            { paidAt: { $gte: monthStart } },
+            { paidAt: null, createdAt: { $gte: monthStart } },
+          ],
+        }, branchId),
+      },
       { $group: { _id: null, total: { $sum: '$paidAmount' } } },
     ]),
     Lead.find(leadScope).sort({ createdAt: -1 }).limit(6).lean(),
-    FollowUp.find({ ...followScope, status: 'pending' })
+    FollowUp.find({ ...followScope, status: 'pending', scheduledAt: { $gte: new Date() } })
       .populate('lead', 'name destination')
       .sort({ scheduledAt: 1 })
       .limit(6)
@@ -791,9 +813,46 @@ async function buildExecutiveDashboard(userId, options = {}) {
       updatedAt: { $gte: lastMonthStart, $lte: lastMonthEnd },
     }),
     Payment.aggregate([
-      { $match: withBranch({ status: { $in: ['paid', 'partial'] }, createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } }, branchId) },
+      {
+        $match: withBranch({
+          status: { $in: ['paid', 'partial'] },
+          lead: { $in: leadIds },
+          $or: [
+            { paidAt: { $gte: lastMonthStart, $lte: lastMonthEnd } },
+            { paidAt: null, createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } },
+          ],
+        }, branchId),
+      },
       { $group: { _id: null, total: { $sum: '$paidAmount' } } },
     ]),
+    Lead.aggregate([
+      { $match: { ...leadScope, createdAt: { $gte: chartStart, $lte: todayEnd } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
+    ]),
+    FollowUp.aggregate([
+      { $match: { ...followScope, scheduledAt: { $gte: chartStart, $lte: todayEnd } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$scheduledAt' } }, count: { $sum: 1 } } },
+    ]),
+    Lead.aggregate([
+      { $match: { ...leadScope, status: 'converted', updatedAt: { $gte: chartStart, $lte: todayEnd } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$updatedAt' } }, count: { $sum: 1 } } },
+    ]),
+    LeadActivity.find({
+      actorId: execId,
+      createdAt: { $gte: todayStart, $lte: todayEnd },
+      ...(branchId ? { branchId } : {}),
+    })
+      .populate('leadId', 'name destination')
+      .sort({ createdAt: -1 })
+      .limit(4)
+      .lean(),
+    Lead.find({
+      ...leadScope,
+      status: { $nin: ['lost', 'booked_from_another_company'] },
+    })
+      .sort({ isHot: -1, budget: -1, updatedAt: -1 })
+      .limit(3)
+      .lean(),
   ]);
 
   const statusCounts = Object.fromEntries(statusAgg.map((s) => [s._id, s.count]));
@@ -824,11 +883,29 @@ async function buildExecutiveDashboard(userId, options = {}) {
     }))
     .sort((a, b) => b.value - a.value);
 
+  const trendMaps = {
+    leads: new Map(leadTrendAgg.map((row) => [row._id, row.count])),
+    followups: new Map(followupTrendAgg.map((row) => [row._id, row.count])),
+    converted: new Map(convertedTrendAgg.map((row) => [row._id, row.count])),
+  };
+  const leadOverview = Array.from({ length: 21 }, (_, index) => {
+    const date = new Date(chartStart);
+    date.setDate(date.getDate() + index);
+    const key = date.toISOString().slice(0, 10);
+    return {
+      date: key,
+      label: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+      leads: trendMaps.leads.get(key) || 0,
+      followups: trendMaps.followups.get(key) || 0,
+      converted: trendMaps.converted.get(key) || 0,
+    };
+  });
+
   return {
     emailStats,
     kpis: {
       myLeads,
-      todayFollowups: todayFollowups.length,
+      todayFollowups: todayFollowupCount,
       hotLeads,
       quotationsSent: quotesSentCount,
       convertedLeads: convertedCount,
@@ -844,6 +921,25 @@ async function buildExecutiveDashboard(userId, options = {}) {
     },
     pipelineOverview,
     leadSources,
+    leadOverview,
+    todayActivities: todayActivitiesRaw.map((activity) => ({
+      _id: activity._id,
+      type: activity.type,
+      title: activity.title,
+      description: activity.description,
+      customer: activity.leadId?.name,
+      destination: activity.leadId?.destination,
+      createdAt: activity.createdAt,
+    })),
+    topLeads: topLeadsRaw.map((lead) => ({
+      _id: lead._id,
+      leadId: lead.leadId,
+      name: lead.name,
+      destination: lead.destination,
+      budget: lead.budget || 0,
+      status: lead.status,
+      isHot: !!lead.isHot,
+    })),
     todayTasks: todayFollowups.slice(0, 5).map((f) => ({
       _id: f._id,
       title: `Follow up with ${f.lead?.name}`,

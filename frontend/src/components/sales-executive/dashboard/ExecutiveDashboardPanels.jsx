@@ -1,47 +1,26 @@
-import { lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, ClipboardCheck } from 'lucide-react';
+import {
+  ArrowRight,
+  Bell,
+  CalendarClock,
+  CheckCircle2,
+  FileText,
+  Flame,
+  Mail,
+  Phone,
+  Target,
+} from 'lucide-react';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { formatCurrency, formatFollowUpDate } from '../executiveUtils';
-import { ExecCustomerCell } from '../ExecutiveLeadListCells';
-import { leadListRowClass } from '../../leads/leadListStyles';
-
-const ExecutivePipelineChart = lazy(() => import('./ExecutivePipelineChart'));
-const ExecutiveLeadSourceChart = lazy(() => import('./ExecutiveLeadSourceChart'));
-
-function ChartSkeleton() {
-  return <div className="h-52 rounded-xl bg-surface-elevated/60 animate-pulse" />;
-}
-
-function LeadStatusBadge({ lead }) {
-  if (lead.isHot) {
-    return (
-      <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-orange-500 text-white shrink-0">
-        Hot
-      </span>
-    );
-  }
-  const status = lead.status?.replace(/_/g, ' ') || 'new';
-  if (status === 'new') {
-    return (
-      <span className="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-blue-400 text-blue-600 bg-blue-50 shrink-0 capitalize">
-        New
-      </span>
-    );
-  }
-  if (status === 'contacted') {
-    return (
-      <span className="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-violet-400 text-violet-600 bg-violet-50 shrink-0 capitalize">
-        Contacted
-      </span>
-    );
-  }
-  return (
-    <span className="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-subtle text-content-secondary bg-surface-elevated shrink-0 capitalize">
-      {status}
-    </span>
-  );
-}
 
 function Panel({ title, link, children, delay = 0, className = '' }) {
   return (
@@ -49,12 +28,12 @@ function Panel({ title, link, children, delay = 0, className = '' }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className={`rounded-2xl border border-subtle bg-white shadow-sm p-5 ${className}`}
+      className={`rounded-xl border border-subtle bg-white p-3.5 shadow-sm dark:bg-slate-900/80 ${className}`}
     >
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-content-primary">{title}</h3>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-xs font-bold text-content-primary">{title}</h3>
         {link && (
-          <Link to={link} className="text-xs font-semibold text-violet-600 hover:text-violet-500 flex items-center gap-1">
+          <Link to={link} className="flex items-center gap-1 text-[10px] font-semibold text-violet-600 hover:text-violet-500">
             View all <ArrowRight className="w-3 h-3" />
           </Link>
         )}
@@ -64,73 +43,203 @@ function Panel({ title, link, children, delay = 0, className = '' }) {
   );
 }
 
-export default function ExecutiveDashboardPanels({ data }) {
+const activityIcons = {
+  call_made: Phone,
+  email_sent: Mail,
+  quotation_created: FileText,
+  quotation_sent: FileText,
+  followup_completed: CheckCircle2,
+};
+
+function ActivityList({ items = [] }) {
+  if (!items.length) {
+    return <p className="py-8 text-center text-xs text-content-muted">No activities recorded today</p>;
+  }
+  return (
+    <div className="space-y-2">
+      {items.slice(0, 4).map((item) => {
+        const Icon = activityIcons[item.type] || CheckCircle2;
+        return (
+          <div key={item._id} className="flex gap-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+              <Icon className="h-3.5 w-3.5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[11px] font-semibold text-content-primary">{item.title}</p>
+              <p className="truncate text-[9px] text-content-muted">
+                {item.customer || item.description || 'Lead activity'} · {formatFollowUpDate(item.createdAt)}
+              </p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ReminderList({ items = [] }) {
+  if (!items.length) {
+    return <p className="py-8 text-center text-xs text-content-muted">No upcoming reminders</p>;
+  }
+  return (
+    <div className="space-y-2">
+      {items.slice(0, 4).map((item) => (
+        <div key={item._id} className="flex gap-2.5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+            <CalendarClock className="h-3.5 w-3.5" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-semibold text-content-primary">
+              Follow-up with {item.customer || 'Customer'}
+            </p>
+            <p className="truncate text-[9px] text-content-muted">
+              {item.destination || 'General enquiry'} · {formatFollowUpDate(item.scheduledAt)}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PipelineFunnel({ stages = [] }) {
+  const max = Math.max(...stages.map((item) => item.count), 1);
+  return (
+    <div className="flex h-[190px] items-center gap-4">
+      <div className="flex w-[48%] flex-col items-center gap-1">
+        {stages.map((stage, index) => (
+          <div
+            key={stage.stage}
+            className="flex h-7 items-center justify-center text-[9px] font-bold text-white shadow-sm"
+            style={{
+              width: `${Math.max(38, (stage.count / max) * 100 - index * 3)}%`,
+              backgroundColor: stage.color,
+              clipPath: 'polygon(8% 0, 92% 0, 82% 100%, 18% 100%)',
+            }}
+          >
+            {stage.count}
+          </div>
+        ))}
+      </div>
+      <div className="min-w-0 flex-1 space-y-2">
+        {stages.map((stage) => (
+          <div key={stage.stage} className="flex items-center gap-2 text-[10px]">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: stage.color }} />
+            <span className="flex-1 truncate text-content-secondary">{stage.stage}</span>
+            <span className="font-bold text-content-primary">{stage.count}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Announcements({ items = [] }) {
+  if (!items.length) return <p className="py-5 text-center text-xs text-content-muted">No active announcements</p>;
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      {items.slice(0, 3).map((item) => (
+        <div key={item._id} className="flex min-w-0 gap-2 rounded-lg bg-surface-elevated/70 p-2">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+            <Bell className="h-3.5 w-3.5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[8px] font-bold uppercase text-violet-600">{item.type || 'Update'}</p>
+            <p className="line-clamp-2 text-[10px] font-semibold text-content-primary">{item.title}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function ExecutiveDashboardPanels({ data, announcements = [] }) {
   if (!data) return null;
 
-  const totalPipeline = (data.pipelineOverview || []).reduce((s, item) => s + item.value, 0);
+  const progress = Math.min(100, Number(data.target?.progress || 0));
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <Panel title="Today's Tasks" link="/sales-executive/follow-ups" delay={0.2}>
-          {data.todayTasks?.length ? (
-            <div className="space-y-3">
-              {data.todayTasks.map((t) => (
-                <div key={t._id} className="flex items-center gap-3 p-3 rounded-xl bg-violet-50/50 border border-violet-100">
-                  <div className="p-2 rounded-lg bg-violet-500/10">
-                    <ClipboardCheck className="w-4 h-4 text-violet-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-content-primary truncate">{t.title}</p>
-                    <p className="text-xs text-content-muted">{t.destination} · {formatFollowUpDate(t.time)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-4">
-                <ClipboardCheck className="w-8 h-8 text-emerald-500" />
-              </div>
-              <p className="text-sm font-medium text-content-primary">No tasks for today</p>
-              <p className="text-sm text-content-muted mt-1">Enjoy your free time!</p>
-            </div>
-          )}
-        </Panel>
-
-        <Panel title="Recent Leads" link="/sales-executive/leads/all" delay={0.25}>
-          <div className="rounded-xl border border-subtle overflow-hidden">
-            {data.recentLeads?.length ? data.recentLeads.map((lead, i) => (
-              <div
-                key={lead._id}
-                className={`flex items-center gap-3 px-3 py-2.5 border-b border-slate-100 last:border-0 ${leadListRowClass(i)}`}
-              >
-                <div className="flex-1 min-w-0">
-                  <ExecCustomerCell lead={lead} />
-                  <p className="text-xs text-content-muted mt-0.5 pl-11 truncate">
-                    {lead.destination} · {formatCurrency(lead.budget)}
-                  </p>
-                </div>
-                <LeadStatusBadge lead={lead} />
-              </div>
-            )) : (
-              <p className="text-sm text-content-muted py-8 text-center">No leads yet</p>
-            )}
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,.85fr)_240px]">
+        <Panel title="Lead Overview" delay={0.1}>
+          <div className="h-[205px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.leadOverview || []} margin={{ top: 8, right: 8, left: -26, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <XAxis dataKey="label" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={{ borderRadius: 10, fontSize: 11 }} />
+                <Line type="monotone" dataKey="leads" stroke="#8b5cf6" strokeWidth={2} dot={false} name="New Leads" />
+                <Line type="monotone" dataKey="followups" stroke="#f59e0b" strokeWidth={2} dot={false} name="Follow-ups" />
+                <Line type="monotone" dataKey="converted" stroke="#10b981" strokeWidth={2} dot={false} name="Converted" />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </Panel>
-      </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <Panel title="Pipeline Overview" delay={0.3}>
-          <Suspense fallback={<ChartSkeleton />}>
-            <ExecutivePipelineChart data={data.pipelineOverview} total={totalPipeline} />
-          </Suspense>
+        <Panel title="Lead Pipeline" delay={0.15}>
+          <PipelineFunnel stages={data.conversionProgress || []} />
         </Panel>
 
-        <Panel title="Lead Source" delay={0.35}>
-          <Suspense fallback={<ChartSkeleton />}>
-            <ExecutiveLeadSourceChart data={data.leadSources} />
-          </Suspense>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+          <Panel title="Today's Activities" link="/sales-executive/leads/all" delay={0.2}>
+            <ActivityList items={data.todayActivities} />
+          </Panel>
+          <Panel title="Upcoming Reminders" link="/sales-executive/calendar" delay={0.25}>
+            <ReminderList items={data.upcomingFollowups} />
+          </Panel>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,.85fr)_240px]">
+        <Panel title="Important Announcements" delay={0.3}>
+          <Announcements items={announcements} />
+        </Panel>
+
+        <Panel title="Top Performing Leads" link="/sales-executive/leads/all" delay={0.35}>
+          <div className="space-y-2">
+            {(data.topLeads || []).map((lead, index) => (
+              <Link
+                key={lead._id}
+                to={`/sales-executive/leads/${lead._id}/view`}
+                className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-surface-elevated"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-700">
+                  {lead.name?.charAt(0)?.toUpperCase() || index + 1}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[10px] font-semibold text-content-primary">{lead.name}</p>
+                  <p className="truncate text-[9px] text-content-muted">{lead.destination || 'No destination'}</p>
+                </div>
+                <span className="text-[10px] font-bold text-content-primary">{formatCurrency(lead.budget)}</span>
+                {lead.isHot ? <Flame className="h-3 w-3 text-orange-500" /> : null}
+              </Link>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel title="Monthly Target" delay={0.4}>
+          <div className="flex items-center gap-3">
+            <div
+              className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
+              style={{ background: `conic-gradient(#8b5cf6 ${progress * 3.6}deg, #ede9fe 0deg)` }}
+            >
+              <div className="flex h-14 w-14 flex-col items-center justify-center rounded-full bg-white">
+                <span className="text-lg font-bold text-content-primary">{progress}%</span>
+                <span className="text-[8px] text-content-muted">Achieved</span>
+              </div>
+            </div>
+            <div className="min-w-0 text-[9px] text-content-muted">
+              <p>Target Amount</p>
+              <p className="text-xs font-bold text-content-primary">{formatCurrency(data.target?.monthlyTarget)}</p>
+              <p className="mt-2">Achieved</p>
+              <p className="text-xs font-bold text-content-primary">{formatCurrency(data.target?.revenueAchieved)}</p>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-violet-50 px-2 py-1.5 text-[9px] font-medium text-violet-700">
+            <Target className="h-3 w-3" />
+            {data.target?.leadsConverted || 0} leads converted this period
+          </div>
         </Panel>
       </div>
     </div>

@@ -16,7 +16,7 @@ const INFO_ITEMS = [
     label: 'Hot Leads',
     icon: Flame,
     iconClass: 'bg-orange-500',
-    path: '/sales-executive/leads',
+    path: '/sales-executive/leads/hot',
   },
 ];
 
@@ -61,7 +61,7 @@ export default function ExecutiveSidebarFooter() {
         </div>
 
         <Link
-          to="/sales-executive/performance"
+          to="/sales-executive/dashboard"
           onClick={() => setMobileOpen(false)}
           className="mt-2.5 block rounded-xl border border-white/10 bg-white/10 p-2.5 transition hover:bg-white/15"
         >
