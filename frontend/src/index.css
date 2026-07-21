@@ -346,27 +346,22 @@
   .hr-sidebar-sunset.sidebar-time-morning {
     background-color: #9a3412;
     background-image:
-      radial-gradient(circle at 78% 13%, #fffde7 0 3.5%, #fbbf24 4%, rgba(251, 191, 36, 0.32) 10%, transparent 20%),
-      linear-gradient(180deg, #fb923c 0%, #ea580c 30%, #9a3412 62%, #431407 100%);
+      linear-gradient(180deg, rgba(91, 28, 35, 0.04) 0%, rgba(63, 22, 31, 0.18) 28%, rgba(35, 13, 24, 0.34) 100%),
+      url('/sidebar-morning.webp');
   }
 
   .hr-sidebar-sunset.sidebar-time-afternoon {
     background-color: #075985;
     background-image:
-      radial-gradient(circle at 50% 8%, #ffffff 0 3%, #fde68a 3.5%, rgba(253, 230, 138, 0.26) 11%, transparent 19%),
-      linear-gradient(180deg, #38bdf8 0%, #0284c7 31%, #075985 66%, #082f49 100%);
+      linear-gradient(180deg, rgba(14, 65, 88, 0.03) 0%, rgba(26, 29, 45, 0.14) 27%, rgba(24, 12, 28, 0.3) 100%),
+      url('/sidebar-afternoon.webp');
   }
 
   .hr-sidebar-sunset.sidebar-time-night {
     background-color: #0f172a;
     background-image:
-      radial-gradient(circle at 78% 10%, #fefce8 0 3.5%, #fef9c3 4%, rgba(254, 249, 195, 0.18) 10%, transparent 17%),
-      radial-gradient(circle at 15% 9%, #ffffff 0 1px, transparent 1.5px),
-      radial-gradient(circle at 34% 18%, #ffffff 0 1px, transparent 1.5px),
-      radial-gradient(circle at 62% 25%, #ffffff 0 1px, transparent 1.5px),
-      radial-gradient(circle at 88% 29%, #ffffff 0 1px, transparent 1.5px),
-      radial-gradient(circle at 24% 39%, #ffffff 0 1px, transparent 1.5px),
-      linear-gradient(180deg, #172554 0%, #1e1b4b 34%, #0f172a 68%, #020617 100%);
+      linear-gradient(180deg, rgba(7, 7, 31, 0.02) 0%, rgba(7, 5, 24, 0.12) 30%, rgba(2, 3, 16, 0.25) 100%),
+      url('/sidebar-night.webp');
   }
 
   /* FullCalendar v6 — premium follow-up calendar */
