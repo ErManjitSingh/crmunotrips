@@ -32,11 +32,11 @@ export default function MobileSidebarDrawer({ sidebarProps, panelClassName = '' 
       />
       <div
         className={cn(
-          'absolute inset-y-0 left-0 w-[min(280px,88vw)] max-w-full shadow-2xl',
+          'absolute inset-0 w-full shadow-2xl',
           panelClassName
         )}
       >
-        <AppSidebar {...sidebarProps} className="h-full w-full !max-w-none" />
+        <AppSidebar {...sidebarProps} className="h-full !w-full !max-w-none" />
       </div>
     </div>,
     document.body
