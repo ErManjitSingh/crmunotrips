@@ -1,7 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { CalendarDays, Rocket, Target } from 'lucide-react';
+import { CalendarDays, Moon, Rocket, Sparkles, Sun, Target } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
 import { useDashboardQuery } from '../../features/dashboard/hooks/useDashboardQuery';
@@ -10,22 +10,93 @@ import { fetchAnnouncementFeed } from '../../services/announcementApi';
 import ExecutiveKpiCards from './dashboard/ExecutiveKpiCards';
 import ExecutiveDashboardPanels from './dashboard/ExecutiveDashboardPanels';
 
-function getGreeting() {
-  const hour = new Date().getHours();
+function getGreeting(hour) {
+  if (hour < 5) return 'Good night';
   if (hour < 12) return 'Good morning';
   if (hour < 17) return 'Good afternoon';
   return 'Good evening';
 }
 
-function formatTodayDate() {
-  return new Date().toLocaleDateString('en-IN', {
+function formatTodayDate(date) {
+  return date.toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
 }
 
+function getTimeScene(hour) {
+  if (hour >= 5 && hour < 12) {
+    return {
+      id: 'morning',
+      label: 'Morning',
+      wrapper: 'border-amber-200/70 bg-gradient-to-r from-amber-100 via-orange-50 to-sky-100 text-slate-800',
+      muted: 'text-slate-600',
+      date: 'border-white/70 bg-white/60 text-slate-700',
+      icon: 'bottom-[-14px] right-10 text-amber-400',
+    };
+  }
+  if (hour >= 12 && hour < 17) {
+    return {
+      id: 'afternoon',
+      label: 'Afternoon',
+      wrapper: 'border-sky-200/70 bg-gradient-to-r from-sky-100 via-blue-50 to-cyan-100 text-slate-800',
+      muted: 'text-slate-600',
+      date: 'border-white/70 bg-white/60 text-slate-700',
+      icon: 'right-[28%] top-1 text-amber-400',
+    };
+  }
+  return {
+    id: 'night',
+    label: 'Evening',
+    wrapper: 'border-indigo-800/60 bg-gradient-to-r from-slate-950 via-indigo-950 to-violet-900 text-white',
+    muted: 'text-indigo-100/75',
+    date: 'border-white/15 bg-white/10 text-white',
+    icon: 'right-12 top-2 text-amber-100',
+  };
+}
+
+function TimeScene({ scene }) {
+  if (scene.id === 'night') {
+    return (
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        {[
+          ['12%', '24%'], ['22%', '70%'], ['42%', '18%'], ['57%', '72%'],
+          ['68%', '28%'], ['79%', '67%'], ['91%', '22%'],
+        ].map(([left, top], index) => (
+          <Sparkles
+            key={`${left}-${top}`}
+            className="absolute h-2.5 w-2.5 animate-pulse text-white/70"
+            style={{ left, top, animationDelay: `${index * 220}ms` }}
+          />
+        ))}
+        <motion.div
+          key={scene.id}
+          initial={{ opacity: 0, scale: 0.7, rotate: -20 }}
+          animate={{ opacity: 1, scale: 1, rotate: 0 }}
+          className={`absolute ${scene.icon}`}
+        >
+          <Moon className="h-14 w-14 fill-current drop-shadow-[0_0_18px_rgba(254,249,195,0.45)]" />
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      key={scene.id}
+      initial={{ opacity: 0, scale: 0.7 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className={`pointer-events-none absolute ${scene.icon}`}
+      aria-hidden
+    >
+      <Sun className="h-16 w-16 fill-current drop-shadow-[0_0_20px_rgba(251,191,36,0.5)]" />
+    </motion.div>
+  );
+}
+
 export default function ExecutiveDashboard() {
+  const [now, setNow] = useState(() => new Date());
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data, isLoading, isFetching } = useDashboardQuery('/sales-executive/dashboard');
@@ -35,6 +106,12 @@ export default function ExecutiveDashboard() {
     staleTime: 120_000,
   });
   const firstName = user?.name?.trim().split(' ')[0] || 'Sales';
+  const scene = getTimeScene(now.getHours());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const refresh = useCallback(() => {
     invalidateDashboard(queryClient);
@@ -64,19 +141,24 @@ export default function ExecutiveDashboard() {
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+        className={`relative min-h-[78px] overflow-hidden rounded-xl border px-4 py-3 shadow-sm transition-colors duration-1000 ${scene.wrapper}`}
       >
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-content-primary sm:text-2xl">
-            {getGreeting()}, {firstName}! 👋
-          </h1>
-          <p className="mt-0.5 text-xs text-content-secondary">
-            Here&apos;s what&apos;s happening with your leads today.
-          </p>
-        </div>
-        <div className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-subtle bg-white px-3 py-2 text-xs font-medium text-content-secondary shadow-sm dark:bg-slate-900">
-          <CalendarDays className="h-3.5 w-3.5 text-violet-500" />
-          {formatTodayDate()}
+        <TimeScene scene={scene} />
+        <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+              {getGreeting(now.getHours())}, {firstName}! 👋
+            </h1>
+            <p className={`mt-0.5 text-xs ${scene.muted}`}>
+              Here&apos;s what&apos;s happening with your leads today.
+            </p>
+          </div>
+          <div className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium backdrop-blur-sm ${scene.date}`}>
+            <CalendarDays className="h-3.5 w-3.5" />
+            <span>{formatTodayDate(now)}</span>
+            <span className="opacity-50">·</span>
+            <span>{now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
         </div>
       </motion.div>
 
