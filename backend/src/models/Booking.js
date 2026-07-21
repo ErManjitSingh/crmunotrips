@@ -18,12 +18,22 @@ const PAYMENT_STATUSES = ['pending', 'partial', 'paid', 'refund_pending', 'refun
 const hotelAssignmentSchema = new mongoose.Schema(
   {
     hotelId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hotel' },
+    externalHotelId: { type: String, trim: true, default: '' },
     hotelName: String,
     destination: String,
     category: String,
     roomType: String,
+    mealPlan: { type: String, trim: true, default: '' },
+    day: { type: Number, min: 1 },
+    nights: { type: Number, min: 1, default: 1 },
+    rooms: { type: Number, min: 1, default: 1 },
     checkIn: Date,
     checkOut: Date,
+    address: { type: String, trim: true, default: '' },
+    contactPerson: { type: String, trim: true, default: '' },
+    phone: { type: String, trim: true, default: '' },
+    email: { type: String, trim: true, lowercase: true, default: '' },
+    confirmationNumber: { type: String, trim: true, default: '' },
     status: {
       type: String,
       enum: ['pending', 'requested', 'confirmed', 'rejected', 'cancelled'],
@@ -31,6 +41,7 @@ const hotelAssignmentSchema = new mongoose.Schema(
     },
     confirmationUrl: String,
     voucherId: { type: mongoose.Schema.Types.ObjectId, ref: 'Voucher' },
+    voucherSentAt: Date,
     notes: String,
   },
   { _id: true }

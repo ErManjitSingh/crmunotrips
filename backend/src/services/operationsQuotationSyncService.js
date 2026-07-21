@@ -10,16 +10,36 @@ function addDays(date, days) {
   return d;
 }
 
+function textValue(value) {
+  if (value == null) return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  return value.label || value.name || value.title || value.value || value.key || '';
+}
+
+function normalizeVehicleType(value) {
+  const normalized = textValue(value).toLowerCase().replace(/\s+/g, '_');
+  if (['sedan', 'suv', 'innova', 'tempo_traveller', 'bus', 'other'].includes(normalized)) {
+    return normalized;
+  }
+  if (normalized.includes('innova')) return 'innova';
+  if (normalized.includes('tempo') || normalized.includes('traveller')) return 'tempo_traveller';
+  if (normalized.includes('bus')) return 'bus';
+  if (normalized.includes('sedan')) return 'sedan';
+  return 'suv';
+}
+
 function mapQuoteItinerary(quotation, travelDate) {
   const snap = quotation?.packageSnapshot || {};
   const days = snap.itinerary || [];
   const selectedHotels = quotation?.selectedHotels || [];
+  const selectedCabs = quotation?.selectedCabs || [];
 
   if (!days.length) return [];
 
   return days.map((d, i) => {
     const dayNum = d.day || i + 1;
     const hotelForDay = selectedHotels.find((h) => Number(h.day) === dayNum);
+    const cabForDay = selectedCabs.find((cab) => Number(cab.day) === dayNum) || selectedCabs[0];
     const dayDate = travelDate ? addDays(travelDate, dayNum - 1) : null;
 
     const hotelName = d.accommodation || d.hotel || hotelForDay?.name || '';
@@ -28,9 +48,20 @@ function mapQuoteItinerary(quotation, travelDate) {
           hotelName: hotelForDay?.name || hotelName,
           destination: hotelForDay?.location || hotelForDay?.city || hotelForDay?.destination || '',
           location: hotelForDay?.location || hotelForDay?.city || '',
-          roomType: hotelForDay?.room?.name || hotelForDay?.room || hotelForDay?.roomType || '',
-          mealPlan: hotelForDay?.mealPlan || '',
+          roomType: textValue(hotelForDay?.room) || textValue(hotelForDay?.roomType),
+          mealPlan: textValue(hotelForDay?.mealPlan),
           source: hotelForDay ? 'manual' : 'manual',
+        }
+      : undefined;
+    const dayCab = cabForDay || d.transport
+      ? {
+          vehicleType: normalizeVehicleType(cabForDay?.vehicleType || cabForDay?.type || 'suv'),
+          pickupLocation: cabForDay?.pickup || cabForDay?.pickupLocation || '',
+          dropLocation: cabForDay?.drop || cabForDay?.dropLocation || '',
+          driverName: cabForDay?.driverName || '',
+          driverPhone: cabForDay?.driverPhone || '',
+          vehicleNumber: cabForDay?.vehicleNumber || '',
+          source: 'manual',
         }
       : undefined;
 
@@ -44,6 +75,7 @@ function mapQuoteItinerary(quotation, travelDate) {
       activities: d.activities || d.sightseeing || d.activityNotes || '',
       date: dayDate,
       ...(dayHotel ? { dayHotel } : {}),
+      ...(dayCab ? { dayCab } : {}),
     };
   });
 }
@@ -54,10 +86,16 @@ function mapQuoteHotels(quotation, travelDate) {
     const snap = quotation?.packageSnapshot || {};
     return (snap.hotels || []).map((h) => ({
       hotelName: h.name || h.hotelName || '',
+      externalHotelId: textValue(h.hotelId || h.id || h.uuid),
       destination: h.location || h.destination || '',
       category: h.category || '',
-      roomType: h.roomType || h.room?.name || '',
-      mealPlan: h.mealPlan || '',
+      roomType: textValue(h.roomType) || textValue(h.room),
+      mealPlan: textValue(h.mealPlan),
+      address: h.address || h.location || '',
+      contactPerson: h.contactPerson || h.contact?.name || '',
+      phone: h.phone || h.contact?.phone || '',
+      email: h.email || h.contact?.email || '',
+      rooms: Number(h.rooms) || 1,
       status: 'pending',
     }));
   }
@@ -69,14 +107,20 @@ function mapQuoteHotels(quotation, travelDate) {
 
     return {
       hotelName: h.name || h.hotelName || '',
+      externalHotelId: textValue(h.hotelId || h.id || h.uuid),
       destination: h.location || h.city || h.destination || '',
       category: h.category || '',
-      roomType: h.room?.name || h.room || h.roomType || '',
-      mealPlan: h.mealPlan || '',
+      roomType: textValue(h.room) || textValue(h.roomType),
+      mealPlan: textValue(h.mealPlan),
       day: h.day,
       nights,
+      rooms: Number(h.rooms) || 1,
       checkIn,
       checkOut,
+      address: h.address || h.location || '',
+      contactPerson: h.contactPerson || h.contact?.name || '',
+      phone: h.phone || h.contact?.phone || '',
+      email: h.email || h.contact?.email || '',
       notes: h.externalSource ? `Source: ${h.externalSource}` : '',
       status: 'pending',
     };
@@ -87,7 +131,7 @@ function mapQuoteTransport(quotation) {
   const selected = quotation?.selectedCabs || [];
   return selected.map((t) => ({
     vendorName: t.vendorName || t.vendor || '',
-    vehicleType: (t.vehicleType || t.type || 'suv').toLowerCase().replace(/\s+/g, '_'),
+    vehicleType: normalizeVehicleType(t.vehicleType || t.type || 'suv'),
     pickupLocation: t.pickup || t.pickupLocation || '',
     dropLocation: t.drop || t.dropLocation || '',
     driverName: t.driverName || '',
@@ -150,6 +194,10 @@ async function extractFulfillmentFromQuotation(quotation, booking = {}) {
       packageName: snap.name || snap.title,
       inclusions: snap.inclusions || [],
       exclusions: snap.exclusions || [],
+      pricing: quotation?.pricing || quotation?.costing || {},
+      terms: snap.terms || snap.termsAndConditions || [],
+      selectedHotels: quotation?.selectedHotels || [],
+      selectedCabs: quotation?.selectedCabs || [],
     },
   };
 }

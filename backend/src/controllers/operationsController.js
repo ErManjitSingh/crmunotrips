@@ -6,15 +6,94 @@ const SupportTicket = require('../models/SupportTicket');
 const Hotel = require('../models/Hotel');
 const Cab = require('../models/Cab');
 const Flight = require('../models/Flight');
+const Payment = require('../models/Payment');
 const ApiError = require('../utils/apiError');
 const asyncHandler = require('../utils/asyncHandler');
 const ops = require('../services/operationsService');
 const cacheService = require('../services/cacheService');
 const { generateVoucherDocument, generateItineraryDocument } = require('../services/operationsVoucherService');
+const { sendMailMessage, isEmailConfigured } = require('../services/emailService');
 const {
   enrichBookingWithQuotation,
   syncBookingFromQuotation,
 } = require('../services/operationsQuotationSyncService');
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function emailDate(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('en-IN');
+}
+
+async function enrichHotelContacts(hotels = []) {
+  const ids = hotels.map((hotel) => hotel.hotelId).filter(Boolean);
+  const names = hotels.map((hotel) => hotel.hotelName).filter(Boolean);
+  if (!ids.length && !names.length) return hotels;
+
+  const catalog = await Hotel.find({
+    $or: [
+      ...(ids.length ? [{ _id: { $in: ids } }] : []),
+      ...(names.length ? [{ name: { $in: names } }] : []),
+    ],
+  }).select('name address location contactPerson phone email').lean();
+  const byId = new Map(catalog.map((hotel) => [String(hotel._id), hotel]));
+  const byName = new Map(catalog.map((hotel) => [String(hotel.name).toLowerCase(), hotel]));
+
+  return hotels.map((hotel) => {
+    const match = byId.get(String(hotel.hotelId)) || byName.get(String(hotel.hotelName || '').toLowerCase());
+    if (!match) return hotel;
+    return {
+      ...hotel,
+      hotelId: hotel.hotelId || match._id,
+      address: hotel.address || match.address || match.location || '',
+      contactPerson: hotel.contactPerson || match.contactPerson || '',
+      phone: hotel.phone || match.phone || '',
+      email: hotel.email || match.email || '',
+    };
+  });
+}
+
+function paymentLedger(payments = []) {
+  return payments.flatMap((payment) => {
+    if (payment.installments?.length) {
+      return payment.installments.map((item, index) => ({
+        _id: item._id,
+        paymentId: payment._id,
+        invoiceNumber: payment.invoiceNumber,
+        receiptNumber: payment.receiptNumber,
+        installment: index + 1,
+        amount: item.amount,
+        receivedAt: item.receivedAt,
+        method: item.method,
+        reference: item.reference,
+        note: item.note,
+        receiptHtml: payment.receiptHtml,
+      }));
+    }
+    if (Number(payment.paidAmount) > 0) {
+      return [{
+        _id: payment._id,
+        paymentId: payment._id,
+        invoiceNumber: payment.invoiceNumber,
+        receiptNumber: payment.receiptNumber,
+        installment: 1,
+        amount: payment.paidAmount,
+        receivedAt: payment.paidAt || payment.updatedAt || payment.createdAt,
+        method: payment.method,
+        note: payment.notes,
+        receiptHtml: payment.receiptHtml,
+      }];
+    }
+    return [];
+  }).sort((a, b) => new Date(a.receivedAt) - new Date(b.receivedAt));
+}
 
 const getDashboard = asyncHandler(async (req, res) => {
   // Command center shows org-wide metrics across all branches.
@@ -36,11 +115,27 @@ const getBooking = asyncHandler(async (req, res) => {
   let booking = await Booking.findById(req.params.id).lean();
   if (!booking) throw new ApiError(404, 'Booking not found');
   booking = await enrichBookingWithQuotation(booking);
-  const [tasks, documents] = await Promise.all([
+  const [tasks, documents, payments, vouchers, hotels] = await Promise.all([
     ops.listTasks({ bookingId: req.params.id }),
     ops.listDocuments(req.params.id),
+    Payment.find({
+      $or: [
+        { booking: booking._id },
+        ...(booking.lead ? [{ lead: booking.lead }] : []),
+      ],
+    }).sort({ createdAt: 1 }).lean(),
+    Voucher.find({ booking: booking._id }).sort({ createdAt: -1 }).lean(),
+    enrichHotelContacts(booking.hotels || []),
   ]);
-  res.json({ ...booking, tasks, documents });
+  res.json({
+    ...booking,
+    hotels,
+    tasks,
+    documents,
+    payments,
+    paymentLedger: paymentLedger(payments),
+    vouchers,
+  });
 });
 
 const syncBookingQuotation = asyncHandler(async (req, res) => {
@@ -246,6 +341,107 @@ const createVoucher = asyncHandler(async (req, res) => {
   res.status(201).json(voucher);
 });
 
+const sendHotelVoucher = asyncHandler(async (req, res) => {
+  if (!isEmailConfigured()) throw new ApiError(503, 'Email service is not configured');
+
+  const booking = await Booking.findById(req.params.id);
+  if (!booking) throw new ApiError(404, 'Booking not found');
+  const hotel = booking.hotels.id(req.params.hotelAssignmentId);
+  if (!hotel) throw new ApiError(404, 'Hotel assignment not found');
+
+  const recipientEmail = String(req.body.email || hotel.email || '').trim().toLowerCase();
+  if (!recipientEmail) throw new ApiError(400, 'Hotel email is required');
+
+  hotel.email = recipientEmail;
+  if (req.body.phone != null) hotel.phone = String(req.body.phone).trim();
+  if (req.body.contactPerson != null) hotel.contactPerson = String(req.body.contactPerson).trim();
+  if (req.body.confirmationNumber != null) {
+    hotel.confirmationNumber = String(req.body.confirmationNumber).trim();
+  }
+
+  let voucher = hotel.voucherId ? await Voucher.findById(hotel.voucherId) : null;
+  if (!voucher) {
+    const count = await Voucher.countDocuments();
+    const voucherNumber = `VCH-H-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+    const details = {
+      title: `${hotel.hotelName || booking.destination} hotel voucher`,
+      validFrom: hotel.checkIn || booking.travelDate,
+      validUntil: hotel.checkOut || booking.returnDate,
+      hotelAssignmentId: hotel._id,
+      hotel: hotel.toObject(),
+      paidAmount: booking.advanceReceived || 0,
+      pendingAmount: booking.pendingAmount || 0,
+    };
+    const voucherDoc = {
+      type: 'hotel',
+      booking: booking._id,
+      voucherNumber,
+      bookingNumber: booking.bookingNumber,
+      customerName: booking.customerName,
+      branchId: booking.branchId || req.branchId,
+      status: 'issued',
+      issuedAt: new Date(),
+      issuedBy: req.user._id,
+      recipientName: hotel.contactPerson || hotel.hotelName,
+      recipientEmail,
+      recipientPhone: hotel.phone || '',
+      details,
+    };
+    voucherDoc.pdfUrl = generateVoucherDocument(voucherDoc, {
+      ...booking.toObject(),
+      hotels: [hotel.toObject()],
+    });
+    voucher = await Voucher.create(voucherDoc);
+    hotel.voucherId = voucher._id;
+  }
+
+  const subject = String(
+    req.body.subject || `Hotel booking voucher ${voucher.voucherNumber} — ${booking.customerName}`
+  ).trim();
+  const customMessage = String(req.body.message || '').trim();
+  const attachmentHtml = require('fs').readFileSync(
+    require('path').join(__dirname, '../..', voucher.pdfUrl.replace(/^\/uploads\//, 'uploads/')),
+    'utf8'
+  );
+  let mailResult;
+  try {
+    mailResult = await sendMailMessage({
+      to: recipientEmail,
+      subject,
+      text: customMessage || `Please find the hotel voucher for ${booking.customerName}, booking ${booking.bookingNumber}.`,
+      html: `<p>${escapeHtml(customMessage || 'Please find the attached hotel booking voucher.')}</p>
+        <p><strong>Guest:</strong> ${escapeHtml(booking.customerName)}<br/>
+        <strong>Hotel:</strong> ${escapeHtml(hotel.hotelName)}<br/>
+        <strong>Stay:</strong> ${emailDate(hotel.checkIn || booking.travelDate)} to ${emailDate(hotel.checkOut || booking.returnDate)}</p>`,
+      attachments: [{
+        filename: `${voucher.voucherNumber}.html`,
+        content: Buffer.from(attachmentHtml, 'utf8').toString('base64'),
+        contentType: 'text/html',
+      }],
+    });
+  } catch (error) {
+    voucher.deliveryStatus = 'failed';
+    voucher.deliveryError = error.message;
+    await Promise.all([voucher.save(), booking.save()]);
+    throw new ApiError(502, `Voucher email failed: ${error.message}`);
+  }
+
+  const sentAt = new Date();
+  voucher.status = 'sent';
+  voucher.deliveryStatus = 'sent';
+  voucher.sentAt = sentAt;
+  voucher.sentBy = req.user._id;
+  voucher.recipientEmail = recipientEmail;
+  voucher.recipientName = hotel.contactPerson || hotel.hotelName;
+  voucher.recipientPhone = hotel.phone || '';
+  voucher.emailMessageId = mailResult.messageId || '';
+  voucher.deliveryError = '';
+  hotel.voucherSentAt = sentAt;
+  await Promise.all([voucher.save(), booking.save(), cacheService.invalidate('ops:')]);
+
+  res.json({ voucher, hotel: hotel.toObject() });
+});
+
 const generateItineraryPdf = asyncHandler(async (req, res) => {
   const booking = await Booking.findById(req.params.id).lean();
   if (!booking) throw new ApiError(404, 'Booking not found');
@@ -378,6 +574,7 @@ module.exports = {
   listVouchers,
   createVoucher,
   updateVoucher,
+  sendHotelVoucher,
   listTickets,
   createTicket,
   updateTicket,

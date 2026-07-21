@@ -3,6 +3,7 @@ const ApiError = require('../utils/apiError');
 const asyncHandler = require('../utils/asyncHandler');
 const { notifyPaymentReceived } = require('../services/notificationService');
 const { createBookingFromPayment } = require('../services/operationsService');
+const { generateAndStoreReceipt } = require('../services/paymentReceiptService');
 
 const PAYMENT_POPULATE = [
   { path: 'lead', select: 'name email phone destination' },
@@ -42,8 +43,17 @@ const getPayment = asyncHandler(async (req, res) => {
 });
 
 const createPayment = asyncHandler(async (req, res) => {
+  const initialPaid = Number(req.body.paidAmount) || 0;
   const payment = await Payment.create({
     ...req.body,
+    installments: initialPaid > 0 ? [{
+      amount: initialPaid,
+      receivedAt: req.body.paidAt || new Date(),
+      method: req.body.method || 'bank_transfer',
+      reference: req.body.transactionRef || '',
+      note: req.body.notes || 'Initial payment',
+      recordedBy: req.user._id,
+    }] : [],
     branchId: req.body.branchId || req.branchId || req.user.branchId || null,
     createdBy: req.user._id,
   });
@@ -55,7 +65,15 @@ const createPayment = asyncHandler(async (req, res) => {
     }).catch(() => {});
   }
   if (['paid', 'partial'].includes(populated.status)) {
-    await createBookingFromPayment(payment._id, req.user).catch(() => {});
+    const booking = await createBookingFromPayment(payment._id, req.user).catch(() => null);
+    const receiptPayment = await Payment.findById(payment._id);
+    await generateAndStoreReceipt({
+      lead: populated.lead,
+      payment: receiptPayment,
+      booking,
+      quotation: populated.quotation,
+      actor: req.user,
+    }).catch(() => {});
   }
   const refreshed = await Payment.findById(payment._id).populate(PAYMENT_POPULATE).lean();
   res.status(201).json(refreshed);
@@ -66,7 +84,22 @@ const updatePayment = asyncHandler(async (req, res) => {
   if (!payment) throw new ApiError(404, 'Payment not found');
 
   const previousStatus = payment.status;
-  Object.assign(payment, req.body);
+  const previousPaid = Number(payment.paidAmount) || 0;
+  const patch = { ...req.body };
+  delete patch.installments;
+  delete patch.refunds;
+  Object.assign(payment, patch);
+  const nextPaid = Number(payment.paidAmount) || 0;
+  if (nextPaid > previousPaid) {
+    payment.installments.push({
+      amount: nextPaid - previousPaid,
+      receivedAt: req.body.paidAt || new Date(),
+      method: req.body.method || payment.method || 'bank_transfer',
+      reference: req.body.transactionRef || '',
+      note: req.body.installmentNote || req.body.notes || `Payment installment ${payment.installments.length + 1}`,
+      recordedBy: req.user._id,
+    });
+  }
   if (req.body.paidAmount >= payment.amount && payment.status !== 'refunded') {
     payment.status = 'paid';
     payment.paidAt = payment.paidAt || new Date();
@@ -82,7 +115,15 @@ const updatePayment = asyncHandler(async (req, res) => {
     }).catch(() => {});
   }
   if (['paid', 'partial'].includes(populated.status)) {
-    await createBookingFromPayment(payment._id, req.user).catch(() => {});
+    const booking = await createBookingFromPayment(payment._id, req.user).catch(() => null);
+    const receiptPayment = await Payment.findById(payment._id);
+    await generateAndStoreReceipt({
+      lead: populated.lead,
+      payment: receiptPayment,
+      booking,
+      quotation: populated.quotation,
+      actor: req.user,
+    }).catch(() => {});
   }
   const refreshed = await Payment.findById(payment._id).populate(PAYMENT_POPULATE).lean();
   res.json(refreshed);

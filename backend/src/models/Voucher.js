@@ -16,6 +16,18 @@ const voucherSchema = new mongoose.Schema(
     details: { type: mongoose.Schema.Types.Mixed },
     issuedAt: { type: Date },
     issuedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    recipientName: { type: String, trim: true, default: '' },
+    recipientEmail: { type: String, trim: true, lowercase: true, default: '' },
+    recipientPhone: { type: String, trim: true, default: '' },
+    sentAt: Date,
+    sentBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    deliveryStatus: {
+      type: String,
+      enum: ['not_sent', 'queued', 'sent', 'failed'],
+      default: 'not_sent',
+    },
+    deliveryError: { type: String, trim: true, default: '' },
+    emailMessageId: { type: String, trim: true, default: '' },
   },
   { timestamps: true }
 );

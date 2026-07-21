@@ -57,6 +57,9 @@ function buildVoucherHtml(voucher, booking) {
       <div class="field"><label>Hotel</label><p>${esc(h.hotelName || h.name)}</p></div>
       <div class="field"><label>Check-in / Check-out</label><p>${fmtDate(h.checkIn)} → ${fmtDate(h.checkOut)}</p></div>
       <div class="field"><label>Room</label><p>${esc(h.roomType || 'Standard')}</p></div>
+      <div class="field"><label>Rooms / Meal Plan</label><p>${esc(h.rooms || 1)} room(s) · ${esc(h.mealPlan || 'As booked')}</p></div>
+      <div class="field"><label>Confirmation No.</label><p>${esc(h.confirmationNumber || 'To be confirmed')}</p></div>
+      <div class="field"><label>Hotel Contact</label><p>${esc(h.contactPerson || 'Reservations')} · ${esc(h.phone || '—')}</p></div>
     `).join('');
   } else if (type === 'transport' && booking.transport?.length) {
     serviceBlock = booking.transport.map((t) => `
@@ -96,6 +99,11 @@ function buildVoucherHtml(voucher, booking) {
     </div>
     ${details.title ? `<div class="field"><label>Title</label><p>${esc(details.title)}</p></div>` : ''}
     <div class="section"><h2>Service Details</h2><div class="grid">${serviceBlock || '<p>Details as per booking confirmation.</p>'}</div></div>
+    <div class="section"><h2>Payment Status</h2><div class="grid">
+      <div class="field"><label>Package Value</label><p>${fmtINR(booking.totalAmount)}</p></div>
+      <div class="field"><label>Received</label><p>${fmtINR(booking.advanceReceived)}</p></div>
+      <div class="field"><label>Balance</label><p>${fmtINR(booking.pendingAmount)}</p></div>
+    </div></div>
     <div class="note">Present this voucher at check-in / pickup. For support contact your travel executive.</div>
   </div>
   <div class="footer">Generated ${fmtDate(new Date())} · UNO Trips CRM · Print this page to save as PDF</div>

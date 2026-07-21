@@ -1,5 +1,21 @@
 const mongoose = require('mongoose');
 
+const installmentSchema = new mongoose.Schema(
+  {
+    amount: { type: Number, required: true, min: 0 },
+    receivedAt: { type: Date, default: Date.now },
+    method: {
+      type: String,
+      enum: ['cash', 'upi', 'card', 'bank_transfer', 'cheque'],
+      default: 'bank_transfer',
+    },
+    reference: { type: String, trim: true, default: '' },
+    note: { type: String, trim: true, default: '' },
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  },
+  { _id: true }
+);
+
 const paymentSchema = new mongoose.Schema(
   {
     invoiceNumber: { type: String, required: true, unique: true },
@@ -24,6 +40,7 @@ const paymentSchema = new mongoose.Schema(
     receiptSentAt: { type: Date },
     receiptSentTo: { type: String, trim: true, default: '' },
     notes: { type: String, trim: true, default: '' },
+    installments: [installmentSchema],
     refunds: [
       {
         amount: Number,

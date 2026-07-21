@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, Ticket, Phone, Mail, CheckCircle2, Loader2,
+  ArrowLeft, Ticket, Phone, Mail, Loader2,
   FileText, ListTodo, MapPin, Users, Wallet, ExternalLink,
+  Hotel, Car, Receipt, IndianRupee, ClipboardCheck,
 } from 'lucide-react';
 import API from '../../../api/axios';
 import PageHeader from '../../ui/PageHeader';
@@ -33,6 +34,98 @@ const TASK_STATUS = {
   completed: 'bg-emerald-500/15 text-emerald-700',
 };
 
+function openReceipt(receiptHtml) {
+  if (!receiptHtml) return;
+  const url = URL.createObjectURL(new Blob([receiptHtml], { type: 'text/html' }));
+  window.open(url, '_blank', 'noopener,noreferrer');
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+function BookingSnapshot({ booking, amount, quoteMeta }) {
+  const cards = [
+    {
+      icon: MapPin,
+      label: 'Lead / Destination',
+      value: booking.destination || '—',
+      detail: `${booking.customerName} · ${booking.customerPhone || 'No phone'}`,
+      color: 'text-sky-600 bg-sky-500/10',
+    },
+    {
+      icon: FileText,
+      label: 'Customer Quotation',
+      value: quoteMeta?.quoteNumber || booking.quotationReference || 'Not linked',
+      detail: `${quoteMeta?.packageName || booking.packageName || 'Custom package'} · ${quoteMeta?.quoteStatus || '—'}`,
+      color: 'text-violet-600 bg-violet-500/10',
+    },
+    {
+      icon: IndianRupee,
+      label: 'Payment Received',
+      value: formatINR(booking.advanceReceived),
+      detail: `${formatINR(booking.pendingAmount)} balance of ${formatINR(amount)}`,
+      color: 'text-emerald-600 bg-emerald-500/10',
+    },
+    {
+      icon: ClipboardCheck,
+      label: 'Fulfillment',
+      value: `${booking.hotels?.length || 0} hotels · ${booking.transport?.length || 0} cabs`,
+      detail: `${booking.itinerary?.length || 0} itinerary days · ${booking.vouchers?.length || 0} vouchers`,
+      color: 'text-amber-600 bg-amber-500/10',
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {cards.map(({ icon: Icon, label, value, detail, color }) => (
+        <div key={label} className="rounded-2xl border border-subtle bg-surface/90 p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className={cn('rounded-xl p-2.5', color)}><Icon className="h-4 w-4" /></div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-content-muted">{label}</p>
+              <p className="mt-1 truncate text-sm font-black text-content-primary">{value}</p>
+              <p className="mt-1 line-clamp-2 text-[11px] text-content-secondary">{detail}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function QuotationSummary({ meta }) {
+  if (!meta?.quoteNumber) return null;
+  const inclusions = Array.isArray(meta.inclusions) ? meta.inclusions : [];
+  const exclusions = Array.isArray(meta.exclusions) ? meta.exclusions : [];
+  return (
+    <div className="rounded-3xl border border-violet-500/15 bg-gradient-to-br from-violet-500/[0.08] to-fuchsia-500/[0.03] p-5 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600">Quotation sent to customer</p>
+          <h3 className="mt-1 text-lg font-black text-content-primary">{meta.quoteNumber} · {meta.packageName || 'Custom Package'}</h3>
+        </div>
+        <span className="rounded-full bg-violet-500/10 px-3 py-1 text-xs font-bold capitalize text-violet-700">{meta.quoteStatus}</span>
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <p className="mb-2 text-xs font-bold text-emerald-700">Included</p>
+          <div className="space-y-1.5">
+            {(inclusions.length ? inclusions : ['As per day-wise itinerary']).slice(0, 8).map((item, index) => (
+              <p key={`${item}-${index}`} className="text-xs text-content-secondary">✓ {typeof item === 'string' ? item : item?.label || item?.name}</p>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="mb-2 text-xs font-bold text-rose-700">Excluded</p>
+          <div className="space-y-1.5">
+            {(exclusions.length ? exclusions : ['Anything not mentioned in inclusions']).slice(0, 8).map((item, index) => (
+              <p key={`${item}-${index}`} className="text-xs text-content-secondary">× {typeof item === 'string' ? item : item?.label || item?.name}</p>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function applyBookingState(data, setters) {
   const {
     setBooking, setItinerary, setHotels, setTransport,
@@ -61,6 +154,7 @@ export default function BookingDetailPage() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [catalogHotels, setCatalogHotels] = useState([]);
   const [catalogCabs, setCatalogCabs] = useState([]);
+  const [sendingVoucher, setSendingVoucher] = useState(null);
 
   const setters = { setBooking, setItinerary, setHotels, setTransport };
 
@@ -162,6 +256,23 @@ export default function BookingDetailPage() {
     }
   };
 
+  const sendHotelVoucher = async (hotel) => {
+    if (!hotel?._id || !hotel.email) return;
+    setSendingVoucher(hotel._id);
+    try {
+      await API.put(`/operations-manager/bookings/${id}`, { hotels });
+      await API.post(`/operations-manager/bookings/${id}/hotels/${hotel._id}/voucher/send`, {
+        email: hotel.email,
+        phone: hotel.phone,
+        contactPerson: hotel.contactPerson,
+        confirmationNumber: hotel.confirmationNumber,
+      });
+      fetchBooking();
+    } finally {
+      setSendingVoucher(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -219,6 +330,8 @@ export default function BookingDetailPage() {
         </div>
       </motion.div>
 
+      <BookingSnapshot booking={booking} amount={amount} quoteMeta={quoteMeta} />
+
       <QuotationSyncBanner
         meta={quoteMeta}
         autoSynced={booking.autoSyncedFromQuotation}
@@ -228,6 +341,8 @@ export default function BookingDetailPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         <div className="xl:col-span-8 space-y-6">
+          <QuotationSummary meta={quoteMeta} />
+
           <BookingItineraryTimeline
             itinerary={itinerary}
             onChange={setItinerary}
@@ -246,6 +361,8 @@ export default function BookingDetailPage() {
             onSave={saveHotels}
             saving={savingHotels}
             catalogHotels={catalogHotels}
+            onSendVoucher={sendHotelVoucher}
+            sendingVoucher={sendingVoucher}
           />
 
           <BookingTransportEditor
@@ -307,18 +424,45 @@ export default function BookingDetailPage() {
             <h3 className="font-bold mb-4">Customer</h3>
             <p className="font-bold text-xl text-content-primary">{booking.customerName}</p>
             <div className="mt-3 space-y-2 text-sm text-content-secondary">
-              <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-teal-600" />{booking.customerPhone || '—'}</p>
-              <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-teal-600" />{booking.customerEmail || '—'}</p>
+              <a href={booking.customerPhone ? `tel:${booking.customerPhone}` : undefined} className="flex items-center gap-2 hover:text-teal-600">
+                <Phone className="w-4 h-4 text-teal-600" />{booking.customerPhone || '—'}
+              </a>
+              <a href={booking.customerEmail ? `mailto:${booking.customerEmail}` : undefined} className="flex items-center gap-2 hover:text-teal-600">
+                <Mail className="w-4 h-4 text-teal-600" />{booking.customerEmail || '—'}
+              </a>
             </div>
           </div>
 
           <div className="rounded-3xl border border-subtle bg-gradient-to-br from-emerald-500/10 to-teal-500/5 p-5">
-            <h3 className="font-bold mb-3 flex items-center gap-2"><Wallet className="w-4 h-4 text-emerald-600" /> Payment</h3>
+            <h3 className="font-bold mb-3 flex items-center gap-2"><Receipt className="w-4 h-4 text-emerald-600" /> Payment & Receipts</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-content-muted">Advance</span><span className="font-bold">{formatINR(booking.advanceReceived)}</span></div>
               <div className="flex justify-between"><span className="text-content-muted">Pending</span><span className="font-bold text-amber-600">{formatINR(booking.pendingAmount)}</span></div>
               <div className="h-px bg-subtle my-2" />
               <div className="flex justify-between"><span className="font-medium">Total</span><span className="font-black text-lg">{formatINR(amount)}</span></div>
+            </div>
+            <div className="mt-4 space-y-2">
+              {(booking.paymentLedger || []).map((payment, index) => (
+                <button
+                  key={payment._id || `${payment.paymentId}-${index}`}
+                  type="button"
+                  onClick={() => openReceipt(payment.receiptHtml)}
+                  disabled={!payment.receiptHtml}
+                  className="flex w-full items-center gap-2 rounded-xl border border-emerald-500/15 bg-white/50 p-2.5 text-left transition hover:border-emerald-500/30 disabled:cursor-default dark:bg-surface/50"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+                    <Wallet className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-content-primary">Payment {payment.installment} · {formatINR(payment.amount)}</p>
+                    <p className="truncate text-[10px] text-content-muted">{formatDate(payment.receivedAt)} · {payment.method?.replace(/_/g, ' ') || 'Payment'}</p>
+                  </div>
+                  {payment.receiptHtml ? <ExternalLink className="h-3.5 w-3.5 text-emerald-600" /> : null}
+                </button>
+              ))}
+              {!booking.paymentLedger?.length && (
+                <p className="rounded-xl border border-dashed border-subtle p-3 text-center text-xs text-content-muted">No payment received yet</p>
+              )}
             </div>
           </div>
 
@@ -326,13 +470,13 @@ export default function BookingDetailPage() {
             <h3 className="font-bold mb-3">Quick Actions</h3>
             {booking.hotelConfirmation === 'pending' && (
               <Button variant="teal" className="w-full rounded-xl gap-2" disabled={actionLoading === 'hotel'} onClick={confirmHotel}>
-                {actionLoading === 'hotel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                {actionLoading === 'hotel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Hotel className="w-4 h-4" />}
                 Confirm All Hotels
               </Button>
             )}
             {booking.cabConfirmation === 'pending' && (
               <Button variant="violet" className="w-full rounded-xl gap-2" disabled={actionLoading === 'cab'} onClick={confirmCab}>
-                {actionLoading === 'cab' ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                {actionLoading === 'cab' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Car className="w-4 h-4" />}
                 Confirm Transport
               </Button>
             )}

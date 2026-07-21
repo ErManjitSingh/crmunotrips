@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import {
   Hotel, Car, Calendar, MapPin, Utensils, Bus, Compass,
-  Save, Plus, Trash2, RefreshCw, Sparkles, Loader2, FileText, ExternalLink,
+  Save, Plus, Trash2, RefreshCw, Sparkles, Loader2, FileText, ExternalLink, Send, Ticket,
 } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { formatDate } from '../operationsUtils';
@@ -369,7 +369,15 @@ export function QuotationSyncBanner({ meta, onSync, syncing, autoSynced }) {
   );
 }
 
-export function BookingHotelsEditor({ hotels, onChange, onSave, saving, catalogHotels = [] }) {
+export function BookingHotelsEditor({
+  hotels,
+  onChange,
+  onSave,
+  saving,
+  catalogHotels = [],
+  onSendVoucher,
+  sendingVoucher,
+}) {
   const update = (i, field, value) => {
     onChange(hotels.map((h, idx) => (idx === i ? { ...h, [field]: value } : h)));
   };
@@ -386,6 +394,10 @@ export function BookingHotelsEditor({ hotels, onChange, onSave, saving, catalogH
       category: hotel.category || '',
       roomType: hotel.roomTypes?.[0]?.name || hotel.roomType || '',
       mealPlan: hotel.mealPlan || '',
+      address: hotel.address || hotel.location || '',
+      contactPerson: hotel.contactPerson || '',
+      phone: hotel.phone || '',
+      email: hotel.email || '',
     } : h)));
   };
 
@@ -443,11 +455,38 @@ export function BookingHotelsEditor({ hotels, onChange, onSave, saving, catalogH
               <input value={h.destination || ''} onChange={(e) => update(i, 'destination', e.target.value)} placeholder="Destination / city" className="input-premium h-10 rounded-xl text-sm" />
               <input value={h.roomType || ''} onChange={(e) => update(i, 'roomType', e.target.value)} placeholder="Room type" className="input-premium h-10 rounded-xl text-sm" />
               <input value={h.mealPlan || ''} onChange={(e) => update(i, 'mealPlan', e.target.value)} placeholder="Meal plan (MAP/CP)" className="input-premium h-10 rounded-xl text-sm" />
+              <input value={h.contactPerson || ''} onChange={(e) => update(i, 'contactPerson', e.target.value)} placeholder="Hotel contact person" className="input-premium h-10 rounded-xl text-sm" />
+              <input value={h.phone || ''} onChange={(e) => update(i, 'phone', e.target.value)} placeholder="Hotel phone" className="input-premium h-10 rounded-xl text-sm" />
+              <input type="email" value={h.email || ''} onChange={(e) => update(i, 'email', e.target.value)} placeholder="Hotel email" className="input-premium h-10 rounded-xl text-sm" />
+              <input value={h.confirmationNumber || ''} onChange={(e) => update(i, 'confirmationNumber', e.target.value)} placeholder="Confirmation number" className="input-premium h-10 rounded-xl text-sm" />
+              <input value={h.address || ''} onChange={(e) => update(i, 'address', e.target.value)} placeholder="Hotel address" className="input-premium h-10 rounded-xl text-sm sm:col-span-2" />
               <input type="date" value={h.checkIn ? String(h.checkIn).slice(0, 10) : ''} onChange={(e) => update(i, 'checkIn', e.target.value)} className="input-premium h-10 rounded-xl text-sm" />
               <input type="date" value={h.checkOut ? String(h.checkOut).slice(0, 10) : ''} onChange={(e) => update(i, 'checkOut', e.target.value)} className="input-premium h-10 rounded-xl text-sm" />
               <select value={h.status || 'pending'} onChange={(e) => update(i, 'status', e.target.value)} className="input-premium h-10 rounded-xl text-sm sm:col-span-2">
                 {HOTEL_STATUS.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
+            </div>
+            <div className="flex flex-col gap-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-xs font-bold text-content-primary">
+                  <Ticket className="h-3.5 w-3.5 text-amber-600" />
+                  {h.voucherSentAt ? 'Hotel voucher sent' : h.voucherId ? 'Voucher generated' : 'Hotel voucher'}
+                </p>
+                <p className="mt-0.5 truncate text-[10px] text-content-muted">
+                  {h.email || 'Add hotel email to send'}{h.voucherSentAt ? ` · ${formatDate(h.voucherSentAt)}` : ''}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 rounded-xl gap-1.5 border-amber-500/30"
+                disabled={!h._id || !h.email || saving || sendingVoucher === h._id}
+                onClick={() => onSendVoucher?.(h, i)}
+              >
+                {sendingVoucher === h._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                {h.voucherSentAt ? 'Resend Voucher' : 'Send Voucher'}
+              </Button>
             </div>
           </div>
         ))}

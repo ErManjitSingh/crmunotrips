@@ -921,13 +921,23 @@ async function updateBooking(id, payload, actor) {
   const prev = await Booking.findById(id).lean();
   if (!prev) return null;
 
-  if (payload.totalAmount != null || payload.advanceReceived != null) {
-    const total = Number(payload.totalAmount ?? prev.totalAmount ?? 0);
-    const advance = Number(payload.advanceReceived ?? prev.advanceReceived ?? 0);
-    payload.pendingAmount = Math.max(0, total - advance);
+  const allowed = [
+    'status', 'paymentStatus', 'itinerary', 'hotels', 'transport', 'activities',
+    'hotelConfirmation', 'cabConfirmation', 'activityConfirmation', 'voucherStatus',
+    'totalAmount', 'advanceReceived', 'assignedTo', 'travelDate', 'returnDate',
+    'packageName', 'destination',
+  ];
+  const patch = Object.fromEntries(
+    Object.entries(payload || {}).filter(([key]) => allowed.includes(key))
+  );
+
+  if (patch.totalAmount != null || patch.advanceReceived != null) {
+    const total = Number(patch.totalAmount ?? prev.totalAmount ?? 0);
+    const advance = Number(patch.advanceReceived ?? prev.advanceReceived ?? 0);
+    patch.pendingAmount = Math.max(0, total - advance);
   }
 
-  const booking = await Booking.findByIdAndUpdate(id, payload, { new: true });
+  const booking = await Booking.findByIdAndUpdate(id, patch, { new: true, runValidators: true });
   if (!booking) return null;
 
   const wasNotConfirmed = !['confirmed', 'in_progress'].includes(prev.status);
@@ -993,8 +1003,37 @@ async function buildBookingPayloadFromPayment(payment) {
 async function createBookingFromPayment(paymentId, actor) {
   const payment = await Payment.findById(paymentId).lean();
   if (!payment) return null;
-  if (payment.booking) return Booking.findById(payment.booking);
   if (!['paid', 'partial'].includes(payment.status)) return null;
+
+  let existing = payment.booking ? await Booking.findById(payment.booking) : null;
+  if (!existing) {
+    const identities = [
+      ...(payment.lead ? [{ lead: payment.lead }] : []),
+      ...(payment.quotation ? [{ quotation: payment.quotation }] : []),
+    ];
+    if (identities.length) existing = await Booking.findOne({ $or: identities });
+  }
+
+  if (existing) {
+    const total = Number(payment.amount) || Number(existing.totalAmount) || 0;
+    const advance = Number(payment.paidAmount) || 0;
+    const nextStatus = payment.status === 'paid' ? 'paid' : 'partial';
+    const bookingStatus =
+      payment.status === 'paid' &&
+      ['booking_received', 'pending_verification', 'pending'].includes(existing.status)
+        ? 'confirmed'
+        : existing.status;
+    const updated = await updateBooking(existing._id, {
+      totalAmount: total,
+      advanceReceived: advance,
+      paymentStatus: nextStatus,
+      status: bookingStatus,
+    }, actor);
+    if (String(payment.booking || '') !== String(existing._id)) {
+      await Payment.findByIdAndUpdate(paymentId, { booking: existing._id });
+    }
+    return updated;
+  }
 
   const payload = await buildBookingPayloadFromPayment(payment);
   const booking = await createBooking(payload, actor);
