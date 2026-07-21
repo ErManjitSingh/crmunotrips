@@ -16,18 +16,20 @@ export const PAYMENT_METHODS = [
 ];
 
 export const DATE_PRESETS = [
+  { value: '', label: 'All' },
   { value: 'today', label: 'Today' },
   { value: 'yesterday', label: 'Yesterday' },
-  { value: 'week', label: 'This Week' },
+  { value: 'last7', label: 'Last 7 Days' },
   { value: 'month', label: 'This Month' },
-  { value: 'quarter', label: 'This Quarter' },
-  { value: 'custom', label: 'Custom' },
+  { value: 'lastMonth', label: 'Last Month' },
+  { value: 'last6', label: 'Last 6 Months' },
 ];
 
 export const MONTHLY_TARGET = 10_000_000;
 
 export const EMPTY_FILTERS = {
   search: '',
+  datePreset: '',
   status: '',
   method: '',
   destination: '',

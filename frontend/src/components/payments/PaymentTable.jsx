@@ -97,6 +97,7 @@ export default function PaymentTable({
   onRefund,
   onDelete,
   canDelete,
+  compact = false,
 }) {
   const allSelected = payments.length > 0 && payments.every((p) => selectedIds.has(p._id));
   const someSelected = payments.some((p) => selectedIds.has(p._id)) && !allSelected;
@@ -106,6 +107,85 @@ export default function PaymentTable({
       <div className="rounded-[24px] border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
         <p className="text-lg font-semibold text-slate-900">No payments found</p>
         <p className="text-sm text-slate-500 mt-1">Try adjusting filters or add a new payment.</p>
+      </div>
+    );
+  }
+
+  if (compact) {
+    return (
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px]">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/80 text-left">
+                {['Invoice ID', 'Customer', 'Date', 'Amount', 'Status', 'Payment Mode', ''].map((heading) => (
+                  <th
+                    key={heading || 'actions'}
+                    className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide text-slate-400"
+                  >
+                    {heading}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((payment) => {
+                const method = getMethodMeta(payment.method);
+                return (
+                  <tr
+                    key={payment._id}
+                    onClick={() => onView(payment)}
+                    className="cursor-pointer border-b border-slate-100 transition-colors last:border-0 hover:bg-violet-50/40"
+                  >
+                    <td className="px-4 py-3.5">
+                      <span className="font-mono text-xs font-semibold text-violet-600">
+                        {payment.invoiceNumber || paymentDisplayId(payment)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className={cn(
+                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
+                            getAvatarColor(payment.customerName)
+                          )}
+                        >
+                          {getInitials(payment.customerName)}
+                        </span>
+                        <span className="text-sm font-semibold text-slate-800">{payment.customerName}</span>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-xs text-slate-500">
+                      {formatDate(payment.paidAt || payment.createdAt)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-sm font-bold text-slate-900 metric-tabular">
+                      {formatINR(payment.amount)}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <StatusPill status={payment.status} />
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className="inline-flex items-center gap-2 text-xs font-medium text-slate-600">
+                        <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: method.color }} />
+                        {method.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-right" onClick={(event) => event.stopPropagation()}>
+                      <RowActions
+                        payment={payment}
+                        onView={onView}
+                        onCollect={onCollect}
+                        onRefund={onRefund}
+                        onDelete={onDelete}
+                        canDelete={canDelete}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }

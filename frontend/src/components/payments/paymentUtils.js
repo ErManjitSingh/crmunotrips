@@ -75,32 +75,31 @@ function startOfDay(d) {
   return x;
 }
 
-export function getDateRange(preset, custom = {}) {
+export function getDateRange(preset) {
   const now = new Date();
   const today = startOfDay(now);
   if (preset === 'today') return { from: today, to: now };
   if (preset === 'yesterday') {
     const y = new Date(today);
     y.setDate(y.getDate() - 1);
-    return { from: y, to: today };
+    return { from: y, to: new Date(today.getTime() - 1) };
   }
-  if (preset === 'week') {
+  if (preset === 'last7') {
     const from = new Date(today);
-    from.setDate(from.getDate() - from.getDay());
+    from.setDate(from.getDate() - 6);
     return { from, to: now };
   }
   if (preset === 'month') {
     return { from: new Date(today.getFullYear(), today.getMonth(), 1), to: now };
   }
-  if (preset === 'quarter') {
-    const q = Math.floor(today.getMonth() / 3) * 3;
-    return { from: new Date(today.getFullYear(), q, 1), to: now };
-  }
-  if (preset === 'custom') {
+  if (preset === 'lastMonth') {
     return {
-      from: custom.dateFrom ? startOfDay(custom.dateFrom) : null,
-      to: custom.dateTo ? new Date(custom.dateTo) : null,
+      from: new Date(today.getFullYear(), today.getMonth() - 1, 1),
+      to: new Date(new Date(today.getFullYear(), today.getMonth(), 1).getTime() - 1),
     };
+  }
+  if (preset === 'last6') {
+    return { from: new Date(today.getFullYear(), today.getMonth() - 6, today.getDate()), to: now };
   }
   return { from: null, to: null };
 }

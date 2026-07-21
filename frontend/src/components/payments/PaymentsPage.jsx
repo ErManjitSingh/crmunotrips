@@ -55,7 +55,7 @@ export default function PaymentsPage() {
   });
 
   const filtered = useMemo(
-    () => filterPayments(payments, filters, 'month'),
+    () => filterPayments(payments, filters, filters.datePreset),
     [payments, filters]
   );
 
@@ -209,6 +209,19 @@ export default function PaymentsPage() {
           </div>
         ) : null}
 
+        <PaymentFilterBar
+          filters={filters}
+          activeCount={activeFilterCount}
+          onChange={(next) => {
+            setFilters(next);
+            setPage(1);
+          }}
+          onReset={() => {
+            setFilters(EMPTY_FILTERS);
+            setPage(1);
+          }}
+        />
+
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3.5">
             {Array.from({ length: 7 }).map((_, i) => (
@@ -224,18 +237,12 @@ export default function PaymentsPage() {
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-5 items-start">
           <div className="space-y-4 min-w-0">
             <div className="rounded-[24px] border border-slate-200/80 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)] space-y-4">
-              <PaymentFilterBar
-                filters={filters}
-                activeCount={activeFilterCount}
-                onChange={(next) => {
-                  setFilters(next);
-                  setPage(1);
-                }}
-                onReset={() => {
-                  setFilters(EMPTY_FILTERS);
-                  setPage(1);
-                }}
-              />
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-slate-900">Recent Transactions</h2>
+                <span className="text-xs font-medium text-slate-400">
+                  {filtered.length} transaction{filtered.length === 1 ? '' : 's'}
+                </span>
+              </div>
 
               <PaymentTable
                 payments={pageItems}
@@ -247,6 +254,7 @@ export default function PaymentsPage() {
                 onRefund={openRefund}
                 onDelete={setDeleteTarget}
                 canDelete={canDelete}
+                compact
               />
 
               <TablePagination

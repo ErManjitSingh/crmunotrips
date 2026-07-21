@@ -8,7 +8,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
-import { formatDate, formatINR, formatINRCompact, getAvatarColor, getInitials, pendingAmount } from './paymentUtils';
+import { formatDate, formatINRCompact, getAvatarColor, getInitials, pendingAmount } from './paymentUtils';
 import { cn } from '../../lib/utils';
 
 function daysLeftLabel(dueDate) {
@@ -30,50 +30,21 @@ const QUICK = [
 ];
 
 export default function PaymentInsightSidebar({ analytics, onSelect, onAction }) {
-  const upcoming = [
-    ...(analytics.reminders?.dueToday || []),
-    ...(analytics.reminders?.upcoming || []),
-    ...(analytics.reminders?.overdue || []),
-  ].slice(0, 4);
+  const overdue = analytics.reminders?.overdue?.slice(0, 4) || [];
 
   const recent = analytics.recent || [];
 
   return (
     <aside className="space-y-4 xl:sticky xl:top-4">
-      {/* Today's Collection — gradient card matching mock */}
-      <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 text-white p-5 shadow-lg shadow-violet-600/20 min-h-[148px]">
-        <div className="relative z-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/75">
-            Today&apos;s Collection
-          </p>
-          <p className="text-[32px] font-bold metric-tabular mt-2 leading-none tracking-tight">
-            {formatINR(analytics.todayCollection || 0).replace('₹', '₹')}
-          </p>
-          <p className="text-xs text-white/70 mt-2">Live collection today</p>
-        </div>
-        <div className="absolute right-3 bottom-2 opacity-90 pointer-events-none select-none">
-          <svg width="108" height="88" viewBox="0 0 108 88" fill="none" aria-hidden>
-            <ellipse cx="70" cy="70" rx="34" ry="10" fill="rgba(255,255,255,0.12)" />
-            <rect x="38" y="28" width="52" height="36" rx="10" fill="rgba(255,255,255,0.95)" />
-            <rect x="44" y="34" width="40" height="8" rx="3" fill="#C4B5FD" />
-            <circle cx="28" cy="48" r="14" fill="#FBBF24" />
-            <circle cx="28" cy="48" r="9" fill="#F59E0B" />
-            <circle cx="88" cy="52" r="10" fill="#FCD34D" />
-            <circle cx="88" cy="52" r="6" fill="#F59E0B" />
-            <path d="M52 52h24" stroke="#8B5CF6" strokeWidth="3" strokeLinecap="round" />
-          </svg>
-        </div>
-      </div>
-
       <div className="rounded-[24px] border border-slate-200/80 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-slate-900">Upcoming Due Payments</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Top Overdue Invoices</h3>
           <button type="button" className="text-[11px] font-semibold text-violet-600 hover:text-violet-500">
             View all
           </button>
         </div>
         <div className="space-y-2.5">
-          {upcoming.map((p) => {
+          {overdue.map((p) => {
             const badge = daysLeftLabel(p.dueDate);
             return (
               <button
@@ -109,8 +80,8 @@ export default function PaymentInsightSidebar({ analytics, onSelect, onAction })
               </button>
             );
           })}
-          {!upcoming.length && (
-            <p className="text-xs text-slate-400 py-3 text-center">No upcoming dues</p>
+          {!overdue.length && (
+            <p className="text-xs text-slate-400 py-3 text-center">No overdue invoices</p>
           )}
         </div>
       </div>
