@@ -95,7 +95,7 @@ export default function TablePagination({
               value={resolvedPageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
             >
-              {[10, 25, 50, 100].map((size) => (
+              {[10, 15, 25, 50, 100].map((size) => (
                 <option key={size} value={size}>{size}</option>
               ))}
             </select>
@@ -157,3 +157,4 @@ export default function TablePagination({
 
 export const DEFAULT_PAGE_SIZE = 50;
 export const LEADS_PAGE_SIZE = 50;
+export const ALL_LEADS_PAGE_SIZE = 15;

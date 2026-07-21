@@ -528,6 +528,28 @@ echo
 echo 'REFRESH_FIX_DEPLOYED'
 `;
 
+const deployLatestFrontend = String.raw`set -euo pipefail
+ROOT=/var/www/app-unotrips-crm
+test -d "$ROOT/.git"
+
+echo '=== fetching latest frontend ==='
+git -C "$ROOT" fetch origin main
+git -C "$ROOT" diff --name-only HEAD origin/main -- frontend \
+  | while IFS= read -r file; do
+      test -n "$file" && git -C "$ROOT" checkout origin/main -- "$file"
+    done
+
+echo '=== rebuilding frontend ==='
+cd "$ROOT/frontend"
+npm run build
+
+echo '=== verifying live site ==='
+test "$(curl -sS -o /dev/null -w '%{http_code}' https://app.unotrips.com/)" = 200
+curl --fail --silent --show-error https://app.unotrips.com/api/health
+echo
+echo 'LATEST_FRONTEND_DEPLOYED'
+`;
+
 const scripts = {
   preflight,
   deploy,
@@ -537,6 +559,7 @@ const scripts = {
   compare,
   metaApi,
   deployRefreshFix,
+  deployLatestFrontend,
 };
 if (!scripts[MODE]) {
   console.error(`Unknown mode: ${MODE}`);

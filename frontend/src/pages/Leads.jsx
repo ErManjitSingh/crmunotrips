@@ -20,7 +20,7 @@ import { getTodayDateRange } from '../lib/todayDateRange';
 import { countActiveFilters } from '../components/leads/leadFilters';
 import { useDataRefresh } from '../hooks/useDataRefresh';
 import { useLeadsQuery } from '../features/leads/hooks/useLeadsQuery';
-import { LEADS_PAGE_SIZE } from '../components/ui/TablePagination';
+import { ALL_LEADS_PAGE_SIZE, LEADS_PAGE_SIZE } from '../components/ui/TablePagination';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { assignAllowedRoles, canAssignLeads } from '../lib/canAssignLeads';
 import BulkStatusModal from '../components/leads/BulkStatusModal';
@@ -43,10 +43,14 @@ export default function Leads() {
     ? { view: true, edit: false, assign: false, transferBranch: false, delete: false }
     : { view: true, edit: isManagerRole, assign: isManagerRole, transferBranch: isManagerRole, delete: isManagerRole };
   const config = pageConfig[location.pathname] || pageConfig['/leads'];
+  const isAllLeadsPage = location.pathname === '/leads';
 
   const [filters, setFilters] = useState({ ...emptyFilters, status: config.status || '' });
   const [appliedFilters, setAppliedFilters] = useState({ ...emptyFilters, status: config.status || '' });
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: LEADS_PAGE_SIZE });
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: isAllLeadsPage ? ALL_LEADS_PAGE_SIZE : LEADS_PAGE_SIZE,
+  });
   const [rowSelection, setRowSelection] = useState({});
   const [previewLead, setPreviewLead] = useState(null);
   const [transferLead, setTransferLead] = useState(null);
@@ -54,7 +58,6 @@ export default function Leads() {
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
   const [pageCursors, setPageCursors] = useState({});
   const { confirm, dialogNode } = useConfirmDialog();
-  const isAllLeadsPage = location.pathname === '/leads';
   const DEEP_PAGE_INDEX = 9;
 
   const apiFilters = useMemo(() => {
@@ -89,9 +92,12 @@ export default function Leads() {
   useEffect(() => {
     setFilters((f) => ({ ...f, status: config.status || '' }));
     setAppliedFilters((f) => ({ ...f, status: config.status || '' }));
-    setPagination((p) => ({ ...p, pageIndex: 0 }));
+    setPagination({
+      pageIndex: 0,
+      pageSize: isAllLeadsPage ? ALL_LEADS_PAGE_SIZE : LEADS_PAGE_SIZE,
+    });
     setPageCursors({});
-  }, [config.status, config.assignee, location.pathname]);
+  }, [config.status, config.assignee, isAllLeadsPage, location.pathname]);
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
