@@ -26,6 +26,7 @@ import { assignAllowedRoles, canAssignLeads } from '../lib/canAssignLeads';
 import BulkStatusModal from '../components/leads/BulkStatusModal';
 import { bulkUpdateLeadStatus, bulkExportLeads } from '../services/leadEnterpriseApi';
 import { invalidateLeadLists } from '../lib/queryInvalidation';
+import MobileLeadList from '../components/leads/MobileLeadList';
 
 export default function Leads() {
   const location = useLocation();
@@ -147,6 +148,10 @@ export default function Leads() {
   const selectedLeadIds = Object.keys(rowSelection).filter((k) => rowSelection[k]);
 
   const handleApply = () => setAppliedFilters({ ...filters });
+  const handleMobileApply = (next) => {
+    setFilters(next);
+    setAppliedFilters(next);
+  };
   const handleReset = () => {
     const base = { ...emptyFilters, status: config.status || '' };
     setFilters(base);
@@ -227,56 +232,79 @@ export default function Leads() {
 
   return (
     <div className="animate-fade-up">
-      <LeadPageHeader
-        title={config.title}
-        total={totalLeads ?? undefined}
-      />
-
-      {isAllLeadsPage && <LeadKpiStrip />}
-
-      <LeadFilterBar
-        filters={filters}
-        onChange={setFilters}
-        onApply={handleApply}
-        onReset={handleReset}
-        activeCount={countActiveFilters(appliedFilters)}
-      />
-
-      <LeadBulkActionsBar
-        count={selectedCount}
-        onClear={() => setRowSelection({})}
-        onAssign={isAdmin ? () => openBulkAssign(selectedLeadIds) : undefined}
-        onStatusUpdate={isManagerRole ? () => setBulkStatusOpen(true) : undefined}
-        onExport={handleBulkExport}
-        onDelete={handleBulkDelete}
-      />
-
-      {loading ? (
-        <div className="rounded-2xl border border-subtle bg-white p-16 text-center text-content-muted shadow-sm">
-          Loading leads...
-        </div>
-      ) : (
-        <LeadDataTable
+      {isAdmin && (
+        <MobileLeadList
+          title={config.title}
+          subtitle={config.subtitle}
           leads={tableLeads}
-          rowSelection={rowSelection}
-          onRowSelectionChange={setRowSelection}
-          onRowClick={openLead}
-          onDelete={isManagerRole ? handleDelete : undefined}
-          onAssign={isManagerRole && userCanAssignLeads ? openAssign : undefined}
-          onTransferBranch={isManagerRole ? setTransferLead : undefined}
-          canEditLead={isManagerRole && canEditLead}
-          menuActions={leadMenuActions}
-          showAssignButton={isManagerRole && userCanAssignLeads}
-          serverPagination={{
+          total={totalLeads}
+          loading={loading}
+          filters={filters}
+          onFiltersChange={setFilters}
+          onApplyFilters={handleMobileApply}
+          onReset={handleReset}
+          onOpenLead={openLead}
+          hasMore={hasMoreLeads}
+          pagination={{
             pageIndex: pagination.pageIndex,
             pageSize: pagination.pageSize,
-            pageCount,
-            total: totalLeads,
-            hasMore: hasMoreLeads,
-            onPaginationChange: setPagination,
+            onPageChange: (pageIndex) => setPagination((current) => ({ ...current, pageIndex })),
           }}
         />
       )}
+
+      <div className={isAdmin ? 'hidden lg:block' : ''}>
+        <LeadPageHeader
+          title={config.title}
+          total={totalLeads ?? undefined}
+        />
+
+        {isAllLeadsPage && <LeadKpiStrip />}
+
+        <LeadFilterBar
+          filters={filters}
+          onChange={setFilters}
+          onApply={handleApply}
+          onReset={handleReset}
+          activeCount={countActiveFilters(appliedFilters)}
+        />
+
+        <LeadBulkActionsBar
+          count={selectedCount}
+          onClear={() => setRowSelection({})}
+          onAssign={isAdmin ? () => openBulkAssign(selectedLeadIds) : undefined}
+          onStatusUpdate={isManagerRole ? () => setBulkStatusOpen(true) : undefined}
+          onExport={handleBulkExport}
+          onDelete={handleBulkDelete}
+        />
+
+        {loading ? (
+          <div className="rounded-2xl border border-subtle bg-white p-16 text-center text-content-muted shadow-sm">
+            Loading leads...
+          </div>
+        ) : (
+          <LeadDataTable
+            leads={tableLeads}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+            onRowClick={openLead}
+            onDelete={isManagerRole ? handleDelete : undefined}
+            onAssign={isManagerRole && userCanAssignLeads ? openAssign : undefined}
+            onTransferBranch={isManagerRole ? setTransferLead : undefined}
+            canEditLead={isManagerRole && canEditLead}
+            menuActions={leadMenuActions}
+            showAssignButton={isManagerRole && userCanAssignLeads}
+            serverPagination={{
+              pageIndex: pagination.pageIndex,
+              pageSize: pagination.pageSize,
+              pageCount,
+              total: totalLeads,
+              hasMore: hasMoreLeads,
+              onPaginationChange: setPagination,
+            }}
+          />
+        )}
+      </div>
 
       <LeadPreviewDrawer
         lead={previewLead}

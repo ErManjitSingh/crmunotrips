@@ -16,7 +16,13 @@ function LayoutShell() {
     user?.role === 'admin' &&
     pathname !== '/leads/new' &&
     /^\/leads\/[^/]+$/.test(pathname);
-  const isMobileImmersive = isAdminDashboard || isAdminLeadDetail;
+  const isAdminLeadList =
+    user?.role === 'admin' &&
+    (
+      pathname === '/leads' ||
+      /^\/leads\/(inbox\/new|new-leads|hot|unassigned|assigned|converted|lost)$/.test(pathname)
+    );
+  const isMobileImmersive = isAdminDashboard || isAdminLeadDetail || isAdminLeadList;
   const sidebarProps = { user };
 
   return (
