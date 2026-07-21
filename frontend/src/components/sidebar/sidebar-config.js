@@ -139,25 +139,31 @@ export const mainNavItems = [
     permission: { module: 'operations', action: 'view' },
   },
   {
-    path: '/payments',
-    label: 'Payments',
+    id: 'accounts',
+    label: 'Accounts',
     icon: CreditCard,
     roles: ['admin', 'accountant'],
     permission: { module: 'payments', action: 'view' },
-  },
-  {
-    path: '/invoices',
-    label: 'Invoices',
-    icon: Receipt,
-    roles: ['admin', 'accountant'],
-    permission: { module: 'payments', action: 'view' },
-  },
-  {
-    path: '/refunds',
-    label: 'Refunds',
-    icon: RotateCcw,
-    roles: ['admin', 'accountant'],
-    permission: { module: 'payments', action: 'view' },
+    children: [
+      {
+        path: '/payments',
+        label: 'Payments',
+        icon: CreditCard,
+        permission: { module: 'payments', action: 'view' },
+      },
+      {
+        path: '/invoices',
+        label: 'Invoices',
+        icon: Receipt,
+        permission: { module: 'payments', action: 'view' },
+      },
+      {
+        path: '/refunds',
+        label: 'Refunds',
+        icon: RotateCcw,
+        permission: { module: 'payments', action: 'view' },
+      },
+    ],
   },
   {
     path: '/email-activity',
