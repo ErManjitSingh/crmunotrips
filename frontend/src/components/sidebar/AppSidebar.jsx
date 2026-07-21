@@ -44,7 +44,7 @@ export default function AppSidebar({
   brandTitle,
   brandSubtitle,
   accent = 'brand',
-  sidebarVariant,
+  sidebarVariant = 'sunset',
   profilePath,
   quickActions,
   sidebarHero,
@@ -97,7 +97,10 @@ export default function AppSidebar({
         : 'Travel Lead Management');
 
   return (
-    <SidebarThemeProvider accent={accent} profilePath={resolvedProfilePath}>
+    <SidebarThemeProvider
+      accent={sidebarVariant === 'sunset' ? 'sunset' : accent}
+      profilePath={resolvedProfilePath}
+    >
       <TooltipProvider delayDuration={0}>
         <motion.aside
           animate={{ width }}
