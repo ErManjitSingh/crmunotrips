@@ -509,7 +509,35 @@ echo
 echo 'META_API_UPDATE_OK'
 `;
 
-const scripts = { preflight, deploy, verify, diagnose, resume, compare, metaApi };
+const deployRefreshFix = String.raw`set -euo pipefail
+ROOT=/var/www/app-unotrips-crm
+test -d "$ROOT/.git"
+
+echo '=== fetching refresh fix ==='
+git -C "$ROOT" fetch origin main
+git -C "$ROOT" checkout origin/main -- frontend/src/lib/appRefresh.js
+
+echo '=== rebuilding frontend ==='
+cd "$ROOT/frontend"
+npm run build
+
+echo '=== verifying live site ==='
+test "$(curl -sS -o /dev/null -w '%{http_code}' https://app.unotrips.com/)" = 200
+curl --fail --silent --show-error https://app.unotrips.com/api/health
+echo
+echo 'REFRESH_FIX_DEPLOYED'
+`;
+
+const scripts = {
+  preflight,
+  deploy,
+  verify,
+  diagnose,
+  resume,
+  compare,
+  metaApi,
+  deployRefreshFix,
+};
 if (!scripts[MODE]) {
   console.error(`Unknown mode: ${MODE}`);
   process.exit(1);
