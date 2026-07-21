@@ -24,8 +24,8 @@ const ConversionRateChart = lazy(() => import('../components/dashboard/Conversio
 const ExecutivePerformancePanel = lazy(() =>
   import('../components/dashboard/ExecutivePerformancePanel')
 );
-const RevenueVsBookingsChart = lazy(() =>
-  import('../components/dashboard/RevenueVsBookingsChart')
+const TopDestinationQueriesChart = lazy(() =>
+  import('../components/dashboard/TopDestinationQueriesChart')
 );
 const TodayFollowUps = lazy(() => import('../components/dashboard/TodayFollowUps'));
 const RemindersAlertsPanel = lazy(() => import('../components/dashboard/RemindersAlertsPanel'));
@@ -126,7 +126,7 @@ export default function Dashboard() {
         </Suspense>
         <div className="md:col-span-2 xl:col-span-1">
           <Suspense fallback={<PanelSkeleton />}>
-            <RevenueVsBookingsChart data={report?.revenueVsBookings || []} />
+            <TopDestinationQueriesChart data={report?.topDestinations || []} />
           </Suspense>
         </div>
       </div>

@@ -257,6 +257,7 @@ async function buildAdminDashboard(options = {}) {
     monthlyConvertedAgg,
     monthlyBookingAgg,
     monthlyPaymentAgg,
+    topDestinationAgg,
   ] = await Promise.all([
     Lead.countDocuments(activeLeadScope({}, branchId)),
     Lead.countDocuments(activeLeadScope({ createdAt: { $gte: todayStart, $lte: todayEnd } }, branchId)),
@@ -391,6 +392,32 @@ async function buildAdminDashboard(options = {}) {
         },
       },
     ]),
+    Lead.aggregate([
+      {
+        $match: isAllTime ? liveLeadScope : periodLeadScope,
+      },
+      {
+        $project: {
+          destination: { $trim: { input: { $ifNull: ['$destination', ''] } } },
+          status: 1,
+        },
+      },
+      {
+        $match: { destination: { $ne: '' } },
+      },
+      {
+        $group: {
+          _id: { $toLower: '$destination' },
+          name: { $first: '$destination' },
+          queries: { $sum: 1 },
+          conversions: {
+            $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] },
+          },
+        },
+      },
+      { $sort: { queries: -1, name: 1 } },
+      { $limit: 7 },
+    ]),
   ]);
 
   const agentIds = topAgents.map((a) => a._id);
@@ -461,6 +488,15 @@ async function buildAdminDashboard(options = {}) {
     month: b.label,
     bookings: bookingMap[b.key] || 0,
     revenue: paymentMap[b.key] || 0,
+  }));
+
+  const topDestinations = topDestinationAgg.map((row) => ({
+    name: row.name,
+    queries: row.queries || 0,
+    conversions: row.conversions || 0,
+    conversionRate: row.queries
+      ? Math.round(((row.conversions || 0) / row.queries) * 1000) / 10
+      : 0,
   }));
 
   const periodSourceTotal = periodSourceAgg.reduce((s, r) => s + r.count, 0) || 1;
@@ -654,6 +690,7 @@ async function buildAdminDashboard(options = {}) {
       monthlyLeadTrend,
       conversionRateTrend,
       revenueVsBookings,
+      topDestinations,
       keyHighlights,
     },
   };
