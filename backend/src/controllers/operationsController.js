@@ -166,6 +166,29 @@ function dayLabel(days = []) {
   return days.map((day) => `Day ${day}`).join(', ');
 }
 
+function refreshVoucherDocuments(vouchers, booking, hotels, transport) {
+  return vouchers.map((voucher) => {
+    let serviceBooking = { ...booking, hotels, transport };
+    if (voucher.type === 'hotel') {
+      const ids = new Set((voucher.details?.hotelAssignmentIds || []).map(String));
+      const rows = hotels.filter((row) => (
+        ids.has(String(row._id)) || String(row.voucherId || '') === String(voucher._id)
+      ));
+      serviceBooking = { ...serviceBooking, hotels: rows.length ? rows : hotels, transport: [] };
+    } else if (voucher.type === 'transport') {
+      const ids = new Set((voucher.details?.transportAssignmentIds || []).map(String));
+      const rows = transport.filter((row) => (
+        ids.has(String(row._id)) || String(row.voucherId || '') === String(voucher._id)
+      ));
+      serviceBooking = { ...serviceBooking, hotels: [], transport: rows.length ? rows : transport };
+    }
+    return {
+      ...voucher,
+      pdfUrl: generateVoucherDocument(voucher, serviceBooking),
+    };
+  });
+}
+
 const getDashboard = asyncHandler(async (req, res) => {
   // Command center shows org-wide metrics across all branches.
   const data = await ops.getDashboard(null);
@@ -199,6 +222,7 @@ const getBooking = asyncHandler(async (req, res) => {
     enrichHotelContacts(booking.hotels || []),
     enrichTransportContacts(booking.transport || []),
   ]);
+  const refreshedVouchers = refreshVoucherDocuments(vouchers, booking, hotels, transport);
   res.json({
     ...booking,
     hotels,
@@ -207,7 +231,7 @@ const getBooking = asyncHandler(async (req, res) => {
     documents,
     payments,
     paymentLedger: paymentLedger(payments),
-    vouchers,
+    vouchers: refreshedVouchers,
   });
 });
 

@@ -505,6 +505,7 @@ export function BookingTransportEditor({
   onSave,
   saving,
   catalogCabs = [],
+  vouchers = [],
   onSendVoucher,
   sendingVoucher,
 }) {
@@ -549,7 +550,11 @@ export function BookingTransportEditor({
       )}
     >
       <div className="space-y-4">
-        {(transport.length ? transport : [{ vehicleType: 'suv', status: 'pending' }]).map((t, i) => (
+        {(transport.length ? transport : [{ vehicleType: 'suv', status: 'pending' }]).map((t, i) => {
+          const voucher = t.voucherId
+            ? vouchers.find((item) => String(item._id) === String(t.voucherId))
+            : null;
+          return (
           <div key={i} className="rounded-2xl border border-subtle/80 bg-white/40 dark:bg-surface-elevated/40 p-4 sm:p-5 space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-xs font-semibold text-violet-600 uppercase tracking-wider">Vehicle #{i + 1}</span>
@@ -600,20 +605,33 @@ export function BookingTransportEditor({
                   {(t.days || []).length ? `Days ${(t.days || []).join(', ')} · ` : ''}{t.email || 'Add vendor email to send'}
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0 rounded-xl gap-1.5 border-sky-500/30"
-                disabled={!t._id || !t.email || saving || sendingVoucher === t._id}
-                onClick={() => onSendVoucher?.(t, i)}
-              >
-                {sendingVoucher === t._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                {t.voucherSentAt ? 'Resend Voucher' : 'Send Cab Voucher'}
-              </Button>
+              <div className="flex shrink-0 gap-2">
+                {voucher?.pdfUrl && (
+                  <a
+                    href={voucher.pdfUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-sky-500/30 px-3 text-xs font-semibold text-sky-700 hover:bg-sky-500/10"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" /> View
+                  </a>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1.5 border-sky-500/30"
+                  disabled={!t._id || !t.email || saving || sendingVoucher === t._id}
+                  onClick={() => onSendVoucher?.(t, i)}
+                >
+                  {sendingVoucher === t._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  {t.voucherSentAt ? 'Resend Voucher' : 'Send Cab Voucher'}
+                </Button>
+              </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </SectionShell>
   );

@@ -424,6 +424,7 @@ export default function BookingDetailPage() {
             onSave={saveTransport}
             saving={savingTransport}
             catalogCabs={catalogCabs}
+            vouchers={booking.vouchers || []}
             onSendVoucher={sendTransportVoucher}
             sendingVoucher={sendingTransportVoucher}
           />
