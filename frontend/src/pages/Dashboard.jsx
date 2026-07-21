@@ -16,6 +16,7 @@ import {
   DashboardHero,
   DashboardSkeleton,
 } from '../components/dashboard';
+import MobileAdminDashboard from '../components/dashboard/MobileAdminDashboard';
 
 const LeadTrendChart = lazy(() => import('../components/dashboard/LeadTrendChart'));
 const LeadStatusDonut = lazy(() => import('../components/dashboard/LeadStatusDonut'));
@@ -79,7 +80,15 @@ export default function Dashboard() {
     (report?.leadsBySource || []).reduce((s, d) => s + (d.value || 0), 0);
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] space-y-4 pb-8 sm:space-y-5">
+    <>
+      <MobileAdminDashboard
+        stats={stats}
+        filters={filters}
+        onFiltersChange={setFilters}
+        isFetching={isFetching}
+      />
+
+      <div className="mx-auto hidden w-full max-w-[1600px] space-y-4 pb-8 sm:space-y-5 lg:block">
       {isFetching && (
         <div className="h-0.5 w-full overflow-hidden rounded-full bg-blue-500/30">
           <div className="h-full w-1/3 animate-pulse bg-blue-500" />
@@ -147,6 +156,7 @@ export default function Dashboard() {
         </p>
         <p className="shrink-0">Report Generated on: {generatedAt}</p>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

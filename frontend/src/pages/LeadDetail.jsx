@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import API from '../api/axios';
@@ -26,10 +26,12 @@ import { checkLeadDuplicate } from '../services/leadEnterpriseApi';
 import LeadEmailHistory from '../components/email/LeadEmailHistory';
 import AddFollowUpModal from '../components/followups/AddFollowUpModal';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../components/followups/followupApi';
+import MobileLeadDetailSummary from '../components/lead-detail/MobileLeadDetailSummary';
 
 export default function LeadDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { can } = usePermissions();
@@ -72,12 +74,21 @@ export default function LeadDetail() {
       .catch(() => setHasDuplicates(false));
   }, [leadQuery.data, user?.role]);
 
-  const { assignees, assigneesLoading, assignModal, openAssign, closeAssign, handleAssign } = useLeadAssign({
+  const {
+    assignees,
+    assigneesLoading,
+    assignModal,
+    openAssign,
+    closeAssign,
+    handleAssign,
+    assignConfirmDialog,
+  } = useLeadAssign({
     onAssigned: refreshLead,
   });
 
   const lead = leadQuery.data;
   const loading = leadQuery.isLoading && !lead;
+  const showFullProfile = searchParams.get('view') === 'full';
   const { activities, timelineLoading } = useLeadActivities(lead, id);
 
   if (loading) {
@@ -146,7 +157,22 @@ export default function LeadDetail() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="pb-8">
-      <LeadDetailLayout
+      {!showFullProfile && (
+        <MobileLeadDetailSummary
+          lead={lead}
+          onAssign={userCanAssignLeads ? () => openAssign(lead) : undefined}
+          onCreateQuote={
+            can('quotations', 'create')
+              ? () => navigate(`/quotations/new?leadId=${id}`)
+              : undefined
+          }
+          onLogCallNote={() => setCallNoteOpen(true)}
+          editHref={canEditLead ? `/leads/${id}/edit` : undefined}
+        />
+      )}
+
+      <div className={showFullProfile ? 'block' : 'hidden lg:block'}>
+        <LeadDetailLayout
         lead={lead}
         leadId={id}
         activities={activities}
@@ -175,7 +201,8 @@ export default function LeadDetail() {
             <LeadAuditPanel leadId={id} canView={isAdmin || user?.role === 'sales_manager'} />
           </div>
         )}
-      />
+        />
+      </div>
 
       {userCanAssignLeads && (
         <AdminAssignLeadModal
@@ -188,6 +215,7 @@ export default function LeadDetail() {
           allowedRoles={assignAllowedRoles(user?.role)}
         />
       )}
+      {assignConfirmDialog}
 
       {canCreateFollowUp && (
         <AddFollowUpModal

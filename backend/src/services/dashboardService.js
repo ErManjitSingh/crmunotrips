@@ -723,6 +723,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
     todayFollowups,
     quotesSentCount,
     monthlyRevenueAgg,
+    totalLeadValueAgg,
     recentLeadsRaw,
     myFollowups,
     statusAgg,
@@ -773,6 +774,15 @@ async function buildExecutiveDashboard(userId, options = {}) {
         }, branchId),
       },
       { $group: { _id: null, total: { $sum: '$paidAmount' } } },
+    ]),
+    Lead.aggregate([
+      {
+        $match: {
+          ...leadScope,
+          status: { $nin: ['lost', 'booked_from_another_company'] },
+        },
+      },
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$budget', 0] } } } },
     ]),
     Lead.find(leadScope).sort({ createdAt: -1 }).limit(6).lean(),
     FollowUp.find({ ...followScope, status: 'pending', scheduledAt: { $gte: new Date() } })
@@ -858,6 +868,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
   const statusCounts = Object.fromEntries(statusAgg.map((s) => [s._id, s.count]));
   const enrichedRecent = recentLeadsRaw.map(enrichLead);
   const monthlyRevenue = monthlyRevenueAgg[0]?.total || 0;
+  const totalLeadValue = totalLeadValueAgg[0]?.total || 0;
   const lastMonthRevenue = lastMonthRevenueAgg[0]?.total || 0;
   const totalAssigned = Object.values(statusCounts).reduce((s, n) => s + n, 0);
   const monthlyTarget = await getMonthlyTarget(execId);
@@ -910,6 +921,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
       quotationsSent: quotesSentCount,
       convertedLeads: convertedCount,
       monthlyRevenue,
+      totalLeadValue,
     },
     kpiTrends: {
       myLeads: { change: pctChange(myLeads, lastMonthLeads), period: 'from last month' },
@@ -955,6 +967,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
       budget: l.budget,
       status: l.status,
       isHot: l.isHot,
+      createdAt: l.createdAt,
     })),
     upcomingFollowups: myFollowups.map((f) => ({
       _id: f._id,

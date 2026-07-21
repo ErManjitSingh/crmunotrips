@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+.safe-area-pb {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
 @layer base {
   :root {
     --color-bg-app: #F8F9FD;

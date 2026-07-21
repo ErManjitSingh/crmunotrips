@@ -9,6 +9,7 @@ import { invalidateDashboard } from '../../lib/queryInvalidation';
 import { fetchAnnouncementFeed } from '../../services/announcementApi';
 import ExecutiveKpiCards from './dashboard/ExecutiveKpiCards';
 import ExecutiveDashboardPanels from './dashboard/ExecutiveDashboardPanels';
+import MobileExecutiveDashboard from './dashboard/MobileExecutiveDashboard';
 
 function getGreeting(hour) {
   if (hour < 5) return 'Good night';
@@ -131,7 +132,17 @@ export default function ExecutiveDashboard() {
   const hero = announcementFeed?.hero;
 
   return (
-    <div className="space-y-3 pb-6">
+    <>
+      <MobileExecutiveDashboard
+        data={data}
+        hero={hero}
+        firstName={firstName}
+        greeting={getGreeting(now.getHours())}
+        now={now}
+        unreadCount={announcementFeed?.unreadCount || 0}
+      />
+
+      <div className="hidden space-y-3 pb-6 lg:block">
       {isFetching && (
         <div className="h-0.5 w-full bg-violet-500/30 rounded-full overflow-hidden">
           <div className="h-full w-1/3 bg-violet-500 animate-pulse" />
@@ -198,6 +209,7 @@ export default function ExecutiveDashboard() {
       </motion.div>
 
       <ExecutiveDashboardPanels data={data} announcements={announcementFeed?.carousel || []} />
-    </div>
+      </div>
+    </>
   );
 }

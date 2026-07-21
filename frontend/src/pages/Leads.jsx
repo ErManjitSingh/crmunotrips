@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import { useAuth } from '../context/AuthContext';
@@ -29,6 +29,7 @@ import { invalidateLeadLists } from '../lib/queryInvalidation';
 
 export default function Leads() {
   const location = useLocation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { availableBranches, selectedBranchId } = useSelector((s) => s.branch);
@@ -59,6 +60,13 @@ export default function Leads() {
   const [pageCursors, setPageCursors] = useState({});
   const { confirm, dialogNode } = useConfirmDialog();
   const DEEP_PAGE_INDEX = 9;
+  const openLead = useCallback((lead) => {
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      navigate(`/leads/${lead._id}`);
+      return;
+    }
+    setPreviewLead(lead);
+  }, [navigate]);
 
   const apiFilters = useMemo(() => {
     const base = { ...appliedFilters };
@@ -252,7 +260,7 @@ export default function Leads() {
           leads={tableLeads}
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
-          onRowClick={setPreviewLead}
+          onRowClick={openLead}
           onDelete={isManagerRole ? handleDelete : undefined}
           onAssign={isManagerRole && userCanAssignLeads ? openAssign : undefined}
           onTransferBranch={isManagerRole ? setTransferLead : undefined}

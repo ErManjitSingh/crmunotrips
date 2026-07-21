@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import RouteFallback from './ui/RouteFallback';
 import { useAuth } from '../context/AuthContext';
 import { SidebarProvider } from '../context/SidebarContext';
@@ -10,6 +10,13 @@ import MobileNav from './MobileNav';
 
 function LayoutShell() {
   const { user } = useAuth();
+  const { pathname } = useLocation();
+  const isAdminDashboard = pathname === '/admin/dashboard';
+  const isAdminLeadDetail =
+    user?.role === 'admin' &&
+    pathname !== '/leads/new' &&
+    /^\/leads\/[^/]+$/.test(pathname);
+  const isMobileImmersive = isAdminDashboard || isAdminLeadDetail;
   const sidebarProps = { user };
 
   return (
@@ -21,9 +28,11 @@ function LayoutShell() {
       <MobileSidebarDrawer sidebarProps={sidebarProps} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <TopBar />
+        <div className={isMobileImmersive ? 'hidden lg:block' : ''}>
+          <TopBar />
+        </div>
         <main className="flex-1 overflow-auto pb-20 lg:pb-0">
-          <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
+          <div className={`${isMobileImmersive ? 'p-0 lg:p-8' : 'p-4 sm:p-6 lg:p-8'} max-w-[1600px] mx-auto`}>
             <Suspense fallback={<RouteFallback />}>
               <Outlet />
             </Suspense>

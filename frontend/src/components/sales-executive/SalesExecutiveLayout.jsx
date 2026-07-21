@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { SidebarProvider } from '../../context/SidebarContext';
 import AppSidebar from '../sidebar/AppSidebar';
@@ -13,6 +13,8 @@ import { salesExecutiveNavItems } from './sidebar-config';
 
 function SalesExecutiveShell() {
   const { user } = useAuth();
+  const { pathname } = useLocation();
+  const isDashboard = pathname === '/sales-executive/dashboard';
 
   const sidebarProps = {
     user,
@@ -33,10 +35,14 @@ function SalesExecutiveShell() {
       <MobileSidebarDrawer sidebarProps={sidebarProps} />
 
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
-        <TopBar />
+        <div className={isDashboard ? 'hidden lg:block' : ''}>
+          <TopBar />
+        </div>
         <main data-workspace-main className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain pb-20 lg:pb-0">
-          <div className="mx-auto max-w-[1600px] p-3 sm:p-4 lg:p-5">
-            <MissedFollowUpAlert />
+          <div className={`mx-auto max-w-[1600px] ${isDashboard ? 'p-0 lg:p-5' : 'p-3 sm:p-4 lg:p-5'}`}>
+            <div className={isDashboard ? 'hidden lg:block' : ''}>
+              <MissedFollowUpAlert />
+            </div>
             <Suspense fallback={<RouteFallback />}>
               <Outlet />
             </Suspense>

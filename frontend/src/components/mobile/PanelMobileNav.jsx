@@ -8,6 +8,8 @@ import {
   FileText,
   LayoutDashboard,
   MapPin,
+  MoreHorizontal,
+  Phone,
   Plus,
   ReceiptText,
   Target,
@@ -24,10 +26,10 @@ const PANEL_CONFIG = {
   admin: {
     accent: 'brand',
     tabs: [
-      { path: '/admin/dashboard', label: 'Home', icon: LayoutDashboard },
+      { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { path: '/leads', label: 'Leads', icon: Users },
       { path: '/leads/new', label: 'Add', icon: Plus, primary: true },
-      { path: '/followups', label: 'Follow', icon: CalendarClock },
+      { path: '/followups', label: 'Follow-ups', icon: CalendarClock },
       { path: '/profile', label: 'Profile', icon: User },
     ],
   },
@@ -64,11 +66,11 @@ const PANEL_CONFIG = {
   sales_executive: {
     accent: 'violet',
     tabs: [
-      { path: '/sales-executive/dashboard', label: 'Home', icon: LayoutDashboard },
+      { path: '/sales-executive/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { path: '/sales-executive/leads/all', activePrefix: '/sales-executive/leads', label: 'Leads', icon: Users },
-      { path: '/sales-executive/follow-ups', label: 'Follow', icon: CalendarClock, primary: true },
-      { path: '/sales-executive/quotations', label: 'Quotes', icon: FileText },
-      { path: '/sales-executive/profile', label: 'Profile', icon: User },
+      { path: '/sales-executive/leads/add', label: 'Add', icon: Plus, primary: true },
+      { path: '/sales-executive/follow-ups', label: 'Follow-ups', icon: Phone },
+      { path: '/sales-executive/profile', label: 'More', icon: MoreHorizontal },
     ],
   },
   operations_manager: {
@@ -111,6 +113,7 @@ export default function PanelMobileNav() {
   const isActive = (path, tab) => {
     const prefix = tab?.activePrefix || path;
     if (path.endsWith('/dashboard')) return pathname === path;
+    if (tab?.primary) return pathname === path;
     if (path === '/leads/new') return pathname === path;
     return pathname.startsWith(prefix);
   };
