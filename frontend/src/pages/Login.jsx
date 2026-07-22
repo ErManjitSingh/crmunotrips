@@ -1,7 +1,21 @@
 import { useState } from 'react';
 import { Link, useNavigate, Navigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Plane, Sun, Moon, Lock, Mail, ArrowRight, Users } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Plane,
+  Moon,
+  Sun,
+  Lock,
+  Mail,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Globe,
+  ChevronDown,
+  ShieldCheck,
+  UserRound,
+  Home,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { LOGIN_PRESETS } from '../auth';
@@ -9,14 +23,44 @@ import { AuthError } from '../auth/authService';
 import { cn } from '../lib/utils';
 import { APP_BRAND_NAME } from '../config/branding';
 
-const [brandLead, ...brandRest] = APP_BRAND_NAME.split(' ');
-const brandTail = brandRest.join(' ');
+function GoogleIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+    </svg>
+  );
+}
+
+function MicrosoftIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 21 21" aria-hidden="true">
+      <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+      <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+      <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+      <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+    </svg>
+  );
+}
+
+const FEATURES = [
+  { icon: ShieldCheck, title: 'Secure Login', subtitle: '256-bit Encryption' },
+  { icon: UserRound, title: 'Role Based Access', subtitle: 'Multi-level Security' },
+  { icon: Home, title: 'Always Protected', subtitle: 'Daily Data Backup' },
+];
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('crm_remember') === '1');
+  const [langOpen, setLangOpen] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
   const [activePreset, setActivePreset] = useState(null);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, user, getDashboardPath } = useAuth();
   const { toggleTheme, isDark } = useTheme();
@@ -33,13 +77,16 @@ export default function Login() {
     setPassword(preset.password);
     setActivePreset(preset.email);
     setError('');
+    setInfo('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setInfo('');
     setLoading(true);
     try {
+      localStorage.setItem('crm_remember', rememberMe ? '1' : '0');
       const sessionUser = await login(email, password);
       const dest = sessionUser.dashboardPath || getDashboardPath(sessionUser.role);
       navigate(location.state?.from || dest, { replace: true });
@@ -58,134 +105,289 @@ export default function Login() {
     }
   };
 
+  const handleSocial = (provider) => {
+    setInfo(`${provider} sign-in will be available soon. Please use email & password for now.`);
+    setError('');
+  };
+
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-5 sm:p-8 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-sky-100 via-violet-50 to-orange-100" />
-      <div className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" />
-      <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-violet-500/10" />
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-10 sm:py-12 overflow-hidden bg-[#F7F6FB]">
+      {/* Soft ambient glow */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_35%,rgba(139,92,246,0.14),transparent_55%)]" />
+      <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[36rem] -translate-x-1/2 rounded-full bg-violet-300/20 blur-3xl" />
 
-      {/* Theme toggle */}
-      <button
-        type="button"
-        onClick={toggleTheme}
-        className="absolute top-5 right-5 z-20 p-2.5 rounded-xl bg-white/60 backdrop-blur-md border border-white/50 text-slate-600 hover:bg-white/80 shadow-sm transition-all"
-        aria-label="Toggle theme"
-      >
-        {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-      </button>
-
-      {/* Centered card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="relative z-10 w-full max-w-md"
-      >
-        {/* Logo */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 text-white shadow-lg shadow-violet-500/30 mb-4">
-            <Plane className="w-7 h-7" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
-            <span className="text-orange-600">{brandLead}</span>
-            {brandTail ? ` ${brandTail}` : ''}
-          </h1>
-          <p className="text-sm text-slate-600 mt-1">Welcome back — sign in to continue</p>
-        </div>
-
-        {/* Glass form card */}
-        <div className="rounded-2xl border border-white/60 bg-white/55 backdrop-blur-xl shadow-xl shadow-violet-500/10 p-7 sm:p-8">
-          {error && (
-            <div className="mb-4 p-3 bg-rose-500/10 border border-rose-400/30 text-rose-700 rounded-xl text-sm">
-              {error}
-            </div>
+      {/* Top-right controls */}
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-2.5 sm:top-5 sm:right-6">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className={cn(
+            'relative flex h-9 w-[3.25rem] items-center rounded-full border border-slate-200/80 bg-white shadow-sm transition-colors',
+            isDark && 'border-violet-300 bg-violet-50',
           )}
+          aria-label="Toggle theme"
+        >
+          <span
+            className={cn(
+              'absolute left-1 flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 text-white shadow transition-transform',
+              isDark && 'translate-x-[1.35rem] bg-violet-600',
+            )}
+          >
+            {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+          </span>
+        </button>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setActivePreset(null); }}
-                  required
-                  autoComplete="email"
-                  className="w-full h-11 pl-10 pr-4 rounded-xl bg-white/70 border border-white/80 text-slate-800 placeholder:text-slate-400 text-sm outline-none transition-all focus:border-violet-400 focus:ring-2 focus:ring-violet-400/25 focus:bg-white/90"
-                  placeholder="admin@crm.com"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                  className="w-full h-11 pl-10 pr-4 rounded-xl bg-white/70 border border-white/80 text-slate-800 placeholder:text-slate-400 text-sm outline-none transition-all focus:border-violet-400 focus:ring-2 focus:ring-violet-400/25 focus:bg-white/90"
-                  placeholder="••••••"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full h-11 mt-1 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-md shadow-violet-500/25 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {loading ? 'Signing in…' : (<>Sign In <ArrowRight className="w-4 h-4" /></>)}
-            </button>
-          </form>
-        </div>
-
-        {/* Demo roles */}
-        <div className="mt-5 rounded-2xl border border-white/50 bg-white/40 backdrop-blur-lg p-4 shadow-lg shadow-violet-500/5">
-          <p className="text-xs font-semibold text-slate-600 mb-3 text-center uppercase tracking-wider">
-            Quick demo login
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {LOGIN_PRESETS.map((preset) => (
-              <button
-                key={preset.email}
-                type="button"
-                onClick={() => fillPreset(preset)}
-                className={cn(
-                  'text-left px-3 py-2.5 rounded-xl border text-sm transition-all',
-                  activePreset === preset.email
-                    ? 'border-violet-400/60 bg-white/80 ring-2 ring-violet-400/30 shadow-sm'
-                    : 'border-white/60 bg-white/50 hover:bg-white/75 hover:border-violet-300/50',
-                )}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setLangOpen((v) => !v)}
+            className="flex h-9 items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3 text-sm font-medium text-slate-600 shadow-sm hover:bg-slate-50"
+          >
+            <Globe className="h-4 w-4 text-slate-500" />
+            English
+            <ChevronDown className={cn('h-3.5 w-3.5 text-slate-400 transition-transform', langOpen && 'rotate-180')} />
+          </button>
+          <AnimatePresence>
+            {langOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="absolute right-0 mt-1.5 w-36 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
               >
-                <span className="font-semibold text-slate-800 block truncate text-xs">{preset.roleName}</span>
-                <span className="text-[11px] text-slate-500 truncate block">{preset.email}</span>
+                {['English', 'Hindi'].map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setLangOpen(false)}
+                    className="block w-full px-3 py-2 text-left text-sm text-slate-600 hover:bg-violet-50 hover:text-violet-700"
+                  >
+                    {lang}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: 'easeOut' }}
+        className="relative z-10 w-full max-w-[440px]"
+      >
+        <div className="overflow-hidden rounded-[28px] border border-white bg-white shadow-[0_25px_60px_-20px_rgba(109,40,217,0.28)]">
+          <div className="px-7 pt-9 pb-7 sm:px-10 sm:pt-10 sm:pb-8">
+            {/* Header */}
+            <div className="mb-7 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#8B5CF6] to-[#4F46E5] text-white shadow-lg shadow-violet-500/35">
+                <Plane className="h-7 w-7" strokeWidth={2.2} />
+              </div>
+              <p
+                className="mb-1 text-[1.65rem] font-semibold leading-none text-[#7C3AED]"
+                style={{ fontFamily: '"Caveat", cursive' }}
+              >
+                Welcome Back! 👋
+              </p>
+              <h1 className="text-[1.55rem] font-bold tracking-tight text-[#1A1D2E] sm:text-[1.7rem]">
+                Sign in to your account
+              </h1>
+              <p className="mt-1.5 text-sm text-slate-500">
+                Access your {APP_BRAND_NAME} dashboard
+              </p>
+            </div>
+
+            {error && (
+              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">
+                {error}
+              </div>
+            )}
+            {info && (
+              <div className="mb-4 rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2.5 text-sm text-violet-700">
+                {info}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-[#1A1D2E]">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setActivePreset(null); }}
+                    required
+                    autoComplete="email"
+                    className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10"
+                    placeholder="Enter your email address"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-[#1A1D2E]">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                    className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-11 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10"
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-slate-600"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-0.5">
+                <label className="flex cursor-pointer items-center gap-2 select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-violet-600 accent-violet-600 focus:ring-violet-500"
+                  />
+                  <span className="text-sm text-slate-500">Remember me</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInfo('Please contact your admin to reset your password.');
+                    setError('');
+                  }}
+                  className="text-sm font-medium text-[#7C3AED] hover:text-violet-700 hover:underline"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#4F46E5] text-sm font-semibold text-white shadow-lg shadow-violet-500/30 transition hover:from-[#7C3AED] hover:to-[#4338CA] disabled:opacity-60"
+              >
+                {loading ? 'Signing in…' : (
+                  <>
+                    Sign In
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
               </button>
+            </form>
+
+            {/* Divider */}
+            <div className="my-6 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-xs text-slate-400">or continue with</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            {/* Social */}
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                onClick={() => handleSocial('Google')}
+                className="flex h-11 w-full items-center justify-center gap-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                <GoogleIcon className="h-5 w-5" />
+                Continue with Google
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSocial('Microsoft')}
+                className="flex h-11 w-full items-center justify-center gap-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                <MicrosoftIcon className="h-5 w-5" />
+                Continue with Microsoft
+              </button>
+            </div>
+          </div>
+
+          {/* Feature strip */}
+          <div className="grid grid-cols-3 gap-2 border-t border-slate-100 bg-[#F8F7FC] px-4 py-4 sm:gap-3 sm:px-6">
+            {FEATURES.map(({ icon: Icon, title, subtitle }) => (
+              <div key={title} className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left sm:gap-2">
+                <div className="mb-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 sm:mb-0">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold leading-tight text-[#1A1D2E] sm:text-xs">{title}</p>
+                  <p className="mt-0.5 text-[10px] leading-tight text-slate-500 sm:text-[11px]">{subtitle}</p>
+                </div>
+              </div>
             ))}
           </div>
-          <p className="text-xs text-slate-500 text-center mt-3">
-            Password: <span className="font-mono font-semibold text-slate-700">123456</span>
-          </p>
         </div>
 
-        <Link
-          to="/hr/login"
-          className="mt-4 flex items-center gap-3 rounded-2xl border border-[#5D5FEF]/30 bg-white/50 backdrop-blur-lg p-4 shadow-lg shadow-[#5D5FEF]/10 transition-all hover:bg-white/70 hover:border-[#5D5FEF]/50 hover:shadow-[#5D5FEF]/20 group"
-        >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#5D5FEF] to-indigo-600 text-white shadow-md shadow-[#5D5FEF]/25">
-            <Users className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-800">HR Management Portal</p>
-            <p className="text-xs text-slate-500 truncate">Employees, payroll, attendance &amp; more</p>
-          </div>
-          <ArrowRight className="h-4 w-4 shrink-0 text-[#5D5FEF] transition-transform group-hover:translate-x-0.5" />
-        </Link>
+        {/* Demo accounts (collapsed) */}
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => setShowDemo((v) => !v)}
+            className="text-xs font-medium text-slate-400 hover:text-violet-600"
+          >
+            {showDemo ? 'Hide demo accounts' : 'Quick demo login'}
+          </button>
+          <AnimatePresence>
+            {showDemo && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-slate-200/80 bg-white/80 p-3 shadow-sm">
+                  {LOGIN_PRESETS.map((preset) => (
+                    <button
+                      key={preset.email}
+                      type="button"
+                      onClick={() => fillPreset(preset)}
+                      className={cn(
+                        'rounded-xl border px-3 py-2 text-left text-sm transition',
+                        activePreset === preset.email
+                          ? 'border-violet-400 bg-violet-50 ring-2 ring-violet-400/20'
+                          : 'border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/50',
+                      )}
+                    >
+                      <span className="block truncate text-xs font-semibold text-slate-800">{preset.roleName}</span>
+                      <span className="block truncate text-[11px] text-slate-500">{preset.email}</span>
+                    </button>
+                  ))}
+                  <p className="col-span-2 pt-1 text-center text-[11px] text-slate-400">
+                    Password: <span className="font-mono font-semibold text-slate-600">123456</span>
+                    {' · '}
+                    <Link to="/hr/login" className="text-violet-600 hover:underline">HR Portal</Link>
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </motion.div>
+
+      {/* Page footer */}
+      <div className="relative z-10 mt-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-slate-500">
+        <a href="#" className="hover:text-violet-600" onClick={(e) => e.preventDefault()}>Privacy Policy</a>
+        <span className="text-slate-300">•</span>
+        <a href="#" className="hover:text-violet-600" onClick={(e) => e.preventDefault()}>Terms &amp; Conditions</a>
+        <span className="text-slate-300">•</span>
+        <a href="#" className="hover:text-violet-600" onClick={(e) => e.preventDefault()}>Support</a>
+      </div>
     </div>
   );
 }
