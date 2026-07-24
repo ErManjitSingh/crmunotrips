@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { toast } from '../context/ToastContext';
 import { useDataRefresh } from '../hooks/useDataRefresh';
 import { cn } from '../lib/utils';
-import AutoAssignOffBanner from '../components/assignment/AutoAssignOffBanner';
+import AutoAssignOffBanner, { AutoAssignOnBanner } from '../components/assignment/AutoAssignOffBanner';
 
 const TABS = [
   { id: 'skills', label: 'Skill Management', icon: Award },
@@ -148,7 +148,7 @@ export default function SkillAssignmentPage() {
     <div className="space-y-6">
       <PageHeader
         title="Skills Based Assignment"
-        description="Skill rules and queue (auto-assign is off — use manual lead assignment)."
+        description="Skill rules and manager queue. Auto-assign runs on new leads; manual assign still works anytime."
         actions={
           <Button type="button" variant="outline" onClick={refreshAll} disabled={loading}>
             <RefreshCw className={cn('w-4 h-4 mr-2', loading && 'animate-spin')} />
@@ -157,7 +157,7 @@ export default function SkillAssignmentPage() {
         }
       />
 
-      {!leadAutoAssignmentEnabled && <AutoAssignOffBanner />}
+      {leadAutoAssignmentEnabled ? <AutoAssignOnBanner /> : <AutoAssignOffBanner />}
 
       <div className="flex flex-wrap gap-2 border-b border-subtle pb-2">
         {TABS.map(({ id, label, icon: Icon }) => (
@@ -244,7 +244,7 @@ export default function SkillAssignmentPage() {
               disabled={!leadAutoAssignmentEnabled}
               onChange={(e) => setSkillAutoEnabled(e.target.checked)}
             />
-            Enable skill-based auto assignment (requires system auto-assign ON)
+            Enable skill-based auto assignment for this branch
           </label>
           <div className="space-y-2">
             {managers.map((m) => (

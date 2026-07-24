@@ -124,7 +124,7 @@ export default function LeadAssignmentPage() {
     <div className="space-y-6">
       <PageHeader
         title="Lead Assignment"
-        description="Manual assignment only — auto-assign is off for now"
+        description="Assign unassigned leads manually anytime — auto-assign also runs for new leads"
         breadcrumbs={['Sales Manager', 'Lead Assignment']}
         actions={
           selected.length > 0 && (

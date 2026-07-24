@@ -19,8 +19,8 @@ async function getBranchSkillSettings(branchId) {
   if (!settings) {
     settings = await BranchAssignmentSettings.create({
       branchId,
-      autoAssignEnabled: false,
-      skillAutoAssignEnabled: false,
+      autoAssignEnabled: true,
+      skillAutoAssignEnabled: true,
       fallbackUserIds: [],
       salesManagerQueueIds: [],
     });

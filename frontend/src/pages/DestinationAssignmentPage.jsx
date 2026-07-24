@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { toast } from '../context/ToastContext';
 import { useDataRefresh } from '../hooks/useDataRefresh';
 import { cn } from '../lib/utils';
-import AutoAssignOffBanner from '../components/assignment/AutoAssignOffBanner';
+import AutoAssignOffBanner, { AutoAssignOnBanner } from '../components/assignment/AutoAssignOffBanner';
 
 const TABS = [
   { id: 'destinations', label: 'Destination Master', icon: MapPin },
@@ -208,7 +208,7 @@ export default function DestinationAssignmentPage() {
     <div className="space-y-6">
       <PageHeader
         title="Destination Assignment"
-        description="Destination rules and mappings (auto-assign is off — use manual lead assignment)."
+        description="Map destinations to executives. Auto-assign routes new leads; manual assign still works anytime."
         actions={
           <Button type="button" variant="outline" onClick={refreshAll} disabled={loading}>
             <RefreshCw className={cn('w-4 h-4 mr-2', loading && 'animate-spin')} />
@@ -217,7 +217,7 @@ export default function DestinationAssignmentPage() {
         }
       />
 
-      {!leadAutoAssignmentEnabled && <AutoAssignOffBanner />}
+      {leadAutoAssignmentEnabled ? <AutoAssignOnBanner /> : <AutoAssignOffBanner />}
 
       <div className="flex flex-wrap gap-2 border-b border-subtle pb-2">
         {TABS.map(({ id, label, icon: Icon }) => (
@@ -316,7 +316,7 @@ export default function DestinationAssignmentPage() {
       {tab === 'mappings' && (
         <div className="space-y-4">
           <p className="text-sm text-content-muted">
-            Assign destination expertise to sales executives. When auto-assign is turned on later, new leads can route to a present specialist with the lowest active lead count.
+            Assign destination expertise to sales executives. With auto-assign ON, new leads route to a present specialist with the lowest active lead count. You can still assign manually anytime.
           </p>
           {mappings.map((row) => (
             <div key={row.userId} className="rounded-2xl border border-subtle bg-surface/80 p-4">
@@ -371,7 +371,7 @@ export default function DestinationAssignmentPage() {
               disabled={!leadAutoAssignmentEnabled}
               onChange={(e) => setAutoAssignEnabled(e.target.checked)}
             />
-            Enable auto-assignment for this branch (requires system auto-assign ON)
+            Enable destination auto-assignment for this branch
           </label>
           <div className="space-y-2">
             {mappings.map((row) => (
