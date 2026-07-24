@@ -3,7 +3,7 @@ import { Phone } from 'lucide-react';
 import AppModal from '../ui/AppModal';
 import { Button } from '../ui/button';
 import { addCallNote } from '../../services/leadEnterpriseApi';
-import { formatCallDuration } from '../../lib/callSession';
+import { formatCallDurationExact } from '../../lib/callSession';
 
 export const CALL_OUTCOMES = [
   { value: 'interested', label: 'Interested' },
@@ -18,11 +18,6 @@ export const CALL_OUTCOMES = [
   { value: 'other', label: 'Other' },
 ];
 
-function secondsToParts(total) {
-  const s = Math.max(0, Math.round(Number(total) || 0));
-  return { mins: Math.floor(s / 60), secs: s % 60 };
-}
-
 export default function PostCallFollowUpModal({
   open,
   session,
@@ -31,8 +26,6 @@ export default function PostCallFollowUpModal({
 }) {
   const [outcome, setOutcome] = useState('interested');
   const [notes, setNotes] = useState('');
-  const [mins, setMins] = useState(0);
-  const [secs, setSecs] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,14 +34,12 @@ export default function PostCallFollowUpModal({
     setOutcome('interested');
     setNotes('');
     setError('');
-    const parts = secondsToParts(session.durationSeconds);
-    setMins(parts.mins);
-    setSecs(parts.secs);
   }, [open, session]);
 
   if (!session) return null;
 
-  const durationSeconds = Math.max(0, Number(mins) * 60 + Number(secs));
+  // Locked to tracked dial→return elapsed time — not editable by executive
+  const durationSeconds = Math.max(0, Math.round(Number(session.durationSeconds) || 0));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -85,8 +76,9 @@ export default function PostCallFollowUpModal({
           </div>
           <div>
             <h3 className="text-lg font-bold text-content-primary">Call follow-up</h3>
-            <p className="text-sm text-content-muted">
-              {session.leadName} · talk time ~ {formatCallDuration(durationSeconds)}
+            <p className="text-sm text-content-muted">{session.leadName}</p>
+            <p className="mt-1 text-sm font-semibold tabular-nums text-sky-700">
+              Duration: {formatCallDurationExact(durationSeconds)}
             </p>
             <p className="mt-1 text-[11px] font-medium text-violet-600">
               Next call reminder will be set automatically in 2 hours
@@ -118,30 +110,6 @@ export default function PostCallFollowUpModal({
               </button>
             ))}
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-content-muted">Minutes</span>
-            <input
-              type="number"
-              min={0}
-              value={mins}
-              onChange={(e) => setMins(Number(e.target.value) || 0)}
-              className="mt-1 w-full rounded-xl border border-subtle bg-surface px-3 py-2.5 text-sm"
-            />
-          </label>
-          <label className="text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-content-muted">Seconds</span>
-            <input
-              type="number"
-              min={0}
-              max={59}
-              value={secs}
-              onChange={(e) => setSecs(Math.min(59, Number(e.target.value) || 0))}
-              className="mt-1 w-full rounded-xl border border-subtle bg-surface px-3 py-2.5 text-sm"
-            />
-          </label>
         </div>
 
         <div>

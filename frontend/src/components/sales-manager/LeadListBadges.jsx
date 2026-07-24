@@ -4,6 +4,7 @@ import { getLeadSourceShortLabel } from '../../lib/leadSourceLabels';
 import Avatar from '../ui/Avatar';
 import { STATUS_STYLES, formatBudget } from './managerUtils';
 import RepeatedLeadBadge from '../leads/RepeatedLeadBadge';
+import LeadCallStats from '../leads/LeadCallStats';
 
 const SOURCE_STYLES = {
   website: 'bg-gradient-to-r from-sky-500/20 to-blue-500/15 text-sky-700 dark:text-sky-300 ring-sky-400/40',
@@ -190,6 +191,7 @@ export function CustomerCell({ name, lead, showPhone = false }) {
             <span className="truncate">{arrived}</span>
           </p>
         )}
+        <LeadCallStats lead={lead} compact className="mt-1" />
         {showPhone && lead?.phone && (
           <p className="text-xs text-content-muted font-mono mt-0.5 truncate">{lead.phone}</p>
         )}

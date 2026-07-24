@@ -200,10 +200,22 @@ const addCallNote = asyncHandler(async (req, res) => {
   });
   if (!lead) throw new ApiError(404, 'Lead not found');
 
-  const seconds = Math.max(
-    0,
-    Math.round(Number(durationSeconds ?? duration) || 0)
-  );
+  const startMs = startedAt ? new Date(startedAt).getTime() : NaN;
+  const endMs = endedAt ? new Date(endedAt).getTime() : NaN;
+  const fromTimestamps =
+    Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs
+      ? Math.round((endMs - startMs) / 1000)
+      : null;
+
+  const role = req.user?.role;
+  const isExecLike = role === 'sales_executive' || role === 'team_leader';
+  // Executives cannot set/edit duration manually — only tracked dial→return window
+  let seconds = 0;
+  if (fromTimestamps != null) {
+    seconds = Math.max(0, fromTimestamps);
+  } else if (!isExecLike) {
+    seconds = Math.max(0, Math.round(Number(durationSeconds ?? duration) || 0));
+  }
 
   const callNote = await CallNote.create({
     leadId: lead._id,
@@ -221,10 +233,19 @@ const addCallNote = asyncHandler(async (req, res) => {
   lead.lastContactedAt = now;
   lead.lastContactMethod = 'call';
   lead.lastContactedBy = req.user._id;
+  const nextCount = Number(lead.callStats?.count || 0) + 1;
+  const prevRecent = Array.isArray(lead.callStats?.recent) ? [...lead.callStats.recent] : [];
+  prevRecent.push({
+    n: nextCount,
+    outcome: String(outcome || ''),
+    duration: seconds,
+    at: now,
+  });
   lead.callStats = {
-    count: Number(lead.callStats?.count || 0) + 1,
+    count: nextCount,
     totalDurationSeconds: Number(lead.callStats?.totalDurationSeconds || 0) + seconds,
     lastCallAt: now,
+    recent: prevRecent.slice(-12),
   };
 
   await applyLeadMetrics(lead);

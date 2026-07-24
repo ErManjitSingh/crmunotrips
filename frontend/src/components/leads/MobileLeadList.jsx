@@ -208,14 +208,12 @@ export default function MobileLeadList({
                           <span className={`rounded-full px-2 py-0.5 text-[7px] font-semibold ${STATUS_STYLES[lead.status] || 'bg-slate-100 text-slate-600'}`}>{titleCase(lead.status)}</span>
                         </div>
                         <p className="mt-0.5 text-[8px] font-medium text-violet-600">{lead.leadId || formatLeadId(lead._id)}</p>
+                        <LeadCallStats lead={lead} compact className="mt-1.5" />
                         <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1.5">
                           <p className="flex min-w-0 items-center gap-1 text-[8px] text-slate-500"><Phone className="h-3 w-3 shrink-0 text-blue-500" /><span className="truncate">{lead.phone || 'No phone'}</span></p>
                           <p className="flex min-w-0 items-center gap-1 text-[8px] text-slate-500"><MapPin className="h-3 w-3 shrink-0 text-orange-500" /><span className="truncate">{lead.destination || 'No destination'}</span></p>
                           <p className="flex min-w-0 items-center gap-1 text-[8px] text-slate-500"><IndianRupee className="h-3 w-3 shrink-0 text-emerald-500" /><span className="truncate">{formatCurrency(lead.budget)}</span></p>
                           <p className="flex min-w-0 items-center gap-1 text-[8px] text-slate-500"><UserCheck className="h-3 w-3 shrink-0 text-violet-500" /><span className="truncate">{lead.assignedTo?.name || 'Unassigned'}</span></p>
-                        </div>
-                        <div className="mt-2">
-                          <LeadCallStats lead={lead} compact />
                         </div>
                       </div>
                       <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300" />

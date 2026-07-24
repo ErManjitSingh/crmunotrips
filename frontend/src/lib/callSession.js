@@ -4,8 +4,14 @@ export function formatCallDuration(totalSeconds = 0) {
   const s = Math.max(0, Math.round(Number(totalSeconds) || 0));
   const mins = Math.floor(s / 60);
   const secs = s % 60;
-  if (mins <= 0) return `${secs}s`;
-  return `${mins}m ${secs}s`;
+  // Always exact mm:ss (e.g. 0:45, 2:05, 12:03)
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
+/** Human label with total seconds, e.g. "2:05 (125s)" */
+export function formatCallDurationExact(totalSeconds = 0) {
+  const s = Math.max(0, Math.round(Number(totalSeconds) || 0));
+  return `${formatCallDuration(s)} (${s}s)`;
 }
 
 export function startCallSession({ leadId, leadName, phone }) {

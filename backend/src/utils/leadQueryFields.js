@@ -36,6 +36,7 @@ const LEAD_LIST_SELECT = [
   'leadScore',
   'agingBucket',
   'smartScore',
+  'callStats',
   'nextFollowUp',
   'lastFollowUp',
   'reactivation.isReactivated',

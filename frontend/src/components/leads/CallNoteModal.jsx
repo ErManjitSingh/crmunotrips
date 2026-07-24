@@ -2,9 +2,12 @@ import { useState } from 'react';
 import AppModal from '../ui/AppModal';
 import { Button } from '../ui/button';
 import { addCallNote } from '../../services/leadEnterpriseApi';
+import { useAuth } from '../../context/AuthContext';
 import { CALL_OUTCOMES } from './PostCallFollowUpModal';
 
 export default function CallNoteModal({ open, onClose, leadId, onSaved }) {
+  const { user } = useAuth();
+  const canEditDuration = !['sales_executive', 'team_leader'].includes(user?.role);
   const [outcome, setOutcome] = useState('interested');
   const [notes, setNotes] = useState('');
   const [mins, setMins] = useState('');
@@ -16,7 +19,9 @@ export default function CallNoteModal({ open, onClose, leadId, onSaved }) {
     if (!outcome) return;
     setSubmitting(true);
     try {
-      const durationSeconds = (Number(mins) || 0) * 60 + (Number(secs) || 0);
+      const durationSeconds = canEditDuration
+        ? (Number(mins) || 0) * 60 + (Number(secs) || 0)
+        : 0;
       await addCallNote(leadId, {
         outcome,
         notes: notes.trim(),
@@ -67,31 +72,37 @@ export default function CallNoteModal({ open, onClose, leadId, onSaved }) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-medium text-content-muted uppercase tracking-wide">Minutes</label>
-            <input
-              type="number"
-              min="0"
-              value={mins}
-              onChange={(e) => setMins(e.target.value)}
-              placeholder="0"
-              className="mt-1.5 w-full rounded-xl border border-subtle bg-surface px-3 py-2.5 text-sm"
-            />
+        {canEditDuration ? (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-content-muted uppercase tracking-wide">Minutes</label>
+              <input
+                type="number"
+                min="0"
+                value={mins}
+                onChange={(e) => setMins(e.target.value)}
+                placeholder="0"
+                className="mt-1.5 w-full rounded-xl border border-subtle bg-surface px-3 py-2.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-content-muted uppercase tracking-wide">Seconds</label>
+              <input
+                type="number"
+                min="0"
+                max="59"
+                value={secs}
+                onChange={(e) => setSecs(e.target.value)}
+                placeholder="0"
+                className="mt-1.5 w-full rounded-xl border border-subtle bg-surface px-3 py-2.5 text-sm"
+              />
+            </div>
           </div>
-          <div>
-            <label className="text-xs font-medium text-content-muted uppercase tracking-wide">Seconds</label>
-            <input
-              type="number"
-              min="0"
-              max="59"
-              value={secs}
-              onChange={(e) => setSecs(e.target.value)}
-              placeholder="0"
-              className="mt-1.5 w-full rounded-xl border border-subtle bg-surface px-3 py-2.5 text-sm"
-            />
-          </div>
-        </div>
+        ) : (
+          <p className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+            Call duration is recorded automatically from the dialer — not editable.
+          </p>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>

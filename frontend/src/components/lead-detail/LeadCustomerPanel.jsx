@@ -1,4 +1,5 @@
 import { computeLeadAge, formatSource, DETAIL_CARD } from './leadDetailUtils';
+import { formatCallDurationExact } from '../../lib/callSession';
 
 function InfoRow({ label, value }) {
   return (
@@ -82,7 +83,7 @@ export default function LeadCustomerPanel({ lead }) {
           label="Calls"
           value={
             lead.callStats?.count
-              ? `${lead.callStats.count}x · ${Math.floor((lead.callStats.totalDurationSeconds || 0) / 60)}m ${(lead.callStats.totalDurationSeconds || 0) % 60}s`
+              ? `${lead.callStats.count}x · ${formatCallDurationExact(lead.callStats.totalDurationSeconds || 0)}`
               : 'No calls yet'
           }
         />

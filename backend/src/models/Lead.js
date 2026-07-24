@@ -73,6 +73,15 @@ const leadSchema = new mongoose.Schema(
       count: { type: Number, default: 0, min: 0 },
       totalDurationSeconds: { type: Number, default: 0, min: 0 },
       lastCallAt: { type: Date },
+      /** Latest logged calls for list hover (call 1, 2, …) */
+      recent: [
+        {
+          n: { type: Number, min: 1 },
+          outcome: { type: String, trim: true, default: '' },
+          duration: { type: Number, default: 0, min: 0 },
+          at: { type: Date },
+        },
+      ],
     },
     agingBucket: { type: String, enum: ['0_7', '8_15', '16_30', '30_plus'], default: '0_7', index: true },
     isVip: { type: Boolean, default: false, index: true },

@@ -14,7 +14,6 @@ import { beginLeadCall } from '../../lib/callSession';
 import Avatar from '../ui/Avatar';
 import { STATUS_STYLES, formatBudget } from '../sales-manager/managerUtils';
 import { CustomerCell } from '../sales-manager/LeadListBadges';
-import LeadCallStats from '../leads/LeadCallStats';
 
 function formatCreatedAt(date) {
   if (!date) return null;
@@ -142,7 +141,6 @@ export function ExecContactCell({ lead }) {
           <span className="truncate max-w-[150px]">{email}</span>
         </a>
       )}
-      <LeadCallStats lead={lead} compact />
     </div>
   );
 }
