@@ -12,6 +12,7 @@ import { useLeadActivities } from '../../features/leads/hooks/useLeadActivities'
 import { isLeadStatusLocked } from '../../utils/leadUtils';
 import LostReasonSelect from '../leads/LostReasonSelect';
 import LeadAcceptBanner from '../leads/LeadAcceptBanner';
+import PostConvertCommercialModal from '../leads/PostConvertCommercialModal';
 
 const STATUSES = [
   'new',
@@ -40,6 +41,7 @@ export default function ExecutiveLeadDetailPage() {
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('upi');
   const [markingCallDone, setMarkingCallDone] = useState(false);
+  const [commercialOpen, setCommercialOpen] = useState(false);
 
   const loadLead = useCallback(({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -130,10 +132,12 @@ export default function ExecutiveLeadDetailPage() {
       payload.sendReceipt = true;
     }
     await API.put(`/sales-executive/leads/${id}`, payload);
+    const becameConverted = modalStatus === 'converted';
     setStatusModalOpen(false);
     setModalStatusReason('');
     setAdvanceAmount('');
     await loadLead();
+    if (becameConverted) setCommercialOpen(true);
   };
   const reasonRequired = ['lost', 'booked_from_another_company'].includes(modalStatus);
   const convertAdvanceInvalid =
@@ -280,6 +284,12 @@ export default function ExecutiveLeadDetailPage() {
           </Button>
         </div>
       </ActionModal>
+      <PostConvertCommercialModal
+        open={commercialOpen}
+        leadId={id}
+        onClose={() => setCommercialOpen(false)}
+        onSaved={() => loadLead()}
+      />
     </motion.div>
   );
 }

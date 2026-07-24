@@ -222,7 +222,8 @@ export default function MobileAdminDashboard({
         </div>
 
         <div className="relative z-10 mt-5 max-w-[62%]">
-          <h1 className="text-[18px] font-bold leading-tight">{greeting}, {firstName}! 👋</h1>
+          <h1 className="text-[16px] font-bold leading-snug">{greeting}</h1>
+          <p className="mt-0.5 text-[11px] text-white/80">Hi {firstName}</p>
           <p className="mt-1 text-[10px] text-white/75">Here&apos;s what&apos;s happening in your business today.</p>
           <button
             type="button"

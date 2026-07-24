@@ -155,8 +155,8 @@ export default function MobileExecutiveDashboard({
 
         <div className="relative mt-5 flex items-end justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="truncate text-[18px] font-bold">{greeting}, {firstName}! 👋</h1>
-            <p className="mt-0.5 text-[11px] text-white/75">Here&apos;s what&apos;s happening with your leads today.</p>
+            <h1 className="text-[16px] font-bold leading-snug">{greeting}</h1>
+            <p className="mt-0.5 text-[11px] text-white/75">Hi {firstName} — here&apos;s what&apos;s happening with your leads today.</p>
           </div>
           <button type="button" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-white px-3 text-[11px] font-semibold text-slate-700 shadow-lg">
             <CalendarDays className="h-4 w-4 text-violet-600" />

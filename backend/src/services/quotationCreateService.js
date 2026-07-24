@@ -39,6 +39,21 @@ async function persistQuotation({
     createdBy: req.user._id,
   });
 
+  const {
+    snapshotCosting1,
+    buildQuotePackageSummary,
+  } = require('./quotationApprovalCostingService');
+  quotation.costing1 = snapshotCosting1(quotation);
+  quotation.packageSummary = buildQuotePackageSummary({
+    ...quotation.toObject(),
+    lead,
+    package: body.package,
+  });
+  if (status === 'approved') {
+    quotation.approvedBy = req.user._id;
+    quotation.approvedAt = new Date();
+  }
+  await quotation.save();
   if (status === 'pending_approval' && lead.status === 'new') {
     lead.status = 'quotation_sent';
     await lead.save();

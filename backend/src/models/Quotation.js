@@ -53,6 +53,12 @@ const quotationSchema = new mongoose.Schema(
       grandTotal: { type: Number, default: 0 },
       profitMargin: { type: Number, default: 0 },
     },
+    /** Executive-submitted costing snapshot */
+    costing1: { type: mongoose.Schema.Types.Mixed },
+    /** Approver (TL / Manager / Admin) set costing */
+    costing2: { type: mongoose.Schema.Types.Mixed },
+    packageSummary: { type: mongoose.Schema.Types.Mixed },
+    approvedAt: { type: Date },
     selectedHotels: [{ type: mongoose.Schema.Types.Mixed }],
     selectedCabs: [{ type: mongoose.Schema.Types.Mixed }],
     selectedFlights: [{ type: mongoose.Schema.Types.Mixed }],

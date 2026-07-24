@@ -327,13 +327,32 @@ const approveQuotation = asyncHandler(async (req, res) => {
   const now = new Date();
 
   if (action === 'approve') {
+    const { snapshotCosting1, buildCosting2, applyCosting2ToQuotation, buildQuotePackageSummary } =
+      require('../services/quotationApprovalCostingService');
+    if (!quotation.costing1) quotation.costing1 = snapshotCosting1(quotation);
+    if (!quotation.packageSummary) {
+      quotation.packageSummary = buildQuotePackageSummary(quotation);
+    }
+    const pct =
+      req.body.costingPercent != null
+        ? Number(req.body.costingPercent)
+        : Number(quotation.costing1?.markupPercent || quotation.pricing?.markupPercent || 0);
+    const costing2 = buildCosting2({
+      quotation,
+      markupPercent: pct,
+      actor: req.user,
+    });
+    applyCosting2ToQuotation(quotation, costing2);
     quotation.status = 'approved';
     quotation.approvedBy = req.user._id;
+    quotation.approvedAt = now;
     quotation.timeline.push({
       type: 'approved',
       date: now,
       user: req.user.name,
-      notes: notes || 'Approved by Team Leader',
+      notes:
+        notes ||
+        `Approved by Team Leader · Costing 2 @ ${costing2.markupPercent}% (₹${Number(costing2.grandTotal).toLocaleString('en-IN')})`,
     });
   } else if (action === 'reject') {
     quotation.status = 'rejected';

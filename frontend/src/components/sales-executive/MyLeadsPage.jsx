@@ -30,6 +30,7 @@ import AddFollowUpModal from '../followups/AddFollowUpModal';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/followupApi';
 import ConvertedLeadsTable from '../leads/ConvertedLeadsTable';
 import LostReasonSelect from '../leads/LostReasonSelect';
+import PostConvertCommercialModal from '../leads/PostConvertCommercialModal';
 
 const ICONS = { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users };
 
@@ -62,7 +63,7 @@ export default function MyLeadsPage() {
   const [modalStatusReason, setModalStatusReason] = useState('');
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('upi');
-
+  const [commercialLeadId, setCommercialLeadId] = useState(null);
   const meta = LEAD_FILTERS[filter] || LEAD_FILTERS.new;
   const Icon = ICONS[meta.icon] || Sparkles;
 
@@ -114,10 +115,13 @@ export default function MyLeadsPage() {
       payload.sendReceipt = true;
     }
     await API.put(`/sales-executive/leads/${modal.lead._id}`, payload);
+    const becameConverted = modalStatus === 'converted';
+    const convertedId = modal.lead._id;
     setModal(null);
     setModalStatusReason('');
     setAdvanceAmount('');
     fetchLeads();
+    if (becameConverted) setCommercialLeadId(convertedId);
   };
   const reasonRequired = ['lost', 'booked_from_another_company'].includes(modalStatus);
   const convertAdvanceInvalid =
@@ -327,6 +331,13 @@ export default function MyLeadsPage() {
           setModal(null);
           fetchLeads();
         }}
+      />
+
+      <PostConvertCommercialModal
+        open={Boolean(commercialLeadId)}
+        leadId={commercialLeadId}
+        onClose={() => setCommercialLeadId(null)}
+        onSaved={() => fetchLeads()}
       />
     </ExecutivePageShell>
   );

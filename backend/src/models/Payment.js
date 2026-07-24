@@ -41,6 +41,22 @@ const paymentSchema = new mongoose.Schema(
     receiptSentTo: { type: String, trim: true, default: '' },
     notes: { type: String, trim: true, default: '' },
     installments: [installmentSchema],
+    /** Planned dues after token (50% / 30% mid-tour / rest last day) */
+    scheduledInstallments: [
+      {
+        label: { type: String, trim: true, default: '' },
+        percent: { type: Number, default: 0 },
+        amount: { type: Number, default: 0, min: 0 },
+        dueDate: { type: Date },
+        status: { type: String, enum: ['pending', 'paid', 'waived'], default: 'pending' },
+      },
+    ],
+    packageMarginPercent: { type: Number, default: 0 },
+    totalCost: { type: Number, default: 0 },
+    gstAmount: { type: Number, default: 0 },
+    addressProofUrl: { type: String, trim: true, default: '' },
+    addressProofName: { type: String, trim: true, default: '' },
+    commercialCompletedAt: { type: Date },
     refunds: [
       {
         amount: Number,

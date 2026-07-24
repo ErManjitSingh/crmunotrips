@@ -63,8 +63,11 @@ export default function QuotationApprovalPage() {
     fetchQuotes();
   }, [status, queryParams]);
 
-  const handleAction = async (id, action) => {
-    await API.put(`/sales-manager/quotations/${id}`, { action });
+  const handleAction = async (id, action, costingPercent) => {
+    await API.put(`/sales-manager/quotations/${id}`, {
+      action,
+      ...(action === 'approve' && costingPercent != null ? { costingPercent } : {}),
+    });
     fetchQuotes();
   };
 
@@ -142,14 +145,19 @@ export default function QuotationApprovalPage() {
         open={!!selected && !showPdf}
         onClose={() => { setSelected(null); setShowPdf(false); }}
         onDownloadPdf={() => setShowPdf(true)}
+        canSetCosting={status === 'pending'}
+        onApproveWithCosting={async (id, costingPercent) => {
+          await handleAction(id, 'approve', costingPercent);
+          setSelected(null);
+        }}
         actions={
           status === 'pending' && selected ? (
             <>
-              <Button size="sm" variant="emerald" className="flex-1" onClick={() => { handleAction(selected._id, 'approve'); setSelected(null); }}>
-                <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
-              </Button>
               <Button size="sm" variant="outline" className="flex-1 text-rose-600" onClick={() => { handleAction(selected._id, 'reject'); setSelected(null); }}>
                 <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
+              </Button>
+              <Button size="sm" variant="ghost" className="flex-1" onClick={() => { handleAction(selected._id, 'changes'); setSelected(null); }}>
+                <MessageSquare className="w-3.5 h-3.5 mr-1" /> Changes
               </Button>
             </>
           ) : null

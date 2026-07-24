@@ -16,12 +16,10 @@ import {
   DestinationWisePanel,
 } from './dashboard/DestinationAndColdPanels';
 import { formatCurrency } from './executiveUtils';
+import { UNO_FAMILY_GREETING } from '../../lib/greeting';
 
-function getGreeting(hour) {
-  if (hour < 5) return 'Good night';
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
+function getGreeting() {
+  return UNO_FAMILY_GREETING;
 }
 
 function formatTodayDate(date) {
@@ -156,7 +154,7 @@ export default function ExecutiveDashboard() {
         data={data}
         hero={hero}
         firstName={firstName}
-        greeting={getGreeting(now.getHours())}
+        greeting={getGreeting()}
         now={now}
         unreadCount={announcementFeed?.unreadCount || 0}
       />
@@ -177,8 +175,9 @@ export default function ExecutiveDashboard() {
           <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-                {getGreeting(now.getHours())}, {firstName}! 👋
+                {getGreeting()}
               </h1>
+              <p className="mt-1 text-sm text-content-muted">Hi {firstName}</p>
               <p className={`mt-0.5 text-xs ${scene.muted}`}>
                 Here&apos;s what&apos;s happening with your leads today.
               </p>

@@ -505,6 +505,30 @@ const createQuotation = asyncHandler(async (req, res) => {
     createdBy: req.user._id,
   });
 
+  const {
+    snapshotCosting1,
+    buildCosting2,
+    applyCosting2ToQuotation,
+    buildQuotePackageSummary,
+  } = require('../services/quotationApprovalCostingService');
+  quotation.costing1 = snapshotCosting1(quotation);
+  quotation.packageSummary = buildQuotePackageSummary({
+    ...quotation.toObject(),
+    lead,
+    package: req.body.package,
+  });
+  if (status === 'approved') {
+    const c2 = buildCosting2({
+      quotation,
+      markupPercent: quotation.costing1.markupPercent,
+      actor: req.user,
+    });
+    applyCosting2ToQuotation(quotation, c2);
+    quotation.approvedBy = req.user._id;
+    quotation.approvedAt = now;
+  }
+  await quotation.save();
+
   if ((status === 'pending_approval' || status === 'approved') && lead.status === 'new') {
     lead.status = 'quotation_sent';
     await lead.save();
@@ -772,6 +796,27 @@ const acceptLead = asyncHandler(async (req, res) => {
   res.json(enrichLead(populated));
 });
 
+const getCommercialForm = asyncHandler(async (req, res) => {
+  const { getCommercialFormDraft } = require('../services/conversionCommercialService');
+  const draft = await getCommercialFormDraft({
+    leadId: req.params.id,
+    executiveId: req.user._id,
+    branchId: req.branchId,
+  });
+  res.json(draft);
+});
+
+const saveCommercialForm = asyncHandler(async (req, res) => {
+  const { saveCommercialForm: saveForm } = require('../services/conversionCommercialService');
+  const saved = await saveForm({
+    leadId: req.params.id,
+    executiveId: req.user._id,
+    branchId: req.branchId,
+    body: req.body,
+  });
+  res.json(saved);
+});
+
 module.exports = {
   LEAD_FILTER_KEYS,
   getDashboard,
@@ -783,6 +828,8 @@ module.exports = {
   sendLeadPaymentReceipt,
   updateLead,
   acceptLead,
+  getCommercialForm,
+  saveCommercialForm,
   addLeadNote,
   listFollowUps,
   getFollowUpSummary,

@@ -169,9 +169,9 @@ export function CustomerCell({ name, lead, showPhone = false }) {
   const arrived = formatLeadArrivedAt(lead?.createdAt);
   const arrivedTitle = leadArrivedFullTitle(lead?.createdAt);
   return (
-    <div className="flex items-start gap-2.5 min-w-0 max-w-[260px]">
+    <div className="flex items-start gap-2.5 min-w-0 max-w-[340px]">
       <Avatar name={name} size="sm" className="!w-8 !h-8 !text-[11px] shrink-0 mt-0.5" />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           <p className="font-semibold text-sm text-content-primary truncate">{name}</p>
           {isRepeated ? (
@@ -191,7 +191,8 @@ export function CustomerCell({ name, lead, showPhone = false }) {
             <span className="truncate">{arrived}</span>
           </p>
         )}
-        <LeadCallStats lead={lead} compact className="mt-1" />
+        {/* Same call chips as executive / converted lists — under the name */}
+        <LeadCallStats lead={lead} compact className="mt-1.5" />
         {showPhone && lead?.phone && (
           <p className="text-xs text-content-muted font-mono mt-0.5 truncate">{lead.phone}</p>
         )}

@@ -65,14 +65,18 @@ export default function LeaderQuotationsPage() {
     fetchQuotes();
   }, [status, queryParams]);
 
-  const handleAction = async (id, action) => {
+  const handleAction = async (id, action, costingPercent) => {
     const notes =
       action === 'reject'
         ? window.prompt('Rejection reason (optional):') || undefined
         : action === 'changes'
           ? window.prompt('Changes requested (optional):') || undefined
           : undefined;
-    await API.put(`/team-leader/quotations/${id}`, { action, notes });
+    await API.put(`/team-leader/quotations/${id}`, {
+      action,
+      notes,
+      ...(action === 'approve' && costingPercent != null ? { costingPercent } : {}),
+    });
     fetchQuotes();
   };
 
@@ -198,14 +202,19 @@ export default function LeaderQuotationsPage() {
         open={!!selected && !showPdf}
         onClose={() => { setSelected(null); setShowPdf(false); }}
         onDownloadPdf={() => setShowPdf(true)}
+        canSetCosting={status === 'pending'}
+        onApproveWithCosting={async (id, costingPercent) => {
+          await handleAction(id, 'approve', costingPercent);
+          setSelected(null);
+        }}
         actions={
           status === 'pending' && selected?.status === 'pending_approval' ? (
             <>
-              <Button size="sm" variant="emerald" className="flex-1" onClick={() => { handleAction(selected._id, 'approve'); setSelected(null); }}>
-                <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
-              </Button>
               <Button size="sm" variant="outline" className="flex-1 text-rose-600" onClick={() => { handleAction(selected._id, 'reject'); setSelected(null); }}>
                 <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
+              </Button>
+              <Button size="sm" variant="ghost" className="flex-1" onClick={() => { handleAction(selected._id, 'changes'); setSelected(null); }}>
+                <MessageSquare className="w-3.5 h-3.5 mr-1" /> Changes
               </Button>
             </>
           ) : null

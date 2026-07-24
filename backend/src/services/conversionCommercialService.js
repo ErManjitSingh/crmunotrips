@@ -1,0 +1,211 @@
+const path = require('path');
+const fs = require('fs');
+const Lead = require('../models/Lead');
+const Payment = require('../models/Payment');
+const Quotation = require('../models/Quotation');
+const ApiError = require('../utils/apiError');
+
+const UPLOAD_DIR = path.join(__dirname, '../../uploads/address-proofs');
+
+function ensureUploadDir() {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+function midDate(a, b) {
+  const t1 = new Date(a).getTime();
+  const t2 = new Date(b).getTime();
+  if (!Number.isFinite(t1)) return null;
+  if (!Number.isFinite(t2)) return new Date(t1 + 3 * 86400000);
+  return new Date(Math.round((t1 + t2) / 2));
+}
+
+function buildInstallmentSchedule({ total, token, travelDate, returnDate }) {
+  const packageTotal = Math.max(0, Number(total) || 0);
+  const paid = Math.max(0, Math.min(packageTotal, Number(token) || 0));
+  const remaining = Math.max(0, packageTotal - paid);
+  const a50 = Math.round(remaining * 0.5);
+  const a30 = Math.round(remaining * 0.3);
+  const aRest = Math.max(0, remaining - a50 - a30);
+  const start = travelDate ? new Date(travelDate) : null;
+  const end = returnDate ? new Date(returnDate) : start;
+  const due50 = start ? new Date(start.getTime() - 2 * 86400000) : null;
+  const due30 = midDate(start, end);
+  const dueRest = end || start;
+
+  return [
+    {
+      label: 'Installment 1 — 50% after token',
+      percent: remaining > 0 ? Math.round((a50 / remaining) * 100) : 50,
+      amount: a50,
+      dueDate: due50,
+      status: 'pending',
+    },
+    {
+      label: 'Installment 2 — 30% mid-tour',
+      percent: remaining > 0 ? Math.round((a30 / remaining) * 100) : 30,
+      amount: a30,
+      dueDate: due30,
+      status: 'pending',
+    },
+    {
+      label: 'Installment 3 — balance on last tour day',
+      percent: remaining > 0 ? Math.round((aRest / remaining) * 100) : 20,
+      amount: aRest,
+      dueDate: dueRest,
+      status: 'pending',
+    },
+  ].filter((row) => row.amount > 0);
+}
+
+function saveAddressProofBase64({ leadId, base64, originalName }) {
+  if (!base64) return null;
+  ensureUploadDir();
+  const raw = String(base64).replace(/^data:[^;]+;base64,/, '');
+  const buf = Buffer.from(raw, 'base64');
+  if (!buf.length) return null;
+  if (buf.length > 8 * 1024 * 1024) {
+    throw new ApiError(400, 'Address proof must be under 8 MB');
+  }
+  const safe = String(originalName || 'address-proof').replace(/[^\w.\-]+/g, '_');
+  const fileName = `${leadId}-${Date.now()}-${safe}`;
+  fs.writeFileSync(path.join(UPLOAD_DIR, fileName), buf);
+  return {
+    url: `/uploads/address-proofs/${fileName}`,
+    name: originalName || fileName,
+  };
+}
+
+async function getCommercialFormDraft({ leadId, executiveId, branchId }) {
+  const lead = await Lead.findOne({
+    _id: leadId,
+    assignedTo: executiveId,
+    ...(branchId ? { branchId } : {}),
+    isDeleted: { $ne: true },
+  }).lean();
+  if (!lead) throw new ApiError(404, 'Lead not found');
+  if (lead.status !== 'converted') {
+    throw new ApiError(400, 'Commercial form is available after lead is converted');
+  }
+
+  const quotation = await Quotation.findOne({ lead: leadId }).sort({ updatedAt: -1 }).lean();
+  const payment = await Payment.findOne({ lead: leadId }).sort({ createdAt: -1 }).lean();
+
+  const total =
+    Number(payment?.amount) ||
+    Number(quotation?.pricing?.total) ||
+    Number(quotation?.costing2?.grandTotal) ||
+    Number(lead.budget) ||
+    0;
+  const token = Number(payment?.paidAmount) || 0;
+  const gstAmount =
+    Number(payment?.gstAmount) ||
+    Number(quotation?.pricing?.taxes) ||
+    Number(quotation?.costing2?.taxes) ||
+    0;
+  const packageMarginPercent =
+    Number(payment?.packageMarginPercent) ||
+    Number(quotation?.costing2?.markupPercent) ||
+    Number(quotation?.pricing?.markupPercent) ||
+    0;
+  const totalCost =
+    Number(payment?.totalCost) ||
+    Number(quotation?.costing2?.baseCost) ||
+    Math.max(0, total - Math.round((total * packageMarginPercent) / (100 + packageMarginPercent || 1)));
+
+  const schedule =
+    payment?.scheduledInstallments?.length > 0
+      ? payment.scheduledInstallments
+      : buildInstallmentSchedule({
+          total,
+          token,
+          travelDate: lead.travelDate,
+          returnDate: lead.returnDate,
+        });
+
+  return {
+    lead: {
+      _id: lead._id,
+      name: lead.name,
+      destination: lead.destination,
+      travelDate: lead.travelDate,
+      returnDate: lead.returnDate,
+    },
+    quotation: quotation
+      ? {
+          _id: quotation._id,
+          quoteNumber: quotation.quoteNumber,
+          packageName: quotation.packageSummary?.packageName || quotation.packageSnapshot?.name,
+          costing2: quotation.costing2,
+        }
+      : null,
+    paymentId: payment?._id || null,
+    packageMarginPercent,
+    totalCost,
+    gstAmount,
+    amountReceived: token,
+    paymentMethod: payment?.method || 'upi',
+    totalAmount: total,
+    balance: Math.max(0, total - token),
+    scheduledInstallments: schedule,
+    addressProofUrl: payment?.addressProofUrl || '',
+    addressProofName: payment?.addressProofName || '',
+    commercialCompletedAt: payment?.commercialCompletedAt || null,
+  };
+}
+
+async function saveCommercialForm({ leadId, executiveId, branchId, body }) {
+  const draft = await getCommercialFormDraft({ leadId, executiveId, branchId });
+  const payment = draft.paymentId
+    ? await Payment.findById(draft.paymentId)
+    : await Payment.findOne({ lead: leadId }).sort({ createdAt: -1 });
+
+  if (!payment) {
+    throw new ApiError(404, 'Payment record not found — convert lead with advance first');
+  }
+
+  const totalAmount = Number(body.totalAmount ?? draft.totalAmount) || 0;
+  const amountReceived = Number(body.amountReceived ?? draft.amountReceived) || 0;
+  const packageMarginPercent = Number(body.packageMarginPercent ?? draft.packageMarginPercent) || 0;
+  const totalCost = Number(body.totalCost ?? draft.totalCost) || 0;
+  const gstAmount = Number(body.gstAmount ?? draft.gstAmount) || 0;
+  const method = ['cash', 'upi', 'card', 'bank_transfer', 'cheque'].includes(body.paymentMethod)
+    ? body.paymentMethod
+    : payment.method;
+
+  payment.amount = totalAmount;
+  payment.paidAmount = amountReceived;
+  payment.method = method;
+  payment.packageMarginPercent = packageMarginPercent;
+  payment.totalCost = totalCost;
+  payment.gstAmount = gstAmount;
+  payment.scheduledInstallments = buildInstallmentSchedule({
+    total: totalAmount,
+    token: amountReceived,
+    travelDate: draft.lead.travelDate,
+    returnDate: draft.lead.returnDate,
+  });
+  payment.status =
+    amountReceived <= 0 ? 'pending' : amountReceived >= totalAmount && totalAmount > 0 ? 'paid' : 'partial';
+  payment.commercialCompletedAt = new Date();
+
+  if (body.addressProofBase64) {
+    const saved = saveAddressProofBase64({
+      leadId,
+      base64: body.addressProofBase64,
+      originalName: body.addressProofName,
+    });
+    if (saved) {
+      payment.addressProofUrl = saved.url;
+      payment.addressProofName = saved.name;
+    }
+  }
+
+  await payment.save();
+  return getCommercialFormDraft({ leadId, executiveId, branchId });
+}
+
+module.exports = {
+  buildInstallmentSchedule,
+  getCommercialFormDraft,
+  saveCommercialForm,
+};

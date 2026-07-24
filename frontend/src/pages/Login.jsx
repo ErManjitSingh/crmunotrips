@@ -160,7 +160,7 @@ export default function Login() {
                 className="mb-1 text-[1.65rem] font-semibold leading-none text-[#7C3AED]"
                 style={{ fontFamily: '"Caveat", cursive' }}
               >
-                Welcome Back! 👋
+                Smile! You are part of the UNO family.
               </p>
               <h1 className="text-[1.55rem] font-bold tracking-tight text-[#1A1D2E] sm:text-[1.7rem]">
                 Sign in to your account
