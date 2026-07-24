@@ -14,7 +14,7 @@ export const CALL_OUTCOMES = [
   { value: 'call_back_tomorrow', label: 'Call back tomorrow' },
   { value: 'busy', label: 'Busy / asked to call later' },
   { value: 'no_answer', label: 'No answer' },
-  { value: 'not_interested', label: 'Not interested' },
+  { value: 'not_interested', label: 'Declined / Not interested' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -95,20 +95,28 @@ export default function PostCallFollowUpModal({
             What happened on the call? *
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {CALL_OUTCOMES.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => setOutcome(item.value)}
-                className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors ${
-                  outcome === item.value
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-subtle bg-white text-content-secondary hover:border-blue-300'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
+            {CALL_OUTCOMES.map((item) => {
+              const isDecline = item.value === 'not_interested';
+              const selected = outcome === item.value;
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setOutcome(item.value)}
+                  className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                    selected && isDecline
+                      ? 'border-red-600 bg-red-600 text-white'
+                      : selected
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : isDecline
+                          ? 'border-red-200 bg-red-50 text-red-700 hover:border-red-400'
+                          : 'border-subtle bg-white text-content-secondary hover:border-blue-300'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

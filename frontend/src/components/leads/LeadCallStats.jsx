@@ -1,4 +1,4 @@
-import { Phone } from 'lucide-react';
+import { Clock3, Phone, PhoneOff } from 'lucide-react';
 import { formatCallDuration, formatCallDurationExact } from '../../lib/callSession';
 import { cn } from '../../lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
@@ -6,22 +6,29 @@ import { CALL_OUTCOMES } from './PostCallFollowUpModal';
 
 const OUTCOME_LABEL = Object.fromEntries(CALL_OUTCOMES.map((o) => [o.value, o.label]));
 
+/** Outcomes treated as customer/exec decline — always solid red */
+const DECLINED_OUTCOMES = new Set(['not_interested']);
+
 const OUTCOME_TONE = {
-  interested: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
-  discussed_package: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
-  need_better_hotel: 'bg-violet-100 text-violet-700 ring-violet-200',
-  budget_issue: 'bg-rose-100 text-rose-700 ring-rose-200',
-  call_back_later: 'bg-amber-100 text-amber-700 ring-amber-200',
-  call_back_tomorrow: 'bg-amber-100 text-amber-700 ring-amber-200',
-  busy: 'bg-amber-100 text-amber-700 ring-amber-200',
-  no_answer: 'bg-slate-100 text-slate-600 ring-slate-200',
-  not_interested: 'bg-rose-100 text-rose-700 ring-rose-200',
-  other: 'bg-sky-100 text-sky-700 ring-sky-200',
+  interested: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+  discussed_package: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+  need_better_hotel: 'bg-violet-50 text-violet-800 ring-violet-200',
+  budget_issue: 'bg-orange-50 text-orange-800 ring-orange-200',
+  call_back_later: 'bg-amber-50 text-amber-800 ring-amber-200',
+  call_back_tomorrow: 'bg-amber-50 text-amber-800 ring-amber-200',
+  busy: 'bg-amber-50 text-amber-800 ring-amber-200',
+  no_answer: 'bg-slate-100 text-slate-700 ring-slate-200',
+  not_interested: 'bg-red-600 text-white ring-red-700 shadow-sm shadow-red-600/30',
+  other: 'bg-sky-50 text-sky-800 ring-sky-200',
 };
 
 function outcomeLabel(outcome) {
-  if (!outcome) return 'Logged';
+  if (!outcome) return 'Status not logged';
   return OUTCOME_LABEL[outcome] || String(outcome).replace(/_/g, ' ');
+}
+
+function isDeclined(outcome) {
+  return DECLINED_OUTCOMES.has(outcome);
 }
 
 function buildCallItems(lead) {
@@ -57,62 +64,98 @@ export default function LeadCallStats({ lead, className, compact = false }) {
   return (
     <TooltipProvider delayDuration={120}>
       <div
-        className={cn('flex flex-wrap items-center gap-1', className)}
+        className={cn('flex flex-col gap-1 min-w-0', className)}
         onClick={(e) => e.stopPropagation()}
       >
-        {items.map((call) => {
-          const tone = OUTCOME_TONE[call.outcome] || 'bg-sky-100 text-sky-700 ring-sky-200';
-          const when = call.at
-            ? new Date(call.at).toLocaleString('en-IN', {
-                day: 'numeric',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true,
-              })
-            : '';
-          return (
-            <Tooltip key={call.n}>
-              <TooltipTrigger asChild>
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-0.5 rounded-md ring-1 ring-inset font-bold tabular-nums cursor-default',
-                    compact ? 'px-1 py-0.5 text-[9px]' : 'px-1.5 py-0.5 text-[10px]',
-                    tone
+        <div className="flex flex-wrap items-center gap-1.5">
+          {items.map((call) => {
+            const declined = isDeclined(call.outcome);
+            const tone = OUTCOME_TONE[call.outcome] || 'bg-sky-50 text-sky-800 ring-sky-200';
+            const Icon = declined ? PhoneOff : Phone;
+            const when = call.at
+              ? new Date(call.at).toLocaleString('en-IN', {
+                  day: 'numeric',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                })
+              : '';
+
+            return (
+              <Tooltip key={call.n}>
+                <TooltipTrigger asChild>
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-lg ring-1 ring-inset cursor-default',
+                      compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-[11px]',
+                      tone
+                    )}
+                    aria-label={`Call number ${call.n}, duration ${formatCallDurationExact(call.duration)}, ${outcomeLabel(call.outcome)}`}
+                  >
+                    <Icon className={cn(compact ? 'h-3 w-3' : 'h-3.5 w-3.5', 'shrink-0')} />
+                    <span className="font-bold whitespace-nowrap">
+                      Call {call.n}
+                    </span>
+                    <span
+                      className={cn(
+                        'h-3 w-px shrink-0',
+                        declined ? 'bg-white/40' : 'bg-current opacity-25'
+                      )}
+                      aria-hidden
+                    />
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-0.5 font-semibold tabular-nums whitespace-nowrap',
+                        declined ? 'text-white' : 'text-slate-700'
+                      )}
+                      title="Call duration"
+                    >
+                      <Clock3 className={cn(compact ? 'h-2.5 w-2.5' : 'h-3 w-3', 'opacity-80')} />
+                      <span>{formatCallDuration(call.duration)}</span>
+                    </span>
+                    {declined && (
+                      <span className="rounded bg-white/20 px-1 py-px text-[9px] font-extrabold uppercase tracking-wide">
+                        Declined
+                      </span>
+                    )}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[260px] text-left leading-snug">
+                  <p className="font-semibold">Call number: {call.n}</p>
+                  <p className={cn('mt-0.5 font-medium', declined ? 'text-red-600' : 'text-content-secondary')}>
+                    Status: {outcomeLabel(call.outcome)}
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-semibold tabular-nums text-sky-700">
+                    Duration: {formatCallDurationExact(call.duration)}
+                  </p>
+                  {when && (
+                    <p className="text-content-muted mt-0.5 text-[11px]">{when}</p>
                   )}
-                  aria-label={`Call ${call.n}: ${outcomeLabel(call.outcome)}, ${formatCallDurationExact(call.duration)}`}
-                >
-                  <Phone className={compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} />
-                  <span>{call.n}</span>
-                  {call.duration > 0 && (
-                    <span className="font-semibold opacity-90">{formatCallDuration(call.duration)}</span>
-                  )}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-[240px] text-left leading-snug">
-                <p className="font-semibold">Call {call.n}</p>
-                <p className="text-content-secondary mt-0.5">{outcomeLabel(call.outcome)}</p>
-                <p className="mt-0.5 text-[11px] font-semibold tabular-nums text-sky-700">
-                  Duration: {formatCallDurationExact(call.duration)}
-                </p>
-                {when && (
-                  <p className="text-content-muted mt-0.5 text-[11px]">{when}</p>
-                )}
-              </TooltipContent>
-            </Tooltip>
-          );
-        })}
-        {totalCount > items.length && (
-          <span
-            className={cn(
-              'font-bold text-sky-700 tabular-nums',
-              compact ? 'text-[9px]' : 'text-[10px]'
-            )}
-            title={`${totalCount} calls · total ${formatCallDurationExact(totalSeconds)}`}
-          >
-            +{totalCount - items.length}
-          </span>
-        )}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+          {totalCount > items.length && (
+            <span
+              className={cn(
+                'font-bold text-slate-500 tabular-nums',
+                compact ? 'text-[10px]' : 'text-[11px]'
+              )}
+              title={`${totalCount} total calls`}
+            >
+              +{totalCount - items.length} more
+            </span>
+          )}
+        </div>
+        <p
+          className={cn(
+            'font-medium text-slate-500 tabular-nums',
+            compact ? 'text-[9px]' : 'text-[10px]'
+          )}
+        >
+          {totalCount} call{totalCount === 1 ? '' : 's'} · total duration {formatCallDurationExact(totalSeconds)}
+        </p>
       </div>
     </TooltipProvider>
   );
