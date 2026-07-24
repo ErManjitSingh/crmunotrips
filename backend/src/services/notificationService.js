@@ -236,8 +236,8 @@ async function notifySlaBreach(lead) {
   await notifyUsers(recipients, {
     branchId,
     type: T.LEAD_SLA_BREACH,
-    title: 'Lead SLA breached',
-    message: `${lead.name} was not contacted within 15 minutes`,
+    title: 'Lead first-call SLA breached',
+    message: `${lead.name}: ${lead._slaLabel || 'first contact SLA missed'}`,
     meta: {
       leadId: lead._id,
       href: `/leads/${lead._id}`,

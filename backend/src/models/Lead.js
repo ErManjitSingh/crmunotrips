@@ -137,6 +137,18 @@ const leadSchema = new mongoose.Schema(
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     assignedAt: { type: Date, index: true },
     executiveLastViewedAt: { type: Date },
+    /** SOP: accept within 2 minutes or auto-reassign */
+    assignmentAcceptance: {
+      type: String,
+      enum: ['pending', 'accepted', 'expired', 'not_required'],
+      default: 'not_required',
+      index: true,
+    },
+    assignmentAcceptBy: { type: Date, index: true },
+    acceptedAt: { type: Date },
+    assignmentHistoryIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    /** Computed first-call deadline (hot/warm/night) */
+    firstContactDeadline: { type: Date, index: true },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     assignedTeamLeader: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     teamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },

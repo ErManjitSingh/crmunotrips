@@ -226,9 +226,6 @@ const updateLead = asyncHandler(async (req, res) => {
   if (isStatusOnlyUpdate) {
     if (!LEAD_STATUSES.includes(status)) throw new ApiError(400, 'Invalid lead status');
     const trimmedReason = typeof statusReason === 'string' ? statusReason.trim() : '';
-    if (['lost', 'booked_from_another_company'].includes(status) && !trimmedReason) {
-      throw new ApiError(400, 'Reason is required for this status');
-    }
     if (status === 'converted') {
       const advance = Number(advanceAmount ?? tokenAmount);
       if (!Number.isFinite(advance) || advance < 0) {
@@ -241,7 +238,18 @@ const updateLead = asyncHandler(async (req, res) => {
 
     const prevStatus = lead.status;
     lead.status = status;
-    lead.statusReason = trimmedReason;
+
+    if (['lost', 'booked_from_another_company'].includes(status)) {
+      const { assertValidLostReason, lostReasonLabel } = require('../services/salesSopService');
+      const reasonValue =
+        status === 'booked_from_another_company' && !trimmedReason
+          ? 'booked_elsewhere'
+          : assertValidLostReason(trimmedReason || (status === 'booked_from_another_company' ? 'booked_elsewhere' : ''));
+      lead.statusReason = reasonValue;
+      req._lostReasonLabel = lostReasonLabel(reasonValue);
+    } else {
+      lead.statusReason = trimmedReason;
+    }
     lead.statusReasonUpdatedAt = new Date();
     await lead.save();
 
@@ -254,16 +262,17 @@ const updateLead = asyncHandler(async (req, res) => {
         reactivated: 'lead_reactivated',
       };
       const statusLabel = status.replace(/_/g, ' ');
+      const reasonText = req._lostReasonLabel || trimmedReason;
       await logLeadActivity({
         leadId: lead._id,
         branchId: lead.branchId,
         type: typeMap[status] || 'status_changed',
-        description: `Status changed from ${prevStatus.replace(/_/g, ' ')} to ${statusLabel}${trimmedReason ? ` — ${trimmedReason}` : ''}`,
+        description: `Status changed from ${prevStatus.replace(/_/g, ' ')} to ${statusLabel}${reasonText ? ` — ${reasonText}` : ''}`,
         actor: req.user,
         meta: {
           from: prevStatus,
           to: status,
-          reason: trimmedReason || undefined,
+          reason: lead.statusReason || undefined,
           advanceAmount: status === 'converted' ? Number(advanceAmount ?? tokenAmount) : undefined,
         },
       });
@@ -444,6 +453,10 @@ const createQuotation = asyncHandler(async (req, res) => {
   });
   if (!lead) throw new ApiError(403, 'Lead not assigned to you');
 
+  const { assertQualifiedForQuotation } = require('../services/salesSopService');
+  if (req.body.status !== 'draft') {
+    assertQualifiedForQuotation(lead);
+  }
   const teamLeader = await getTeamLeaderForExecutive(req.user._id);
   const requestedStatus = req.body.status === 'draft' ? 'draft' : 'pending_approval';
   const status = await resolveExecutiveQuotationStatus(lead._id, requestedStatus);
@@ -747,6 +760,18 @@ const getCalendar = asyncHandler(async (req, res) => {
   res.json([...fuEvents, ...travelEvents]);
 });
 
+const acceptLead = asyncHandler(async (req, res) => {
+  const { acceptAssignedLead } = require('../services/leadAcceptanceService');
+  const lead = await acceptAssignedLead({
+    leadId: req.params.id,
+    executiveId: req.user._id,
+    branchId: req.branchId,
+  });
+  invalidateDashboardCache('sales_executive');
+  const populated = await Lead.findById(lead._id).populate(LEAD_POPULATE).lean();
+  res.json(enrichLead(populated));
+});
+
 module.exports = {
   LEAD_FILTER_KEYS,
   getDashboard,
@@ -757,6 +782,7 @@ module.exports = {
   getLeadPaymentReceiptDoc,
   sendLeadPaymentReceipt,
   updateLead,
+  acceptLead,
   addLeadNote,
   listFollowUps,
   getFollowUpSummary,

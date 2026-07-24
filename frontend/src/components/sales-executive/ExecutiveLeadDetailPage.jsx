@@ -10,6 +10,8 @@ import AddFollowUpModal from '../followups/AddFollowUpModal';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/followupApi';
 import { useLeadActivities } from '../../features/leads/hooks/useLeadActivities';
 import { isLeadStatusLocked } from '../../utils/leadUtils';
+import LostReasonSelect from '../leads/LostReasonSelect';
+import LeadAcceptBanner from '../leads/LeadAcceptBanner';
 
 const STATUSES = [
   'new',
@@ -153,6 +155,7 @@ export default function ExecutiveLeadDetailPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="pb-8">
+      <LeadAcceptBanner lead={lead} onAccepted={(updated) => setLead((prev) => ({ ...prev, ...updated }))} />
       {lead.coldCallPending && (
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -252,13 +255,21 @@ export default function ExecutiveLeadDetailPage() {
             </div>
           </div>
         )}
-        <textarea
-          value={modalStatusReason}
-          onChange={(e) => setModalStatusReason(e.target.value)}
-          rows={3}
-          placeholder="Reason for status change"
-          className="w-full rounded-xl border border-subtle bg-white p-3 text-sm mb-4"
-        />
+        {['lost', 'booked_from_another_company'].includes(modalStatus) ? (
+          <LostReasonSelect
+            value={modalStatusReason}
+            onChange={setModalStatusReason}
+            className="mb-4"
+          />
+        ) : (
+          <textarea
+            value={modalStatusReason}
+            onChange={(e) => setModalStatusReason(e.target.value)}
+            rows={3}
+            placeholder="Reason for status change (optional)"
+            className="w-full rounded-xl border border-subtle bg-white p-3 text-sm mb-4"
+          />
+        )}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => { setStatusModalOpen(false); setModalStatusReason(''); setAdvanceAmount(''); }}>Cancel</Button>
           <Button

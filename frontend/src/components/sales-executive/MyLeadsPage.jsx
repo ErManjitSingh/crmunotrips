@@ -29,6 +29,7 @@ import VirtualizedRoleTable from '../ui/VirtualizedRoleTable';
 import AddFollowUpModal from '../followups/AddFollowUpModal';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/followupApi';
 import ConvertedLeadsTable from '../leads/ConvertedLeadsTable';
+import LostReasonSelect from '../leads/LostReasonSelect';
 
 const ICONS = { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users };
 
@@ -290,13 +291,21 @@ export default function MyLeadsPage() {
             </div>
           </div>
         )}
-        <textarea
-          value={modalStatusReason}
-          onChange={(e) => setModalStatusReason(e.target.value)}
-          rows={3}
-          placeholder="Reason for status change"
-          className="w-full rounded-xl border border-subtle bg-white dark:bg-slate-900 p-3 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
-        />
+        {['lost', 'booked_from_another_company'].includes(modalStatus) ? (
+          <LostReasonSelect
+            value={modalStatusReason}
+            onChange={setModalStatusReason}
+            className="mb-4"
+          />
+        ) : (
+          <textarea
+            value={modalStatusReason}
+            onChange={(e) => setModalStatusReason(e.target.value)}
+            rows={3}
+            placeholder="Reason for status change (optional)"
+            className="w-full rounded-xl border border-subtle bg-white dark:bg-slate-900 p-3 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+          />
+        )}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => { setModal(null); setModalStatusReason(''); setAdvanceAmount(''); }}>Cancel</Button>
           <Button

@@ -16,6 +16,10 @@ async function persistQuotation({
   teamLeaderId,
   approvalNote,
 }) {
+  const { assertQualifiedForQuotation } = require('./salesSopService');
+  if (status !== 'draft') {
+    assertQualifiedForQuotation(lead);
+  }
   const quotation = await Quotation.create({
     quoteNumber: body.quoteNumber || generateQuoteNumber(),
     lead: lead._id,

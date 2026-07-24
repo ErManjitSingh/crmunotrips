@@ -1,4 +1,6 @@
 const Lead = require('../models/Lead');
+const { LEAD_ACCEPT_MINUTES } = require('../constants/salesSop');
+const { computeFirstContactDeadline } = require('./salesSopService');
 
 const STALL_MINUTES = 20;
 const TERMINAL_STATUSES = ['lost', 'booked_from_another_company', 'converted'];
@@ -7,6 +9,20 @@ function stampExecutiveAssignment(target = {}) {
   const now = new Date();
   target.assignedAt = now;
   target.executiveLastViewedAt = null;
+  return target;
+}
+
+/** SOP: 2-min accept window + first-contact deadline */
+function stampPendingAcceptance(target = {}, leadLike = {}) {
+  const now = new Date();
+  stampExecutiveAssignment(target);
+  target.assignmentAcceptance = 'pending';
+  target.assignmentAcceptBy = new Date(now.getTime() + LEAD_ACCEPT_MINUTES * 60 * 1000);
+  target.acceptedAt = null;
+  target.firstContactDeadline = computeFirstContactDeadline(
+    { ...leadLike, ...target, assignedAt: target.assignedAt || now },
+    target.assignedAt || now
+  );
   return target;
 }
 
@@ -80,7 +96,9 @@ function buildExecutiveStallQuery(now = new Date()) {
 module.exports = {
   STALL_MINUTES,
   TERMINAL_STATUSES,
+  LEAD_ACCEPT_MINUTES,
   stampExecutiveAssignment,
+  stampPendingAcceptance,
   markLeadViewedByExecutive,
   computeExecutiveStallFlags,
   buildExecutiveStallQuery,

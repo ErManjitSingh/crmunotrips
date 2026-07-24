@@ -10,6 +10,7 @@ const {
   getLeadPaymentReceiptDoc,
   sendLeadPaymentReceipt,
   updateLead,
+  acceptLead,
   addLeadNote,
   listFollowUps,
   getFollowUpSummary,
@@ -54,6 +55,7 @@ router.get('/leads/:id/quotations', getLeadQuotationsList);
 router.get('/leads/:id/notes-list', getLeadNotesList);
 router.get('/leads/:id/payment-receipt', getLeadPaymentReceiptDoc);
 router.post('/leads/:id/payment-receipt/send', sendLeadPaymentReceipt);
+router.post('/leads/:id/accept', acceptLead);
 router.get('/leads/:idOrFilter', (req, res, next) => {
   const seg = req.params.idOrFilter;
   if (LEAD_FILTER_KEYS.includes(seg)) {

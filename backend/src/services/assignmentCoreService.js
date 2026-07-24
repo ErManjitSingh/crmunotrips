@@ -3,8 +3,8 @@ const Attendance = require('../models/Attendance');
 const Team = require('../models/Team');
 const AssignmentRoundRobin = require('../models/AssignmentRoundRobin');
 const { startOfCalendarDay } = require('./attendanceService');
-const { stampExecutiveAssignment } = require('./leadExecutiveStallService');
 const { invalidateExecutiveLeadIdsCache } = require('./executiveScopeService');
+const { stampPendingAcceptance } = require('./leadExecutiveStallService');
 
 const ACTIVE_LEAD_STATUSES = [
   'new',
@@ -117,7 +117,7 @@ async function pickExecutive(candidates, { branchId, poolKey, destinationId }) {
 async function applyExecutiveAssignment(lead, executive) {
   lead.assignedTo = executive._id;
   lead.assigneeRole = 'sales_executive';
-  stampExecutiveAssignment(lead);
+  stampPendingAcceptance(lead, lead);
 
   if (executive.teamId) {
     const team = await Team.findById(executive.teamId).select('teamLeader').lean();

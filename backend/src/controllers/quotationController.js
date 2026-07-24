@@ -56,6 +56,11 @@ const createQuotation = asyncHandler(async (req, res) => {
   const lead = await Lead.findById(req.body.leadId || req.body.lead);
   if (!lead) throw new ApiError(404, 'Lead not found');
 
+  const status = req.body.status || 'draft';
+  if (status !== 'draft') {
+    const { assertQualifiedForQuotation } = require('../services/salesSopService');
+    assertQualifiedForQuotation(lead);
+  }
   let pkg = null;
   if (req.body.packageId) {
     pkg = await Package.findById(req.body.packageId).lean();
@@ -72,7 +77,7 @@ const createQuotation = asyncHandler(async (req, res) => {
     lead: lead._id,
     package: resolvePackageReference(req.body.packageId),
     packageSnapshot: pkg || req.body.package,
-    status: req.body.status || 'draft',
+    status: status,
     pricing: computedPayload.pricing,
     costing: computedPayload.costing,
     selectedHotels: computedPayload.selectedHotels,

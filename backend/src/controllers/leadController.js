@@ -460,8 +460,14 @@ const updateLead = asyncHandler(async (req, res) => {
   if (WORKING_PIPELINE_STATUSES.includes(nextStatus)) {
     ensureLeadQualifiedForPipeline(effectivePayload);
   }
-  if (data.status && LOST_LEAD_STATUSES.includes(data.status) && !data.statusReason?.trim() && !lead.statusReason?.trim()) {
-    throw new ApiError(400, 'Reason is required when marking lead as lost');
+  if (data.status && LOST_LEAD_STATUSES.includes(data.status)) {
+    const { assertValidLostReason } = require('../services/salesSopService');
+    const incoming = data.statusReason?.trim() || lead.statusReason?.trim() || '';
+    const reasonValue =
+      data.status === 'booked_from_another_company' && !incoming
+        ? 'booked_elsewhere'
+        : assertValidLostReason(incoming || (data.status === 'booked_from_another_company' ? 'booked_elsewhere' : ''));
+    data.statusReason = reasonValue;
   }
   if (data.status && data.status !== prevStatus && isLeadStatusLocked(prevStatus)) {
     throw new ApiError(400, 'Lead status cannot be changed after conversion or closure');
