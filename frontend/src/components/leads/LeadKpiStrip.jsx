@@ -69,28 +69,24 @@ export default function LeadKpiStrip() {
     {
       label: 'Total Leads',
       value: stats.totalLeads ?? 0,
-      change: '+18.5%',
       icon: Users,
       iconColor: 'bg-blue-500',
     },
     {
       label: 'Total Value',
       value: formatCurrency(stats.totalBudget),
-      change: '+24.6%',
       icon: IndianRupee,
       iconColor: 'bg-emerald-500',
     },
     {
       label: 'Converted Leads',
       value: stats.convertedLeads ?? 0,
-      change: '+15.2%',
       icon: CheckCircle2,
       iconColor: 'bg-orange-500',
     },
     {
       label: 'Conversion Rate',
       value: `${stats.conversionRate ?? 0}%`,
-      change: '+3.8%',
       icon: TrendingUp,
       iconColor: 'bg-violet-500',
     },
@@ -103,7 +99,6 @@ export default function LeadKpiStrip() {
           key={item.label}
           label={item.label}
           value={item.value}
-          change={item.change}
           icon={item.icon}
           iconColor={item.iconColor}
           index={i}

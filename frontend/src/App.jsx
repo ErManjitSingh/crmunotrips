@@ -298,6 +298,7 @@ function App() {
               <Route path="leads" element={<PermissionRoute module="leads"><Leads /></PermissionRoute>} />
               <Route path="leads/inbox/new" element={<PermissionRoute module="leads"><Leads /></PermissionRoute>} />
               <Route path="leads/new-leads" element={<PermissionRoute module="leads"><Leads /></PermissionRoute>} />
+              <Route path="leads/returned" element={<PermissionRoute module="leads"><Leads /></PermissionRoute>} />
               <Route path="leads/hot" element={<PermissionRoute module="leads"><Leads /></PermissionRoute>} />
               <Route path="leads/unassigned" element={<PermissionRoute module="leads"><Leads /></PermissionRoute>} />
               <Route path="leads/assigned" element={<PermissionRoute module="leads"><Leads /></PermissionRoute>} />

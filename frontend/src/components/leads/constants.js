@@ -48,6 +48,13 @@ export const pageConfig = {
     assignee: '',
   },
   '/leads/new-leads': { title: "Today's Leads", subtitle: 'Inquiries received today', status: '', assignee: '', todayOnly: true },
+  '/leads/returned': {
+    title: 'Returned Leads',
+    subtitle: 'Leads executives did not accept in time — back in the pool',
+    status: '',
+    assignee: '',
+    listFilter: 'returned',
+  },
   '/leads/hot': {
     title: 'Hot Leads',
     subtitle: 'High-priority leads requiring immediate attention',

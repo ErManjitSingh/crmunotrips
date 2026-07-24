@@ -10,6 +10,7 @@ const TripTask = require('../models/TripTask');
 const { getExecutiveIdsForLeader } = require('./teamScopeService');
 const { buildExecutiveStallQuery } = require('./leadExecutiveStallService');
 const { withBranch } = require('../utils/branchScope');
+const { getReminderCounts } = require('./reminderService');
 
 function todayRange() {
   const startOfToday = new Date();
@@ -81,6 +82,15 @@ async function aggregateAdminLeadCounts(branchId) {
           },
           { $count: 'n' },
         ],
+        returned: [
+          {
+            $match: {
+              assignedTo: null,
+              assignmentAcceptance: 'expired',
+            },
+          },
+          { $count: 'n' },
+        ],
       },
     },
   ]);
@@ -95,6 +105,7 @@ async function aggregateAdminLeadCounts(branchId) {
     whatsapp: facetCount(row, 'whatsapp'),
     statusNew: facetCount(row, 'statusNew'),
     hot: facetCount(row, 'hot'),
+    returned: facetCount(row, 'returned'),
   };
 }
 
@@ -110,6 +121,7 @@ async function buildAdminNavCounts(userId, { branchId } = {}) {
     notificationsUnread,
     calendarToday,
     opsCounts,
+    reminderCounts,
   ] = await Promise.all([
     aggregateAdminLeadCounts(branchId),
     FollowUp.countDocuments(withBranch({ status: 'pending' }, branchId)),
@@ -129,6 +141,7 @@ async function buildAdminNavCounts(userId, { branchId } = {}) {
     unreadNotifications(userId, branchId),
     countFollowUpsToday({}, branchId),
     buildOperationsNavCounts(userId, { branchId }),
+    getReminderCounts({ _id: userId, role: 'admin' }, branchId),
   ]);
 
   return {
@@ -139,6 +152,7 @@ async function buildAdminNavCounts(userId, { branchId } = {}) {
     packages,
     notifications: { unread: notificationsUnread },
     calendar: { today: calendarToday },
+    reminders: { overdue: reminderCounts?.overdue || 0 },
     bookings: opsCounts.bookings,
     support: opsCounts.support,
     tasks: opsCounts.tasks,
@@ -181,6 +195,15 @@ async function aggregateSalesManagerLeadCounts(branchId) {
           { $count: 'n' },
         ],
         reactivated: [{ $match: { 'reactivation.isReactivated': true } }, { $count: 'n' }],
+        returned: [
+          {
+            $match: {
+              assignedTo: null,
+              assignmentAcceptance: 'expired',
+            },
+          },
+          { $count: 'n' },
+        ],
       },
     },
   ]);
@@ -195,6 +218,7 @@ async function aggregateSalesManagerLeadCounts(branchId) {
     needsAttention: facetCount(row, 'needsAttention'),
     lost: facetCount(row, 'lost'),
     reactivated: facetCount(row, 'reactivated'),
+    returned: facetCount(row, 'returned'),
   };
 }
 
@@ -254,7 +278,12 @@ async function aggregateExecutiveLeadCounts(userId, branchId) {
         converted: [{ $match: { status: 'converted' } }, { $count: 'n' }],
         lost: [{ $match: { status: { $in: ['lost', 'booked_from_another_company'] } } }, { $count: 'n' }],
         reactivated: [
-          { $match: { 'reactivation.isReactivated': true, status: 'reactivated' } },
+          {
+            $match: {
+              'reactivation.isReactivated': true,
+              status: { $nin: ['lost', 'booked_from_another_company', 'converted'] },
+            },
+          },
           { $count: 'n' },
         ],
         urgent: [
@@ -315,7 +344,6 @@ async function buildExecutiveNavCounts(userId, { branchId } = {}) {
 
   const { leads, customers } = aggregated;
   leads.returned = returnedCount;
-  leads.all = (leads.all || 0) + returnedCount;
 
   return {
     leads,
@@ -390,12 +418,18 @@ async function aggregateTeamLeaderLeadCounts(squadFilter) {
     lost: facetCount(row, 'lost'),
     reactivated: facetCount(row, 'reactivated'),
     escalations: facetCount(row, 'escalations'),
+    returned: 0,
   };
 }
 
 async function buildTeamLeaderNavCounts(userId, { branchId } = {}) {
   const execIds = await getExecutiveIdsForLeader(userId);
-  const squadFilter = withBranch(execIds.length ? { assignedTo: { $in: execIds } } : { assignedTo: null }, branchId);
+  const squadFilter = withBranch(
+    execIds.length
+      ? { assignedTo: { $in: execIds }, isDeleted: { $ne: true } }
+      : { assignedTo: null, isDeleted: { $ne: true } },
+    branchId
+  );
   const aggregated = await aggregateTeamLeaderLeadCounts(squadFilter);
 
   const quoteBase = execIds.length
@@ -415,6 +449,7 @@ async function buildTeamLeaderNavCounts(userId, { branchId } = {}) {
     quotationsApproved,
     quotationsRejected,
     notificationsUnread,
+    returnedCount,
   ] = await Promise.all([
     countFollowUpsDue(squadFollowFilter, branchId),
     Quotation.countDocuments(withBranch({ ...quoteBase, status: 'pending_approval' }, branchId)),
@@ -422,10 +457,30 @@ async function buildTeamLeaderNavCounts(userId, { branchId } = {}) {
     Quotation.countDocuments(withBranch({ ...quoteBase, status: 'approved' }, branchId)),
     Quotation.countDocuments(withBranch({ ...quoteBase, status: 'rejected' }, branchId)),
     unreadNotifications(userId, branchId),
+    Lead.countDocuments(
+      withBranch(
+        {
+          isDeleted: { $ne: true },
+          assignedTo: null,
+          assignmentAcceptance: 'expired',
+          ...(execIds.length ? { acceptanceMissedBy: { $in: execIds } } : {}),
+        },
+        branchId
+      )
+    ),
   ]);
 
   return {
-    leads: { all: aggregated.all, lost: aggregated.lost, reactivated: aggregated.reactivated },
+    leads: {
+      all: aggregated.all,
+      statusNew: aggregated.statusNew,
+      hot: aggregated.hot,
+      inProgress: aggregated.inProgress,
+      needsAttention: aggregated.needsAttention,
+      lost: aggregated.lost,
+      reactivated: aggregated.reactivated,
+      returned: returnedCount,
+    },
     followups: { due: followUpsDue },
     escalations: aggregated.escalations,
     quotations: {

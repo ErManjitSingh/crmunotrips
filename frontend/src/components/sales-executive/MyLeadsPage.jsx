@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Plus, ChevronDown, AlertTriangle } from 'lucide-react';
+import { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Plus, ChevronDown, AlertTriangle, Undo2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import API from '../../api/axios';
@@ -34,7 +34,7 @@ import ConvertedLeadsTable from '../leads/ConvertedLeadsTable';
 import LostReasonSelect from '../leads/LostReasonSelect';
 import PostConvertCommercialModal from '../leads/PostConvertCommercialModal';
 
-const ICONS = { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users };
+const ICONS = { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Undo2 };
 
 const STATUSES = [
   'new',
@@ -246,17 +246,19 @@ export default function MyLeadsPage() {
     >
       <ExecutiveLeadKpiStrip />
 
-      {returnedLeads.length > 0 && (
+      {(filter === 'returned' || returnedLeads.length > 0) && (
         <div className="mb-3 flex flex-wrap items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
           <div className="min-w-0">
             <p className="text-sm font-bold">
-              {returnedLeads.length === 1
-                ? '1 lead was returned to the pool'
-                : `${returnedLeads.length} leads were returned to the pool`}
+              {filter === 'returned'
+                ? 'Leads you did not accept in time'
+                : returnedLeads.length === 1
+                  ? '1 lead was returned to the pool'
+                  : `${returnedLeads.length} leads were returned to the pool`}
             </p>
             <p className="mt-0.5 text-xs font-medium opacity-90">
-              These leads were assigned to you but not accepted within 2 minutes. They stay on this list with phone shown as{' '}
+              These leads went back to the unassigned pool because they were not accepted within 2 minutes. Phone is shown as{' '}
               <span className="font-bold tracking-widest">XXXX</span>.
             </p>
           </div>

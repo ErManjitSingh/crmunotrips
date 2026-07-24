@@ -1,6 +1,6 @@
 const Lead = require('../models/Lead');
 const { LEAD_LIST_SELECT } = require('../utils/leadQueryFields');
-const { buildLeadSearchFilter, LEAD_LIST_POPULATE, enrichLead } = require('../utils/queryHelpers');
+const { buildLeadSearchFilter, LEAD_LIST_POPULATE, enrichLead, startOfDay, endOfDay } = require('../utils/queryHelpers');
 const {
   parsePagination,
   parseSort,
@@ -10,6 +10,22 @@ const {
   DEEP_PAGE_THRESHOLD,
 } = require('../utils/pagination');
 const { withBranch } = require('../utils/branchScope');
+
+function parseLocalDayStart(dateStr) {
+  const parts = String(dateStr || '').split('-').map(Number);
+  if (parts.length === 3 && parts.every((n) => Number.isFinite(n))) {
+    return new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+  }
+  return startOfDay(new Date(dateStr));
+}
+
+function parseLocalDayEnd(dateStr) {
+  const parts = String(dateStr || '').split('-').map(Number);
+  if (parts.length === 3 && parts.every((n) => Number.isFinite(n))) {
+    return new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999);
+  }
+  return endOfDay(new Date(dateStr));
+}
 
 function buildLeadListFilter(query = {}) {
   const {
@@ -24,6 +40,7 @@ function buildLeadListFilter(query = {}) {
     budgetMax,
     dateFrom,
     dateTo,
+    todayOnly,
     reactivationStage,
     reactivatedOnly,
     executiveId,
@@ -53,6 +70,9 @@ function buildLeadListFilter(query = {}) {
   else if (listFilter === 'hot') {
     mongoFilter.isHot = true;
     mongoFilter.status = { $nin: ['converted', 'lost', 'booked_from_another_company'] };
+  } else if (listFilter === 'returned') {
+    mongoFilter.assignedTo = null;
+    mongoFilter.assignmentAcceptance = 'expired';
   }
   if (destination) mongoFilter.destination = destination;
   if (source) mongoFilter.source = source;
@@ -64,14 +84,12 @@ function buildLeadListFilter(query = {}) {
     if (budgetMax) mongoFilter.budget.$lte = Number(budgetMax);
   }
 
-  if (dateFrom || dateTo) {
+  if (todayOnly === true || todayOnly === 'true') {
+    mongoFilter.createdAt = { $gte: startOfDay(), $lte: endOfDay() };
+  } else if (dateFrom || dateTo) {
     mongoFilter.createdAt = {};
-    if (dateFrom) mongoFilter.createdAt.$gte = new Date(dateFrom);
-    if (dateTo) {
-      const end = new Date(dateTo);
-      end.setHours(23, 59, 59, 999);
-      mongoFilter.createdAt.$lte = end;
-    }
+    if (dateFrom) mongoFilter.createdAt.$gte = parseLocalDayStart(dateFrom);
+    if (dateTo) mongoFilter.createdAt.$lte = parseLocalDayEnd(dateTo);
   }
 
   if (travelMonth !== undefined && travelMonth !== '') {

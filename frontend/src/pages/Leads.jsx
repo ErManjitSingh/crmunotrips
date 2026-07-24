@@ -16,7 +16,6 @@ import LeadBulkActionsBar from '../components/leads/LeadBulkActionsBar';
 import LeadDataTable from '../components/leads/LeadDataTable';
 import LeadPreviewDrawer from '../components/leads/LeadPreviewDrawer';
 import { pageConfig, emptyFilters } from '../components/leads/constants';
-import { getTodayDateRange } from '../lib/todayDateRange';
 import { countActiveFilters } from '../components/leads/leadFilters';
 import { useLeadsQuery } from '../features/leads/hooks/useLeadsQuery';
 import { ALL_LEADS_PAGE_SIZE, LEADS_PAGE_SIZE } from '../components/ui/TablePagination';
@@ -89,9 +88,7 @@ export default function Leads() {
     else if (config.assignee === 'assigned') base.filter = 'assigned';
     else if (config.listFilter) base.filter = config.listFilter;
     if (config.todayOnly) {
-      const { dateFrom, dateTo } = getTodayDateRange();
-      base.dateFrom = dateFrom;
-      base.dateTo = dateTo;
+      base.todayOnly = true;
     }
     return base;
   }, [appliedFilters, config.status, config.assignee, config.todayOnly, config.listFilter]);

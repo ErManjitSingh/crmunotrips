@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, Inbox, UserCheck, Flame, XCircle, TrendingUp, Eye, UserPlus, RefreshCw } from 'lucide-react';
+import { Users, Inbox, UserCheck, Flame, XCircle, TrendingUp, Eye, UserPlus, RefreshCw, Undo2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '../ui/button';
 import AdminAssignLeadModal from '../leads/AdminAssignLeadModal';
@@ -35,6 +35,11 @@ import { ReactivationFlowSteps, ReactivationEmptyState } from '../leads/Reactiva
 
 const TITLES = {
   all: { title: 'All Team Leads', desc: 'Complete pipeline across your sales team', icon: Users },
+  returned: {
+    title: 'Returned Leads',
+    desc: 'Leads executives did not accept in time — back in the unassigned pool',
+    icon: Undo2,
+  },
   unassigned: { title: 'Unassigned Leads', desc: 'Leads waiting for executive assignment', icon: Inbox },
   assigned: { title: 'Assigned Leads', desc: 'Leads currently owned by executives', icon: UserCheck },
   hot: { title: 'Hot Leads', desc: 'High budget, urgent travel, and repeat customers', icon: Flame },

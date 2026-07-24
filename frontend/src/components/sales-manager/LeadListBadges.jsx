@@ -289,6 +289,12 @@ export const FILTER_THEMES = {
     header: 'from-brand-600/10 via-violet-600/8 to-indigo-600/10',
     icon: 'text-brand-600',
   },
+  returned: {
+    gradient: 'from-amber-500/25 via-orange-500/15 to-rose-500/15',
+    border: 'border-amber-500/30',
+    header: 'from-amber-500/12 via-orange-500/8 to-rose-500/10',
+    icon: 'text-amber-600',
+  },
   unassigned: {
     gradient: 'from-amber-500/25 via-orange-500/15 to-yellow-500/20',
     border: 'border-amber-500/30',

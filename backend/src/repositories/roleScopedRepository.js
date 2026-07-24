@@ -60,7 +60,10 @@ function buildManagerLeadFilter(query = {}) {
     applyReactivationQueryFilters(mongoFilter, query);
   } else if (filter === 'hot') {
     mongoFilter.isHot = true;
-    mongoFilter.status = { $nin: ['lost', 'booked_from_another_company'] };
+    mongoFilter.status = { $nin: ['converted', 'lost', 'booked_from_another_company'] };
+  } else if (filter === 'returned') {
+    mongoFilter.assignedTo = null;
+    mongoFilter.assignmentAcceptance = 'expired';
   } else if (!filter || filter === 'all') {
     if (status) mongoFilter.status = status;
     if (destination) mongoFilter.destination = destination;
@@ -84,6 +87,12 @@ function buildExecutiveLeadFilter(filterKey) {
     };
   }
   if (filterKey === 'hot') return { isHot: true };
+  if (filterKey === 'returned') {
+    return {
+      assignmentAcceptance: 'expired',
+      assignedTo: null,
+    };
+  }
   return {};
 }
 
@@ -154,6 +163,35 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
 
   const searchPart = buildLeadSearchFilter(query.search);
   const statusExtras = buildExecutiveLeadFilter(filterKey);
+
+  // Dedicated Returned Leads view — leads this exec did not accept in time
+  if (filterKey === 'returned') {
+    const returnedFilter = withActiveLead({
+      acceptanceMissedBy: userId,
+      ...statusExtras,
+      ...searchPart,
+    });
+    Object.assign(returnedFilter, withBranch({}, options.branchId));
+    const needsTotal = page <= DEEP_PAGE_THRESHOLD;
+    const [rows, total] = await Promise.all([
+      Lead.find(returnedFilter)
+        .select(LEAD_LIST_SELECT)
+        .populate(LEAD_LIST_POPULATE)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      needsTotal ? Lead.countDocuments(returnedFilter) : Promise.resolve(null),
+    ]);
+    const enriched = rows.map((row) => maskReturnedLeadForExecutive(enrichLead(row), userId));
+    return paginatedResponse(enriched, {
+      page,
+      limit,
+      total,
+      hasMore: rows.length === limit,
+    });
+  }
+
   const owned = withActiveLead({
     assignedTo: userId,
     ...statusExtras,
@@ -173,26 +211,7 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
     else if (query.priority) owned.priority = query.priority;
   }
 
-  // Show leads this exec missed accepting (returned to pool) — phone masked in response
-  const includeReturned = !['converted', 'lost', 'contacted', 'follow-up', 'hot', 'reactivated'].includes(
-    filterKey
-  );
-  let filter = owned;
-  if (includeReturned) {
-    const returned = withActiveLead({
-      acceptanceMissedBy: userId,
-      assignmentAcceptance: 'expired',
-      assignedTo: null,
-      ...searchPart,
-    });
-    Object.assign(returned, withBranch({}, options.branchId));
-    if (filterKey === 'new') {
-      // Keep "Today Lead" focused on owned new + any returned today/recent
-      filter = { $or: [owned, returned] };
-    } else {
-      filter = { $or: [owned, returned] };
-    }
-  }
+  const filter = owned;
 
   const needsTotal = page <= DEEP_PAGE_THRESHOLD;
   const [rows, total] = await Promise.all([
@@ -231,6 +250,13 @@ async function findTeamLeaderLeadsPaginated(squadFilter, query = {}, options = {
   if (query.filter === 'lost') extra.status = { $in: ['lost', 'booked_from_another_company'] };
   if (query.filter === 'assigned') extra.assignedTo = { $ne: null };
   if (query.filter === 'unassigned') extra.assignedTo = null;
+  if (query.filter === 'returned') {
+    extra.assignedTo = null;
+    extra.assignmentAcceptance = 'expired';
+    if (squadFilter?.assignedTo?.$in) {
+      extra.acceptanceMissedBy = { $in: squadFilter.assignedTo.$in };
+    }
+  }
   if (query.filter === 'hot') {
     extra.$or = [{ isHot: true }, { leadScore: 'hot' }];
     extra.status = { $nin: ['converted', 'lost', 'booked_from_another_company'] };

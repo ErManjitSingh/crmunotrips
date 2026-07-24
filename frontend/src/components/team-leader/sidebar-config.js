@@ -16,6 +16,7 @@ import {
   XOctagon,
   XCircle,
   Mail,
+  Undo2,
 } from 'lucide-react';
 
 export const teamLeaderNavItems = [
@@ -26,6 +27,7 @@ export const teamLeaderNavItems = [
     icon: Users,
     children: [
       { path: '/team-leader/leads', label: 'Team Leads', icon: Users, countKey: 'leads.all' },
+      { path: '/team-leader/leads/returned', label: 'Returned Leads', icon: Undo2, badgeKey: 'leads.returned' },
       { path: '/team-leader/leads/lost', label: 'Lost Leads', icon: XCircle, countKey: 'leads.lost' },
       { path: '/team-leader/reactivated-leads', label: 'Reactivated Leads', icon: RefreshCw, countKey: 'leads.reactivated' },
     ],

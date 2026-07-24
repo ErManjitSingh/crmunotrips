@@ -2,6 +2,11 @@ export { formatBudget, formatCurrency, STATUS_STYLES } from '../sales-manager/ma
 
 export const LEAD_FILTERS = {
   all: { title: 'All Leads', desc: 'Complete pipeline — every lead assigned to you', icon: 'Users' },
+  returned: {
+    title: 'Returned Leads',
+    desc: 'Leads you did not accept in time — returned to the pool (contact masked)',
+    icon: 'Undo2',
+  },
   new: { title: 'Today Lead', desc: 'Fresh inquiries assigned to you — act fast', icon: 'Sparkles' },
   contacted: { title: 'Contacted Leads', desc: 'Leads you have reached out to', icon: 'Phone' },
   'follow-up': { title: 'Follow-up Leads', desc: 'Active pipeline requiring nurturing', icon: 'CalendarClock' },
@@ -20,6 +25,11 @@ export const EXEC_FILTER_THEMES = {
     gradient: 'from-brand-500/25 via-sky-500/15 to-cyan-500/20',
     border: 'border-sky-500/30',
     icon: 'text-sky-600',
+  },
+  returned: {
+    gradient: 'from-amber-500/25 via-orange-500/15 to-rose-500/15',
+    border: 'border-amber-500/30',
+    icon: 'text-amber-600',
   },
   new: {
     gradient: 'from-sky-500/25 via-cyan-500/15 to-blue-500/20',

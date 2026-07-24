@@ -15,6 +15,7 @@ import {
   Timer,
   Shield,
   Archive,
+  Undo2,
 } from 'lucide-react';
 
 const leadPerm = { module: 'leads', action: 'view' };
@@ -28,7 +29,20 @@ export const leadManagementSections = [
     label: 'Leads',
     defaultOpen: true,
     items: [
-      { path: '/leads', label: 'All Leads', icon: Users, permission: leadPerm },
+      {
+        path: '/leads',
+        label: 'All Leads',
+        icon: Users,
+        permission: leadPerm,
+        countKey: 'leads.all',
+      },
+      {
+        path: '/leads/returned',
+        label: 'Returned Leads',
+        icon: Undo2,
+        badgeKey: 'leads.returned',
+        permission: leadPerm,
+      },
       {
         path: '/leads/inbox/new',
         label: 'New Leads',
@@ -55,6 +69,7 @@ export const leadManagementSections = [
         path: '/leads/assigned',
         label: 'Assigned Leads',
         icon: UserCheck,
+        countKey: 'leads.assigned',
         permission: leadPerm,
       },
     ],

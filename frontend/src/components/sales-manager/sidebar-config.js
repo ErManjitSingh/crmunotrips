@@ -21,6 +21,7 @@ import {
   MapPin,
   Award,
   Mail,
+  Undo2,
 } from 'lucide-react';
 
 export const salesManagerNavItems = [
@@ -31,6 +32,7 @@ export const salesManagerNavItems = [
     icon: Users,
     children: [
       { path: '/sales-manager/leads/all', label: 'All Team Leads', icon: Users, countKey: 'leads.all' },
+      { path: '/sales-manager/leads/returned', label: 'Returned Leads', icon: Undo2, badgeKey: 'leads.returned' },
       { path: '/sales-manager/leads/unassigned', label: 'Unassigned Leads', icon: Inbox, badgeKey: 'leads.unassigned' },
       { path: '/sales-manager/leads/assigned', label: 'Assigned Leads', icon: UserCheck, countKey: 'leads.assigned' },
       { path: '/sales-manager/leads/hot', label: 'Hot Leads', icon: Flame, badgeKey: 'leads.hot' },

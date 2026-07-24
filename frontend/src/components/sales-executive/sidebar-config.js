@@ -13,6 +13,7 @@ import {
   Calendar,
   RefreshCw,
   Mail,
+  Undo2,
 } from 'lucide-react';
 
 export const salesExecutiveNavItems = [
@@ -24,6 +25,7 @@ export const salesExecutiveNavItems = [
     children: [
       { path: '/sales-executive/leads/new', label: 'Today Lead', icon: Sparkles, badgeKey: 'leads.new' },
       { path: '/sales-executive/leads/all', label: 'All Leads', icon: List, countKey: 'leads.all' },
+      { path: '/sales-executive/leads/returned', label: 'Returned Leads', icon: Undo2, badgeKey: 'leads.returned' },
       { path: '/sales-executive/leads/contacted', label: 'Contacted Leads', icon: Phone, countKey: 'leads.contacted' },
       { path: '/sales-executive/leads/follow-up', label: 'Follow-up Leads', icon: CalendarClock, countKey: 'leads.followUp' },
       { path: '/sales-executive/leads/hot', label: 'Hot Leads', icon: Flame, badgeKey: 'leads.hot' },

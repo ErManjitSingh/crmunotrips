@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
-import { Search, Users, MoreHorizontal, Eye, MessageSquare, AlertTriangle, UserPlus, RefreshCw, XCircle, Flame } from 'lucide-react';
+import { Search, Users, MoreHorizontal, Eye, MessageSquare, AlertTriangle, UserPlus, RefreshCw, XCircle, Flame, Undo2 } from 'lucide-react';
 import { createColumnHelper } from '@tanstack/react-table';
 import API from '../../api/axios';
 import { useRoleLeadsQuery } from '../../hooks/useRoleLeadsQuery';
@@ -50,6 +50,11 @@ export function ActionModal({ open, title, onClose, children }) {
 
 const FILTER_META = {
   all: { title: 'Team Leads', desc: 'Leads assigned to your squad — coach and convert', icon: Users },
+  returned: {
+    title: 'Returned Leads',
+    desc: 'Leads your executives did not accept in time — back in the pool',
+    icon: Undo2,
+  },
   lost: { title: 'Lost Leads', desc: 'Closed-lost opportunities from your team', icon: XCircle },
   reactivated: { title: 'Reactivated Leads', desc: 'Leads brought back into the pipeline', icon: RefreshCw },
   hot: { title: 'Hot Leads', desc: 'High-value or urgent squad leads', icon: Flame },
