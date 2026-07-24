@@ -252,12 +252,12 @@ export default function MyLeadsPage() {
           <div className="min-w-0">
             <p className="text-sm font-bold">
               {returnedLeads.length === 1
-                ? 'Aapki 1 lead vapas chali gayi hai'
-                : `Aapki ${returnedLeads.length} leads vapas chali gayi hain`}
+                ? '1 lead was returned to the pool'
+                : `${returnedLeads.length} leads were returned to the pool`}
             </p>
             <p className="mt-0.5 text-xs font-medium opacity-90">
-              Jo lead aapko assign hui thi aur 2 minute mein accept nahi ki — ab list mein dikh rahi hai, phone number{' '}
-              <span className="font-bold tracking-widest">XXXX</span> hai.
+              These leads were assigned to you but not accepted within 2 minutes. They stay on this list with phone shown as{' '}
+              <span className="font-bold tracking-widest">XXXX</span>.
             </p>
           </div>
         </div>

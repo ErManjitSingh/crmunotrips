@@ -518,7 +518,7 @@ async function notifyLeadAcceptMissed({ lead, executiveId, executiveName }) {
     branchId: lead?.branchId || null,
     type: T.LEAD_ACCEPT_MISSED,
     title: 'Lead returned to pool',
-    message: `Aapne "${name}" 2 minute mein accept nahi ki — lead vapas unassigned pool mein chali gayi`,
+    message: `"${name}" was not accepted within 2 minutes — the lead was returned to the unassigned pool`,
     meta: {
       leadId: lead?._id,
       href: '/sales-executive/leads/all',

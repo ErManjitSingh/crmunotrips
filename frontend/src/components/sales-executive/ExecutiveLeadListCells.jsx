@@ -99,7 +99,7 @@ export function ExecCustomerCell({ lead }) {
       <CustomerCell name={lead?.name || 'Unknown'} lead={lead} />
       {returned && (
         <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-amber-700 pl-10">
-          Lead vapas — accept nahi kiya
+          Lead returned — not accepted
         </p>
       )}
     </>
