@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import store from '../store';
 import { LIST_STALE_MS, GC_TIME_MS } from '../lib/queryConfig';
 import { registerQueryClient } from '../lib/mutationCacheSync';
+import { TooltipProvider } from '../components/ui/tooltip';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,7 +25,9 @@ export default function AppProviders({ children }) {
 
   return (
     <Provider store={store}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider delayDuration={150}>{children}</TooltipProvider>
+      </QueryClientProvider>
     </Provider>
   );
 }
