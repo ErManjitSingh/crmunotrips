@@ -63,8 +63,8 @@ export default function LeadCustomerPanel({ lead }) {
         <InfoRow label="Tour Days" value={lead.tourDays || '—'} />
         <InfoRow label="Rooms" value={lead.numberOfRooms || '—'} />
         <InfoRow label="Rooms with Mattress" value={lead.roomsWithMattress ?? 0} />
-        <InfoRow label="Pickup" value={lead.pickupPoint || '—'} />
-        <InfoRow label="Drop" value={lead.dropPoint || '—'} />
+        <InfoRow label="Pickup city / point" value={lead.pickupPoint || '—'} />
+        <InfoRow label="Drop city / point" value={lead.dropPoint || '—'} />
         <InfoRow
           label="Cab"
           value={String(lead.cabType || lead.transportRequirement || '—').replace(/_/g, ' ')}

@@ -37,7 +37,7 @@ const QUOTE_QUALIFICATION_FIELDS = [
   { key: 'hotelCategory', label: 'Hotel Category' },
   { key: 'budget', label: 'Budget', min: 1 },
   { key: 'transportRequirement', label: 'Transportation', altKeys: ['cabType'] },
-  { key: 'pickupPoint', label: 'Pickup City' },
+  { key: 'pickupPoint', label: 'Pickup City / State' },
   { key: 'specialRequirements', label: 'Special Requirements' },
 ];
 

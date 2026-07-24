@@ -26,6 +26,8 @@ import { bulkUpdateLeadStatus, bulkExportLeads } from '../services/leadEnterpris
 import { invalidateLeadLists } from '../lib/queryInvalidation';
 import MobileLeadList from '../components/leads/MobileLeadList';
 import ConvertedLeadsTable from '../components/leads/ConvertedLeadsTable';
+import { useSidebarCounts } from '../hooks/useSidebarCounts';
+import { resolveListTotal } from '../lib/resolveListTotal';
 
 export default function Leads() {
   const location = useLocation();
@@ -138,9 +140,17 @@ export default function Leads() {
     }
   }, [tableQuery.data?.nextCursor, pagination.pageIndex]);
 
+  const navCounts = useSidebarCounts();
   const tableLeads = tableQuery.data?.data ?? [];
-  const totalLeads = tableQuery.data?.pagination?.total;
   const hasMoreLeads = tableQuery.data?.hasMore ?? false;
+  const totalLeads = resolveListTotal({
+    apiTotal: tableQuery.data?.pagination?.total,
+    rowCount: tableLeads.length,
+    pageIndex: pagination.pageIndex,
+    pageSize: pagination.pageSize,
+    hasMore: hasMoreLeads,
+    fallbackTotal: isAllLeadsPage ? navCounts?.leads?.all : undefined,
+  });
   const loading = tableQuery.isLoading && !tableQuery.data;
 
   const selectedCount = Object.keys(rowSelection).filter((k) => rowSelection[k]).length;

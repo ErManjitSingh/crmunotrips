@@ -13,7 +13,7 @@ import { useSelector } from 'react-redux';
 import WizardField, { WizardInput, IconInput, IconSelect, WizardTextarea } from '../WizardField';
 import {
   INDIAN_STATES, DESTINATIONS, LEAD_TYPES, LEAD_SOURCES, PRIORITIES, BUDGET_RANGE_OPTIONS,
-  HOTEL_CATEGORY_OPTIONS, CAB_TYPE_OPTIONS, PICKUP_DROP_POINTS, INTENT_LABEL,
+  HOTEL_CATEGORY_OPTIONS, CAB_TYPE_OPTIONS, filterPickupDropSuggestions, INTENT_LABEL,
   getLeadSourcesForRole, defaultLeadSourceForRole,
 } from '../constants';
 import { calcTourDays } from '../leadWizardUtils';
@@ -125,17 +125,15 @@ export default function StepLeadForm({ isEdit, leadId }) {
   const pickupPoint = watch('pickupPoint') || '';
   const dropPoint = watch('dropPoint') || '';
 
-  const filteredPickup = useMemo(() => {
-    const q = pickupPoint.trim().toLowerCase();
-    if (!q) return PICKUP_DROP_POINTS.slice(0, 12);
-    return PICKUP_DROP_POINTS.filter((p) => p.toLowerCase().includes(q)).slice(0, 12);
-  }, [pickupPoint]);
+  const filteredPickup = useMemo(
+    () => filterPickupDropSuggestions(pickupPoint, 12),
+    [pickupPoint]
+  );
 
-  const filteredDrop = useMemo(() => {
-    const q = dropPoint.trim().toLowerCase();
-    if (!q) return PICKUP_DROP_POINTS.slice(0, 12);
-    return PICKUP_DROP_POINTS.filter((p) => p.toLowerCase().includes(q)).slice(0, 12);
-  }, [dropPoint]);
+  const filteredDrop = useMemo(
+    () => filterPickupDropSuggestions(dropPoint, 12),
+    [dropPoint]
+  );
 
   useEffect(() => {
     const days = calcTourDays(travelDate, returnDate);
@@ -512,14 +510,15 @@ export default function StepLeadForm({ isEdit, leadId }) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <WizardField label="Pickup point">
+            <WizardField label="Pickup city / point" hint="City, state, airport, or any location">
               <div className="relative">
                 <IconInput
                   icon={MapPin}
                   {...register('pickupPoint')}
                   onFocus={() => setPickupOpen(true)}
                   onBlur={() => setTimeout(() => setPickupOpen(false), 150)}
-                  placeholder="Search pickup location…"
+                  placeholder="e.g. Chandigarh, Himachal Pradesh, Delhi Airport…"
+                  autoComplete="off"
                 />
                 {pickupOpen && filteredPickup.length > 0 && (
                   <div className="absolute z-20 w-full mt-1 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden max-h-40 overflow-y-auto">
@@ -540,14 +539,15 @@ export default function StepLeadForm({ isEdit, leadId }) {
                 )}
               </div>
             </WizardField>
-            <WizardField label="Drop point">
+            <WizardField label="Drop city / point" hint="City, state, airport, or any location">
               <div className="relative">
                 <IconInput
                   icon={MapPin}
                   {...register('dropPoint')}
                   onFocus={() => setDropOpen(true)}
                   onBlur={() => setTimeout(() => setDropOpen(false), 150)}
-                  placeholder="Search drop location…"
+                  placeholder="e.g. Manali, Shimla, Same as pickup…"
+                  autoComplete="off"
                 />
                 {dropOpen && filteredDrop.length > 0 && (
                   <div className="absolute z-20 w-full mt-1 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden max-h-40 overflow-y-auto">

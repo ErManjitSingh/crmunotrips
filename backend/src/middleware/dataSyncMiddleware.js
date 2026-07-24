@@ -32,8 +32,13 @@ function dataSyncMiddleware(req, res, next) {
     const keys = resolveDataKeys(req);
     if (!keys?.length) return;
 
-    if (keys.some((k) => ['leads', 'followups', 'quotations', 'dashboard', 'payments'].includes(k))) {
+    if (keys.some((k) => ['leads', 'followups', 'quotations', 'dashboard', 'payments', 'nav-counts'].includes(k))) {
       scheduleUserCacheInvalidation(req.user?._id, req.user?.role, req.branchId);
+      // Lead mutations affect every role's badges — clear shared nav/KPI caches
+      if (keys.includes('leads') || keys.includes('nav-counts')) {
+        invalidateDashboardCache('nav:');
+        invalidateDashboardCache('lead-list-kpis');
+      }
     }
 
     if (keys.includes('emails')) {

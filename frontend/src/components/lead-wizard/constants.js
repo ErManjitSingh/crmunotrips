@@ -87,6 +87,29 @@ export const PICKUP_DROP_POINTS = [
   'Same as pickup',
 ];
 
+/** Major cities — valid free-text pickup / drop values */
+export const PICKUP_DROP_CITIES = [
+  'Delhi', 'New Delhi', 'Noida', 'Gurgaon', 'Gurugram', 'Faridabad', 'Ghaziabad',
+  'Mumbai', 'Navi Mumbai', 'Thane', 'Pune', 'Nagpur', 'Nashik',
+  'Bengaluru', 'Bangalore', 'Mysuru', 'Mangaluru',
+  'Hyderabad', 'Secunderabad', 'Warangal',
+  'Chennai', 'Coimbatore', 'Madurai',
+  'Kolkata', 'Howrah', 'Siliguri',
+  'Ahmedabad', 'Surat', 'Vadodara', 'Rajkot',
+  'Jaipur', 'Udaipur', 'Jodhpur', 'Ajmer',
+  'Chandigarh', 'Mohali', 'Panchkula',
+  'Lucknow', 'Kanpur', 'Varanasi', 'Agra', 'Prayagraj',
+  'Indore', 'Bhopal', 'Gwalior',
+  'Kochi', 'Thiruvananthapuram', 'Kozhikode',
+  'Goa', 'Panaji', 'Margao',
+  'Srinagar', 'Jammu', 'Leh',
+  'Shimla', 'Manali', 'Dharamshala', 'Kullu', 'Solan',
+  'Dehradun', 'Rishikesh', 'Haridwar', 'Mussoorie', 'Nainital',
+  'Amritsar', 'Ludhiana', 'Jalandhar',
+  'Patna', 'Ranchi', 'Bhubaneswar', 'Guwahati',
+  'Visakhapatnam', 'Vijayawada', 'Tirupati',
+];
+
 export const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat',
   'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh',
@@ -94,6 +117,26 @@ export const INDIAN_STATES = [
   'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh',
   'Uttarakhand', 'West Bengal', 'Delhi', 'Jammu & Kashmir', 'Ladakh',
 ];
+
+/** Combined suggestions for pickup/drop autocomplete (airports + cities + states) */
+export const PICKUP_DROP_SUGGESTIONS = Array.from(
+  new Set([...PICKUP_DROP_POINTS, ...PICKUP_DROP_CITIES, ...INDIAN_STATES])
+);
+
+export function filterPickupDropSuggestions(query, limit = 12) {
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) {
+    return [...PICKUP_DROP_CITIES.slice(0, 8), ...INDIAN_STATES.slice(0, 4)];
+  }
+  const starts = [];
+  const includes = [];
+  for (const item of PICKUP_DROP_SUGGESTIONS) {
+    const lower = item.toLowerCase();
+    if (lower.startsWith(q)) starts.push(item);
+    else if (lower.includes(q)) includes.push(item);
+  }
+  return [...starts, ...includes].slice(0, limit);
+}
 
 export const LEAD_TYPES = [
   { value: 'fit', label: 'FIT', description: 'Individual / family' },

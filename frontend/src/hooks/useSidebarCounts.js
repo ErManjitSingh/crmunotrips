@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import { useAuth } from '../context/AuthContext';
 import API from '../api/axios';
-import { NAV_COUNTS_STALE_MS, GC_TIME_MS } from '../lib/queryConfig';
+import { NAV_COUNTS_STALE_MS, NAV_COUNTS_REFETCH_MS, GC_TIME_MS } from '../lib/queryConfig';
 import { invalidateNavCounts } from '../lib/queryInvalidation';
 
 export function useSidebarCounts(enabled = true) {
@@ -17,6 +17,7 @@ export function useSidebarCounts(enabled = true) {
     queryKey: ['nav-counts', String(userId || ''), user?.role, selectedBranchId || 'all'],
     queryFn: async () => {
       const { data } = await API.get('/nav-counts', {
+        params: { fresh: 1 },
         skipSuccessToast: true,
         skipErrorToast: true,
       });
@@ -25,10 +26,11 @@ export function useSidebarCounts(enabled = true) {
     enabled: enabled && !!userId,
     staleTime: NAV_COUNTS_STALE_MS,
     gcTime: GC_TIME_MS,
-    placeholderData: (prev) => prev,
+    refetchInterval: NAV_COUNTS_REFETCH_MS,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     retry: 1,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
   });
 
   const refresh = useCallback(() => {
@@ -39,11 +41,16 @@ export function useSidebarCounts(enabled = true) {
     if (!enabled || !userId) return undefined;
     const onUnread = () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => refresh(), 3000);
+      debounceRef.current = setTimeout(() => refresh(), 1500);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
     };
     window.addEventListener('notifications:unread', onUnread);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       window.removeEventListener('notifications:unread', onUnread);
+      document.removeEventListener('visibilitychange', onVisible);
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [enabled, userId, refresh]);

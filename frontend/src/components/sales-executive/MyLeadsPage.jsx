@@ -33,6 +33,8 @@ import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/foll
 import ConvertedLeadsTable from '../leads/ConvertedLeadsTable';
 import LostReasonSelect from '../leads/LostReasonSelect';
 import PostConvertCommercialModal from '../leads/PostConvertCommercialModal';
+import { useSidebarCounts } from '../../hooks/useSidebarCounts';
+import { resolveListTotal } from '../../lib/resolveListTotal';
 
 const ICONS = { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Undo2 };
 
@@ -84,8 +86,17 @@ export default function MyLeadsPage() {
     limit: pagination.pageSize,
   });
 
+  const navCounts = useSidebarCounts();
   const leads = data?.data ?? [];
-  const total = data?.pagination?.total ?? 0;
+  const hasMore = data?.hasMore ?? false;
+  const total = resolveListTotal({
+    apiTotal: data?.pagination?.total,
+    rowCount: leads.length,
+    pageIndex: pagination.pageIndex,
+    pageSize: pagination.pageSize,
+    hasMore,
+    fallbackTotal: isAllView ? navCounts?.leads?.all : navCounts?.leads?.[filter === 'follow-up' ? 'followUp' : filter],
+  }) ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pagination.pageSize) || 1);
   const returnedLeads = leads.filter((l) => l.returnedToPool || l.contactMasked);
 

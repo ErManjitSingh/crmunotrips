@@ -1,7 +1,7 @@
 const cacheService = require('./cacheService');
 
-const DEFAULT_TTL_MS = 120 * 1000;
-const NAV_COUNTS_TTL_MS = 120 * 1000;
+const DEFAULT_TTL_MS = 60 * 1000;
+const NAV_COUNTS_TTL_MS = 15 * 1000;
 
 function wantsFreshData(req) {
   const value = req?.query?.fresh;

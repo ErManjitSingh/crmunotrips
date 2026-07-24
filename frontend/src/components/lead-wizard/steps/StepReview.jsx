@@ -68,8 +68,8 @@ export default function StepReview({ data }) {
         <Row label="Tour days" value={v.tourDays} />
         <Row label="Rooms" value={v.numberOfRooms} />
         <Row label="Rooms with mattress" value={v.roomsWithMattress} />
-        <Row label="Pickup" value={v.pickupPoint} />
-        <Row label="Drop" value={v.dropPoint} />
+        <Row label="Pickup city / point" value={v.pickupPoint} />
+        <Row label="Drop city / point" value={v.dropPoint} />
         <Row label="Cab" value={cabLabel} />
         <Row label="Travelers" value={`${v.adults}A · ${v.children}C · ${v.infants}I`} />
         <Row label="Hotel" value={hotelLabel} />
