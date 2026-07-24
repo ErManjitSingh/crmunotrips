@@ -7,7 +7,15 @@ import { Button } from '../ui/button';
 import AppDrawer from '../ui/AppDrawer';
 import { formatLastLogin } from './constants';
 
-export default function UserDetailDrawer({ user, open, onClose, onEdit }) {
+export default function UserDetailDrawer({
+  user,
+  open,
+  onClose,
+  onEdit,
+  onToggleStatus,
+  currentUserId,
+  togglingUserId,
+}) {
   const navigate = useNavigate();
 
   return (
