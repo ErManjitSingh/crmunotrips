@@ -348,5 +348,6 @@ export default function ConvertedLeadsTable({
         </div>
       )}
     </div>
+    </TooltipProvider>
   );
 }
