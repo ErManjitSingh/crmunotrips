@@ -137,7 +137,7 @@ const leadSchema = new mongoose.Schema(
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     assignedAt: { type: Date, index: true },
     executiveLastViewedAt: { type: Date },
-    /** SOP: accept within 2 minutes or auto-reassign */
+    /** SOP: accept within 2 minutes or return to unassigned pool */
     assignmentAcceptance: {
       type: String,
       enum: ['pending', 'accepted', 'expired', 'not_required'],
@@ -146,6 +146,10 @@ const leadSchema = new mongoose.Schema(
     },
     assignmentAcceptBy: { type: Date, index: true },
     acceptedAt: { type: Date },
+    /** Who missed the 2-min accept window (lead returned to pool) */
+    acceptanceMissedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    acceptanceMissedName: { type: String, trim: true, default: '' },
+    acceptanceMissedAt: { type: Date },
     assignmentHistoryIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     /** Computed first-call deadline (hot/warm/night) */
     firstContactDeadline: { type: Date, index: true },

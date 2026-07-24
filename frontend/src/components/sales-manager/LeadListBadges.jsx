@@ -174,7 +174,18 @@ export function CustomerCell({ name, lead, showPhone = false }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           <p className="font-semibold text-sm text-content-primary truncate">{name}</p>
-          {isRepeated ? (
+          {lead?.assignmentAcceptance === 'expired' ? (
+            <span
+              className="shrink-0 px-1.5 py-0.5 rounded-md bg-amber-100 text-[10px] font-bold text-amber-800"
+              title={
+                lead.acceptanceMissedName
+                  ? `${lead.acceptanceMissedName} did not accept within 2 minutes`
+                  : 'Lead was not accepted within 2 minutes'
+              }
+            >
+              Not accepted
+            </span>
+          ) : isRepeated ? (
             <RepeatedLeadBadge size="sm" />
           ) : (
             <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[#5D5FEF]/10 text-[10px] font-semibold text-[#5D5FEF]">
@@ -182,6 +193,16 @@ export function CustomerCell({ name, lead, showPhone = false }) {
             </span>
           )}
         </div>
+        {lead?.assignmentAcceptance === 'expired' && lead?.acceptanceMissedName && (
+          <p className="mt-0.5 text-[10px] font-medium text-amber-700 truncate">
+            {lead.acceptanceMissedName} did not accept · Reassign
+          </p>
+        )}
+        {lead?.assignmentAcceptance === 'pending' && (
+          <p className="mt-0.5 text-[10px] font-semibold text-emerald-700 truncate">
+            Awaiting accept (2 min)
+          </p>
+        )}
         {arrived && (
           <p
             className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500 leading-tight"

@@ -3,13 +3,7 @@ const User = require('../models/User');
 const ApiError = require('../utils/apiError');
 const { LEAD_ACCEPT_MINUTES } = require('../constants/salesSop');
 const { computeFirstContactDeadline } = require('./salesSopService');
-const {
-  filterEligibleExecutives,
-  pickExecutive,
-} = require('./assignmentCoreService');
-const { stampPendingAcceptance } = require('./leadExecutiveStallService');
 const { logLeadActivity } = require('./leadActivityService');
-const { notifyLeadAssigned, notifyLeadReassigned } = require('./notificationService');
 const { invalidateExecutiveLeadIdsCache } = require('./executiveScopeService');
 
 async function acceptAssignedLead({ leadId, executiveId, branchId }) {
@@ -26,15 +20,19 @@ async function acceptAssignedLead({ leadId, executiveId, branchId }) {
   }
 
   if (lead.assignmentAcceptance === 'expired') {
-    throw new ApiError(409, 'Accept window expired — lead was reassigned');
+    throw new ApiError(409, 'Accept window expired — lead returned to pool');
   }
 
   if (lead.assignmentAcceptBy && new Date(lead.assignmentAcceptBy).getTime() < Date.now()) {
-    throw new ApiError(409, 'Accept window expired — lead will be reassigned');
+    await releaseExpiredLead(lead);
+    throw new ApiError(409, 'Accept window expired — lead returned to pool');
   }
 
   lead.assignmentAcceptance = 'accepted';
   lead.acceptedAt = new Date();
+  lead.acceptanceMissedBy = null;
+  lead.acceptanceMissedName = '';
+  lead.acceptanceMissedAt = null;
   if (!lead.firstContactDeadline) {
     lead.firstContactDeadline = computeFirstContactDeadline(lead);
   }
@@ -52,98 +50,52 @@ async function acceptAssignedLead({ leadId, executiveId, branchId }) {
   return lead;
 }
 
-async function findReassignTarget(lead, excludeUserId) {
-  const branchId = lead.branchId || null;
-  const filter = {
-    role: 'sales_executive',
-    status: 'active',
-    ...(branchId ? { branchId } : {}),
-    ...(excludeUserId ? { _id: { $ne: excludeUserId } } : {}),
-  };
-  if (lead.teamId) filter.teamId = lead.teamId;
-
-  let executives = await User.find(filter).select('name email role teamId').lean();
-  if (!executives.length && lead.teamId) {
-    executives = await User.find({
-      role: 'sales_executive',
-      status: 'active',
-      ...(branchId ? { branchId } : {}),
-      ...(excludeUserId ? { _id: { $ne: excludeUserId } } : {}),
-    })
-      .select('name email role teamId')
-      .lean();
-  }
-
-  const eligible = await filterEligibleExecutives(executives, branchId);
-  const pool = eligible.length ? eligible : executives;
-  if (!pool.length) return null;
-
-  const picked = await pickExecutive(pool, {
-    branchId,
-    poolKey: 'accept_timeout_reassign',
-    destinationId: lead.destination || 'any',
-  });
-  return picked?.executive || null;
-}
-
-async function reassignExpiredLead(lead) {
+/**
+ * Accept SLA missed → return lead to unassigned pool (vapas) with "not accepted" marker.
+ */
+async function releaseExpiredLead(lead) {
   const previousId = lead.assignedTo;
-  const next = await findReassignTarget(lead, previousId);
-  if (!next) {
-    lead.assignmentAcceptance = 'expired';
-    await lead.save();
-    await logLeadActivity({
-      leadId: lead._id,
-      branchId: lead.branchId,
-      type: 'lead_accept_expired',
-      description: `Accept SLA missed (${LEAD_ACCEPT_MINUTES} min) — no alternate executive available`,
-      actor: { name: 'System' },
-      meta: { previousAssigneeId: previousId },
-    });
-    return { lead, reassigned: false };
+  let previousName = '';
+  if (previousId) {
+    const prev = await User.findById(previousId).select('name').lean();
+    previousName = prev?.name || '';
   }
 
   const prevIds = Array.isArray(lead.assignmentHistoryIds) ? [...lead.assignmentHistoryIds] : [];
   if (previousId) prevIds.push(previousId);
   lead.assignmentHistoryIds = prevIds.slice(-20);
 
-  stampPendingAcceptance(lead, lead);
-  lead.assignedTo = next._id;
-  lead.assigneeRole = 'sales_executive';
-  if (next.teamId) lead.teamId = next.teamId;
+  lead.assignmentAcceptance = 'expired';
+  lead.assignmentAcceptBy = null;
+  lead.acceptedAt = null;
+  lead.acceptanceMissedBy = previousId || null;
+  lead.acceptanceMissedName = previousName;
+  lead.acceptanceMissedAt = new Date();
+  lead.assignedTo = null;
+  lead.assigneeRole = null;
+  lead.assignedAt = null;
+  lead.firstContactDeadline = null;
 
   await lead.save();
   if (previousId) await invalidateExecutiveLeadIdsCache(previousId, lead.branchId);
-  await invalidateExecutiveLeadIdsCache(next._id, lead.branchId);
 
   await logLeadActivity({
     leadId: lead._id,
     branchId: lead.branchId,
-    type: 'lead_auto_reassigned',
-    description: `Auto-reassigned after ${LEAD_ACCEPT_MINUTES} min no-accept → ${next.name}`,
+    type: 'lead_accept_expired',
+    description: previousName
+      ? `Accept SLA missed (${LEAD_ACCEPT_MINUTES} min) — ${previousName} did not accept; lead returned to pool`
+      : `Accept SLA missed (${LEAD_ACCEPT_MINUTES} min) — lead returned to pool`,
     actor: { name: 'System' },
-    meta: { from: previousId, to: next._id },
+    meta: { previousAssigneeId: previousId, previousName },
   });
 
-  await notifyLeadAssigned({
-    assigneeId: next._id,
-    assigneeName: next.name,
-    leadIds: [lead._id],
-    leadNames: [lead.name],
-    assignedBy: 'System (accept timeout)',
-  });
-  try {
-    await notifyLeadReassigned({
-      lead,
-      actor: { name: 'System' },
-      assigneeId: next._id,
-      assigneeName: next.name,
-    });
-  } catch {
-    /* optional */
-  }
+  return { lead, released: true, previousId, previousName };
+}
 
-  return { lead, reassigned: true, to: next };
+/** @deprecated use releaseExpiredLead — kept for scheduler compatibility */
+async function reassignExpiredLead(lead) {
+  return releaseExpiredLead(lead);
 }
 
 async function processExpiredAcceptances() {
@@ -158,17 +110,18 @@ async function processExpiredAcceptances() {
     .sort({ assignmentAcceptBy: 1 })
     .limit(40);
 
-  let reassigned = 0;
+  let released = 0;
   for (const lead of overdue) {
-    const result = await reassignExpiredLead(lead);
-    if (result.reassigned) reassigned += 1;
+    await releaseExpiredLead(lead);
+    released += 1;
   }
-  return { checked: overdue.length, reassigned };
+  return { checked: overdue.length, reassigned: released, released };
 }
 
 module.exports = {
   LEAD_ACCEPT_MINUTES,
   acceptAssignedLead,
   processExpiredAcceptances,
+  releaseExpiredLead,
   reassignExpiredLead,
 };

@@ -324,6 +324,8 @@ export default function Leads() {
             onDelete={isManagerRole ? handleDelete : undefined}
             onAssign={isManagerRole && userCanAssignLeads ? openAssign : undefined}
             onTransferBranch={isManagerRole ? setTransferLead : undefined}
+            onAccepted={invalidateLeads}
+            onAcceptExpired={invalidateLeads}
             canEditLead={isManagerRole && canEditLead}
             menuActions={leadMenuActions}
             showAssignButton={isManagerRole && userCanAssignLeads}

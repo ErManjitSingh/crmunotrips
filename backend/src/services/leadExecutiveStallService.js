@@ -19,6 +19,9 @@ function stampPendingAcceptance(target = {}, leadLike = {}) {
   target.assignmentAcceptance = 'pending';
   target.assignmentAcceptBy = new Date(now.getTime() + LEAD_ACCEPT_MINUTES * 60 * 1000);
   target.acceptedAt = null;
+  target.acceptanceMissedBy = null;
+  target.acceptanceMissedName = '';
+  target.acceptanceMissedAt = null;
   target.firstContactDeadline = computeFirstContactDeadline(
     { ...leadLike, ...target, assignedAt: target.assignedAt || now },
     target.assignedAt || now

@@ -51,6 +51,8 @@ export default function LeadDataTable({
   onDelete,
   onAssign,
   onTransferBranch,
+  onAccepted,
+  onAcceptExpired,
   canEditLead = true,
   menuActions = defaultMenuActions,
   showAssignButton = true,
@@ -174,6 +176,8 @@ export default function LeadDataTable({
             onDelete={onDelete}
             onAssign={onAssign}
             onTransferBranch={onTransferBranch}
+            onAccepted={onAccepted}
+            onAcceptExpired={onAcceptExpired}
             canEditLead={canEditLead}
             actions={actions}
             showAssignButton={showAssignButton}
@@ -181,7 +185,17 @@ export default function LeadDataTable({
         ),
       },
     ],
-    [onRowClick, onDelete, onAssign, onTransferBranch, canEditLead, actions, showAssignButton]
+    [
+      onRowClick,
+      onDelete,
+      onAssign,
+      onTransferBranch,
+      onAccepted,
+      onAcceptExpired,
+      canEditLead,
+      actions,
+      showAssignButton,
+    ]
   );
 
   const table = useReactTable({

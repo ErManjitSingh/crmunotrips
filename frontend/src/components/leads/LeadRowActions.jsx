@@ -19,6 +19,7 @@ import {
   DropdownMenuLabel,
 } from '../ui/dropdown-menu';
 import { cn } from '../../lib/utils';
+import LeadListAcceptButton, { NotAcceptedChip } from './LeadListAcceptButton';
 
 function MenuActionIcon({ icon: Icon, tone }) {
   const tones = {
@@ -115,25 +116,59 @@ const MoreMenuButton = forwardRef(function MoreMenuButton(
   );
 });
 
+function ReassignButton({ onClick, label = 'Reassign' }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onPointerDown={(e) => e.stopPropagation()}
+      className={cn(
+        'inline-flex h-8 items-center gap-1.5 rounded-none px-2.5 text-[11px] font-semibold text-white',
+        'bg-gradient-to-r from-violet-600 via-indigo-600 to-brand-600',
+        'hover:brightness-110 active:scale-[0.98] transition-all',
+        'shadow-inner shadow-white/10'
+      )}
+    >
+      <UserCheck className="w-3.5 h-3.5 shrink-0" />
+      <span>{label}</span>
+    </button>
+  );
+}
+
 export default function LeadRowActions({
   lead,
   onRowClick,
   onDelete,
   onAssign,
   onTransferBranch,
+  onAccepted,
+  onAcceptExpired,
   canEditLead = true,
   actions,
   showAssignButton = true,
+  /** When true, show Accept in place of Assign for pending acceptance (executive lists) */
+  showAcceptButton = false,
 }) {
   const assignedName = lead.assignedTo?.name;
-  const showAssign = showAssignButton && actions.assign && !assignedName && onAssign;
-  const showAssignedName = Boolean(assignedName);
+  const isPendingAccept = lead.assignmentAcceptance === 'pending';
+  const isExpiredUnassigned =
+    lead.assignmentAcceptance === 'expired' && !assignedName;
+  const showAccept = showAcceptButton && isPendingAccept;
+  const showReassignExpired = isExpiredUnassigned && actions.assign && onAssign;
+  const showAssign =
+    showAssignButton &&
+    actions.assign &&
+    !assignedName &&
+    !isPendingAccept &&
+    !isExpiredUnassigned &&
+    onAssign;
+  const showAssignedName = Boolean(assignedName) && !showAccept;
   const showEdit = actions.edit && canEditLead;
   const showAssignMenu = actions.assign && onAssign;
   const showTransfer = actions.transferBranch && onTransferBranch;
   const showDelete = actions.delete && onDelete;
   const hasMenuItems = actions.view || showEdit || showAssignMenu || showTransfer || showDelete;
-  const hasLeading = showAssign || showAssignedName;
+  const hasLeading = showAssign || showAssignedName || showAccept || showReassignExpired;
 
   const menuContent = (
     <DropdownMenuContent
@@ -177,9 +212,11 @@ export default function LeadRowActions({
           <MenuActionIcon icon={UserCheck} tone="emerald" />
           <div className="min-w-0 text-left">
             <p className="text-sm font-semibold text-content-primary">
-              {assignedName ? 'Reassign Lead' : 'Assign Lead'}
+              {assignedName || isExpiredUnassigned ? 'Reassign Lead' : 'Assign Lead'}
             </p>
-            <p className="text-[11px] text-content-muted">Pick sales executive or manager</p>
+            <p className="text-[11px] text-content-muted">
+              {isExpiredUnassigned ? 'Lead was not accepted — pick executive' : 'Pick sales executive or manager'}
+            </p>
           </div>
         </DropdownMenuItem>
       )}
@@ -231,8 +268,17 @@ export default function LeadRowActions({
   return (
     <div className="relative z-10" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
       <ActionCluster>
+        {showAccept && (
+          <LeadListAcceptButton lead={lead} onAccepted={onAccepted} onExpired={onAcceptExpired} />
+        )}
+        {showReassignExpired && (
+          <>
+            <NotAcceptedChip lead={lead} />
+            <ReassignButton onClick={() => onAssign(lead)} />
+          </>
+        )}
         {showAssign && <AssignButton onClick={() => onAssign(lead)} />}
-        {showAssignedName && !showAssign && <AssignedChip name={assignedName} />}
+        {showAssignedName && !showAssign && !showReassignExpired && <AssignedChip name={assignedName} />}
         {hasMenuItems && (
           <DropdownMenuRoot modal={false}>
             <DropdownMenuTrigger asChild>

@@ -25,6 +25,8 @@ import {
 } from './ExecutiveLeadListCells';
 import { LEAD_FILTERS } from './executiveUtils';
 import LeadActionsMenu, { ActionModal } from './LeadActionsMenu';
+import LeadListAcceptButton from '../leads/LeadListAcceptButton';
+import { invalidateLeadLists } from '../../lib/queryInvalidation';
 import VirtualizedRoleTable from '../ui/VirtualizedRoleTable';
 import AddFollowUpModal from '../followups/AddFollowUpModal';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/followupApi';
@@ -169,21 +171,48 @@ export default function MyLeadsPage() {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
-        <div className="flex justify-end pr-1">
-          <LeadActionsMenu
-            lead={row.original}
-            canChangeStatus={!isLeadStatusLocked(row.original.status)}
-            onScheduleFollowUp={(lead) => { setModal({ type: 'followup', lead }); }}
-            onChangeStatus={(lead) => {
-              setModal({ type: 'status', lead });
-              setModalStatus(lead.status);
-              setModalStatusReason(lead.statusReason || '');
-            }}
-          />
+        <div className="flex items-center justify-end gap-0 pr-1">
+          {row.original.assignmentAcceptance === 'pending' ? (
+            <div className="inline-flex items-stretch rounded-xl ring-1 ring-emerald-500/25 shadow-sm shadow-emerald-500/10 overflow-hidden">
+              <LeadListAcceptButton
+                lead={row.original}
+                className="!rounded-none"
+                onAccepted={() => {
+                  invalidateLeadLists(queryClient);
+                  fetchLeads();
+                }}
+                onExpired={() => {
+                  invalidateLeadLists(queryClient);
+                  fetchLeads();
+                }}
+              />
+              <LeadActionsMenu
+                lead={row.original}
+                canChangeStatus={!isLeadStatusLocked(row.original.status)}
+                onScheduleFollowUp={(lead) => { setModal({ type: 'followup', lead }); }}
+                onChangeStatus={(lead) => {
+                  setModal({ type: 'status', lead });
+                  setModalStatus(lead.status);
+                  setModalStatusReason(lead.statusReason || '');
+                }}
+              />
+            </div>
+          ) : (
+            <LeadActionsMenu
+              lead={row.original}
+              canChangeStatus={!isLeadStatusLocked(row.original.status)}
+              onScheduleFollowUp={(lead) => { setModal({ type: 'followup', lead }); }}
+              onChangeStatus={(lead) => {
+                setModal({ type: 'status', lead });
+                setModalStatus(lead.status);
+                setModalStatusReason(lead.statusReason || '');
+              }}
+            />
+          )}
         </div>
       ),
     }),
-  ], []);
+  ], [queryClient]);
 
   return (
     <ExecutivePageShell
