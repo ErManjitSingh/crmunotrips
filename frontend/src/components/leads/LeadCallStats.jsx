@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { Clock3, Phone, PhoneOff } from 'lucide-react';
 import { formatCallDuration, formatCallDurationExact } from '../../lib/callSession';
 import { cn } from '../../lib/utils';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { CALL_OUTCOMES } from './PostCallFollowUpModal';
 
 const OUTCOME_LABEL = Object.fromEntries(CALL_OUTCOMES.map((o) => [o.value, o.label]));
@@ -64,10 +64,11 @@ function LeadCallStats({ lead, className, compact = false }) {
   const totalCount = Number(lead?.callStats?.count || items.length);
 
   return (
-    <div
-      className={cn('flex flex-col gap-1 min-w-0', className)}
-      onClick={(e) => e.stopPropagation()}
-    >
+    <TooltipProvider delayDuration={120}>
+      <div
+        className={cn('flex flex-col gap-1 min-w-0', className)}
+        onClick={(e) => e.stopPropagation()}
+      >
       <div className="flex flex-wrap items-center gap-1.5">
         {items.map((call) => {
           const declined = isDeclined(call.outcome);
@@ -142,7 +143,8 @@ function LeadCallStats({ lead, className, compact = false }) {
       <p className={cn('font-medium text-slate-500 tabular-nums', compact ? 'text-[9px]' : 'text-[10px]')}>
         {totalCount} call{totalCount === 1 ? '' : 's'} · total duration {formatCallDurationExact(totalSeconds)}
       </p>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
 
