@@ -18,7 +18,6 @@ import LeadPreviewDrawer from '../components/leads/LeadPreviewDrawer';
 import { pageConfig, emptyFilters } from '../components/leads/constants';
 import { getTodayDateRange } from '../lib/todayDateRange';
 import { countActiveFilters } from '../components/leads/leadFilters';
-import { useDataRefresh } from '../hooks/useDataRefresh';
 import { useLeadsQuery } from '../features/leads/hooks/useLeadsQuery';
 import { ALL_LEADS_PAGE_SIZE, LEADS_PAGE_SIZE } from '../components/ui/TablePagination';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
@@ -61,8 +60,20 @@ export default function Leads() {
   const [transferSubmitting, setTransferSubmitting] = useState(false);
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
   const [pageCursors, setPageCursors] = useState({});
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
+  );
   const { confirm, dialogNode } = useConfirmDialog();
   const DEEP_PAGE_INDEX = 9;
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)');
+    const onChange = () => setIsMobileViewport(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   const openLead = useCallback((lead) => {
     if (window.matchMedia('(max-width: 1023px)').matches) {
       navigate(`/leads/${lead._id}`);
@@ -97,8 +108,6 @@ export default function Leads() {
   const invalidateLeads = useCallback(() => {
     invalidateLeadLists(queryClient);
   }, [queryClient]);
-
-  useDataRefresh(['leads'], invalidateLeads);
 
   useEffect(() => {
     setFilters((f) => ({ ...f, status: config.status || '' }));
@@ -242,7 +251,7 @@ export default function Leads() {
 
   return (
     <div className="animate-fade-up">
-      {isAdmin && (
+      {isAdmin && isMobileViewport && (
         <MobileLeadList
           title={config.title}
           subtitle={config.subtitle}
@@ -263,7 +272,7 @@ export default function Leads() {
         />
       )}
 
-      <div className={isAdmin ? 'hidden lg:block' : ''}>
+      <div className={isAdmin ? (isMobileViewport ? 'hidden' : 'block') : ''}>
         <LeadPageHeader
           title={config.title}
           total={totalLeads ?? undefined}

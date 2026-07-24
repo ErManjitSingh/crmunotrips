@@ -22,6 +22,7 @@ import { DESTINATIONS, LEAD_STATUSES, BUDGET_FILTER_OPTIONS, formatLeadId } from
 import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
 import TrackedCallButton from './TrackedCallButton';
 import LeadCallStats from './LeadCallStats';
+import { TooltipProvider } from '../ui/tooltip';
 
 const STATUS_STYLES = {
   new: 'bg-violet-50 text-violet-600',
@@ -96,6 +97,7 @@ export default function MobileLeadList({
   };
 
   return (
+    <TooltipProvider delayDuration={150}>
     <div className="min-h-full bg-[#f7f7fb] pb-5 lg:hidden">
       <header className="relative min-h-[160px] overflow-hidden rounded-b-[24px] bg-gradient-to-br from-[#080b4d] via-[#221173] to-[#5723a7] px-5 pt-5 text-white">
         <div className="absolute -right-10 -top-16 h-52 w-52 rounded-full bg-violet-400/25 blur-3xl" />
@@ -255,5 +257,6 @@ export default function MobileLeadList({
         </div>
       </main>
     </div>
+    </TooltipProvider>
   );
 }

@@ -2,13 +2,7 @@
 
 export function invalidateLeadLists(queryClient) {
   return queryClient.invalidateQueries({
-    predicate: (q) => {
-      const key = q.queryKey[0];
-      if (key !== 'leads') return false;
-      if (typeof q.queryKey[1] === 'object') return true;
-      if (typeof q.queryKey[1] === 'string' && q.queryKey[1].includes('/leads')) return true;
-      return false;
-    },
+    predicate: (q) => q.queryKey[0] === 'leads',
   });
 }
 

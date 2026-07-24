@@ -15,11 +15,20 @@ const {
   buildFollowUpCategoryFilter,
   startOfDay,
 } = require('../utils/queryHelpers');
-const { parsePagination, parseSort, paginatedResponse } = require('../utils/pagination');
+const {
+  parsePagination,
+  parseSort,
+  paginatedResponse,
+  DEEP_PAGE_THRESHOLD,
+} = require('../utils/pagination');
 const { withBranch } = require('../utils/branchScope');
 const { applyQuotationQueryFilters } = require('./quotationRepository');
 
 const LIST_PAGINATION = { defaultLimit: 20, maxLimit: 200 };
+
+function withActiveLead(filter = {}) {
+  return { ...filter, isDeleted: { $ne: true } };
+}
 
 function applyReactivationQueryFilters(mongoFilter, query = {}) {
   const stage = query.reactivationStage || query.stage;
@@ -81,7 +90,8 @@ function buildExecutiveLeadFilter(filterKey) {
 async function findManagerLeadsPaginated(query = {}, options = {}) {
   const { page, limit, skip } = parsePagination(query);
   const sort = parseSort(query, { createdAt: -1 });
-  const filter = withBranch(buildManagerLeadFilter(query), options.branchId);
+  const filter = withActiveLead(withBranch(buildManagerLeadFilter(query), options.branchId));
+  const needsTotal = page <= DEEP_PAGE_THRESHOLD;
 
   const [rows, total] = await Promise.all([
     Lead.find(filter)
@@ -91,10 +101,15 @@ async function findManagerLeadsPaginated(query = {}, options = {}) {
       .skip(skip)
       .limit(limit)
       .lean(),
-    Lead.countDocuments(filter),
+    needsTotal ? Lead.countDocuments(filter) : Promise.resolve(null),
   ]);
 
-  return paginatedResponse(rows.map(enrichLead), { page, limit, total });
+  return paginatedResponse(rows.map(enrichLead), {
+    page,
+    limit,
+    total,
+    hasMore: rows.length === limit,
+  });
 }
 
 async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
@@ -102,11 +117,11 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
   const { page, limit, skip } = parsePagination(query);
   const sort = parseSort(query, { createdAt: -1 });
 
-  const filter = {
+  const filter = withActiveLead({
     assignedTo: userId,
     ...buildExecutiveLeadFilter(filterKey),
     ...buildLeadSearchFilter(query.search),
-  };
+  });
   Object.assign(filter, withBranch({}, options.branchId));
 
   if (filterKey === 'hot') {
@@ -121,6 +136,7 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
     else if (query.priority) filter.priority = query.priority;
   }
 
+  const needsTotal = page <= DEEP_PAGE_THRESHOLD;
   const [rows, total] = await Promise.all([
     Lead.find(filter)
       .select(LEAD_LIST_SELECT)
@@ -129,7 +145,7 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
       .skip(skip)
       .limit(limit)
       .lean(),
-    Lead.countDocuments(filter),
+    needsTotal ? Lead.countDocuments(filter) : Promise.resolve(null),
   ]);
 
   let enriched = rows.map(enrichLead);
@@ -138,7 +154,12 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
     enriched = await attachPaymentSummariesToLeads(enriched);
   }
 
-  return paginatedResponse(enriched, { page, limit, total });
+  return paginatedResponse(enriched, {
+    page,
+    limit,
+    total,
+    hasMore: rows.length === limit,
+  });
 }
 
 async function findTeamLeaderLeadsPaginated(squadFilter, query = {}, options = {}) {
@@ -162,7 +183,10 @@ async function findTeamLeaderLeadsPaginated(squadFilter, query = {}, options = {
     if (query.priority === 'hot') extra.isHot = true;
     else if (query.priority) extra.priority = query.priority;
   }
-  const filter = withBranch({ ...squadFilter, ...extra, ...buildLeadSearchFilter(query.search) }, options.branchId);
+  const filter = withActiveLead(
+    withBranch({ ...squadFilter, ...extra, ...buildLeadSearchFilter(query.search) }, options.branchId)
+  );
+  const needsTotal = page <= DEEP_PAGE_THRESHOLD;
 
   const [rows, total] = await Promise.all([
     Lead.find(filter)
@@ -172,10 +196,15 @@ async function findTeamLeaderLeadsPaginated(squadFilter, query = {}, options = {
       .skip(skip)
       .limit(limit)
       .lean(),
-    Lead.countDocuments(filter),
+    needsTotal ? Lead.countDocuments(filter) : Promise.resolve(null),
   ]);
 
-  return paginatedResponse(rows.map(enrichLead), { page, limit, total });
+  return paginatedResponse(rows.map(enrichLead), {
+    page,
+    limit,
+    total,
+    hasMore: rows.length === limit,
+  });
 }
 
 async function resolveLeadIdsForSearch(search, options = {}) {

@@ -114,9 +114,15 @@ async function buildAdminNavCounts(userId, { branchId } = {}) {
     aggregateAdminLeadCounts(branchId),
     FollowUp.countDocuments(withBranch({ status: 'pending' }, branchId)),
     countFollowUpsDue({}, branchId),
-    Lead.countDocuments({
-      $or: [{ status: 'converted' }, { isRepeatCustomer: true }],
-    }),
+    Lead.countDocuments(
+      withBranch(
+        {
+          isDeleted: { $ne: true },
+          $or: [{ status: 'converted' }, { isRepeatCustomer: true }],
+        },
+        branchId
+      )
+    ),
     Quotation.countDocuments(withBranch({}, branchId)),
     Quotation.countDocuments(withBranch({ status: 'pending_approval' }, branchId)),
     getUnoPackagesTotal().catch(() => Package.countDocuments()),

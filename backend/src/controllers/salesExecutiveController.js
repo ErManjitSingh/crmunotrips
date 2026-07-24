@@ -292,6 +292,7 @@ const updateLead = asyncHandler(async (req, res) => {
       invalidateDashboardCache('team_leader');
       invalidateDashboardCache('admin');
       invalidateDashboardCache('nav:');
+      invalidateDashboardCache('lead-list-kpis');
     }
 
     const populated = await Lead.findById(lead._id).populate(LEAD_POPULATE).lean();

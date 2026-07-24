@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   listLeads,
   listLostLeads,
+  getListKpis,
   getLead,
   getLeadFollowups,
   getLeadQuotations,
@@ -81,6 +82,7 @@ router.delete('/:id/permanent', requirePermission('leads', 'delete'), permanentD
 router.post('/seed-demo', authorize('admin'), seedDemoLeads);
 router.post('/clear-all', authorize('admin'), clearAllLeads);
 router.get('/assignees', getAssignees);
+router.get('/list-kpis', getListKpis);
 router.get('/lost', listLostLeads);
 router.post('/assign', authorize('admin', 'sales_manager', 'team_leader'), assignLeads);
 router.patch('/:id/transfer-branch', authorize('admin'), transferLeadBranch);

@@ -19,11 +19,8 @@ const LEAD_LIST_SELECT = [
   'adults',
   'children',
   'infants',
-  'numberOfRooms',
-  'roomsWithMattress',
   'assignedTo',
   'assignedAt',
-  'executiveLastViewedAt',
   'assignedTeamLeader',
   'createdBy',
   'branchId',
@@ -35,9 +32,10 @@ const LEAD_LIST_SELECT = [
   'temperature',
   'leadScore',
   'agingBucket',
-  'smartScore',
-  'callStats',
-  'assignmentAcceptance',
+  'callStats.count',
+  'callStats.totalDurationSeconds',
+  'callStats.lastCallAt',
+  'callStats.recent',
   'assignmentAcceptBy',
   'acceptedAt',
   'firstContactDeadline',
@@ -50,7 +48,7 @@ const LEAD_LIST_SELECT = [
 ].join(' ');
 
 /** Detail view — excludes notes string and reactivation stageHistory */
-const LEAD_DETAIL_SELECT = `${LEAD_LIST_SELECT} city state travelDate returnDate tourDays pickupPoint dropPoint numberOfRooms cabType budgetRange leadType companyName hotelCategory mealPreference transportRequirement specialRequirements statusReason priority channel assigneeRole assignedManager teamId lastContactedAt lastContactMethod slaBreached`;
+const LEAD_DETAIL_SELECT = `${LEAD_LIST_SELECT} city state travelDate returnDate tourDays pickupPoint dropPoint numberOfRooms roomsWithMattress cabType budgetRange leadType companyName hotelCategory mealPreference transportRequirement specialRequirements statusReason priority channel assigneeRole assignedManager teamId lastContactedAt lastContactMethod executiveLastViewedAt assignmentAcceptance smartScore`;
 
 const LEAD_DETAIL_POPULATE = [
   { path: 'assignedTo', select: 'name email' },

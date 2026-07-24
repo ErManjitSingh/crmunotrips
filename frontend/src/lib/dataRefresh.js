@@ -64,8 +64,6 @@ export function keysFromMutationUrl(url, _method) {
 
   if (/\/followup/.test(path)) {
     keys.add('followups');
-    keys.add('leads');
-    keys.add('dashboard');
     keys.add('nav-counts');
   }
 
@@ -83,8 +81,11 @@ export function keysFromMutationUrl(url, _method) {
 
   if (/\/quotations/.test(path)) {
     keys.add('quotations');
-    keys.add('leads');
-    keys.add('dashboard');
+    // Quote edits shouldn't force full lead-list + dashboard refetch
+    if (/\/leads\//.test(path)) {
+      keys.add('leads');
+      keys.add('dashboard');
+    }
   }
 
   if (
@@ -98,12 +99,13 @@ export function keysFromMutationUrl(url, _method) {
 
   if (/\/whatsapp/.test(path)) {
     keys.add('whatsapp');
-    keys.add('leads');
+    if (/\/whatsapp\/leads/.test(path) || /\/leads\//.test(path)) {
+      keys.add('leads');
+    }
   }
 
   if (/\/emails/.test(path) || /\/send-email/.test(path) || /\/email-templates/.test(path)) {
     keys.add('dashboard');
-    keys.add('leads');
   }
 
   if (/\/operations-manager/.test(path) || /\/payments/.test(path)) {

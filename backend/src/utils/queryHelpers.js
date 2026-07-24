@@ -124,16 +124,38 @@ function enrichLead(lead) {
 function buildLeadSearchFilter(search) {
   if (!search?.trim()) return {};
   const q = search.trim();
-  const digitsOnly = q.replace(/\D/g, '');
 
-  if (digitsOnly.length >= 4 && /^[\d\s+\-()]+$/.test(q)) {
-    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Exact leadId (L-0123 / LD-0863) — avoids full text scan
+  const leadIdMatch = q.match(/^(L(?:D)?[-_]?\d+)$/i);
+  if (leadIdMatch) {
+    const raw = leadIdMatch[1].toUpperCase().replace(/_/g, '-');
+    const digits = raw.replace(/\D/g, '');
     return {
       $or: [
-        { phone: { $regex: escaped, $options: 'i' } },
-        { alternatePhone: { $regex: escaped, $options: 'i' } },
-        { whatsapp: { $regex: escaped, $options: 'i' } },
+        { leadId: raw },
+        { leadId: q },
+        { leadId: `L-${digits}` },
+        { leadId: `LD-${digits}` },
+        { leadId: { $regex: `^L(?:D)?[-_]?0*${digits}$`, $options: 'i' } },
       ],
+    };
+  }
+
+  const digitsOnly = q.replace(/\D/g, '');
+  if (digitsOnly.length >= 4 && /^[\d\s+\-()]+$/.test(q)) {
+    // Anchored / suffix patterns — far cheaper than unanchored $regex
+    const escaped = digitsOnly.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const suffix = digitsOnly.length >= 10 ? escaped.slice(-10) : escaped;
+    const phoneMatchers = [
+      { $regex: `^\\+?${escaped}`, $options: 'i' },
+      { $regex: `${suffix}$`, $options: 'i' },
+    ];
+    return {
+      $or: phoneMatchers.flatMap((matcher) => [
+        { phone: matcher },
+        { alternatePhone: matcher },
+        { whatsapp: matcher },
+      ]),
     };
   }
 

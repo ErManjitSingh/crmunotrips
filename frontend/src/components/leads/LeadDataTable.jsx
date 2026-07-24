@@ -22,6 +22,7 @@ import {
   TravelDateCell,
 } from '../sales-manager/LeadListBadges';
 import TablePagination, { DEFAULT_PAGE_SIZE } from '../ui/TablePagination';
+import { TooltipProvider } from '../ui/tooltip';
 import { cn } from '../../lib/utils';
 import {
   LEAD_LIST_CONTAINER,
@@ -55,7 +56,10 @@ export default function LeadDataTable({
   showAssignButton = true,
   serverPagination = null,
 }) {
-  const actions = { ...defaultMenuActions, ...menuActions };
+  const actions = useMemo(
+    () => ({ ...defaultMenuActions, ...menuActions }),
+    [menuActions]
+  );
   const isServer = Boolean(serverPagination);
   const [clientPagination, setClientPagination] = useState({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   const scrollRef = useRef(null);
@@ -199,7 +203,7 @@ export default function LeadDataTable({
   const rowVirtualizer = useVirtualizer({
     count: tableRows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 64,
+    estimateSize: () => 112,
     overscan: 6,
   });
   const virtualRows = rowVirtualizer.getVirtualItems();
@@ -217,6 +221,7 @@ export default function LeadDataTable({
   }
 
   return (
+    <TooltipProvider delayDuration={150}>
     <div className={LEAD_LIST_CONTAINER}>
       <div ref={scrollRef} className="overflow-auto max-h-[min(70vh,680px)]">
         <table className="w-full text-sm table-auto border-collapse min-w-[1100px]">
@@ -312,5 +317,6 @@ export default function LeadDataTable({
         />
       )}
     </div>
+    </TooltipProvider>
   );
 }

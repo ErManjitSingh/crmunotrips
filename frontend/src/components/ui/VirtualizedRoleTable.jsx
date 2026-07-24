@@ -32,7 +32,7 @@ export default function VirtualizedRoleTable({
   headerRowClassName = 'border-b border-subtle',
   thClassName = LEAD_LIST_TH,
   tdClassName = LEAD_LIST_TD,
-  estimateRowHeight = 72,
+  estimateRowHeight = 112,
   maxHeight = 'min(70vh, 680px)',
   getRowClassName,
 }) {

@@ -16,7 +16,7 @@ import {
   DashboardHero,
   DashboardSkeleton,
 } from '../components/dashboard';
-import MobileAdminDashboard from '../components/dashboard/MobileAdminDashboard';
+const MobileAdminDashboard = lazy(() => import('../components/dashboard/MobileAdminDashboard'));
 
 const LeadTrendChart = lazy(() => import('../components/dashboard/LeadTrendChart'));
 const LeadStatusDonut = lazy(() => import('../components/dashboard/LeadStatusDonut'));
@@ -81,12 +81,16 @@ export default function Dashboard() {
 
   return (
     <>
-      <MobileAdminDashboard
-        stats={stats}
-        filters={filters}
-        onFiltersChange={setFilters}
-        isFetching={isFetching}
-      />
+      <div className="lg:hidden">
+        <Suspense fallback={<DashboardSkeleton />}>
+          <MobileAdminDashboard
+            stats={stats}
+            filters={filters}
+            onFiltersChange={setFilters}
+            isFetching={isFetching}
+          />
+        </Suspense>
+      </div>
 
       <div className="mx-auto hidden w-full max-w-[1600px] space-y-4 pb-8 sm:space-y-5 lg:block">
       {isFetching && (

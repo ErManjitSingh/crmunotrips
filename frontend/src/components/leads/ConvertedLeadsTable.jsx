@@ -10,6 +10,7 @@ import TablePagination from '../ui/TablePagination';
 import { getLeadSourceShortLabel } from '../../lib/leadSourceLabels';
 import { cn } from '../../lib/utils';
 import LeadCallStats from './LeadCallStats';
+import { TooltipProvider } from '../ui/tooltip';
 
 function formatMoney(n) {
   const v = Number(n) || 0;
@@ -295,6 +296,7 @@ export default function ConvertedLeadsTable({
   serverPagination = null,
 }) {
   return (
+    <TooltipProvider delayDuration={150}>
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="hidden border-b border-slate-100 bg-slate-50/80 px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 xl:grid xl:grid-cols-[220px_140px_minmax(200px,1.1fr)_minmax(220px,1.2fr)_minmax(240px,1.3fr)] xl:gap-4">
         <span>Booked On</span>

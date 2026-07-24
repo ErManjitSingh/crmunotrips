@@ -17,7 +17,9 @@ const {
   parseAndNotifyMentions,
 } = require('../services/notificationService');
 const { loadLeadCore, loadLeadFollowups, loadLeadQuotations, loadLeadNotes, loadLeadRelated } = require('../services/leadDetailService');
-const { LEAD_POPULATE, enrichLead } = require('../utils/queryHelpers');
+const { LEAD_POPULATE, LEAD_LIST_POPULATE, enrichLead, buildLeadSearchFilter } = require('../utils/queryHelpers');
+const { LEAD_LIST_SELECT } = require('../utils/leadQueryFields');
+const { getLeadListKpis } = require('../services/leadListKpiService');
 const { createFollowUpForLead } = require('../services/followUpService');
 const { scheduleColdLeadReminder, markColdCallDone } = require('../services/coldLeadService');
 const { normalizeLeadInput, computeLeadScoreByBudget } = require('../utils/normalizeLeadInput');
@@ -217,25 +219,28 @@ const getLeadNotesList = asyncHandler(async (req, res) => {
 
 const listLostLeads = asyncHandler(async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 100 });
-  const search = req.query.search?.trim();
   const filter = {
     ...(req.branchId ? { branchId: req.branchId } : {}),
+    isDeleted: { $ne: true },
     status: { $in: LOST_LEAD_STATUSES },
-    ...(search
-      ? {
-          $or: [
-            { name: { $regex: search, $options: 'i' } },
-            { phone: { $regex: search, $options: 'i' } },
-            { destination: { $regex: search, $options: 'i' } },
-          ],
-        }
-      : {}),
+    ...buildLeadSearchFilter(req.query.search),
   };
   const [rows, total] = await Promise.all([
-    Lead.find(filter).populate(LEAD_POPULATE).sort({ updatedAt: -1 }).skip(skip).limit(limit).lean(),
+    Lead.find(filter)
+      .select(LEAD_LIST_SELECT)
+      .populate(LEAD_LIST_POPULATE)
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
     Lead.countDocuments(filter),
   ]);
   res.json(paginatedResponse(rows.map(enrichLead), { page, limit, total }));
+});
+
+const getListKpis = asyncHandler(async (req, res) => {
+  const data = await getLeadListKpis(req.branchId);
+  res.json(data);
 });
 
 const createLead = asyncHandler(async (req, res) => {
@@ -343,6 +348,7 @@ const createLead = asyncHandler(async (req, res) => {
   const populated = await Lead.findById(lead._id).populate(LEAD_POPULATE).lean();
   const enriched = enrichLead(populated);
   invalidateDashboardCache('admin');
+  invalidateDashboardCache('lead-list-kpis');
   notifyLeadCreated(enriched, req.user).catch(() => {});
   res.status(201).json(enriched);
 });
@@ -565,6 +571,7 @@ const updateLead = asyncHandler(async (req, res) => {
     invalidateDashboardCache('team_leader');
     invalidateDashboardCache('sales_executive');
     invalidateDashboardCache('nav:');
+    invalidateDashboardCache('lead-list-kpis');
   }
 
   const populated = await Lead.findById(lead._id).populate(LEAD_POPULATE).lean();
@@ -914,6 +921,7 @@ const addLeadNote = asyncHandler(async (req, res) => {
 module.exports = {
   listLeads,
   listLostLeads,
+  getListKpis,
   getLead,
   getLeadFollowups,
   getLeadQuotations,

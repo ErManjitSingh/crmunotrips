@@ -537,7 +537,7 @@ function summarizePayment(payment, booking) {
     dueDate: payment?.dueDate || null,
     receiptSentAt: payment?.receiptSentAt || null,
     receiptSentTo: payment?.receiptSentTo || null,
-    hasReceipt: Boolean(payment?.receiptHtml || payment?.receiptNumber),
+    hasReceipt: Boolean(payment?.receiptNumber || payment?.receiptHtml),
     paidAt: payment?.paidAt || null,
     bookingCreatedAt: booking?.createdAt || null,
   };
@@ -553,8 +553,18 @@ async function attachPaymentSummariesToLeads(leads = []) {
   if (!ids.length) return leads;
 
   const [payments, bookings] = await Promise.all([
-    Payment.find({ lead: { $in: ids } }).sort({ createdAt: -1 }).lean(),
-    Booking.find({ lead: { $in: ids } }).sort({ createdAt: -1 }).lean(),
+    Payment.find({ lead: { $in: ids } })
+      .select(
+        'lead amount paidAmount status method receiptNumber invoiceNumber dueDate receiptSentAt receiptSentTo paidAt createdAt'
+      )
+      .sort({ createdAt: -1 })
+      .lean(),
+    Booking.find({ lead: { $in: ids } })
+      .select(
+        'lead totalAmount advanceReceived pendingAmount paymentStatus bookingNumber createdAt'
+      )
+      .sort({ createdAt: -1 })
+      .lean(),
   ]);
 
   const paymentByLead = new Map();
