@@ -188,6 +188,8 @@ const listExecutives = asyncHandler(async (req, res) => {
         conversions,
         revenueAgg,
         contacted,
+        tempAgg,
+        statusAgg,
       ] = await Promise.all([
         Lead.countDocuments({ assignedTo: exId }),
         FollowUp.countDocuments({
@@ -198,7 +200,18 @@ const listExecutives = asyncHandler(async (req, res) => {
         Lead.countDocuments({ assignedTo: exId, status: 'converted' }),
         sumConvertedPackageRevenue({ assigneeId: exId }),
         Lead.countDocuments({ assignedTo: exId, status: { $ne: 'new' } }),
+        Lead.aggregate([
+          { $match: { assignedTo: ex._id } },
+          { $group: { _id: '$temperature', count: { $sum: 1 } } },
+        ]),
+        Lead.aggregate([
+          { $match: { assignedTo: ex._id } },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
+        ]),
       ]);
+
+      const temperature = Object.fromEntries(tempAgg.map((t) => [t._id || 'unknown', t.count]));
+      const byStatus = Object.fromEntries(statusAgg.map((s) => [s._id || 'unknown', s.count]));
 
       const targetStats = buildTargetProgress(revenueAgg, await getMonthlyTarget(exId));
 
@@ -217,6 +230,20 @@ const listExecutives = asyncHandler(async (req, res) => {
         contacted,
         monthlyTarget: targetStats.monthlyTarget,
         targetProgress: targetStats.progress,
+        temperature: {
+          hot: temperature.hot || 0,
+          warm: temperature.warm || 0,
+          cold: temperature.cold || 0,
+          vip: temperature.vip || 0,
+        },
+        byStatus: {
+          new: byStatus.new || 0,
+          contacted: byStatus.contacted || 0,
+          follow_up: (byStatus.follow_up || 0) + (byStatus.working_progress || 0),
+          quotation_sent: byStatus.quotation_sent || 0,
+          converted: byStatus.converted || 0,
+          lost: (byStatus.lost || 0) + (byStatus.booked_from_another_company || 0),
+        },
       };
     })
   );

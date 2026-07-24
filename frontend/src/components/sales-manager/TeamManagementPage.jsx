@@ -1,15 +1,23 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, UsersRound, Network } from 'lucide-react';
 import API from '../../api/axios';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
+import { useAuth } from '../../context/AuthContext';
 import PageHeader from '../ui/PageHeader';
 import { Button } from '../ui/button';
 import TeamCard from './teams/TeamCard';
 import TeamFormModal from './teams/TeamFormModal';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 
+const TEAMS_API = '/sales-manager/teams';
+
 export default function TeamManagementPage() {
+  const { user } = useAuth();
+  const location = useLocation();
+  const isAdminView = user?.role === 'admin' || location.pathname.startsWith('/team/sales-teams');
+  const detailBase = isAdminView ? '/team/sales-teams' : '/sales-manager/teams';
   const [teams, setTeams] = useState([]);
   const [leaders, setLeaders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,8 +28,8 @@ export default function TeamManagementPage() {
   const fetchTeams = () => {
     setLoading(true);
     Promise.all([
-      API.get('/sales-manager/teams'),
-      API.get('/sales-manager/teams/leaders'),
+      API.get(TEAMS_API),
+      API.get(`${TEAMS_API}/leaders`),
     ]).then(([t, l]) => {
       setTeams(t.data);
       setLeaders(l.data);
@@ -33,9 +41,9 @@ export default function TeamManagementPage() {
 
   const handleSave = async (payload) => {
     if (editTeam?._id) {
-      await API.put(`/sales-manager/teams/${editTeam._id}`, payload);
+      await API.put(`${TEAMS_API}/${editTeam._id}`, payload);
     } else {
-      await API.post('/sales-manager/teams', payload);
+      await API.post(TEAMS_API, payload);
     }
     setFormOpen(false);
     setEditTeam(null);
@@ -51,7 +59,7 @@ export default function TeamManagementPage() {
       tone: 'danger',
     });
     if (!ok) return;
-    await API.delete(`/sales-manager/teams/${team._id}`);
+    await API.delete(`${TEAMS_API}/${team._id}`);
     fetchTeams();
   };
 
@@ -61,8 +69,8 @@ export default function TeamManagementPage() {
     <div className="space-y-6">
       <PageHeader
         title="Team Management"
-        description="Create and manage sales teams — Manager → Team Leader → Executives"
-        breadcrumbs={['Sales Manager', 'Team Management']}
+        description="Create and manage sales teams — Manager → Team Leader → Executives. Assign executives to any team."
+        breadcrumbs={[isAdminView ? 'Admin' : 'Sales Manager', 'Sales Teams']}
         actions={
           <Button onClick={() => { setEditTeam(null); setFormOpen(true); }} variant="gradient">
             <Plus className="w-4 h-4 mr-1.5" /> Create Team
@@ -112,6 +120,7 @@ export default function TeamManagementPage() {
               key={team._id}
               team={team}
               index={i}
+              href={`${detailBase}/${team._id}`}
               onEdit={(t) => { setEditTeam(t); setFormOpen(true); }}
               onDelete={handleDelete}
             />

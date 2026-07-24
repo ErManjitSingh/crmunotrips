@@ -132,7 +132,13 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
     Lead.countDocuments(filter),
   ]);
 
-  return paginatedResponse(rows.map(enrichLead), { page, limit, total });
+  let enriched = rows.map(enrichLead);
+  if (filterKey === 'converted' || filter.status === 'converted') {
+    const { attachPaymentSummariesToLeads } = require('../services/paymentReceiptService');
+    enriched = await attachPaymentSummariesToLeads(enriched);
+  }
+
+  return paginatedResponse(enriched, { page, limit, total });
 }
 
 async function findTeamLeaderLeadsPaginated(squadFilter, query = {}, options = {}) {

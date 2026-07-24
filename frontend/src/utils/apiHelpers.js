@@ -24,7 +24,8 @@ export function unwrapPagination(payload) {
 }
 
 export function buildListParams({ page = 1, limit = 25, sortBy, sortOrder, cursor, filters = {} } = {}) {
-  const params = { page, limit, ...filters };
+  const { budgetRange, ...rest } = filters;
+  const params = { page, limit, ...rest };
   if (cursor) params.cursor = cursor;
   if (sortBy) params.sortBy = sortBy;
   if (sortOrder) params.sortOrder = sortOrder;

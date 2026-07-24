@@ -51,6 +51,8 @@ export function leadToWizardValues(lead) {
     pickupPoint: lead.pickupPoint || '',
     dropPoint: lead.dropPoint || '',
     numberOfRooms: lead.numberOfRooms || 1,
+    roomsWithMattress: lead.roomsWithMattress ?? 0,
+    dateOfBirth: lead.dateOfBirth ? String(lead.dateOfBirth).split('T')[0] : '',
     cabType: lead.cabType || lead.transportRequirement || 'sedan',
     adults,
     children,
@@ -99,6 +101,10 @@ export function wizardValuesToPayload(values) {
     pickupPoint: values.pickupPoint || undefined,
     dropPoint: values.dropPoint || undefined,
     numberOfRooms: Math.max(1, Number(values.numberOfRooms) || 1),
+    roomsWithMattress: Math.max(0, Number(values.roomsWithMattress) || 0),
+    dateOfBirth: values.dateOfBirth
+      ? new Date(values.dateOfBirth).toISOString()
+      : undefined,
     cabType: values.cabType || undefined,
     transportRequirement: values.cabType || undefined,
     adults: Number(values.adults) || 2,
@@ -110,7 +116,7 @@ export function wizardValuesToPayload(values) {
     sourceLabel: sourceLabel(values.leadSource),
     priority: values.priority,
     budget: numericBudget,
-    budgetRange: values.budgetRange || inferBudgetRange(numericBudget),
+    budgetRange: values.budgetRange || (numericBudget > 0 ? inferBudgetRange(numericBudget) : 'custom'),
     hotelCategory: values.hotelCategory || undefined,
     specialRequirements: values.requirements || undefined,
     status: 'new',

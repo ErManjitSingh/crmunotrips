@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
+import PostCallSessionHost from './components/leads/PostCallSessionHost';
 import ProtectedRoute from './components/ProtectedRoute';
 import HrProtectedRoute from './components/hr/HrProtectedRoute';
 import PermissionRoute from './components/PermissionRoute';
@@ -134,6 +135,7 @@ function App() {
         <BrowserRouter>
         <AuthProvider>
           <NotificationProvider>
+          <PostCallSessionHost />
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/hr/login" element={<HrLogin />} />
@@ -317,6 +319,9 @@ function App() {
               <Route path="quotations/*" element={<PermissionRoute module="quotations"><Quotations /></PermissionRoute>} />
               <Route path="packages" element={<PermissionRoute module="packages"><Packages /></PermissionRoute>} />
               <Route path="team/attendance" element={<RoleRoute roles={['admin']}><AdminAttendancePage /></RoleRoute>} />
+              <Route path="team/sales-teams" element={<RoleRoute roles={['admin']}><TeamManagementPage /></RoleRoute>} />
+              <Route path="team/sales-teams/:id" element={<RoleRoute roles={['admin']}><TeamDetailPage /></RoleRoute>} />
+              <Route path="team/sales-targets" element={<RoleRoute roles={['admin']}><TeamPerformancePage /></RoleRoute>} />
               <Route path="team/destination-assignment" element={<RoleRoute roles={['admin', 'sales_manager']}><DestinationAssignmentPage /></RoleRoute>} />
               <Route path="team/skill-assignment" element={<RoleRoute roles={['admin', 'sales_manager']}><SkillAssignmentPage /></RoleRoute>} />
               <Route path="team" element={<PermissionRoute module="users"><Team /></PermissionRoute>} />

@@ -534,11 +534,45 @@ function summarizePayment(payment, booking) {
     totalAmount: total,
     advanceReceived: advance,
     balanceDue: balance,
+    dueDate: payment?.dueDate || null,
     receiptSentAt: payment?.receiptSentAt || null,
     receiptSentTo: payment?.receiptSentTo || null,
     hasReceipt: Boolean(payment?.receiptHtml || payment?.receiptNumber),
     paidAt: payment?.paidAt || null,
+    bookingCreatedAt: booking?.createdAt || null,
   };
+}
+
+/**
+ * Batch-attach payment/booking summary for converted lead list rows.
+ */
+async function attachPaymentSummariesToLeads(leads = []) {
+  if (!Array.isArray(leads) || !leads.length) return leads;
+
+  const ids = leads.map((l) => l._id).filter(Boolean);
+  if (!ids.length) return leads;
+
+  const [payments, bookings] = await Promise.all([
+    Payment.find({ lead: { $in: ids } }).sort({ createdAt: -1 }).lean(),
+    Booking.find({ lead: { $in: ids } }).sort({ createdAt: -1 }).lean(),
+  ]);
+
+  const paymentByLead = new Map();
+  for (const p of payments) {
+    const key = String(p.lead);
+    if (!paymentByLead.has(key)) paymentByLead.set(key, p);
+  }
+  const bookingByLead = new Map();
+  for (const b of bookings) {
+    const key = String(b.lead);
+    if (!bookingByLead.has(key)) bookingByLead.set(key, b);
+  }
+
+  return leads.map((lead) => {
+    const key = String(lead._id);
+    const paymentSummary = summarizePayment(paymentByLead.get(key), bookingByLead.get(key));
+    return paymentSummary ? { ...lead, paymentSummary } : lead;
+  });
 }
 
 async function getLeadPaymentSummary(leadId) {
@@ -608,5 +642,6 @@ module.exports = {
   summarizePayment,
   getLeadPaymentSummary,
   getLeadPaymentReceipt,
+  attachPaymentSummariesToLeads,
   COMPANY,
 };

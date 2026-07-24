@@ -35,7 +35,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('crm_remember') === '1');
   const [langOpen, setLangOpen] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
   const [activePreset, setActivePreset] = useState(null);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -280,49 +279,34 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Demo accounts (collapsed) */}
-        <div className="mt-4 text-center">
-          <button
-            type="button"
-            onClick={() => setShowDemo((v) => !v)}
-            className="text-xs font-medium text-slate-400 hover:text-violet-600"
-          >
-            {showDemo ? 'Hide demo accounts' : 'Quick demo login'}
-          </button>
-          <AnimatePresence>
-            {showDemo && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
+        {/* Demo accounts */}
+        <div className="mt-4 rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm">
+          <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Quick demo login
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {LOGIN_PRESETS.map((preset) => (
+              <button
+                key={preset.email}
+                type="button"
+                onClick={() => fillPreset(preset)}
+                className={cn(
+                  'rounded-xl border px-3 py-2.5 text-left text-sm transition',
+                  activePreset === preset.email
+                    ? 'border-violet-400 bg-violet-50 ring-2 ring-violet-400/20'
+                    : 'border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/50',
+                )}
               >
-                <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-slate-200/80 bg-white/80 p-3 shadow-sm">
-                  {LOGIN_PRESETS.map((preset) => (
-                    <button
-                      key={preset.email}
-                      type="button"
-                      onClick={() => fillPreset(preset)}
-                      className={cn(
-                        'rounded-xl border px-3 py-2 text-left text-sm transition',
-                        activePreset === preset.email
-                          ? 'border-violet-400 bg-violet-50 ring-2 ring-violet-400/20'
-                          : 'border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/50',
-                      )}
-                    >
-                      <span className="block truncate text-xs font-semibold text-slate-800">{preset.roleName}</span>
-                      <span className="block truncate text-[11px] text-slate-500">{preset.email}</span>
-                    </button>
-                  ))}
-                  <p className="col-span-2 pt-1 text-center text-[11px] text-slate-400">
-                    Password: <span className="font-mono font-semibold text-slate-600">123456</span>
-                    {' · '}
-                    <Link to="/hr/login" className="text-violet-600 hover:underline">HR Portal</Link>
-                  </p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <span className="block truncate text-xs font-semibold text-slate-800">{preset.roleName}</span>
+                <span className="block truncate text-[11px] text-slate-500">{preset.email}</span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-center text-[11px] text-slate-400">
+            Password: <span className="font-mono font-semibold text-slate-600">123456</span>
+            {' · '}
+            <Link to="/hr/login" className="text-violet-600 hover:underline">HR Portal</Link>
+          </p>
         </div>
       </motion.div>
 

@@ -20,6 +20,7 @@ import {
   Megaphone,
   Receipt,
   RotateCcw,
+  Target,
 } from 'lucide-react';
 import { operationsAdminMenuChildren } from '../operations-manager/operations-nav-config';
 import { leadManagementSections } from './lead-management-config';
@@ -77,6 +78,18 @@ export const teamManagementItems = [
     label: 'Users & Roles',
     icon: UsersRound,
     permission: { module: 'users', action: 'view' },
+  },
+  {
+    path: '/team/sales-teams',
+    label: 'Sales Teams',
+    icon: Users,
+    roles: ['admin'],
+  },
+  {
+    path: '/team/sales-targets',
+    label: 'Sales Targets',
+    icon: Target,
+    roles: ['admin'],
   },
   {
     path: '/team/attendance',

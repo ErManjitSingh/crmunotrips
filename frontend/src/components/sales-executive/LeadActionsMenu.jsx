@@ -13,6 +13,7 @@ import {
 } from '../ui/dropdown-menu';
 import { Button } from '../ui/button';
 import AppModal from '../ui/AppModal';
+import { beginLeadCall } from '../../lib/callSession';
 
 export default function LeadActionsMenu({ lead, onScheduleFollowUp, onChangeStatus, canChangeStatus = true }) {
   const phone = lead.phone?.replace(/\s/g, '');
@@ -40,10 +41,11 @@ export default function LeadActionsMenu({ lead, onScheduleFollowUp, onChangeStat
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <a href={`tel:${phone}`} className="flex items-center gap-2 cursor-pointer">
-            <Phone className="w-4 h-4" /> Call Customer
-          </a>
+        <DropdownMenuItem
+          onClick={() => phone && beginLeadCall({ leadId: lead._id, leadName: lead.name, phone })}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <Phone className="w-4 h-4" /> Call Customer
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <a href={`https://wa.me/${phone?.replace('+', '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 cursor-pointer">

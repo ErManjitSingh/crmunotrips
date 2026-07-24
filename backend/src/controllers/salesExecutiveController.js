@@ -81,10 +81,15 @@ function buildExecutiveLeadFilter(filter) {
 }
 
 const getDashboard = asyncHandler(async (req, res) => {
+  const destinationPeriod = req.query.destinationPeriod || 'all';
+  const cacheSuffix = `${req.user._id}:${req.branchId || 'all'}:${destinationPeriod}`;
   const stats = await getOrSetFresh(
     req,
-    cacheKey('sales_executive', `${req.user._id}:${req.branchId || 'all'}`),
-    () => buildExecutiveDashboard(req.user._id, { branchId: req.branchId }),
+    cacheKey('sales_executive', cacheSuffix),
+    () => buildExecutiveDashboard(req.user._id, {
+      branchId: req.branchId,
+      destinationPeriod,
+    }),
     60 * 1000
   );
   res.json(stats);
@@ -201,6 +206,22 @@ const updateLead = asyncHandler(async (req, res) => {
   ]);
   const otherFields = Object.keys(req.body).filter((k) => !statusOnlyKeys.has(k));
   const isStatusOnlyUpdate = Boolean(status) && otherFields.length === 0;
+  const isColdCallDoneOnly =
+    (req.body.coldCallDone === true || req.body.coldCallDone === 'true') &&
+    otherFields.every((k) => ['coldCallDone', 'coldCallNotes'].includes(k));
+
+  if (isColdCallDoneOnly) {
+    const { markColdCallDone } = require('../services/coldLeadService');
+    await markColdCallDone(lead, {
+      user: req.user,
+      notes: req.body.coldCallNotes || 'Cold call done',
+    });
+    invalidateDashboardCache('sales_executive');
+    const populated = await Lead.findById(lead._id).populate(LEAD_POPULATE).lean();
+    const paymentSummary = await getLeadPaymentSummary(lead._id);
+    res.json({ ...enrichLead(populated), paymentSummary });
+    return;
+  }
 
   if (isStatusOnlyUpdate) {
     if (!LEAD_STATUSES.includes(status)) throw new ApiError(400, 'Invalid lead status');
@@ -292,7 +313,29 @@ const updateLead = asyncHandler(async (req, res) => {
     if (data[key] !== undefined) lead[key] = data[key];
   });
 
-  await lead.save();
+  const coldCallDone = req.body.coldCallDone === true || req.body.coldCallDone === 'true';
+  const markedCold =
+    data.temperature === 'cold' ||
+    req.body.temperature === 'cold' ||
+    Boolean(req.body.coldReason && String(req.body.coldReason).trim());
+
+  if (coldCallDone) {
+    const { markColdCallDone } = require('../services/coldLeadService');
+    await markColdCallDone(lead, {
+      user: req.user,
+      notes: req.body.coldCallNotes || 'Cold call done',
+    });
+  } else if (markedCold) {
+    const { scheduleColdLeadReminder } = require('../services/coldLeadService');
+    await scheduleColdLeadReminder(lead, {
+      reason: req.body.coldReason || data.coldReason || lead.coldReason,
+      user: req.user,
+      notes: req.body.coldCallNotes || '',
+    });
+  } else {
+    await lead.save();
+  }
+
   await logLeadActivity({
     leadId: lead._id,
     branchId: lead.branchId,

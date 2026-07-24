@@ -7,9 +7,15 @@ import { useDataRefresh } from '../../hooks/useDataRefresh';
 import { useDashboardQuery } from '../../features/dashboard/hooks/useDashboardQuery';
 import { invalidateDashboard } from '../../lib/queryInvalidation';
 import { fetchAnnouncementFeed } from '../../services/announcementApi';
+import API from '../../api/axios';
 import ExecutiveKpiCards from './dashboard/ExecutiveKpiCards';
 import ExecutiveDashboardPanels from './dashboard/ExecutiveDashboardPanels';
 import MobileExecutiveDashboard from './dashboard/MobileExecutiveDashboard';
+import {
+  ColdCallAlertsPanel,
+  DestinationWisePanel,
+} from './dashboard/DestinationAndColdPanels';
+import { formatCurrency } from './executiveUtils';
 
 function getGreeting(hour) {
   if (hour < 5) return 'Good night';
@@ -98,9 +104,12 @@ function TimeScene({ scene }) {
 
 export default function ExecutiveDashboard() {
   const [now, setNow] = useState(() => new Date());
+  const [destinationPeriod, setDestinationPeriod] = useState('all');
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data, isLoading, isFetching } = useDashboardQuery('/sales-executive/dashboard');
+  const { data, isLoading, isFetching } = useDashboardQuery('/sales-executive/dashboard', {
+    destinationPeriod,
+  });
   const { data: announcementFeed } = useQuery({
     queryKey: ['announcements', 'feed'],
     queryFn: fetchAnnouncementFeed,
@@ -118,7 +127,15 @@ export default function ExecutiveDashboard() {
     invalidateDashboard(queryClient);
   }, [queryClient]);
 
-  useDataRefresh(['dashboard'], refresh);
+  const handleMarkColdCallDone = useCallback(async (item) => {
+    await API.put(`/sales-executive/leads/${item._id}`, {
+      coldCallDone: true,
+      coldCallNotes: 'Cold call done from dashboard',
+    });
+    refresh();
+  }, [refresh]);
+
+  useDataRefresh(['dashboard', 'leads', 'followups'], refresh);
 
   if (isLoading && !data) {
     return (
@@ -130,6 +147,8 @@ export default function ExecutiveDashboard() {
 
   const progress = Math.min(100, data?.target?.progress ?? 0);
   const hero = announcementFeed?.hero;
+  const monthlyTarget = data?.target?.monthlyTarget || 0;
+  const revenueAchieved = data?.target?.revenueAchieved || 0;
 
   return (
     <>
@@ -143,72 +162,83 @@ export default function ExecutiveDashboard() {
       />
 
       <div className="hidden space-y-3 pb-6 lg:block">
-      {isFetching && (
-        <div className="h-0.5 w-full bg-violet-500/30 rounded-full overflow-hidden">
-          <div className="h-full w-1/3 bg-violet-500 animate-pulse" />
-        </div>
-      )}
-
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`relative min-h-[78px] overflow-hidden rounded-xl border px-4 py-3 shadow-sm transition-colors duration-1000 ${scene.wrapper}`}
-      >
-        <TimeScene scene={scene} />
-        <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-              {getGreeting(now.getHours())}, {firstName}! 👋
-            </h1>
-            <p className={`mt-0.5 text-xs ${scene.muted}`}>
-              Here&apos;s what&apos;s happening with your leads today.
-            </p>
+        {isFetching && (
+          <div className="h-0.5 w-full bg-violet-500/30 rounded-full overflow-hidden">
+            <div className="h-full w-1/3 bg-violet-500 animate-pulse" />
           </div>
-          <div className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium backdrop-blur-sm ${scene.date}`}>
-            <CalendarDays className="h-3.5 w-3.5" />
-            <span>{formatTodayDate(now)}</span>
-            <span className="opacity-50">·</span>
-            <span>{now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
-          </div>
-        </div>
-      </motion.div>
+        )}
 
-      <ExecutiveKpiCards kpis={data?.kpis} trends={data?.kpiTrends} />
-
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-500 to-rose-400 px-4 py-3.5 text-white shadow-lg shadow-violet-500/15"
-      >
-        <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
-        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
-              <Rocket className="h-5 w-5" />
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`relative min-h-[78px] overflow-hidden rounded-xl border px-4 py-3 shadow-sm transition-colors duration-1000 ${scene.wrapper}`}
+        >
+          <TimeScene scene={scene} />
+          <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+                {getGreeting(now.getHours())}, {firstName}! 👋
+              </h1>
+              <p className={`mt-0.5 text-xs ${scene.muted}`}>
+                Here&apos;s what&apos;s happening with your leads today.
+              </p>
             </div>
-            <div className="min-w-0">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-amber-100">
-                {hero?.badge || 'Monthly Goal'}
-              </p>
-              <h2 className="truncate text-sm font-bold sm:text-base">
-                {hero?.title || `${data?.kpis?.todayFollowups ?? 0} follow-ups and ${data?.kpis?.hotLeads ?? 0} hot leads need attention`}
-              </h2>
-              <p className="mt-0.5 line-clamp-1 text-[11px] text-white/80">
-                {hero?.description || `You are currently at ${progress}% of your monthly sales target.`}
-              </p>
-              <div className="mt-2 h-1.5 w-full max-w-md overflow-hidden rounded-full bg-black/20">
-                <div className="h-full rounded-full bg-white" style={{ width: `${progress}%` }} />
+            <div className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium backdrop-blur-sm ${scene.date}`}>
+              <CalendarDays className="h-3.5 w-3.5" />
+              <span>{formatTodayDate(now)}</span>
+              <span className="opacity-50">·</span>
+              <span>{now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+          </div>
+        </motion.div>
+
+        <ColdCallAlertsPanel
+          items={data?.coldCallReminders || []}
+          onMarkDone={handleMarkColdCallDone}
+        />
+
+        <ExecutiveKpiCards kpis={data?.kpis} trends={data?.kpiTrends} />
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-500 to-rose-400 px-4 py-3.5 text-white shadow-lg shadow-violet-500/15"
+        >
+          <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
+          <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                <Rocket className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-amber-100">
+                  {hero?.badge || 'My Monthly Target'}
+                </p>
+                <h2 className="truncate text-sm font-bold sm:text-base">
+                  {hero?.title || `Target ${formatCurrency(monthlyTarget)} · Achieved ${formatCurrency(revenueAchieved)}`}
+                </h2>
+                <p className="mt-0.5 line-clamp-1 text-[11px] text-white/80">
+                  {hero?.description || `You are currently at ${progress}% of your monthly sales target.`}
+                </p>
+                <div className="mt-2 h-1.5 w-full max-w-md overflow-hidden rounded-full bg-black/20">
+                  <div className="h-full rounded-full bg-white" style={{ width: `${progress}%` }} />
+                </div>
               </div>
             </div>
+            <div className="flex shrink-0 items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2">
+              <Target className="h-4 w-4" />
+              <span className="text-lg font-bold">{progress}%</span>
+            </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2">
-            <Target className="h-4 w-4" />
-            <span className="text-lg font-bold">{progress}%</span>
-          </div>
-        </div>
-      </motion.div>
+        </motion.div>
 
-      <ExecutiveDashboardPanels data={data} announcements={announcementFeed?.carousel || []} />
+        <DestinationWisePanel
+          rows={data?.destinationWise?.rows || []}
+          period={destinationPeriod}
+          onPeriodChange={setDestinationPeriod}
+        />
+
+        <ExecutiveDashboardPanels data={data} announcements={announcementFeed?.carousel || []} />
       </div>
     </>
   );

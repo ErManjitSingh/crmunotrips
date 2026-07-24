@@ -48,7 +48,14 @@ export const travelSchema = travelFieldsSchema.refine(
 );
 
 export const budgetSchema = z.object({
-  budget: numberField(1000, 'Budget must be at least ₹1,000'),
+  budget: z.preprocess(
+    (val) => {
+      if (val === '' || val == null) return 0;
+      const n = typeof val === 'number' ? val : Number(val);
+      return Number.isNaN(n) ? 0 : n;
+    },
+    z.number().min(0).optional()
+  ),
   hotelCategory: z.string().min(1, 'Select hotel category'),
   mealPreference: z.string().min(1, 'Select meal preference'),
   transportRequirement: z.string().min(1, 'Select transport requirement'),

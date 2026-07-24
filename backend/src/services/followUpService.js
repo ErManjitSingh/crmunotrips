@@ -53,6 +53,24 @@ async function createFollowUpForLead({ body, user, leadFilter = null }) {
   await syncLeadFollowUpDates(lead._id);
   await resolveMissedAlertsForLead(lead._id, followup._id);
 
+  if (payload.category === 'cold') {
+    const LeadNote = require('../models/LeadNote');
+    lead.temperature = 'cold';
+    lead.isHot = false;
+    if (body.coldReason) lead.coldReason = String(body.coldReason).trim();
+    lead.coldCallPending = true;
+    lead.coldCallReminderAt = payload.scheduledAt;
+    lead.coldCallFollowUpId = followup._id;
+    await lead.save();
+    if (user?._id && (body.coldReason || payload.notes)) {
+      await LeadNote.create({
+        lead: lead._id,
+        user: user._id,
+        text: payload.notes || `Cold lead — reason: ${body.coldReason}`,
+      }).catch(() => {});
+    }
+  }
+
   return FollowUp.findById(followup._id).populate(FOLLOWUP_POPULATE).lean();
 }
 
@@ -90,6 +108,15 @@ async function updateFollowUpRecord({ followup, body, user } = {}) {
   if (lead) {
     await applyCategoryToLead(lead, followup.category, followup.status);
     await syncLeadFollowUpDates(lead._id);
+    if (
+      (action === 'complete' || followup.status === 'completed') &&
+      (followup.category === 'cold' || String(lead.coldCallFollowUpId) === String(followup._id))
+    ) {
+      lead.coldCallPending = false;
+      lead.coldCallReminderAt = undefined;
+      lead.coldCallFollowUpId = undefined;
+      await lead.save();
+    }
     if (action === 'reschedule') {
       await resolveMissedAlertsForLead(lead._id, followup._id);
     }

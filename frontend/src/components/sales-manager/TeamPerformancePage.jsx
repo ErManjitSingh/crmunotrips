@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Medal, Trophy, TrendingUp, PhoneCall, Target, IndianRupee, Users } from 'lucide-react';
 import {
@@ -44,10 +45,14 @@ export default function TeamPerformancePage() {
     ) }),
     columnHelper.accessor('name', { header: 'Executive', cell: (i) => <span className="font-semibold text-content-primary">{i.getValue()}</span> }),
     columnHelper.accessor('assignedLeads', { header: 'Leads Assigned' }),
+    columnHelper.accessor((r) => r.temperature?.cold ?? 0, { id: 'cold', header: 'Cold' }),
+    columnHelper.accessor((r) => r.temperature?.warm ?? 0, { id: 'warm', header: 'Warm' }),
+    columnHelper.accessor((r) => r.temperature?.hot ?? 0, { id: 'hot', header: 'Hot' }),
     columnHelper.accessor('contacted', { header: 'Contacted' }),
     columnHelper.accessor('followUpsDone', { header: 'Follow-ups' }),
     columnHelper.accessor('quotationsSent', { header: 'Quotations' }),
-    columnHelper.accessor('conversions', { header: 'Conversions' }),
+    columnHelper.accessor('conversions', { header: 'Converted' }),
+    columnHelper.accessor((r) => r.byStatus?.lost ?? 0, { id: 'lost', header: 'Lost' }),
     columnHelper.accessor('revenue', { header: 'Revenue', cell: (i) => <span className="font-bold tabular-nums">{formatCurrency(i.getValue())}</span> }),
     columnHelper.accessor('monthlyTarget', { header: 'Target', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue())}</span> }),
     columnHelper.accessor('targetProgress', { header: 'Target %', cell: (i) => <span className="text-sky-700 font-semibold">{i.getValue() ?? 0}%</span> }),
@@ -56,9 +61,17 @@ export default function TeamPerformancePage() {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
-        <button type="button" onClick={() => setTargetUser(row.original)} className="text-xs font-semibold text-sky-700 hover:underline">
-          Set target
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/leads?agent=${row.original._id}`}
+            className="text-xs font-semibold text-violet-700 hover:underline"
+          >
+            View leads
+          </Link>
+          <button type="button" onClick={() => setTargetUser(row.original)} className="text-xs font-semibold text-sky-700 hover:underline">
+            Set target
+          </button>
+        </div>
       ),
     }),
   ], []);
@@ -67,7 +80,7 @@ export default function TeamPerformancePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Team Performance" description="Executive metrics, monthly targets, and rankings" breadcrumbs={['Sales Manager', 'Team Performance']} />
+      <PageHeader title="Team Performance" description="Executive metrics, monthly targets, and rankings" breadcrumbs={['Team', 'Sales Targets']} />
 
       {!loading && leaders.length > 0 && (
         <div className="rounded-2xl border border-subtle bg-surface/80 p-4">
@@ -112,7 +125,17 @@ export default function TeamPerformancePage() {
               <div className="p-2 rounded-lg bg-surface-elevated/50"><Trophy className="w-3 h-3 text-content-muted mb-0.5" /><p className="text-content-muted">Conv.</p><p className="font-bold">{ex.conversions}</p></div>
               <div className="p-2 rounded-lg bg-surface-elevated/50"><IndianRupee className="w-3 h-3 text-content-muted mb-0.5" /><p className="text-content-muted">Revenue</p><p className="font-bold">{formatCurrency(ex.revenue)}</p></div>
             </div>
-            <p className="text-xs text-emerald-600 font-semibold mt-2 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> {ex.conversionRate}% conversion</p>
+            <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold">
+              <span className="rounded-full bg-sky-50 px-2 py-0.5 text-sky-700">Cold {ex.temperature?.cold || 0}</span>
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">Warm {ex.temperature?.warm || 0}</span>
+              <span className="rounded-full bg-orange-50 px-2 py-0.5 text-orange-700">Hot {ex.temperature?.hot || 0}</span>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">Converted {ex.conversions || 0}</span>
+              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700">Lost {ex.byStatus?.lost || 0}</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <p className="text-xs text-emerald-600 font-semibold flex items-center gap-1"><TrendingUp className="w-3 h-3" /> {ex.conversionRate}% conversion</p>
+              <Link to={`/leads?agent=${ex._id}`} className="text-[10px] font-bold text-violet-600 hover:underline">Check leads →</Link>
+            </div>
           </div>
         ))}
       </motion.div>

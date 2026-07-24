@@ -70,12 +70,6 @@ export default function LeadWizard() {
     setSaving(true);
     setError('');
     const values = getValues();
-    const budgetValue = values.budgetRange === 'custom' ? Number(values.customBudget) : Number(values.budget);
-    if (!(budgetValue > 0)) {
-      setError('Budget is required before creating lead');
-      setSaving(false);
-      return;
-    }
     const payload = wizardValuesToPayload(values);
 
     try {

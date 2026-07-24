@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import AppModal from '../ui/AppModal';
 import { FOLLOWUP_PRIORITIES, FOLLOWUP_CATEGORIES, FOLLOWUP_TYPES } from './constants';
+import { COLD_LEAD_REASONS } from '../lead-wizard/constants';
 
 const emptyForm = {
   lead: '',
@@ -12,7 +13,17 @@ const emptyForm = {
   time: '10:00',
   priority: 'medium',
   remarks: '',
+  coldReason: '',
 };
+
+function plusFourHoursLocal() {
+  const d = new Date(Date.now() + 4 * 60 * 60 * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  };
+}
 
 export default function AddFollowUpModal({
   open,
@@ -40,12 +51,28 @@ export default function AddFollowUpModal({
         time: d.toTimeString().slice(0, 5),
         priority: editData.priority || 'medium',
         remarks: editData.notes || '',
+        coldReason: editData.coldReason || '',
       });
     } else {
       const today = new Date().toISOString().split('T')[0];
       setForm({ ...emptyForm, lead: fixedLeadId || '', date: today });
     }
   }, [editData, open, fixedLeadId]);
+
+  const applyColdDefaults = (nextCategory) => {
+    if (nextCategory !== 'cold') {
+      setForm((prev) => ({ ...prev, category: nextCategory }));
+      return;
+    }
+    const slot = plusFourHoursLocal();
+    setForm((prev) => ({
+      ...prev,
+      category: 'cold',
+      type: 'call',
+      date: slot.date,
+      time: slot.time,
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,18 +85,30 @@ export default function AddFollowUpModal({
       setError('Please select a lead');
       return;
     }
-    if (!form.remarks?.trim()) {
+    if (form.category === 'cold' && !form.coldReason) {
+      setError('Please select why this is a cold lead');
+      return;
+    }
+    if (!form.remarks?.trim() && form.category !== 'cold') {
       setError('Please enter remarks');
       return;
     }
 
     setSaving(true);
     try {
+      const coldLabel = COLD_LEAD_REASONS.find((r) => r.value === form.coldReason)?.label;
+      const remarks = form.category === 'cold'
+        ? [form.remarks?.trim(), coldLabel ? `Cold reason: ${coldLabel}` : '']
+            .filter(Boolean)
+            .join(' — ') || `Cold lead — ${coldLabel}`
+        : form.remarks.trim();
+
       await onSubmit({
         ...form,
         lead: fixedLeadId || form.lead,
         scheduledAt: `${form.date}T${form.time}:00`,
-        notes: form.remarks.trim(),
+        notes: remarks,
+        coldReason: form.category === 'cold' ? form.coldReason : undefined,
       });
       if (!editData) {
         const today = new Date().toISOString().split('T')[0];
@@ -121,7 +160,7 @@ export default function AddFollowUpModal({
           <label className="text-xs font-medium text-content-muted mb-1 block">Follow-up Category *</label>
           <select
             value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
+            onChange={(e) => applyColdDefaults(e.target.value)}
             required
             className="input-premium w-full h-11 rounded-xl font-medium"
           >
@@ -131,6 +170,33 @@ export default function AddFollowUpModal({
           </select>
           <p className="text-[10px] text-content-muted mt-1">Warm → Cold → Converted → Expected Conv.</p>
         </div>
+
+        {form.category === 'cold' && (
+          <div className="rounded-xl border border-sky-200 bg-sky-50/80 p-3 space-y-3">
+            <p className="text-xs font-semibold text-sky-800">
+              Cold lead selected — choose why, and a 4-hour call reminder will be set automatically.
+            </p>
+            <div>
+              <label className="text-xs font-medium text-content-muted mb-1 block">Why is this cold? *</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {COLD_LEAD_REASONS.map((reason) => (
+                  <button
+                    key={reason.value}
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, coldReason: reason.value }))}
+                    className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+                      form.coldReason === reason.value
+                        ? 'border-sky-500 bg-sky-100 text-sky-800'
+                        : 'border-subtle bg-white text-content-secondary hover:border-sky-300'
+                    }`}
+                  >
+                    {reason.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -142,7 +208,7 @@ export default function AddFollowUpModal({
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-content-muted mb-1 block">Priority</label>
+            <label className="text-xs font-medium text-content-muted mb-1 block">Intent</label>
             <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} className="input-premium w-full h-11 rounded-xl">
               {FOLLOWUP_PRIORITIES.map((p) => (
                 <option key={p.value} value={p.value}>{p.label}</option>
@@ -163,14 +229,16 @@ export default function AddFollowUpModal({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-content-muted mb-1 block">Remarks *</label>
+          <label className="text-xs font-medium text-content-muted mb-1 block">
+            Comments {form.category === 'cold' ? '(optional)' : '*'}
+          </label>
           <textarea
             value={form.remarks}
             onChange={(e) => setForm({ ...form, remarks: e.target.value })}
-            required
+            required={form.category !== 'cold'}
             rows={3}
             className="input-premium w-full rounded-xl resize-none"
-            placeholder="What to discuss on this follow-up..."
+            placeholder={form.category === 'cold' ? 'Add notes about this cold lead…' : 'What to discuss on this follow-up...'}
           />
         </div>
 
@@ -185,4 +253,4 @@ export default function AddFollowUpModal({
       </form>
     </AppModal>
   );
-};
+}

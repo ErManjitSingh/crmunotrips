@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Crown, UserPlus, UserMinus, ArrowRightLeft, Pencil, Target, Trophy, IndianRupee } from 'lucide-react';
 import API from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 import PageHeader from '../ui/PageHeader';
 import { Button } from '../ui/button';
 import Avatar from '../ui/Avatar';
@@ -12,6 +13,10 @@ import { formatCurrency } from './teams/teamUtils';
 
 export default function TeamDetailPage() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const location = useLocation();
+  const isAdminView = user?.role === 'admin' || location.pathname.startsWith('/team/sales-teams');
+  const listPath = isAdminView ? '/team/sales-teams' : '/sales-manager/teams';
   const [team, setTeam] = useState(null);
   const [teams, setTeams] = useState([]);
   const [leaders, setLeaders] = useState([]);
@@ -60,14 +65,14 @@ export default function TeamDetailPage() {
 
   return (
     <div className="space-y-6 pb-8">
-      <Link to="/sales-manager/teams" className="inline-flex items-center gap-1.5 text-sm text-violet-600 hover:text-violet-500">
+      <Link to={listPath} className="inline-flex items-center gap-1.5 text-sm text-violet-600 hover:text-violet-500">
         <ArrowLeft className="w-4 h-4" /> Back to Teams
       </Link>
 
       <PageHeader
         title={team.name}
-        description={team.description || 'Team details and member management'}
-        breadcrumbs={['Sales Manager', 'Teams', team.name]}
+        description={team.description || 'Team details and member management — assign executives to this team'}
+        breadcrumbs={[isAdminView ? 'Admin' : 'Sales Manager', 'Sales Teams', team.name]}
         actions={
           <Button variant="outline" onClick={() => setEditOpen(true)}>
             <Pencil className="w-4 h-4 mr-1" /> Edit Team

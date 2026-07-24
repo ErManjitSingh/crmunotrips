@@ -19,6 +19,7 @@ const {
 const { loadLeadCore, loadLeadFollowups, loadLeadQuotations, loadLeadNotes, loadLeadRelated } = require('../services/leadDetailService');
 const { LEAD_POPULATE, enrichLead } = require('../utils/queryHelpers');
 const { createFollowUpForLead } = require('../services/followUpService');
+const { scheduleColdLeadReminder, markColdCallDone } = require('../services/coldLeadService');
 const { normalizeLeadInput, computeLeadScoreByBudget } = require('../utils/normalizeLeadInput');
 const { ROLE_LABELS } = require('../config/roles');
 const { findLeadsPaginated } = require('../repositories/leadRepository');
@@ -134,10 +135,8 @@ async function assertLeadReactivationAccess(req, lead) {
   }
 }
 
-function ensureLeadQualifiedForPipeline(payload = {}) {
-  if ((Number(payload.budget) || 0) <= 0) {
-    throw new ApiError(400, 'Budget is required before moving lead into working pipeline');
-  }
+function ensureLeadQualifiedForPipeline() {
+  // Budget is optional — leads can move through pipeline without a set budget.
 }
 
 const listLeads = asyncHandler(async (req, res) => {
@@ -257,9 +256,6 @@ const createLead = asyncHandler(async (req, res) => {
   }
   if (!data.destination?.trim()) {
     data.destination = 'Not specified';
-  }
-  if ((Number(data.budget) || 0) <= 0) {
-    throw new ApiError(400, 'Budget is required');
   }
   const typeDetection = detectLeadType({ ...req.body, ...data });
   data.leadType = typeDetection.leadType;
@@ -471,6 +467,7 @@ const updateLead = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Lead status cannot be changed after conversion or closure');
   }
 
+  const prevTemperature = lead.temperature;
   Object.assign(lead, data);
   if (!lead.firstContactAt && (data.status === 'contacted' || ['contacted', 'working_progress', 'follow_up'].includes(nextStatus))) {
     lead.firstContactAt = new Date();
@@ -484,6 +481,25 @@ const updateLead = asyncHandler(async (req, res) => {
   }
   await applyLeadMetrics(lead);
   await lead.save();
+
+  const markedCold =
+    data.temperature === 'cold' ||
+    (req.body.temperature === 'cold') ||
+    Boolean(req.body.coldReason && String(req.body.coldReason).trim());
+  const coldCallDone = req.body.coldCallDone === true || req.body.coldCallDone === 'true';
+
+  if (coldCallDone) {
+    await markColdCallDone(lead, {
+      user: req.user,
+      notes: req.body.coldCallNotes || req.body.statusReason || 'Cold call done',
+    });
+  } else if (markedCold && (prevTemperature !== 'cold' || req.body.coldReason)) {
+    await scheduleColdLeadReminder(lead, {
+      reason: req.body.coldReason || data.coldReason || lead.coldReason,
+      user: req.user,
+      notes: req.body.coldCallNotes || req.body.statusReason || '',
+    });
+  }
 
   const changes = diffLeadChanges(before, lead.toObject());
   if (changes.length) {

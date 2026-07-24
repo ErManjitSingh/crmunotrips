@@ -33,6 +33,12 @@ export default function LeadCustomerPanel({ lead }) {
         {lead.alternatePhone ? <InfoRow label="Alt. Phone" value={lead.alternatePhone} /> : null}
         <InfoRow label="Email" value={lead.email} />
         {lead.alternateEmail ? <InfoRow label="Alt. Email" value={lead.alternateEmail} /> : null}
+        <InfoRow
+          label="Date of Birth"
+          value={lead.dateOfBirth
+            ? new Date(lead.dateOfBirth).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+            : '—'}
+        />
         <InfoRow label="Location" value={[lead.city, lead.state].filter(Boolean).join(', ') || '—'} />
         <InfoRow label="Lead Age" value={computeLeadAge(lead.createdAt)} />
         <InfoRow label="Last Contacted" value={lastContacted} />
@@ -55,6 +61,7 @@ export default function LeadCustomerPanel({ lead }) {
         />
         <InfoRow label="Tour Days" value={lead.tourDays || '—'} />
         <InfoRow label="Rooms" value={lead.numberOfRooms || '—'} />
+        <InfoRow label="Rooms with Mattress" value={lead.roomsWithMattress ?? 0} />
         <InfoRow label="Pickup" value={lead.pickupPoint || '—'} />
         <InfoRow label="Drop" value={lead.dropPoint || '—'} />
         <InfoRow
@@ -67,9 +74,18 @@ export default function LeadCustomerPanel({ lead }) {
           label="Hotel"
           value={String(lead.hotelCategory || '—').replace(/_/g, ' ')}
         />
-        <InfoRow label="Budget" value={lead.budget ? `₹${Number(lead.budget).toLocaleString('en-IN')}` : '—'} />
+        <InfoRow label="Budget" value={lead.budget ? `₹${Number(lead.budget).toLocaleString('en-IN')}` : 'Not set'} />
+        <InfoRow label="Intent" value={lead.priority || '—'} />
         <InfoRow label="Source" value={formatSource(lead)} />
         <InfoRow label="Package Type" value={lead.leadType?.replace(/_/g, ' ') || '—'} />
+        <InfoRow
+          label="Calls"
+          value={
+            lead.callStats?.count
+              ? `${lead.callStats.count}x · ${Math.floor((lead.callStats.totalDurationSeconds || 0) / 60)}m ${(lead.callStats.totalDurationSeconds || 0) % 60}s`
+              : 'No calls yet'
+          }
+        />
       </Card>
     </div>
   );

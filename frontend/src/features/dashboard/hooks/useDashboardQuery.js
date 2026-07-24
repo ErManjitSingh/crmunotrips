@@ -7,6 +7,7 @@ export function buildDashboardParams(filters = {}, { fresh = false } = {}) {
   if (filters.dateFrom) params.dateFrom = filters.dateFrom;
   if (filters.dateTo) params.dateTo = filters.dateTo;
   if (filters.source) params.source = filters.source;
+  if (filters.destinationPeriod) params.destinationPeriod = filters.destinationPeriod;
   if (fresh) params.fresh = '1';
   return params;
 }
@@ -19,6 +20,7 @@ export function dashboardQueryKey(endpoint = '/dashboard/stats', filters = {}) {
       dateFrom: filters.dateFrom || '',
       dateTo: filters.dateTo || '',
       source: filters.source || '',
+      destinationPeriod: filters.destinationPeriod || '',
     },
   ];
 }

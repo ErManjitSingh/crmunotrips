@@ -97,10 +97,8 @@ export function useLeadWizard({ initialValues, draftKey = DRAFT_STORAGE_KEY, isE
     if (currentStep === 1) {
       if (!values.name?.trim()) nextErrors.name = { message: 'Customer name is required' };
       if (!values.phone?.trim()) nextErrors.phone = { message: 'Phone is required' };
-      const budgetValue = values.budgetRange === 'custom' ? Number(values.customBudget) : Number(values.budget);
-      if (!(budgetValue > 0)) nextErrors.budget = { message: 'Budget is required' };
       if (!values.leadSource) nextErrors.leadSource = { message: 'Select a source' };
-      if (!values.priority) nextErrors.priority = { message: 'Select priority' };
+      if (!values.priority) nextErrors.priority = { message: 'Select intent' };
     }
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;

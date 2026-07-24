@@ -58,20 +58,32 @@ async function applyCategoryToLead(lead, category, status) {
 }
 
 function normalizeFollowUpPayload(body, user, lead) {
-  const scheduledAt = body.scheduledAt ? new Date(body.scheduledAt) : null;
+  const { buildColdReminderAt, coldReasonLabel } = require('../services/coldLeadService');
+  let scheduledAt = body.scheduledAt ? new Date(body.scheduledAt) : null;
+  const category = FOLLOWUP_CATEGORIES.includes(body.category) ? body.category : 'warm';
+
+  if ((!scheduledAt || Number.isNaN(scheduledAt.getTime())) && category === 'cold') {
+    scheduledAt = buildColdReminderAt();
+  }
+
   if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) {
     const err = new Error('Valid scheduledAt is required');
     err.statusCode = 400;
     throw err;
   }
 
-  const category = FOLLOWUP_CATEGORIES.includes(body.category) ? body.category : 'warm';
+  let notes = body.notes || body.remarks || '';
+  if (category === 'cold' && body.coldReason) {
+    const reasonText = coldReasonLabel(body.coldReason);
+    const prefix = `Cold lead — reason: ${reasonText}. Auto reminder in 4 hours.`;
+    notes = notes ? `${prefix} ${notes}` : prefix;
+  }
 
   return {
     lead: lead._id,
     type: body.type || 'call',
     scheduledAt,
-    notes: body.notes || body.remarks || '',
+    notes,
     outcome: body.outcome || '',
     priority: body.priority || lead.priority || 'medium',
     category,

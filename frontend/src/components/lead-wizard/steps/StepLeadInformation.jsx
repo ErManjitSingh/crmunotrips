@@ -62,7 +62,7 @@ export default function StepLeadInformation() {
 
       <div>
         <label className="block text-sm font-medium text-content-primary mb-3">
-          Priority <span className="text-red-500">*</span>
+          Intent <span className="text-red-500">*</span>
         </label>
         {errors.priority && <p className="text-xs text-red-500 mb-2">{errors.priority.message}</p>}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

@@ -10,9 +10,11 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getLeadSourceShortLabel } from '../../lib/leadSourceLabels';
+import { beginLeadCall } from '../../lib/callSession';
 import Avatar from '../ui/Avatar';
 import { STATUS_STYLES, formatBudget } from '../sales-manager/managerUtils';
 import { CustomerCell } from '../sales-manager/LeadListBadges';
+import LeadCallStats from '../leads/LeadCallStats';
 
 function formatCreatedAt(date) {
   if (!date) return null;
@@ -106,7 +108,6 @@ export function ExecCustomerCell({ lead }) {
 export function ExecContactCell({ lead }) {
   const phone = lead?.phone;
   const email = lead?.email;
-  const tel = phone ? `tel:${String(phone).replace(/\s/g, '')}` : null;
 
   if (!phone && !email) {
     return <span className="text-sm text-content-muted">—</span>;
@@ -115,16 +116,19 @@ export function ExecContactCell({ lead }) {
   return (
     <div className="min-w-[160px] space-y-1.5">
       {phone && (
-        <a
-          href={tel}
-          onClick={(e) => e.stopPropagation()}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            beginLeadCall({ leadId: lead._id, leadName: lead.name, phone });
+          }}
           className="flex items-center gap-2 text-sm text-content-primary hover:text-[#5D5FEF] transition-colors"
         >
           <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 shrink-0">
             <Phone className="w-3 h-3" />
           </span>
           <span className="font-medium tabular-nums truncate">{phone}</span>
-        </a>
+        </button>
       )}
       {email && (
         <a
@@ -138,6 +142,7 @@ export function ExecContactCell({ lead }) {
           <span className="truncate max-w-[150px]">{email}</span>
         </a>
       )}
+      <LeadCallStats lead={lead} compact />
     </div>
   );
 }

@@ -18,6 +18,8 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
+import { beginLeadCall } from '../../lib/callSession';
+import LeadCallStats from '../leads/LeadCallStats';
 
 const STATUS_STYLES = {
   new: 'bg-violet-50 text-violet-600',
@@ -182,11 +184,27 @@ export default function MobileLeadDetailSummary({
               {lead.phone && <p className="mt-1 flex items-center gap-1.5 text-[9px] text-slate-500"><Phone className="h-3 w-3" />{lead.phone}</p>}
               {lead.email && <p className="mt-1 flex items-center gap-1.5 truncate text-[9px] text-slate-500"><Mail className="h-3 w-3" />{lead.email}</p>}
             </div>
-            {lead.phone && <a href={`tel:${lead.phone}`} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-violet-100 bg-violet-50 text-violet-600"><Phone className="h-5 w-5" /></a>}
+            {lead.phone && (
+              <button
+                type="button"
+                onClick={() => beginLeadCall({ leadId: lead._id, leadName: lead.name, phone: lead.phone })}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-violet-100 bg-violet-50 text-violet-600"
+              >
+                <Phone className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+          <div className="px-4 pb-2">
+            <LeadCallStats lead={lead} />
           </div>
           <div className="flex gap-2 border-t border-slate-100 p-2.5">
             <ActionButton icon={MessageCircle} label="WhatsApp" href={whatsappNumber ? `https://wa.me/${whatsappNumber}` : undefined} tone="border-emerald-100 bg-emerald-50 text-emerald-600" />
-            <ActionButton icon={Phone} label="Call" href={lead.phone ? `tel:${lead.phone}` : undefined} tone="border-blue-100 bg-blue-50 text-blue-600" />
+            <ActionButton
+              icon={Phone}
+              label="Call"
+              onClick={() => beginLeadCall({ leadId: lead._id, leadName: lead.name, phone: lead.phone })}
+              tone="border-blue-100 bg-blue-50 text-blue-600"
+            />
             <ActionButton icon={Mail} label="Email" href={lead.email ? `mailto:${lead.email}` : undefined} tone="border-violet-100 bg-violet-50 text-violet-600" />
             <ActionButton icon={MoreHorizontal} label="More" onClick={() => setMenuOpen((open) => !open)} tone="border-slate-200 bg-white text-slate-600" />
           </div>

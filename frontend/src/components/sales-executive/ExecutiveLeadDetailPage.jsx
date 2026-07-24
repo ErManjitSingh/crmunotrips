@@ -37,6 +37,7 @@ export default function ExecutiveLeadDetailPage() {
   const [modalStatusReason, setModalStatusReason] = useState('');
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('upi');
+  const [markingCallDone, setMarkingCallDone] = useState(false);
 
   const loadLead = useCallback(({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -136,8 +137,42 @@ export default function ExecutiveLeadDetailPage() {
   const convertAdvanceInvalid =
     modalStatus === 'converted' && (!advanceAmount || Number(advanceAmount) < 0 || Number.isNaN(Number(advanceAmount)));
 
+  const handleColdCallDone = async () => {
+    if (!id || markingCallDone) return;
+    setMarkingCallDone(true);
+    try {
+      await API.put(`/sales-executive/leads/${id}`, {
+        coldCallDone: true,
+        coldCallNotes: 'Cold call done',
+      });
+      await loadLead({ silent: true });
+    } finally {
+      setMarkingCallDone(false);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="pb-8">
+      {lead.coldCallPending && (
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold text-red-700">Next cold call is due</p>
+            <p className="text-xs text-red-600/80">
+              {lead.coldReason ? `Reason: ${String(lead.coldReason).replace(/_/g, ' ')} · ` : ''}
+              Reminder stays until you mark call done
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={handleColdCallDone}
+            disabled={markingCallDone}
+            className="bg-red-600 hover:bg-red-500 text-white"
+          >
+            {markingCallDone ? 'Saving…' : 'Call Done'}
+          </Button>
+        </div>
+      )}
+
       <LeadDetailLayout
         lead={lead}
         leadId={id}

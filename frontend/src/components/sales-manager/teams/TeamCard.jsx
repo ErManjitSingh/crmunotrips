@@ -4,8 +4,9 @@ import { Crown, Users, Target, Trophy, IndianRupee, ChevronRight } from 'lucide-
 import Avatar from '../../ui/Avatar';
 import { formatCurrency } from './teamUtils';
 
-export default function TeamCard({ team, index = 0, onEdit, onDelete }) {
+export default function TeamCard({ team, index = 0, onEdit, onDelete, href }) {
   const { stats } = team;
+  const detailHref = href || `/sales-manager/teams/${team._id}`;
 
   return (
     <motion.div
@@ -55,7 +56,7 @@ export default function TeamCard({ team, index = 0, onEdit, onDelete }) {
         </div>
 
         <Link
-          to={`/sales-manager/teams/${team._id}`}
+          to={detailHref}
           className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl text-sm font-semibold text-violet-600 bg-violet-500/10 hover:bg-violet-500/15 ring-1 ring-violet-500/20 transition-colors"
         >
           Manage Team <ChevronRight className="w-4 h-4" />

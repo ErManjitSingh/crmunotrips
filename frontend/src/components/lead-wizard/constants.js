@@ -40,6 +40,53 @@ export const PRIORITIES = [
   { value: 'urgent', label: 'Urgent', color: 'text-red-600 bg-red-500/10 border-red-500/30' },
 ];
 
+/** UI label for lead.priority field */
+export const INTENT_LABEL = 'Intent';
+
+export const COLD_LEAD_REASONS = [
+  { value: 'not_answering', label: 'Not answering calls' },
+  { value: 'asked_callback_later', label: 'Asked to call later' },
+  { value: 'budget_not_ready', label: 'Budget not ready' },
+  { value: 'dates_not_final', label: 'Travel dates not final' },
+  { value: 'comparing_options', label: 'Comparing other options' },
+  { value: 'low_interest', label: 'Low interest / browsing only' },
+  { value: 'wrong_time', label: 'Called at wrong time' },
+  { value: 'other', label: 'Other' },
+];
+
+export const PICKUP_DROP_POINTS = [
+  'Delhi Airport (IGI T1)',
+  'Delhi Airport (IGI T2)',
+  'Delhi Airport (IGI T3)',
+  'Mumbai Airport (BOM T1)',
+  'Mumbai Airport (BOM T2)',
+  'Bengaluru Airport (BLR)',
+  'Hyderabad Airport (HYD)',
+  'Chennai Airport (MAA)',
+  'Kolkata Airport (CCU)',
+  'Goa Airport (GOX / GOI)',
+  'Jaipur Airport (JAI)',
+  'Ahmedabad Airport (AMD)',
+  'Chandigarh Airport (IXC)',
+  'Lucknow Airport (LKO)',
+  'Pune Airport (PNQ)',
+  'Kochi Airport (COK)',
+  'Trivandrum Airport (TRV)',
+  'Srinagar Airport (SXR)',
+  'Leh Airport (IXL)',
+  'New Delhi Railway Station',
+  'Old Delhi Railway Station',
+  'Mumbai CST Railway Station',
+  'Howrah Railway Station',
+  'Chennai Central Railway Station',
+  'Hotel Lobby / Stay Location',
+  'Home Pickup',
+  'Office Pickup',
+  'Bus Stand',
+  'City Center',
+  'Same as pickup',
+];
+
 export const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat',
   'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh',
@@ -105,6 +152,8 @@ export const defaultWizardValues = {
   pickupPoint: '',
   dropPoint: '',
   numberOfRooms: 1,
+  roomsWithMattress: 0,
+  dateOfBirth: '',
   cabType: 'sedan',
   adults: 2,
   children: 0,

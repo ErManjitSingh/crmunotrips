@@ -70,6 +70,7 @@ function normalizeLeadInput(body = {}, { isUpdate = false } = {}) {
     pickupPoint: body.pickupPoint?.trim() || '',
     dropPoint: body.dropPoint?.trim() || '',
     numberOfRooms: Math.max(1, Number(body.numberOfRooms) || 1),
+    roomsWithMattress: Math.max(0, Number(body.roomsWithMattress) || 0),
     cabType: body.cabType?.trim() || body.transportRequirement?.trim() || '',
     budget,
     budgetRange: parseBudgetRange(body, budget),
@@ -95,6 +96,30 @@ function normalizeLeadInput(body = {}, { isUpdate = false } = {}) {
     leadType: body.leadType,
     leadTypeSource: body.leadTypeSource,
   };
+
+  if (body.dateOfBirth !== undefined) {
+    if (body.dateOfBirth === '' || body.dateOfBirth == null) {
+      if (isUpdate) normalized.dateOfBirth = null;
+    } else {
+      const dob = new Date(body.dateOfBirth);
+      if (!Number.isNaN(dob.getTime())) normalized.dateOfBirth = dob;
+    }
+  }
+
+  if (body.temperature && ['hot', 'warm', 'cold', 'vip'].includes(body.temperature)) {
+    normalized.temperature = body.temperature;
+    if (body.temperature === 'hot') normalized.isHot = true;
+    if (body.temperature !== 'hot') normalized.isHot = false;
+  }
+
+  if (body.coldReason !== undefined) {
+    normalized.coldReason = String(body.coldReason || '').trim();
+  }
+
+  if (body.coldCallDone === true || body.coldCallDone === 'true') {
+    normalized.coldCallPending = false;
+    normalized.coldCallReminderAt = undefined;
+  }
 
   const assignedTo = toObjectId(body.assignedTo) || toObjectId(body.assignedExecutive);
   const assignedManager = toObjectId(body.assignedManager);

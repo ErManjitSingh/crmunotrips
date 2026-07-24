@@ -54,6 +54,7 @@ export default function StepReview({ data }) {
         <Row label="Phone" value={v.phone} />
         <Row label="WhatsApp" value={v.whatsapp || v.phone} />
         <Row label="Email" value={v.email} />
+        <Row label="DOB" value={v.dateOfBirth} />
         <Row label="City" value={v.city} />
         <Row label="State" value={v.state} />
       </ReviewSection>
@@ -66,18 +67,19 @@ export default function StepReview({ data }) {
         <Row label="Tour end" value={v.returnDate} />
         <Row label="Tour days" value={v.tourDays} />
         <Row label="Rooms" value={v.numberOfRooms} />
+        <Row label="Rooms with mattress" value={v.roomsWithMattress} />
         <Row label="Pickup" value={v.pickupPoint} />
         <Row label="Drop" value={v.dropPoint} />
         <Row label="Cab" value={cabLabel} />
         <Row label="Travelers" value={`${v.adults}A · ${v.children}C · ${v.infants}I`} />
         <Row label="Hotel" value={hotelLabel} />
-        <Row label="Budget" value={budgetValue ? `₹${Number(budgetValue).toLocaleString('en-IN')}` : ''} />
+        <Row label="Budget" value={budgetValue ? `₹${Number(budgetValue).toLocaleString('en-IN')}` : 'Not set'} />
         <Row label="Requirements" value={v.requirements} />
       </ReviewSection>
 
       <ReviewSection icon={Megaphone} title="Lead info" accent="bg-gradient-to-r from-amber-500 to-orange-400">
         <Row label="Source" value={sourceLabel} />
-        <Row label="Priority" value={priorityLabel} />
+        <Row label="Intent" value={priorityLabel} />
         <Row label="Branch" value={v.branchId || 'Current selected branch'} />
       </ReviewSection>
     </div>

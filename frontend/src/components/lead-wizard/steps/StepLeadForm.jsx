@@ -13,7 +13,7 @@ import { useSelector } from 'react-redux';
 import WizardField, { WizardInput, IconInput, IconSelect, WizardTextarea } from '../WizardField';
 import {
   INDIAN_STATES, DESTINATIONS, LEAD_TYPES, LEAD_SOURCES, PRIORITIES, BUDGET_RANGE_OPTIONS,
-  HOTEL_CATEGORY_OPTIONS, CAB_TYPE_OPTIONS,
+  HOTEL_CATEGORY_OPTIONS, CAB_TYPE_OPTIONS, PICKUP_DROP_POINTS, INTENT_LABEL,
   getLeadSourcesForRole, defaultLeadSourceForRole,
 } from '../constants';
 import { calcTourDays } from '../leadWizardUtils';
@@ -117,9 +117,25 @@ export default function StepLeadForm({ isEdit, leadId }) {
   const [forceCreate, setForceCreate] = useState(false);
   const [destOpen, setDestOpen] = useState(false);
   const [destinationOptions, setDestinationOptions] = useState(DESTINATIONS);
+  const [pickupOpen, setPickupOpen] = useState(false);
+  const [dropOpen, setDropOpen] = useState(false);
   const navigate = useNavigate();
   const canCreateAnyway = ['admin', 'sales_manager'].includes(user?.role);
   const sameAsPhone = !whatsapp || normalizePhone(whatsapp) === normalizePhone(phone);
+  const pickupPoint = watch('pickupPoint') || '';
+  const dropPoint = watch('dropPoint') || '';
+
+  const filteredPickup = useMemo(() => {
+    const q = pickupPoint.trim().toLowerCase();
+    if (!q) return PICKUP_DROP_POINTS.slice(0, 12);
+    return PICKUP_DROP_POINTS.filter((p) => p.toLowerCase().includes(q)).slice(0, 12);
+  }, [pickupPoint]);
+
+  const filteredDrop = useMemo(() => {
+    const q = dropPoint.trim().toLowerCase();
+    if (!q) return PICKUP_DROP_POINTS.slice(0, 12);
+    return PICKUP_DROP_POINTS.filter((p) => p.toLowerCase().includes(q)).slice(0, 12);
+  }, [dropPoint]);
 
   useEffect(() => {
     const days = calcTourDays(travelDate, returnDate);
@@ -296,6 +312,10 @@ export default function StepLeadForm({ isEdit, leadId }) {
                 <IconInput icon={Building2} {...register('city')} placeholder="Mumbai" error={errors.city} />
               </WizardField>
 
+              <WizardField label="Date of Birth" hint="Optional">
+                <IconInput icon={Calendar} {...register('dateOfBirth')} type="date" />
+              </WizardField>
+
               <WizardField label="State" error={errors.state?.message}>
                 <IconSelect icon={MapPin} {...register('state')} error={errors.state}>
                   <option value="">Select state</option>
@@ -469,6 +489,9 @@ export default function StepLeadForm({ isEdit, leadId }) {
             <WizardField label="No. of rooms">
               <WizardInput {...register('numberOfRooms')} type="number" min={1} className="text-center font-semibold" />
             </WizardField>
+            <WizardField label="Rooms with mattress">
+              <WizardInput {...register('roomsWithMattress')} type="number" min={0} className="text-center font-semibold" />
+            </WizardField>
             <WizardField label="Hotel (1–5★)">
               <IconSelect {...register('hotelCategory')}>
                 {HOTEL_CATEGORY_OPTIONS.map((h) => (
@@ -476,6 +499,9 @@ export default function StepLeadForm({ isEdit, leadId }) {
                 ))}
               </IconSelect>
             </WizardField>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <WizardField label="Cab type">
               <IconSelect {...register('cabType')}>
                 {CAB_TYPE_OPTIONS.map((c) => (
@@ -487,10 +513,60 @@ export default function StepLeadForm({ isEdit, leadId }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <WizardField label="Pickup point">
-              <IconInput icon={MapPin} {...register('pickupPoint')} placeholder="Airport / Hotel / City" />
+              <div className="relative">
+                <IconInput
+                  icon={MapPin}
+                  {...register('pickupPoint')}
+                  onFocus={() => setPickupOpen(true)}
+                  onBlur={() => setTimeout(() => setPickupOpen(false), 150)}
+                  placeholder="Search pickup location…"
+                />
+                {pickupOpen && filteredPickup.length > 0 && (
+                  <div className="absolute z-20 w-full mt-1 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden max-h-40 overflow-y-auto">
+                    {filteredPickup.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => { setValue('pickupPoint', p); setPickupOpen(false); }}
+                        className={cn(
+                          'w-full text-left px-3 py-2 text-sm hover:bg-[#5D5FEF]/5',
+                          pickupPoint === p && 'bg-[#5D5FEF]/10 text-[#5D5FEF] font-medium'
+                        )}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </WizardField>
             <WizardField label="Drop point">
-              <IconInput icon={MapPin} {...register('dropPoint')} placeholder="Airport / Hotel / City" />
+              <div className="relative">
+                <IconInput
+                  icon={MapPin}
+                  {...register('dropPoint')}
+                  onFocus={() => setDropOpen(true)}
+                  onBlur={() => setTimeout(() => setDropOpen(false), 150)}
+                  placeholder="Search drop location…"
+                />
+                {dropOpen && filteredDrop.length > 0 && (
+                  <div className="absolute z-20 w-full mt-1 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden max-h-40 overflow-y-auto">
+                    {filteredDrop.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => { setValue('dropPoint', p); setDropOpen(false); }}
+                        className={cn(
+                          'w-full text-left px-3 py-2 text-sm hover:bg-[#5D5FEF]/5',
+                          dropPoint === p && 'bg-[#5D5FEF]/10 text-[#5D5FEF] font-medium'
+                        )}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </WizardField>
           </div>
 
@@ -534,13 +610,14 @@ export default function StepLeadForm({ isEdit, leadId }) {
             <WizardField
               label={budgetRange === 'custom' ? 'Custom ₹' : 'Budget ₹'}
               error={errors.budget?.message}
+              hint="Optional"
               className="col-span-2 sm:col-span-1"
             >
               <IconInput
                 icon={IndianRupee}
                 {...register(budgetRange === 'custom' ? 'customBudget' : 'budget')}
                 type="number"
-                min={1000}
+                min={0}
                 error={errors.budget}
               />
             </WizardField>
@@ -549,7 +626,7 @@ export default function StepLeadForm({ isEdit, leadId }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-[12px] font-semibold text-slate-700 mb-2">
-                Priority {errors.priority && <span className="text-rose-500">— {errors.priority.message}</span>}
+                {INTENT_LABEL} {errors.priority && <span className="text-rose-500">— {errors.priority.message}</span>}
               </p>
               <div className="flex flex-wrap gap-2">
                 {PRIORITIES.map((p) => (

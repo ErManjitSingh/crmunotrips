@@ -70,6 +70,15 @@ export function formatLeadId(id) {
   return `LD-${String(id).replace(/\D/g, '').slice(-4).padStart(4, '0')}`;
 }
 
+export const BUDGET_FILTER_OPTIONS = [
+  { value: '', label: 'All Budgets', min: '', max: '' },
+  { value: 'under_20000', label: 'Under ₹20k', min: '0', max: '20000' },
+  { value: '20000_40000', label: '₹20k – ₹40k', min: '20000', max: '40000' },
+  { value: '40000_60000', label: '₹40k – ₹60k', min: '40000', max: '60000' },
+  { value: '60000_100000', label: '₹60k – ₹1L', min: '60000', max: '100000' },
+  { value: 'above_100000', label: 'Above ₹1L', min: '100000', max: '' },
+];
+
 export const emptyFilters = {
   search: '',
   destination: '',
@@ -79,6 +88,7 @@ export const emptyFilters = {
   travelMonth: '',
   budgetMin: '',
   budgetMax: '',
+  budgetRange: '',
   dateFrom: '',
   dateTo: '',
 };

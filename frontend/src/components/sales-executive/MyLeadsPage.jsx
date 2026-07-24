@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Plus, ChevronDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
@@ -28,6 +28,7 @@ import LeadActionsMenu, { ActionModal } from './LeadActionsMenu';
 import VirtualizedRoleTable from '../ui/VirtualizedRoleTable';
 import AddFollowUpModal from '../followups/AddFollowUpModal';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/followupApi';
+import ConvertedLeadsTable from '../leads/ConvertedLeadsTable';
 
 const ICONS = { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users };
 
@@ -47,6 +48,7 @@ const columnHelper = createColumnHelper();
 
 export default function MyLeadsPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { filter = 'new' } = useParams();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 500);
@@ -64,6 +66,7 @@ export default function MyLeadsPage() {
   const Icon = ICONS[meta.icon] || Sparkles;
 
   const isAllView = filter === 'all';
+  const isConvertedView = filter === 'converted';
 
   const { data, isLoading } = useRoleLeadsQuery({
     endpoint: '/sales-executive/leads',
@@ -150,7 +153,7 @@ export default function MyLeadsPage() {
       cell: ({ row }) => <ExecStatusCell lead={row.original} />,
     }),
     columnHelper.accessor('priority', {
-      header: 'Priority',
+      header: 'Intent',
       cell: ({ row }) => <ExecPriorityCell lead={row.original} />,
     }),
     columnHelper.accessor('nextFollowUp', {
@@ -209,18 +212,39 @@ export default function MyLeadsPage() {
         showAddLead={false}
       />
 
-      <VirtualizedRoleTable
-        data={leads}
-        columns={columns}
-        isLoading={isLoading}
-        pagination={pagination}
-        pageCount={pageCount}
-        total={total}
-        onPaginationChange={setPagination}
-        estimateRowHeight={72}
-        maxHeight="min(72vh, 720px)"
-        getRowClassName={(lead) => (lead?.isHot ? 'bg-orange-50' : undefined)}
-      />
+      {isConvertedView ? (
+        isLoading ? (
+          <div className="rounded-2xl border border-subtle bg-white p-16 text-center text-content-muted">
+            Loading converted bookings…
+          </div>
+        ) : (
+          <ConvertedLeadsTable
+            leads={leads}
+            detailBasePath="/sales-executive/leads"
+            onRowClick={(lead) => navigate(`/sales-executive/leads/${lead._id}/view`)}
+            serverPagination={{
+              pageIndex: pagination.pageIndex,
+              pageSize: pagination.pageSize,
+              pageCount,
+              total,
+              onPaginationChange: setPagination,
+            }}
+          />
+        )
+      ) : (
+        <VirtualizedRoleTable
+          data={leads}
+          columns={columns}
+          isLoading={isLoading}
+          pagination={pagination}
+          pageCount={pageCount}
+          total={total}
+          onPaginationChange={setPagination}
+          estimateRowHeight={72}
+          maxHeight="min(72vh, 720px)"
+          getRowClassName={(lead) => (lead?.isHot ? 'bg-orange-50' : undefined)}
+        />
+      )}
 
       <ExecutivePipelineCta />
 

@@ -18,8 +18,10 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { useSidebar } from '../../context/SidebarContext';
-import { DESTINATIONS, LEAD_STATUSES, formatLeadId } from './constants';
+import { DESTINATIONS, LEAD_STATUSES, BUDGET_FILTER_OPTIONS, formatLeadId } from './constants';
 import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
+import TrackedCallButton from './TrackedCallButton';
+import LeadCallStats from './LeadCallStats';
 
 const STATUS_STYLES = {
   new: 'bg-violet-50 text-violet-600',
@@ -158,6 +160,23 @@ export default function MobileLeadList({
                 <option value="">All Destinations</option>
                 {DESTINATIONS.map((destination) => <option key={destination} value={destination}>{destination}</option>)}
               </select>
+              <select
+                value={filters.budgetRange || ''}
+                onChange={(event) => {
+                  const opt = BUDGET_FILTER_OPTIONS.find((o) => o.value === event.target.value);
+                  onFiltersChange({
+                    ...filters,
+                    budgetRange: event.target.value,
+                    budgetMin: opt?.min ?? '',
+                    budgetMax: opt?.max ?? '',
+                  });
+                }}
+                className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none"
+              >
+                {BUDGET_FILTER_OPTIONS.map((b) => (
+                  <option key={b.value || 'all'} value={b.value}>{b.label}</option>
+                ))}
+              </select>
               <div className="flex gap-1.5">
                 <button type="button" onClick={() => onApplyFilters(filters)} className="h-9 flex-1 rounded-xl bg-violet-600 text-[9px] font-semibold text-white">Apply</button>
                 <button type="button" onClick={() => { setSearch(''); onReset(); }} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500" aria-label="Reset filters"><Filter className="h-3.5 w-3.5" /></button>
@@ -195,12 +214,18 @@ export default function MobileLeadList({
                           <p className="flex min-w-0 items-center gap-1 text-[8px] text-slate-500"><IndianRupee className="h-3 w-3 shrink-0 text-emerald-500" /><span className="truncate">{formatCurrency(lead.budget)}</span></p>
                           <p className="flex min-w-0 items-center gap-1 text-[8px] text-slate-500"><UserCheck className="h-3 w-3 shrink-0 text-violet-500" /><span className="truncate">{lead.assignedTo?.name || 'Unassigned'}</span></p>
                         </div>
+                        <div className="mt-2">
+                          <LeadCallStats lead={lead} compact />
+                        </div>
                       </div>
                       <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300" />
                     </div>
                   </button>
                   <div className="flex border-t border-slate-100">
-                    <a href={lead.phone ? `tel:${lead.phone}` : undefined} className="flex h-9 flex-1 items-center justify-center gap-1 border-r border-slate-100 text-[8px] font-semibold text-blue-600"><Phone className="h-3.5 w-3.5" />Call</a>
+                    <TrackedCallButton
+                      lead={lead}
+                      className="flex h-9 flex-1 items-center justify-center gap-1 border-r border-slate-100 text-[8px] font-semibold text-blue-600"
+                    />
                     <a href={whatsapp ? `https://wa.me/${whatsapp}` : undefined} target="_blank" rel="noreferrer" className="flex h-9 flex-1 items-center justify-center gap-1 border-r border-slate-100 text-[8px] font-semibold text-emerald-600"><MessageCircle className="h-3.5 w-3.5" />WhatsApp</a>
                     <button type="button" onClick={() => onOpenLead(lead)} className="flex h-9 flex-1 items-center justify-center gap-1 text-[8px] font-semibold text-violet-600">View Details<ChevronRight className="h-3.5 w-3.5" /></button>
                   </div>

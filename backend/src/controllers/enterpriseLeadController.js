@@ -181,9 +181,18 @@ const listCallNotes = asyncHandler(async (req, res) => {
 });
 
 const addCallNote = asyncHandler(async (req, res) => {
-  const { outcome, notes, duration } = req.body;
-  if (!outcome || !notes?.trim()) throw new ApiError(400, 'Outcome and notes are required');
+  const {
+    outcome,
+    notes,
+    duration,
+    durationSeconds,
+    startedAt,
+    endedAt,
+    scheduleNextCall = true,
+  } = req.body;
+  if (!outcome) throw new ApiError(400, 'Call outcome / reason is required');
 
+  const noteText = String(notes || '').trim();
   const lead = await Lead.findOne({
     _id: req.params.id,
     ...(req.branchId ? { branchId: req.branchId } : {}),
@@ -191,28 +200,64 @@ const addCallNote = asyncHandler(async (req, res) => {
   });
   if (!lead) throw new ApiError(404, 'Lead not found');
 
+  const seconds = Math.max(
+    0,
+    Math.round(Number(durationSeconds ?? duration) || 0)
+  );
+
   const callNote = await CallNote.create({
     leadId: lead._id,
     branchId: lead.branchId,
     userId: req.user._id,
     outcome,
-    notes: notes.trim(),
-    duration: Number(duration) || 0,
+    notes: noteText || `Call outcome: ${String(outcome).replace(/_/g, ' ')}`,
+    duration: seconds,
+    startedAt: startedAt ? new Date(startedAt) : undefined,
+    endedAt: endedAt ? new Date(endedAt) : new Date(),
   });
 
-  if (!lead.firstContactAt) {
-    lead.firstContactAt = new Date();
-  }
+  const now = new Date();
+  if (!lead.firstContactAt) lead.firstContactAt = now;
+  lead.lastContactedAt = now;
+  lead.lastContactMethod = 'call';
+  lead.lastContactedBy = req.user._id;
+  lead.callStats = {
+    count: Number(lead.callStats?.count || 0) + 1,
+    totalDurationSeconds: Number(lead.callStats?.totalDurationSeconds || 0) + seconds,
+    lastCallAt: now,
+  };
+
   await applyLeadMetrics(lead);
   await lead.save();
+
+  let nextFollowUp = null;
+  if (scheduleNextCall !== false && scheduleNextCall !== 'false') {
+    try {
+      const { createFollowUpForLead } = require('../services/followUpService');
+      const scheduledAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+      nextFollowUp = await createFollowUpForLead({
+        body: {
+          lead: lead._id,
+          type: 'call',
+          category: outcome === 'interested' || outcome === 'discussed_package' ? 'warm' : 'cold',
+          scheduledAt: scheduledAt.toISOString(),
+          notes: `Auto next call (2 hrs) after call — ${String(outcome).replace(/_/g, ' ')}${noteText ? `: ${noteText.slice(0, 80)}` : ''}`,
+          priority: lead.priority || 'medium',
+        },
+        user: req.user,
+      });
+    } catch (err) {
+      console.error('[addCallNote] next follow-up failed:', err.message);
+    }
+  }
 
   await logLeadActivity({
     leadId: lead._id,
     branchId: lead.branchId,
     type: 'call_note_added',
-    description: `Call note: ${outcome.replace(/_/g, ' ')} — ${notes.trim().slice(0, 120)}`,
+    description: `Call (${seconds}s): ${outcome.replace(/_/g, ' ')}${noteText ? ` — ${noteText.slice(0, 100)}` : ''}`,
     actor: req.user,
-    meta: { callNoteId: callNote._id, outcome },
+    meta: { callNoteId: callNote._id, outcome, durationSeconds: seconds },
   });
   await logAudit({
     entityType: 'lead',
@@ -221,11 +266,15 @@ const addCallNote = asyncHandler(async (req, res) => {
     action: 'lead.call_note_added',
     actor: req.user,
     ip: getClientIp(req),
-    meta: { outcome },
+    meta: { outcome, durationSeconds: seconds },
   });
 
   const populated = await CallNote.findById(callNote._id).populate('userId', 'name role').lean();
-  res.status(201).json(populated);
+  res.status(201).json({
+    ...populated,
+    nextFollowUp,
+    callStats: lead.callStats,
+  });
 });
 
 const bulkUpdateStatus = asyncHandler(async (req, res) => {

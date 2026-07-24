@@ -24,6 +24,93 @@ const DASHBOARD_NEW_LEADS_LIMIT = 5;
 const INTERESTED_STATUSES = ['contacted', 'working_progress', 'quotation_sent', 'reactivated'];
 const LOST_STATUSES = ['lost', 'booked_from_another_company'];
 
+function resolveDestinationPeriod(period = 'all') {
+  const todayStart = startOfDay();
+  const todayEnd = endOfDay();
+  const yesterdayStart = startOfDay(new Date(todayStart.getTime() - 24 * 60 * 60 * 1000));
+  const yesterdayEnd = endOfDay(new Date(todayStart.getTime() - 1));
+  const weekStart = startOfDay(new Date(todayStart));
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7)); // Monday
+  const sevenDaysStart = startOfDay(new Date(todayStart.getTime() - 6 * 24 * 60 * 60 * 1000));
+  const monthStart = startOfDay(new Date(todayStart.getFullYear(), todayStart.getMonth(), 1));
+
+  switch (String(period || 'all').toLowerCase()) {
+    case 'today':
+      return { start: todayStart, end: todayEnd };
+    case 'yesterday':
+      return { start: yesterdayStart, end: yesterdayEnd };
+    case '7d':
+    case '7days':
+    case 'last_7_days':
+      return { start: sevenDaysStart, end: todayEnd };
+    case 'week':
+      return { start: weekStart, end: todayEnd };
+    case 'month':
+      return { start: monthStart, end: todayEnd };
+    case 'all':
+    case 'all_time':
+    default:
+      return { start: null, end: null };
+  }
+}
+
+async function buildDestinationWiseStats(leadScope, period = 'all') {
+  const { start, end } = resolveDestinationPeriod(period);
+  const match = { ...leadScope };
+  if (start && end) {
+    match.createdAt = { $gte: start, $lte: end };
+  }
+
+  const rows = await Lead.aggregate([
+    { $match: match },
+    {
+      $addFields: {
+        destinationKey: {
+          $toLower: {
+            $trim: { input: { $ifNull: ['$destination', 'Not specified'] } },
+          },
+        },
+        destinationName: {
+          $cond: [
+            { $or: [{ $eq: [{ $ifNull: ['$destination', ''] }, ''] }, { $eq: ['$destination', null] }] },
+            'Not specified',
+            '$destination',
+          ],
+        },
+      },
+    },
+    {
+      $group: {
+        _id: '$destinationKey',
+        destination: { $first: '$destinationName' },
+        total: { $sum: 1 },
+        converted: {
+          $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] },
+        },
+        active: {
+          $sum: {
+            $cond: [
+              { $in: ['$status', ['lost', 'booked_from_another_company']] },
+              0,
+              1,
+            ],
+          },
+        },
+      },
+    },
+    { $sort: { total: -1 } },
+    { $limit: 25 },
+  ]);
+
+  return rows.map((row) => ({
+    destination: row.destination,
+    total: row.total,
+    converted: row.converted,
+    active: row.active,
+    conversionRate: row.total ? Math.round((row.converted / row.total) * 1000) / 10 : 0,
+  }));
+}
+
 function resolveReportPeriod(dateFrom, dateTo) {
   const now = new Date();
   const isAllTime = !dateFrom && !dateTo;
@@ -698,7 +785,7 @@ async function buildAdminDashboard(options = {}) {
 }
 
 async function buildExecutiveDashboard(userId, options = {}) {
-  const { branchId } = options;
+  const { branchId, destinationPeriod = 'all' } = options;
   const execId = userId;
   const todayStart = startOfDay();
   const todayEnd = endOfDay();
@@ -740,6 +827,8 @@ async function buildExecutiveDashboard(userId, options = {}) {
     convertedTrendAgg,
     todayActivitiesRaw,
     topLeadsRaw,
+    coldCallRemindersRaw,
+    destinationWise,
   ] = await Promise.all([
     Lead.countDocuments({ ...leadScope, status: { $nin: ['lost', 'booked_from_another_company'] } }),
     Lead.countDocuments({ ...leadScope, isHot: true, status: { $nin: ['converted', 'lost', 'booked_from_another_company'] } }),
@@ -863,6 +952,16 @@ async function buildExecutiveDashboard(userId, options = {}) {
       .sort({ isHot: -1, budget: -1, updatedAt: -1 })
       .limit(3)
       .lean(),
+    Lead.find({
+      ...leadScope,
+      coldCallPending: true,
+      status: { $nin: ['lost', 'booked_from_another_company', 'converted'] },
+    })
+      .select('leadId name phone destination coldReason coldCallReminderAt coldCallFollowUpId')
+      .sort({ coldCallReminderAt: 1 })
+      .limit(20)
+      .lean(),
+    buildDestinationWiseStats(leadScope, destinationPeriod),
   ]);
 
   const statusCounts = Object.fromEntries(statusAgg.map((s) => [s._id, s.count]));
@@ -994,6 +1093,20 @@ async function buildExecutiveDashboard(userId, options = {}) {
         ? Math.round((convertedCount / totalAssigned) * 1000) / 10
         : 0,
       weeklyRevenue: [],
+    },
+    coldCallReminders: coldCallRemindersRaw.map((lead) => ({
+      _id: lead._id,
+      leadId: lead.leadId,
+      name: lead.name,
+      phone: lead.phone,
+      destination: lead.destination,
+      coldReason: lead.coldReason,
+      scheduledAt: lead.coldCallReminderAt,
+      followUpId: lead.coldCallFollowUpId,
+    })),
+    destinationWise: {
+      period: destinationPeriod || 'all',
+      rows: destinationWise,
     },
   };
 }

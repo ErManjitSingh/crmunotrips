@@ -27,6 +27,7 @@ import BulkStatusModal from '../components/leads/BulkStatusModal';
 import { bulkUpdateLeadStatus, bulkExportLeads } from '../services/leadEnterpriseApi';
 import { invalidateLeadLists } from '../lib/queryInvalidation';
 import MobileLeadList from '../components/leads/MobileLeadList';
+import ConvertedLeadsTable from '../components/leads/ConvertedLeadsTable';
 
 export default function Leads() {
   const location = useLocation();
@@ -46,6 +47,7 @@ export default function Leads() {
     : { view: true, edit: isManagerRole, assign: isManagerRole, transferBranch: isManagerRole, delete: isManagerRole };
   const config = pageConfig[location.pathname] || pageConfig['/leads'];
   const isAllLeadsPage = location.pathname === '/leads';
+  const isConvertedPage = location.pathname === '/leads/converted' || config.status === 'converted';
 
   const [filters, setFilters] = useState({ ...emptyFilters, status: config.status || '' });
   const [appliedFilters, setAppliedFilters] = useState({ ...emptyFilters, status: config.status || '' });
@@ -107,6 +109,14 @@ export default function Leads() {
     });
     setPageCursors({});
   }, [config.status, config.assignee, isAllLeadsPage, location.pathname]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const agent = params.get('agent') || '';
+    if (!agent) return;
+    setFilters((f) => ({ ...f, agent }));
+    setAppliedFilters((f) => ({ ...f, agent }));
+  }, [location.search]);
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
@@ -282,6 +292,20 @@ export default function Leads() {
           <div className="rounded-2xl border border-subtle bg-white p-16 text-center text-content-muted shadow-sm">
             Loading leads...
           </div>
+        ) : isConvertedPage ? (
+          <ConvertedLeadsTable
+            leads={tableLeads}
+            onRowClick={openLead}
+            detailBasePath="/leads"
+            serverPagination={{
+              pageIndex: pagination.pageIndex,
+              pageSize: pagination.pageSize,
+              pageCount,
+              total: totalLeads,
+              hasMore: hasMoreLeads,
+              onPaginationChange: setPagination,
+            }}
+          />
         ) : (
           <LeadDataTable
             leads={tableLeads}

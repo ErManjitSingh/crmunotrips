@@ -5,9 +5,9 @@ import { LEAD_STATUSES, DESTINATIONS } from '../leads/constants';
 import { executiveInput } from './executivePageStyles';
 
 const PRIORITY_OPTIONS = [
-  { value: '', label: 'All priorities' },
+  { value: '', label: 'All intents' },
   { value: 'hot', label: 'Hot leads' },
-  { value: 'high', label: 'High priority' },
+  { value: 'high', label: 'High intent' },
   { value: 'urgent', label: 'Urgent' },
   { value: 'medium', label: 'Medium' },
   { value: 'low', label: 'Low' },
@@ -70,7 +70,7 @@ export default function ExecutiveLeadsFilterBar({
           onChange={(e) => onPriorityChange(e.target.value)}
           className={`h-10 px-3 min-w-[140px] ${executiveInput}`}
         >
-          <option value="">Priority</option>
+          <option value="">Intent</option>
           {PRIORITY_OPTIONS.filter((p) => p.value).map((p) => (
             <option key={p.value} value={p.value}>{p.label}</option>
           ))}

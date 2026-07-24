@@ -34,7 +34,7 @@ const AUTO_RULES = [
 ];
 
 const theme = FILTER_THEMES.unassigned;
-const columns = ['Lead ID', 'Customer', 'Destination', 'Budget', 'Source', 'Priority', 'Status', 'Actions'];
+const columns = ['Lead ID', 'Customer', 'Destination', 'Budget', 'Source', 'Intent', 'Status', 'Actions'];
 
 export default function LeadAssignmentPage() {
   const [leads, setLeads] = useState([]);

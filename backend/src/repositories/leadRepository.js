@@ -116,7 +116,13 @@ async function findLeadsPaginated(query = {}, { branchId } = {}) {
     nextCursor = encodeCursor(rows[rows.length - 1], sortField);
   }
 
-  return paginatedResponse(rows.map(enrichLead), {
+  let enriched = rows.map(enrichLead);
+  if (query.status === 'converted' || filter.status === 'converted') {
+    const { attachPaymentSummariesToLeads } = require('../services/paymentReceiptService');
+    enriched = await attachPaymentSummariesToLeads(enriched);
+  }
+
+  return paginatedResponse(enriched, {
     page,
     limit,
     total,

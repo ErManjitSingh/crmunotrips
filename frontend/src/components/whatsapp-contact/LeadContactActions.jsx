@@ -12,6 +12,7 @@ import {
 } from '../ui/dropdown-menu';
 import { DETAIL_CARD } from '../lead-detail/leadDetailUtils';
 import { toast } from '../../context/ToastContext';
+import { beginLeadCall } from '../../lib/callSession';
 
 export default function LeadContactActions({
   lead,
@@ -39,7 +40,11 @@ export default function LeadContactActions({
       toast.error('Lead phone number is missing');
       return;
     }
-    window.location.href = `tel:${phone}`;
+    beginLeadCall({
+      leadId: leadId || lead?._id,
+      leadName: lead?.name,
+      phone,
+    });
   };
 
   const handleWhatsApp = () => {
