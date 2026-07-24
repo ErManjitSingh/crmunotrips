@@ -98,8 +98,8 @@ export function wizardValuesToPayload(values) {
     travelDate: values.travelDate ? new Date(values.travelDate).toISOString() : undefined,
     returnDate: values.returnDate ? new Date(values.returnDate).toISOString() : undefined,
     tourDays,
-    pickupPoint: values.pickupPoint || undefined,
-    dropPoint: values.dropPoint || undefined,
+    pickupPoint: String(values.pickupPoint || '').trim(),
+    dropPoint: String(values.dropPoint || '').trim(),
     numberOfRooms: Math.max(1, Number(values.numberOfRooms) || 1),
     roomsWithMattress: Math.max(0, Number(values.roomsWithMattress) || 0),
     dateOfBirth: values.dateOfBirth

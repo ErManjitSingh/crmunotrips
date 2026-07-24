@@ -179,7 +179,7 @@ export const CAB_TYPE_OPTIONS = [
   { value: 'not_required', label: 'Not required' },
 ];
 
-export const DRAFT_STORAGE_KEY = 'uno-crm-lead-wizard-draft-v9';
+export const DRAFT_STORAGE_KEY = 'uno-crm-lead-wizard-draft-v10';
 
 export const defaultWizardValues = {
   name: '',

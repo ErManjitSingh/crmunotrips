@@ -63,20 +63,19 @@ export function useLeadWizard({ initialValues, draftKey = DRAFT_STORAGE_KEY, isE
     if (isEdit || hydrated.current) return;
     hydrated.current = true;
     const stored = localStorage.getItem(draftKey);
-    if (stored && !initialValues) {
-      try {
-        const { values: saved, step: savedStep } = JSON.parse(stored);
-        if (saved?.name?.trim() || saved?.phone?.trim()) {
-          reset(saved);
-          const safeStep = Math.min(Math.max(savedStep || 1, 1), WIZARD_STEP_COUNT);
-          setStep(safeStep);
-          setMaxReachable(safeStep);
-        }
-      } catch {
-        /* ignore */
+    if (!stored) return;
+    try {
+      const { values: saved, step: savedStep } = JSON.parse(stored);
+      if (saved?.name?.trim() || saved?.phone?.trim() || saved?.pickupPoint?.trim() || saved?.dropPoint?.trim()) {
+        reset(saved);
+        const safeStep = Math.min(Math.max(savedStep || 1, 1), WIZARD_STEP_COUNT);
+        setStep(safeStep);
+        setMaxReachable(safeStep);
       }
+    } catch {
+      /* ignore */
     }
-  }, [draftKey, isEdit, initialValues, reset]);
+  }, [draftKey, isEdit, reset]);
 
   useEffect(() => {
     if (isEdit) return;

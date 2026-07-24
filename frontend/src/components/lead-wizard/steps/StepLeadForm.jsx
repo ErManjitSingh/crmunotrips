@@ -457,7 +457,11 @@ export default function StepLeadForm({ isEdit, leadId }) {
                       <button
                         key={d}
                         type="button"
-                        onClick={() => { setValue('destination', d); setDestOpen(false); }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setValue('destination', d);
+                          setDestOpen(false);
+                        }}
                         className={cn(
                           'w-full text-left px-3 py-2 text-sm hover:bg-[#5D5FEF]/5',
                           destination === d && 'bg-[#5D5FEF]/10 text-[#5D5FEF] font-medium'
@@ -514,9 +518,11 @@ export default function StepLeadForm({ isEdit, leadId }) {
               <div className="relative">
                 <IconInput
                   icon={MapPin}
-                  {...register('pickupPoint')}
+                  name="pickupPoint"
+                  value={pickupPoint}
+                  onChange={(e) => setValue('pickupPoint', e.target.value)}
                   onFocus={() => setPickupOpen(true)}
-                  onBlur={() => setTimeout(() => setPickupOpen(false), 150)}
+                  onBlur={() => setTimeout(() => setPickupOpen(false), 200)}
                   placeholder="e.g. Chandigarh, Himachal Pradesh, Delhi Airport…"
                   autoComplete="off"
                 />
@@ -526,7 +532,11 @@ export default function StepLeadForm({ isEdit, leadId }) {
                       <button
                         key={p}
                         type="button"
-                        onClick={() => { setValue('pickupPoint', p); setPickupOpen(false); }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setValue('pickupPoint', p);
+                          setPickupOpen(false);
+                        }}
                         className={cn(
                           'w-full text-left px-3 py-2 text-sm hover:bg-[#5D5FEF]/5',
                           pickupPoint === p && 'bg-[#5D5FEF]/10 text-[#5D5FEF] font-medium'
@@ -543,9 +553,11 @@ export default function StepLeadForm({ isEdit, leadId }) {
               <div className="relative">
                 <IconInput
                   icon={MapPin}
-                  {...register('dropPoint')}
+                  name="dropPoint"
+                  value={dropPoint}
+                  onChange={(e) => setValue('dropPoint', e.target.value)}
                   onFocus={() => setDropOpen(true)}
-                  onBlur={() => setTimeout(() => setDropOpen(false), 150)}
+                  onBlur={() => setTimeout(() => setDropOpen(false), 200)}
                   placeholder="e.g. Manali, Shimla, Same as pickup…"
                   autoComplete="off"
                 />
@@ -555,7 +567,11 @@ export default function StepLeadForm({ isEdit, leadId }) {
                       <button
                         key={p}
                         type="button"
-                        onClick={() => { setValue('dropPoint', p); setDropOpen(false); }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setValue('dropPoint', p);
+                          setDropOpen(false);
+                        }}
                         className={cn(
                           'w-full text-left px-3 py-2 text-sm hover:bg-[#5D5FEF]/5',
                           dropPoint === p && 'bg-[#5D5FEF]/10 text-[#5D5FEF] font-medium'
