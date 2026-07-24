@@ -1,7 +1,7 @@
-import { usePostCallSession } from '../hooks/usePostCallSession';
-import PostCallFollowUpModal from '../components/leads/PostCallFollowUpModal';
-import { invalidateLeadLists } from '../lib/queryInvalidation';
 import { useQueryClient } from '@tanstack/react-query';
+import { usePostCallSession } from '../../hooks/usePostCallSession';
+import { invalidateLeadLists } from '../../lib/queryInvalidation';
+import PostCallFollowUpModal from './PostCallFollowUpModal';
 
 /** Global listener: after mobile tel: call ends & user returns, open follow-up popup */
 export default function PostCallSessionHost() {
