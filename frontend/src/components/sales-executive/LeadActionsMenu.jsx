@@ -15,8 +15,15 @@ import { Button } from '../ui/button';
 import AppModal from '../ui/AppModal';
 import { beginLeadCall } from '../../lib/callSession';
 
-export default function LeadActionsMenu({ lead, onScheduleFollowUp, onChangeStatus, canChangeStatus = true }) {
+export default function LeadActionsMenu({
+  lead,
+  onScheduleFollowUp,
+  onChangeStatus,
+  canChangeStatus = true,
+  contactLocked = false,
+}) {
   const phone = lead.phone?.replace(/\s/g, '');
+  const locked = contactLocked || lead?.contactMasked || lead?.returnedToPool || phone === 'XXXX';
 
   return (
     <DropdownMenuRoot modal={false}>
@@ -30,45 +37,65 @@ export default function LeadActionsMenu({ lead, onScheduleFollowUp, onChangeStat
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuItem asChild>
-          <Link to={`/sales-executive/leads/${lead._id}/view`} className="flex items-center gap-2 cursor-pointer">
-            <Eye className="w-4 h-4" /> View Lead
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to={`/sales-executive/leads/${lead._id}/edit`} className="flex items-center gap-2 cursor-pointer">
-            <Pencil className="w-4 h-4" /> Edit Lead
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => phone && beginLeadCall({ leadId: lead._id, leadName: lead.name, phone })}
-          className="flex items-center gap-2 cursor-pointer"
-        >
-          <Phone className="w-4 h-4" /> Call Customer
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <a href={`https://wa.me/${phone?.replace('+', '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 cursor-pointer">
-            <MessageCircle className="w-4 h-4" /> WhatsApp
-          </a>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onScheduleFollowUp?.(lead)} className="flex items-center gap-2 cursor-pointer">
-          <CalendarClock className="w-4 h-4" /> Schedule Follow-up
-        </DropdownMenuItem>
-        {canChangeStatus && onChangeStatus && (
-          <DropdownMenuItem onClick={() => onChangeStatus(lead)} className="flex items-center gap-2 cursor-pointer">
-            <RefreshCw className="w-4 h-4" /> Change Status
+        {!locked && (
+          <DropdownMenuItem asChild>
+            <Link to={`/sales-executive/leads/${lead._id}/view`} className="flex items-center gap-2 cursor-pointer">
+              <Eye className="w-4 h-4" /> View Lead
+            </Link>
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem asChild>
-          <Link
-            to={`/sales-executive/quotations/new?leadId=${lead._id}`}
-            className="flex items-center gap-2 cursor-pointer"
-          >
-            <FileText className="w-4 h-4" /> Create Quotation
-          </Link>
+        {locked && (
+          <DropdownMenuItem disabled className="flex items-center gap-2 opacity-70">
+            <Eye className="w-4 h-4" /> Lead returned — no access
+          </DropdownMenuItem>
+        )}
+        {!locked && (
+          <DropdownMenuItem asChild>
+            <Link to={`/sales-executive/leads/${lead._id}/edit`} className="flex items-center gap-2 cursor-pointer">
+              <Pencil className="w-4 h-4" /> Edit Lead
+            </Link>
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={locked || !phone}
+          onClick={() => !locked && phone && beginLeadCall({ leadId: lead._id, leadName: lead.name, phone })}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <Phone className="w-4 h-4" /> {locked ? 'Call locked' : 'Call Customer'}
         </DropdownMenuItem>
+        {!locked ? (
+          <DropdownMenuItem asChild>
+            <a href={`https://wa.me/${phone?.replace('+', '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 cursor-pointer">
+              <MessageCircle className="w-4 h-4" /> WhatsApp
+            </a>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem disabled className="flex items-center gap-2 opacity-70">
+            <MessageCircle className="w-4 h-4" /> WhatsApp locked
+          </DropdownMenuItem>
+        )}
+        {!locked && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onScheduleFollowUp?.(lead)} className="flex items-center gap-2 cursor-pointer">
+              <CalendarClock className="w-4 h-4" /> Schedule Follow-up
+            </DropdownMenuItem>
+            {canChangeStatus && onChangeStatus && (
+              <DropdownMenuItem onClick={() => onChangeStatus(lead)} className="flex items-center gap-2 cursor-pointer">
+                <RefreshCw className="w-4 h-4" /> Change Status
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem asChild>
+              <Link
+                to={`/sales-executive/quotations/new?leadId=${lead._id}`}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <FileText className="w-4 h-4" /> Create Quotation
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenuRoot>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Plus, ChevronDown } from 'lucide-react';
+import { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Plus, ChevronDown, AlertTriangle } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import API from '../../api/axios';
@@ -87,6 +87,7 @@ export default function MyLeadsPage() {
   const leads = data?.data ?? [];
   const total = data?.pagination?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pagination.pageSize) || 1);
+  const returnedLeads = leads.filter((l) => l.returnedToPool || l.contactMasked);
 
   const fetchLeads = () => {
     queryClient.invalidateQueries({ queryKey: ['leads', '/sales-executive/leads'] });
@@ -170,7 +171,18 @@ export default function MyLeadsPage() {
     columnHelper.display({
       id: 'actions',
       header: '',
-      cell: ({ row }) => (
+      cell: ({ row }) => {
+        const returned = row.original.returnedToPool || row.original.contactMasked;
+        if (returned) {
+          return (
+            <div className="flex justify-end pr-1">
+              <span className="inline-flex h-8 items-center rounded-xl bg-amber-50 px-2.5 text-[10px] font-bold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
+                Returned
+              </span>
+            </div>
+          );
+        }
+        return (
         <div className="flex items-center justify-end gap-0 pr-1">
           {row.original.assignmentAcceptance === 'pending' ? (
             <div className="inline-flex items-stretch rounded-xl ring-1 ring-emerald-500/25 shadow-sm shadow-emerald-500/10 overflow-hidden">
@@ -210,7 +222,8 @@ export default function MyLeadsPage() {
             />
           )}
         </div>
-      ),
+        );
+      },
     }),
   ], [queryClient]);
 
@@ -232,6 +245,23 @@ export default function MyLeadsPage() {
       )}
     >
       <ExecutiveLeadKpiStrip />
+
+      {returnedLeads.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div className="min-w-0">
+            <p className="text-sm font-bold">
+              {returnedLeads.length === 1
+                ? 'Aapki 1 lead vapas chali gayi hai'
+                : `Aapki ${returnedLeads.length} leads vapas chali gayi hain`}
+            </p>
+            <p className="mt-0.5 text-xs font-medium opacity-90">
+              Jo lead aapko assign hui thi aur 2 minute mein accept nahi ki — ab list mein dikh rahi hai, phone number{' '}
+              <span className="font-bold tracking-widest">XXXX</span> hai.
+            </p>
+          </div>
+        </div>
+      )}
 
       <ExecutiveLeadsFilterBar
         search={search}

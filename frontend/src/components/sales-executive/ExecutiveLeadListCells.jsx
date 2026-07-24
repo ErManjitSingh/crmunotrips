@@ -93,20 +93,55 @@ export function ExecLeadIdCell({ lead }) {
 }
 
 export function ExecCustomerCell({ lead }) {
+  const returned = lead?.returnedToPool || lead?.contactMasked;
+  const inner = (
+    <>
+      <CustomerCell name={lead?.name || 'Unknown'} lead={lead} />
+      {returned && (
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-amber-700 pl-10">
+          Lead vapas — accept nahi kiya
+        </p>
+      )}
+    </>
+  );
+
+  if (returned) {
+    return (
+      <div className="block rounded-xl -m-1 p-1.5 min-w-[200px] max-w-[300px] opacity-90">
+        {inner}
+      </div>
+    );
+  }
+
   return (
     <Link
       to={`/sales-executive/leads/${lead._id}/view`}
       className="block rounded-xl -m-1 p-1.5 hover:bg-[#5D5FEF]/[0.04] transition-colors min-w-[200px] max-w-[300px]"
       onClick={(e) => e.stopPropagation()}
     >
-      <CustomerCell name={lead?.name || 'Unknown'} lead={lead} />
+      {inner}
     </Link>
   );
 }
 
 export function ExecContactCell({ lead }) {
+  const masked = lead?.contactMasked || lead?.returnedToPool || lead?.phone === 'XXXX';
   const phone = lead?.phone;
   const email = lead?.email;
+
+  if (masked) {
+    return (
+      <div className="min-w-[140px] space-y-1">
+        <p className="flex items-center gap-2 text-sm font-bold tabular-nums tracking-widest text-slate-400">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100 text-slate-400 shrink-0">
+            <Phone className="w-3 h-3" />
+          </span>
+          XXXX
+        </p>
+        <p className="text-[10px] font-semibold text-amber-700 pl-8">Hidden — not accepted</p>
+      </div>
+    );
+  }
 
   if (!phone && !email) {
     return <span className="text-sm text-content-muted">—</span>;

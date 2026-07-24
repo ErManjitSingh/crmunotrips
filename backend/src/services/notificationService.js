@@ -511,6 +511,22 @@ async function parseAndNotifyMentions(text, mentionedBy, context, meta = {}) {
   });
 }
 
+async function notifyLeadAcceptMissed({ lead, executiveId, executiveName }) {
+  if (!executiveId) return;
+  const name = lead?.name || 'Lead';
+  await notifyUser(executiveId, {
+    branchId: lead?.branchId || null,
+    type: T.LEAD_ACCEPT_MISSED,
+    title: 'Lead returned to pool',
+    message: `Aapne "${name}" 2 minute mein accept nahi ki — lead vapas unassigned pool mein chali gayi`,
+    meta: {
+      leadId: lead?._id,
+      href: '/sales-executive/leads/all',
+      returnedToPool: true,
+    },
+  });
+}
+
 module.exports = {
   notifyUser,
   notifyUsers,
@@ -519,6 +535,7 @@ module.exports = {
   notifyLeadAssigned,
   notifyLeadReactivated,
   notifyLeadReassigned,
+  notifyLeadAcceptMissed,
   notifyReactivationProgress,
   notifyFollowUpReminder,
   notifyFollowUpMissed,

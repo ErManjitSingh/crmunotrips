@@ -18,6 +18,7 @@ const NOTIFICATION_TYPES = {
   LEAD_DELETED: 'lead_deleted',
   LEAD_RESTORED: 'lead_restored',
   LEAD_SLA_BREACH: 'lead_sla_breach',
+  LEAD_ACCEPT_MISSED: 'lead_accept_missed',
   FOLLOWUP_ESCALATION: 'followup_escalation',
   FOLLOWUP_OUTCOME: 'followup_outcome',
 };

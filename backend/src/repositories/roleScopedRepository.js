@@ -112,6 +112,25 @@ async function findManagerLeadsPaginated(query = {}, options = {}) {
   });
 }
 
+function maskReturnedLeadForExecutive(lead, executiveId) {
+  if (!lead || !executiveId) return lead;
+  const missedBy = lead.acceptanceMissedBy?._id || lead.acceptanceMissedBy;
+  const isReturned =
+    lead.assignmentAcceptance === 'expired' &&
+    String(missedBy) === String(executiveId) &&
+    !lead.assignedTo;
+  if (!isReturned) return lead;
+  return {
+    ...lead,
+    phone: 'XXXX',
+    alternatePhone: lead.alternatePhone ? 'XXXX' : '',
+    whatsapp: lead.whatsapp ? 'XXXX' : '',
+    email: lead.email ? 'xxxx@xxxx.com' : '',
+    contactMasked: true,
+    returnedToPool: true,
+  };
+}
+
 async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
   const filterKey = query.filter || query.paramsFilter;
   const { page, limit, skip } = parsePagination(query);
@@ -133,23 +152,46 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
     /* non-blocking */
   }
 
-  const filter = withActiveLead({
+  const searchPart = buildLeadSearchFilter(query.search);
+  const statusExtras = buildExecutiveLeadFilter(filterKey);
+  const owned = withActiveLead({
     assignedTo: userId,
-    ...buildExecutiveLeadFilter(filterKey),
-    ...buildLeadSearchFilter(query.search),
+    ...statusExtras,
+    ...searchPart,
   });
-  Object.assign(filter, withBranch({}, options.branchId));
+  Object.assign(owned, withBranch({}, options.branchId));
 
   if (filterKey === 'hot') {
-    filter.isHot = true;
-    filter.status = { $nin: ['converted', 'lost', 'booked_from_another_company'] };
+    owned.isHot = true;
+    owned.status = { $nin: ['converted', 'lost', 'booked_from_another_company'] };
   }
 
   if (filterKey === 'all' || !filterKey) {
-    if (query.status) filter.status = query.status;
-    if (query.destination) filter.destination = query.destination;
-    if (query.priority === 'hot') filter.isHot = true;
-    else if (query.priority) filter.priority = query.priority;
+    if (query.status) owned.status = query.status;
+    if (query.destination) owned.destination = query.destination;
+    if (query.priority === 'hot') owned.isHot = true;
+    else if (query.priority) owned.priority = query.priority;
+  }
+
+  // Show leads this exec missed accepting (returned to pool) — phone masked in response
+  const includeReturned = !['converted', 'lost', 'contacted', 'follow-up', 'hot', 'reactivated'].includes(
+    filterKey
+  );
+  let filter = owned;
+  if (includeReturned) {
+    const returned = withActiveLead({
+      acceptanceMissedBy: userId,
+      assignmentAcceptance: 'expired',
+      assignedTo: null,
+      ...searchPart,
+    });
+    Object.assign(returned, withBranch({}, options.branchId));
+    if (filterKey === 'new') {
+      // Keep "Today Lead" focused on owned new + any returned today/recent
+      filter = { $or: [owned, returned] };
+    } else {
+      filter = { $or: [owned, returned] };
+    }
   }
 
   const needsTotal = page <= DEEP_PAGE_THRESHOLD;
@@ -164,7 +206,7 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
     needsTotal ? Lead.countDocuments(filter) : Promise.resolve(null),
   ]);
 
-  let enriched = rows.map(enrichLead);
+  let enriched = rows.map((row) => maskReturnedLeadForExecutive(enrichLead(row), userId));
   if (filterKey === 'converted' || filter.status === 'converted') {
     const { attachPaymentSummariesToLeads } = require('../services/paymentReceiptService');
     enriched = await attachPaymentSummariesToLeads(enriched);

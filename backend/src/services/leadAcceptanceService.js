@@ -5,6 +5,7 @@ const { LEAD_ACCEPT_MINUTES } = require('../constants/salesSop');
 const { computeFirstContactDeadline } = require('./salesSopService');
 const { logLeadActivity } = require('./leadActivityService');
 const { invalidateExecutiveLeadIdsCache } = require('./executiveScopeService');
+const { notifyLeadAcceptMissed } = require('./notificationService');
 
 async function acceptAssignedLead({ leadId, executiveId, branchId }) {
   const lead = await Lead.findOne({
@@ -89,6 +90,16 @@ async function releaseExpiredLead(lead) {
     actor: { name: 'System' },
     meta: { previousAssigneeId: previousId, previousName },
   });
+
+  try {
+    await notifyLeadAcceptMissed({
+      lead,
+      executiveId: previousId,
+      executiveName: previousName,
+    });
+  } catch {
+    /* optional */
+  }
 
   return { lead, released: true, previousId, previousName };
 }

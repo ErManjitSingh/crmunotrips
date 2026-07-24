@@ -20,6 +20,7 @@ export const NOTIFICATION_META = {
   followup_escalation: { icon: AlertTriangle, color: 'text-orange-600 bg-orange-500/10' },
   followup_outcome: { icon: FileCheck, color: 'text-emerald-600 bg-emerald-500/10' },
   lead_sla_breach: { icon: AlertTriangle, color: 'text-rose-600 bg-rose-500/10' },
+  lead_accept_missed: { icon: AlertTriangle, color: 'text-amber-600 bg-amber-500/10' },
   quotation_created: { icon: FileText, color: 'text-blue-600 bg-blue-500/10' },
   quotation_approved: { icon: FileCheck, color: 'text-emerald-600 bg-emerald-500/10' },
   quotation_rejected: { icon: FileX, color: 'text-red-600 bg-red-500/10' },

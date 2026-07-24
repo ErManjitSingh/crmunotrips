@@ -285,13 +285,14 @@ async function aggregateExecutiveLeadCounts(userId, branchId) {
       lost: facetCount(row, 'lost'),
       reactivated: facetCount(row, 'reactivated'),
       urgent: facetCount(row, 'urgent'),
+      returned: 0,
     },
     customers: facetCount(row, 'customers'),
   };
 }
 
 async function buildExecutiveNavCounts(userId, { branchId } = {}) {
-  const [aggregated, followUpsDue, notificationsUnread, quotationsTotal] = await Promise.all([
+  const [aggregated, followUpsDue, notificationsUnread, quotationsTotal, returnedCount] = await Promise.all([
     aggregateExecutiveLeadCounts(userId, branchId),
     countFollowUpsDue({ assignedTo: userId }, branchId),
     unreadNotifications(userId, branchId),
@@ -299,9 +300,22 @@ async function buildExecutiveNavCounts(userId, { branchId } = {}) {
       ...(branchId ? { branchId } : {}),
       createdByExecutive: userId,
     }),
+    Lead.countDocuments(
+      withBranch(
+        {
+          isDeleted: { $ne: true },
+          acceptanceMissedBy: userId,
+          assignmentAcceptance: 'expired',
+          assignedTo: null,
+        },
+        branchId
+      )
+    ),
   ]);
 
   const { leads, customers } = aggregated;
+  leads.returned = returnedCount;
+  leads.all = (leads.all || 0) + returnedCount;
 
   return {
     leads,
