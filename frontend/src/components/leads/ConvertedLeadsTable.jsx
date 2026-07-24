@@ -9,6 +9,7 @@ import {
 import TablePagination from '../ui/TablePagination';
 import { getLeadSourceShortLabel } from '../../lib/leadSourceLabels';
 import { cn } from '../../lib/utils';
+import LeadCallStats from './LeadCallStats';
 
 function formatMoney(n) {
   const v = Number(n) || 0;
@@ -179,6 +180,7 @@ function ConvertedLeadRow({ lead, detailHref, onClick }) {
       <div className="space-y-2">
         <div>
           <p className="text-[13px] font-bold text-slate-900">{lead.name}</p>
+          <LeadCallStats lead={lead} compact className="mt-1" />
           <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500">
             <Mail className="h-3 w-3 shrink-0" />
             <span className="truncate">{lead.email || lead.phone || '—'}</span>

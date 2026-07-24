@@ -1,0 +1,11 @@
+---
+description: Production CRM deploys only to app.unotrips.com — never testing
+alwaysApply: true
+---
+
+# Live deploy target
+
+- **Only** deploy / rebuild / PM2-restart **`https://app.unotrips.com`** (`/var/www/app-unotrips-crm`, PM2 `app-unotrips-api`).
+- **Do not** deploy to, sync via, or update **`testing.unotrips.com`** (`/var/www/testing-unotrips-crm`, `git-pull-deploy.mjs`, `force-git-pull-deploy.mjs`).
+- When the user says "live" / "push" / "deploy", use **`deploy/deploy-app-only.mjs`** (or equivalent app-only path).
+- Do not re-enable the testing subdomain unless the user explicitly asks.
