@@ -14,6 +14,7 @@ import API from '../../api/axios';
 import { unwrapList } from '../../utils/apiHelpers';
 import ExecutivePageShell from './ExecutivePageShell';
 import ExecutiveQuotationKpiStrip from './ExecutiveQuotationKpiStrip';
+import MobileExecutiveQuotations from './MobileExecutiveQuotations';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
 import { formatCurrency, QUOTE_STATUS_STYLES } from './executiveUtils';
@@ -180,7 +181,35 @@ export default function ExecutiveQuotationsPage() {
   const from = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const to = Math.min(safePage * pageSize, total);
 
+  const mobileSearchChange = (value) => {
+    setDraftFilters((f) => ({ ...f, search: value }));
+    setAppliedFilters((f) => ({ ...f, search: value }));
+  };
+
+  const mobileDestinationChange = (value) => {
+    setDraftFilters((f) => ({ ...f, destination: value }));
+    setAppliedFilters((f) => ({ ...f, destination: value }));
+  };
+
   return (
+    <>
+      <MobileExecutiveQuotations
+        quotes={quotes}
+        kpiCounts={kpiCounts}
+        statusTab={statusTab}
+        onStatusTabChange={setStatusTab}
+        search={appliedFilters.search || ''}
+        onSearchChange={mobileSearchChange}
+        destination={appliedFilters.destination || ''}
+        onDestinationChange={mobileDestinationChange}
+        onRefresh={refreshAll}
+        onOpenQuote={setSelected}
+        loading={loading}
+        flash={flash}
+        onDismissFlash={() => setFlash('')}
+      />
+
+      <div className="hidden lg:block">
     <ExecutivePageShell
       title="Quotations"
       description="Your quotes — submitted to Team Leader for approval before sending to customers"
@@ -422,6 +451,8 @@ export default function ExecutiveQuotationsPage() {
           </div>
         </div>
       </div>
+    </ExecutivePageShell>
+      </div>
 
       <QuotationDetailDrawer
         quote={selected}
@@ -447,6 +478,6 @@ export default function ExecutiveQuotationsPage() {
         onClose={() => setShowPdf(false)}
         pdfRef={pdfRef}
       />
-    </ExecutivePageShell>
+    </>
   );
 }

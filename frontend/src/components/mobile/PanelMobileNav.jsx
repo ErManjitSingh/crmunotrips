@@ -72,6 +72,13 @@ const PANEL_CONFIG = {
       { path: '/sales-executive/follow-ups', label: 'Follow-ups', icon: Phone },
       { path: '/sales-executive/profile', label: 'More', icon: MoreHorizontal },
     ],
+    quotationsTabs: [
+      { path: '/sales-executive/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { path: '/sales-executive/leads/all', activePrefix: '/sales-executive/leads', label: 'Leads', icon: Users },
+      { path: '/sales-executive/quotations/new', label: 'Create', icon: Plus, primary: true },
+      { path: '/sales-executive/follow-ups', label: 'Follow-ups', icon: Phone },
+      { path: '/sales-executive/profile', label: 'More', icon: MoreHorizontal },
+    ],
   },
   operations_manager: {
     accent: 'teal',
@@ -109,19 +116,22 @@ export default function PanelMobileNav() {
   const { user } = useAuth();
   const panel = resolvePanel(pathname, user?.role);
   const config = PANEL_CONFIG[panel];
+  const onQuotations =
+    panel === 'sales_executive' && pathname.startsWith('/sales-executive/quotations');
+  const tabs = onQuotations && config.quotationsTabs ? config.quotationsTabs : config.tabs;
 
   const isActive = (path, tab) => {
     const prefix = tab?.activePrefix || path;
     if (path.endsWith('/dashboard')) return pathname === path;
-    if (tab?.primary) return pathname === path;
+    if (tab?.primary) return pathname === path || (onQuotations && path.includes('/quotations/new'));
     if (path === '/leads/new') return pathname === path;
     return pathname.startsWith(prefix);
   };
 
   return (
     <MobileBottomNav
-      tabs={config.tabs}
-      isActive={(path) => isActive(path, config.tabs.find((tab) => tab.path === path))}
+      tabs={tabs}
+      isActive={(path) => isActive(path, tabs.find((tab) => tab.path === path))}
       accent={config.accent}
     />
   );

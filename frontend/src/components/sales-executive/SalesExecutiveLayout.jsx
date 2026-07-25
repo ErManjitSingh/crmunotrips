@@ -16,7 +16,8 @@ function SalesExecutiveShell() {
   const { pathname } = useLocation();
   const isDashboard = pathname === '/sales-executive/dashboard';
   const isQuotationBuilder = pathname === '/sales-executive/quotations/new';
-  const isMobileImmersive = isDashboard || isQuotationBuilder;
+  const isQuotationsList = pathname === '/sales-executive/quotations';
+  const isMobileImmersive = isDashboard || isQuotationBuilder || isQuotationsList;
 
   const sidebarProps = {
     user,
