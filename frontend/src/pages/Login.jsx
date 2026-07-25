@@ -83,10 +83,15 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-10 sm:py-12 overflow-hidden bg-[#F7F6FB]">
-      {/* Soft ambient glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_35%,rgba(139,92,246,0.14),transparent_55%)]" />
-      <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[36rem] -translate-x-1/2 rounded-full bg-violet-300/20 blur-3xl" />
+    <div
+      className="relative min-h-screen flex flex-col items-center justify-center px-4 py-10 sm:py-12 overflow-hidden bg-[#E8F0F8] bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage:
+          "url('https://img.magnific.com/free-photo/particle-lines-futuristic-gradient-background_53876-104053.jpg?semt=ais_hybrid&w=740&q=80')",
+      }}
+    >
+      {/* Soft light overlay so the form stays readable */}
+      <div className="pointer-events-none absolute inset-0 bg-white/20" />
 
       {/* Top-right controls */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2.5 sm:top-5 sm:right-6">
