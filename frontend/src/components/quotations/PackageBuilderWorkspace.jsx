@@ -14,11 +14,13 @@ import {
   Leaf,
   Route,
   ListChecks,
+  X,
 } from 'lucide-react';
 import { getPackageTypeConfig, formatINR } from './quotationUtils';
 import PackageDestinationFlow from './PackageDestinationFlow';
 import PackageBuilderDayTimeline from './PackageBuilderDayTimeline';
 import PackageBuilderPriceSidebar from './PackageBuilderPriceSidebar';
+import MobileQuotationActionBar from './MobileQuotationActionBar';
 import InclusionExclusionEditor from './InclusionExclusionEditor';
 import QuotationPdfOverlay from './QuotationPdfOverlay';
 import PackageResourcePickerDrawer from './PackageResourcePickerDrawer';
@@ -156,11 +158,11 @@ function SectionShell({
     >
       <div className={cn('h-1.5 w-full bg-gradient-to-r', t.bar)} />
       {(title || step) && (
-        <div className="px-4 sm:px-5 pt-4 pb-3 flex flex-wrap items-start justify-between gap-3 border-b border-black/5">
-          <div className="flex items-start gap-3 min-w-0">
+        <div className="px-4 sm:px-5 pt-3.5 pb-3 sm:pt-4 flex flex-wrap items-start justify-between gap-2.5 sm:gap-3 border-b border-black/5">
+          <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
             {Icon && (
-              <span className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', t.iconWrap)}>
-                <Icon className="w-5 h-5" />
+              <span className={cn('w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0', t.iconWrap)}>
+                <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
               </span>
             )}
             <div className="min-w-0">
@@ -170,9 +172,9 @@ function SectionShell({
                     Step {step}
                   </span>
                 )}
-                {title && <h3 className="text-base font-bold text-slate-900">{title}</h3>}
+                {title && <h3 className="text-sm sm:text-base font-bold text-slate-900">{title}</h3>}
               </div>
-              {subtitle && <p className="text-xs text-slate-600 mt-0.5">{subtitle}</p>}
+              {subtitle && <p className="text-[11px] sm:text-xs text-slate-600 mt-0.5 line-clamp-2">{subtitle}</p>}
             </div>
           </div>
           {action}
@@ -252,7 +254,9 @@ export default function PackageBuilderWorkspace({
   const [autoPrint, setAutoPrint] = useState(false);
   const [showEmailComposer, setShowEmailComposer] = useState(false);
   const [picker, setPicker] = useState(null);
+  const [mobilePricingOpen, setMobilePricingOpen] = useState(false);
   const typeCfg = getPackageTypeConfig(pkg?.type || pkg?.category || 'family');
+  const mobileTotal = Number(pricing?.total || 0);
 
   const emailQuotation = useMemo(() => {
     if (!draftQuote) return null;
@@ -534,18 +538,45 @@ export default function PackageBuilderWorkspace({
     selectedUnoCab?.id || selectedUnoCab?.packageCabId || selectedUnoCab?.name || null;
 
   return (
-    <div className="space-y-5 rounded-3xl bg-gradient-to-b from-slate-100 via-indigo-50/40 to-amber-50/30 p-3 sm:p-4 -mx-1">
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-indigo-200/70 bg-white/90 px-4 py-4 shadow-sm shadow-indigo-100/50">
+    <div className="relative space-y-4 rounded-none bg-[#f4f5f9] p-0 pb-36 sm:space-y-5 sm:rounded-3xl sm:bg-gradient-to-b sm:from-slate-100 sm:via-indigo-50/40 sm:to-amber-50/30 sm:p-3 sm:pb-4 xl:pb-4 -mx-0 sm:-mx-1">
+      {/* Mobile sticky top bar */}
+      <div className="sticky top-0 z-30 -mx-0 border-b border-slate-200/80 bg-white/95 px-3 py-2.5 backdrop-blur-md xl:hidden">
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to packages"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-violet-600">Create Quotation</p>
+            <p className="truncate text-sm font-bold text-slate-900">{lead?.name || 'Customer'}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowPreview(true)}
+            className="inline-flex h-9 shrink-0 items-center gap-1 rounded-xl bg-violet-600 px-3 text-xs font-semibold text-white shadow-sm"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            PDF
+          </button>
+        </div>
+      </div>
+
+      {/* Desktop header */}
+      <div className="hidden flex-wrap items-start justify-between gap-3 rounded-2xl border border-indigo-200/70 bg-white/90 px-4 py-4 shadow-sm shadow-indigo-100/50 xl:flex">
         <div>
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 mb-2"
+            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700"
           >
             <ArrowLeft className="w-4 h-4" /> Back to Packages
           </button>
-          <h1 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">Create Quotation</h1>
-          <p className="text-sm text-slate-600 mt-1">
+          <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight text-slate-900">Create Quotation</h1>
+          <p className="mt-1 text-sm text-slate-600">
             Build and customize the perfect package for{' '}
             <span className="font-semibold text-indigo-700">{lead?.name || 'your customer'}</span>.
           </p>
@@ -555,14 +586,14 @@ export default function PackageBuilderWorkspace({
             type="button"
             disabled={saving}
             onClick={onSaveDraft}
-            className="h-10 px-4 rounded-xl border border-indigo-200 bg-indigo-50 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60"
+            className="h-10 rounded-xl border border-indigo-200 bg-indigo-50 px-4 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60"
           >
             {draftLabel || 'Save as Draft'}
           </button>
           <button
             type="button"
             onClick={() => setShowPreview(true)}
-            className="h-10 px-4 rounded-xl bg-violet-600 text-white text-sm font-semibold shadow-md shadow-violet-600/25 hover:bg-violet-500 inline-flex items-center gap-1.5"
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white shadow-md shadow-violet-600/25 hover:bg-violet-500"
           >
             <FileText className="w-4 h-4" />
             Generate PDF
@@ -570,8 +601,8 @@ export default function PackageBuilderWorkspace({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
-        <div className="space-y-5 min-w-0">
+      <div className="grid grid-cols-1 items-start gap-4 px-3 sm:gap-5 sm:px-0 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-4 sm:space-y-5">
           <SectionShell
             tone="package"
             step={1}
@@ -579,29 +610,29 @@ export default function PackageBuilderWorkspace({
             subtitle="Cover, highlights and trip meta"
             icon={Sparkles}
           >
-            <div className="rounded-xl overflow-hidden border border-indigo-100 bg-white shadow-sm">
-              <div className="relative h-48 sm:h-56 overflow-hidden bg-slate-200">
+            <div className="overflow-hidden rounded-xl border border-indigo-100 bg-white shadow-sm">
+              <div className="relative h-40 overflow-hidden bg-slate-200 sm:h-56">
                 {pkg?.coverImage ? (
-                  <img src={pkg.coverImage} alt="" className="w-full h-full object-cover" />
+                  <img src={pkg.coverImage} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-sky-400 via-indigo-400 to-violet-500" />
+                  <div className="h-full w-full bg-gradient-to-br from-sky-400 via-indigo-400 to-violet-500" />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/25 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 space-y-2.5">
-                  <span className="inline-flex text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-indigo-500 text-white shadow-sm">
+                <div className="absolute bottom-0 left-0 right-0 space-y-2 p-3.5 sm:space-y-2.5 sm:p-5">
+                  <span className="inline-flex rounded-md bg-indigo-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
                     Package Preview
                   </span>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white drop-shadow-sm leading-snug">
+                  <h2 className="text-lg font-bold leading-snug text-white drop-shadow-sm sm:text-2xl">
                     {pkg?.name}
                     {durationLabel ? ` — ${durationLabel}` : ''}
                   </h2>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {heroTags.map(({ icon: Icon, label }) => (
                       <span
                         key={label}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-white/20 backdrop-blur border border-white/25 px-2.5 py-1 text-[11px] font-semibold text-white"
+                        className="inline-flex items-center gap-1 rounded-lg border border-white/25 bg-white/20 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur sm:gap-1.5 sm:px-2.5 sm:text-[11px]"
                       >
-                        <Icon className="w-3.5 h-3.5" />
+                        <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                         {label}
                       </span>
                     ))}
@@ -609,20 +640,20 @@ export default function PackageBuilderWorkspace({
                 </div>
               </div>
 
-              <div className="px-4 sm:px-5 py-4 space-y-4 bg-gradient-to-b from-indigo-50/50 to-white">
+              <div className="space-y-3 bg-gradient-to-b from-indigo-50/50 to-white px-3.5 py-3.5 sm:space-y-4 sm:px-5 sm:py-4">
                 <PackageDescription
                   text={pkg?.description || pkg?.shortDescription}
                   fallback={`Experience ${pkg?.destination || 'the hills'} with curated stays, private transfers and handpicked sightseeing — fully customisable for your guest.`}
                 />
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-2 gap-2 sm:gap-2.5 lg:grid-cols-4">
                   {metaRow.map(({ icon: Icon, label, value, tone }) => (
-                    <div key={label} className={cn('rounded-xl border px-3 py-2.5', tone)}>
-                      <p className="text-[10px] font-bold uppercase tracking-wide opacity-80 inline-flex items-center gap-1">
-                        <Icon className="w-3 h-3" />
+                    <div key={label} className={cn('rounded-xl border px-2.5 py-2 sm:px-3 sm:py-2.5', tone)}>
+                      <p className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide opacity-80 sm:text-[10px]">
+                        <Icon className="h-3 w-3" />
                         {label}
                       </p>
-                      <p className="text-sm font-bold text-slate-900 mt-1 truncate">{value}</p>
+                      <p className="mt-1 truncate text-xs font-bold text-slate-900 sm:text-sm">{value}</p>
                     </div>
                   ))}
                 </div>
@@ -640,7 +671,7 @@ export default function PackageBuilderWorkspace({
             <PackageDestinationFlow destinations={destinations} onChange={setDestinations} embedded />
           </SectionShell>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SectionShell
               tone="travel"
               step={3}
@@ -654,7 +685,7 @@ export default function PackageBuilderWorkspace({
                 <p className="text-sm font-bold text-slate-900">
                   {selectedUnoCab?.name || 'Sedan (Dzire / Etios)'}
                 </p>
-                <p className="text-xs text-sky-700/80 mt-1 font-medium">
+                <p className="mt-1 text-xs font-medium text-sky-700/80">
                   {[
                     'AC Vehicle',
                     selectedUnoCab?.seatingCapacity ? `${selectedUnoCab.seatingCapacity} Seats` : '4 Seats',
@@ -674,7 +705,7 @@ export default function PackageBuilderWorkspace({
             >
               <div className="rounded-xl border border-violet-200 bg-white/80 px-3.5 py-3">
                 <p className="text-sm font-bold text-slate-900">{staySummary.name}</p>
-                <p className="text-xs text-violet-700/80 mt-1 font-medium">{staySummary.detail}</p>
+                <p className="mt-1 text-xs font-medium text-violet-700/80">{staySummary.detail}</p>
               </div>
             </SectionShell>
           </div>
@@ -714,24 +745,94 @@ export default function PackageBuilderWorkspace({
           </SectionShell>
         </div>
 
-        <PackageBuilderPriceSidebar
-          lead={lead}
-          pkg={pkg}
-          pricing={pricing}
-          onPricingChange={onPricingChange}
-          nights={nights}
-          daysCount={itinerary?.length}
-          onSaveDraft={onSaveDraft}
-          onSubmit={onSubmit}
-          onShare={handleShare}
-          onMail={handleMail}
-          onWhatsApp={handleWhatsApp}
-          onPrint={handlePrint}
-          saving={saving}
-          draftLabel={draftLabel}
-          submitLabel={submitLabel}
-        />
+        <div className="hidden xl:block">
+          <PackageBuilderPriceSidebar
+            lead={lead}
+            pkg={pkg}
+            pricing={pricing}
+            onPricingChange={onPricingChange}
+            nights={nights}
+            daysCount={itinerary?.length}
+            onSaveDraft={onSaveDraft}
+            onSubmit={onSubmit}
+            onShare={handleShare}
+            onMail={handleMail}
+            onWhatsApp={handleWhatsApp}
+            onPrint={handlePrint}
+            saving={saving}
+            draftLabel={draftLabel}
+            submitLabel={submitLabel}
+          />
+        </div>
       </div>
+
+      <MobileQuotationActionBar
+        total={mobileTotal}
+        saving={saving}
+        draftLabel={draftLabel || 'Draft'}
+        submitLabel={submitLabel || 'Submit'}
+        onOpenPricing={() => setMobilePricingOpen(true)}
+        onSaveDraft={onSaveDraft}
+        onSubmit={onSubmit}
+      />
+
+      {mobilePricingOpen ? (
+        <div className="fixed inset-0 z-50 xl:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-900/45"
+            aria-label="Close pricing"
+            onClick={() => setMobilePricingOpen(false)}
+          />
+          <div className="absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-[#f7f7fb] shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur">
+              <div>
+                <p className="text-sm font-bold text-slate-900">Package Pricing</p>
+                <p className="text-[11px] text-slate-500">Adjust GST, markup & discount</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobilePricingOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-3 p-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <PackageBuilderPriceSidebar
+                lead={lead}
+                pkg={pkg}
+                pricing={pricing}
+                onPricingChange={onPricingChange}
+                nights={nights}
+                daysCount={itinerary?.length}
+                onSaveDraft={onSaveDraft}
+                onSubmit={() => {
+                  setMobilePricingOpen(false);
+                  onSubmit?.();
+                }}
+                onShare={handleShare}
+                onMail={handleMail}
+                onWhatsApp={handleWhatsApp}
+                onPrint={handlePrint}
+                saving={saving}
+                draftLabel={draftLabel}
+                submitLabel={submitLabel}
+                hideActions
+                className="!static"
+              />
+              <button
+                type="button"
+                onClick={() => setMobilePricingOpen(false)}
+                className="w-full h-11 rounded-xl bg-violet-600 text-sm font-semibold text-white shadow-md"
+              >
+                Done · {formatINR(mobileTotal)}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <QuotationPdfOverlay
         quote={draftQuote}

@@ -553,31 +553,74 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const inBuilder = step >= 3 && Boolean(activePkg);
 
   return (
-    <div className={cn('pb-12', inBuilder ? 'max-w-[1440px] mx-auto' : 'max-w-4xl mx-auto')}>
+    <div className={cn(
+      inBuilder
+        ? 'mx-auto max-w-[1440px] pb-0'
+        : 'mx-auto max-w-4xl px-3 pt-3 pb-28 sm:px-0 sm:pt-0 xl:pb-12',
+    )}
+    >
       {!inBuilder && (
         <>
-          <div className="flex items-center gap-3 mb-6">
-            <Link to={config.backPath} className="p-2 rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-600"><ArrowLeft className="w-4 h-4" /></Link>
-            <div>
-              <h1 className="text-2xl font-bold text-content-primary">{config.title}</h1>
-              <p className="text-sm text-content-muted">{config.subtitle}</p>
+          <div className="mb-4 flex items-start gap-3 sm:mb-6">
+            <Link
+              to={config.backPath}
+              className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-600"
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-bold text-content-primary sm:text-2xl">{config.title}</h1>
+              <p className="mt-0.5 text-xs text-content-muted sm:text-sm line-clamp-2">{config.subtitle}</p>
               {config.approvalNote && (
-                <p className="text-xs text-amber-700 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2 mt-2 max-w-xl">
+                <p className="mt-2 max-w-xl rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 sm:text-xs">
                   {config.approvalNote}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-subtle bg-surface/80 p-4 mb-6">
-            <div className="flex gap-1 overflow-x-auto pb-1">
+          <div className="mb-4 rounded-2xl border border-subtle bg-surface/80 p-3 sm:mb-6 sm:p-4">
+            <div className="flex gap-1 overflow-x-auto pb-0.5">
               {WIZARD_STEPS.filter((s) => s.id <= 3 || s.id === 8).map((s, idx, arr) => (
                 <div key={s.id} className={cn('flex items-center shrink-0', idx < arr.length - 1 && 'flex-1')}>
-                  <button type="button" onClick={() => s.id <= step && setStep(s.id === 8 ? 3 : s.id)} className={cn('flex flex-col items-center gap-1 px-2', s.id <= step || (s.id === 8 && step >= 3) ? 'cursor-pointer' : 'opacity-40')}>
-                    <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold', step === s.id || (s.id === 3 && step >= 3) ? 'bg-violet-600 text-white ring-4 ring-violet-500/20' : s.id < step ? 'bg-emerald-500 text-white' : 'bg-surface-elevated text-content-muted')}>{idx + 1}</div>
-                    <span className={cn('text-[9px] font-medium hidden sm:block', (step === s.id || (s.id === 3 && step >= 3)) && 'text-violet-600')}>{s.id === 3 ? 'Builder' : s.title}</span>
+                  <button
+                    type="button"
+                    onClick={() => s.id <= step && setStep(s.id === 8 ? 3 : s.id)}
+                    className={cn(
+                      'flex flex-col items-center gap-1 px-1.5 sm:px-2',
+                      s.id <= step || (s.id === 8 && step >= 3) ? 'cursor-pointer' : 'opacity-40',
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold',
+                        step === s.id || (s.id === 3 && step >= 3)
+                          ? 'bg-violet-600 text-white ring-4 ring-violet-500/20'
+                          : s.id < step
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-surface-elevated text-content-muted',
+                      )}
+                    >
+                      {idx + 1}
+                    </div>
+                    <span
+                      className={cn(
+                        'text-[9px] font-medium',
+                        (step === s.id || (s.id === 3 && step >= 3)) && 'text-violet-600',
+                      )}
+                    >
+                      {s.id === 3 ? 'Builder' : s.id === 1 ? 'Lead' : s.id === 2 ? 'Package' : s.title}
+                    </span>
                   </button>
-                  {idx < arr.length - 1 && <div className={cn('h-0.5 flex-1 mx-1 min-w-[12px]', s.id < step || step >= 3 ? 'bg-emerald-500' : 'bg-surface-elevated')} />}
+                  {idx < arr.length - 1 && (
+                    <div
+                      className={cn(
+                        'mx-1 h-0.5 min-w-[12px] flex-1',
+                        s.id < step || step >= 3 ? 'bg-emerald-500' : 'bg-surface-elevated',
+                      )}
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -614,13 +657,13 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           emailEndpoint={emailEndpointForMode(mode)}
         />
       ) : (
-      <div className="rounded-2xl border border-subtle bg-surface shadow-lg p-6 sm:p-8 min-h-[400px]">
+      <div className="min-h-[360px] rounded-2xl border border-subtle bg-surface p-4 shadow-lg sm:min-h-[400px] sm:p-8">
         <AnimatePresence mode="wait">
           <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
             {step === 1 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-lg font-bold">Select Lead</h2>
+                  <h2 className="text-base font-bold sm:text-lg">Select Lead</h2>
                   {state.leadId && config.leadViewPath && (
                     <Link
                       to={config.leadViewPath(state.leadId)}
@@ -628,51 +671,51 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-600 hover:text-sky-700 hover:underline"
                     >
-                      View Lead <ExternalLink className="w-3.5 h-3.5" />
+                      View Lead <ExternalLink className="h-3.5 w-3.5" />
                     </Link>
                   )}
                 </div>
                 {selectedLead && (
-                  <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-3 text-sm">
+                  <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 px-3.5 py-3 text-sm sm:px-4">
                     <p className="font-semibold text-content-primary">{selectedLead.name}</p>
-                    <p className="text-xs text-content-muted mt-0.5">{selectedLead.destination} · {formatINR(selectedLead.budget)}</p>
+                    <p className="mt-0.5 text-xs text-content-muted">{selectedLead.destination} · {formatINR(selectedLead.budget)}</p>
                   </div>
                 )}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-muted" />
                   <input
                     type="search"
                     value={leadSearch}
                     onChange={(e) => setLeadSearch(e.target.value)}
-                    placeholder="Search leads by name, phone, destination (min 2 chars)…"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-subtle bg-surface text-sm outline-none focus:ring-2 focus:ring-violet-500/30"
+                    placeholder="Search name, phone, destination…"
+                    className="w-full rounded-xl border border-subtle bg-surface py-3 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-violet-500/30"
                   />
                 </div>
                 {loadingLeads ? (
-                  <p className="text-sm text-content-muted py-8 text-center">Searching leads…</p>
+                  <p className="py-8 text-center text-sm text-content-muted">Searching leads…</p>
                 ) : leads.length === 0 ? (
-                  <p className="text-sm text-content-muted py-8 text-center">
+                  <p className="py-8 text-center text-sm text-content-muted">
                     {debouncedLeadSearch.trim().length >= 2 || initialLeadId ? 'No leads found' : 'Type at least 2 characters to search leads'}
                   </p>
                 ) : (
                 <VirtualizedList
                   items={leads}
                   estimateSize={76}
-                  maxHeight="400px"
+                  maxHeight="min(50dvh, 400px)"
                   className="grid gap-2"
                   renderItem={(l) => (
                     <button
                       type="button"
                       onClick={() => selectLead(l)}
                       className={cn(
-                        'flex items-center gap-3 p-4 rounded-xl border text-left transition-all w-full',
+                        'flex w-full items-center gap-3 rounded-xl border p-3.5 text-left transition-all sm:p-4',
                         state.leadId === l._id
                           ? 'border-violet-500/50 bg-violet-500/10 ring-2 ring-violet-500/20'
-                          : 'border-subtle hover:bg-surface-elevated'
+                          : 'border-subtle hover:bg-surface-elevated',
                       )}
                     >
                       <Avatar name={l.name} size="sm" />
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="font-semibold">{l.name}</p>
                         <p className="text-xs text-content-muted">{l.destination} · {formatINR(l.budget)}</p>
                       </div>
@@ -684,54 +727,54 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
             )}
             {step === 2 && (
               <div className="space-y-3">
-                <h2 className="text-lg font-bold">Select Package</h2>
+                <h2 className="text-base font-bold sm:text-lg">Select Package</h2>
                 <p className="text-xs text-content-muted">
                   Packages matching lead destination from Uno Hotels catalog
                   {selectedLead?.destination ? (
-                    <> — lead destination: <span className="font-medium text-content-primary">{selectedLead.destination}</span></>
+                    <> — <span className="font-medium text-content-primary">{selectedLead.destination}</span></>
                   ) : null}
                 </p>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-muted" />
                   <input
                     type="search"
                     value={packageSearch}
                     onChange={(e) => setPackageSearch(e.target.value)}
-                    placeholder="Search packages by name or destination..."
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-subtle bg-surface text-sm outline-none focus:ring-2 focus:ring-amber-500/30"
+                    placeholder="Search packages…"
+                    className="w-full rounded-xl border border-subtle bg-surface py-3 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-amber-500/30"
                   />
                 </div>
                 {loadingPackages ? (
-                  <p className="text-sm text-content-muted py-8 text-center">Loading packages...</p>
+                  <p className="py-8 text-center text-sm text-content-muted">Loading packages...</p>
                 ) : (
-                <div className="space-y-2 max-h-[420px] overflow-y-auto">
+                <div className="max-h-[min(50dvh,420px)] space-y-2 overflow-y-auto">
                   {packages.length === 0 ? (
-                    <p className="text-sm text-content-muted py-8 text-center">No packages found for this lead destination.</p>
+                    <p className="py-8 text-center text-sm text-content-muted">No packages found for this lead destination.</p>
                   ) : packages.map((p) => (
                     <button
                       key={`${p.catalogSource || 'pkg'}-${p._id}`}
                       type="button"
                       onClick={() => selectPackage(p)}
                       className={cn(
-                        'w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all',
+                        'flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all',
                         state.packageId === p._id
                           ? 'border-amber-500/50 bg-amber-500/10 ring-2 ring-amber-500/20'
-                          : 'border-subtle hover:bg-surface-elevated'
+                          : 'border-subtle hover:bg-surface-elevated',
                       )}
                     >
                       {p.coverImage ? (
-                        <img src={p.coverImage} alt="" className="h-12 w-12 rounded-lg object-cover border border-subtle shrink-0" loading="lazy" />
+                        <img src={p.coverImage} alt="" className="h-14 w-14 shrink-0 rounded-lg border border-subtle object-cover" loading="lazy" />
                       ) : (
-                        <div className="h-12 w-12 rounded-lg bg-surface-elevated border border-subtle shrink-0" />
+                        <div className="h-14 w-14 shrink-0 rounded-lg border border-subtle bg-surface-elevated" />
                       )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm line-clamp-1">{p.name}</p>
-                        <p className="text-xs text-content-muted mt-0.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-1 text-sm font-semibold">{p.name}</p>
+                        <p className="mt-0.5 text-xs text-content-muted">
                           {p.destination} · {p.durationLabel || `${p.duration}D`} · from {formatINR(p.startingPrice)}
                         </p>
                       </div>
                       {p.catalogSource === 'custom' && (
-                        <span className="shrink-0 text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-violet-500/10 text-violet-700 border border-violet-400/30">
+                        <span className="shrink-0 rounded-full border border-violet-400/30 bg-violet-500/10 px-2 py-1 text-[10px] font-bold uppercase text-violet-700">
                           Your copy
                         </span>
                       )}
@@ -744,18 +787,57 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           </motion.div>
         </AnimatePresence>
 
-        <div className="flex justify-between mt-8 pt-6 border-t border-subtle">
-          <Button type="button" variant="outline" className="rounded-xl gap-2" disabled={step === 1} onClick={() => setStep((s) => s - 1)}><ArrowLeft className="w-4 h-4" /> Back</Button>
+        {/* Desktop footer */}
+        <div className="mt-8 hidden justify-between border-t border-subtle pt-6 xl:flex">
+          <Button type="button" variant="outline" className="gap-2 rounded-xl" disabled={step === 1} onClick={() => setStep((s) => s - 1)}><ArrowLeft className="h-4 w-4" /> Back</Button>
           {step === 1 ? (
-            <Button type="button" variant="sky" className="rounded-xl gap-2" onClick={() => setStep(2)} disabled={!state.leadId}>Continue <ArrowRight className="w-4 h-4" /></Button>
+            <Button type="button" variant="sky" className="gap-2 rounded-xl" onClick={() => setStep(2)} disabled={!state.leadId}>Continue <ArrowRight className="h-4 w-4" /></Button>
           ) : (
-            <Button type="button" variant="sky" className="rounded-xl gap-2" disabled={!state.packageId || loadingPackageDetail} onClick={() => state.packageId && setStep(3)}>
-              Open Builder <ArrowRight className="w-4 h-4" />
+            <Button type="button" variant="sky" className="gap-2 rounded-xl" disabled={!state.packageId || loadingPackageDetail} onClick={() => state.packageId && setStep(3)}>
+              Open Builder <ArrowRight className="h-4 w-4" />
             </Button>
           )}
         </div>
       </div>
       )}
+
+      {!inBuilder ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-violet-100/80 bg-white/95 px-3 pt-2.5 pb-[max(0.65rem,env(safe-area-inset-bottom))] shadow-[0_-10px_32px_rgba(15,23,42,0.14)] backdrop-blur-md xl:hidden">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 shrink-0 gap-1.5 rounded-xl px-3"
+              disabled={step === 1}
+              onClick={() => setStep((s) => s - 1)}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            {step === 1 ? (
+              <Button
+                type="button"
+                variant="sky"
+                className="h-11 flex-1 gap-2 rounded-xl"
+                onClick={() => setStep(2)}
+                disabled={!state.leadId}
+              >
+                Continue <ArrowRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="sky"
+                className="h-11 flex-1 gap-2 rounded-xl"
+                disabled={!state.packageId || loadingPackageDetail}
+                onClick={() => state.packageId && setStep(3)}
+              >
+                Open Builder <ArrowRight className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       <PackageBuilderOpeningOverlay
         open={loadingPackageDetail}

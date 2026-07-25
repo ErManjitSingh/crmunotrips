@@ -15,6 +15,8 @@ function SalesExecutiveShell() {
   const { user } = useAuth();
   const { pathname } = useLocation();
   const isDashboard = pathname === '/sales-executive/dashboard';
+  const isQuotationBuilder = pathname === '/sales-executive/quotations/new';
+  const isMobileImmersive = isDashboard || isQuotationBuilder;
 
   const sidebarProps = {
     user,
@@ -35,12 +37,15 @@ function SalesExecutiveShell() {
       <MobileSidebarDrawer sidebarProps={sidebarProps} />
 
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
-        <div className={isDashboard ? 'hidden lg:block' : ''}>
+        <div className={isMobileImmersive ? 'hidden lg:block' : ''}>
           <TopBar />
         </div>
-        <main data-workspace-main className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain pb-20 lg:pb-0">
-          <div className={`mx-auto max-w-[1600px] ${isDashboard ? 'p-0 lg:p-5' : 'p-3 sm:p-4 lg:p-5'}`}>
-            <div className={isDashboard ? 'hidden lg:block' : ''}>
+        <main
+          data-workspace-main
+          className={`flex-1 min-h-0 overflow-y-auto overscroll-y-contain ${isQuotationBuilder ? 'pb-0' : 'pb-20 lg:pb-0'}`}
+        >
+          <div className={`mx-auto max-w-[1600px] ${isMobileImmersive ? 'p-0 lg:p-5' : 'p-3 sm:p-4 lg:p-5'}`}>
+            <div className={isMobileImmersive ? 'hidden lg:block' : ''}>
               <MissedFollowUpAlert />
             </div>
             <Suspense fallback={<RouteFallback />}>
@@ -48,7 +53,7 @@ function SalesExecutiveShell() {
             </Suspense>
           </div>
         </main>
-        <SalesExecutiveMobileNav />
+        {!isQuotationBuilder && <SalesExecutiveMobileNav />}
       </div>
     </div>
   );

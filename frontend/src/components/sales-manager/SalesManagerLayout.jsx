@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { SidebarProvider } from '../../context/SidebarContext';
 import AppSidebar from '../sidebar/AppSidebar';
@@ -12,6 +12,8 @@ import { salesManagerNavItems } from './sidebar-config';
 
 function SalesManagerShell() {
   const { user } = useAuth();
+  const { pathname } = useLocation();
+  const isQuotationBuilder = pathname === '/sales-manager/quotations/new';
 
   const sidebarProps = {
     user,
@@ -30,16 +32,18 @@ function SalesManagerShell() {
       <MobileSidebarDrawer sidebarProps={sidebarProps} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <TopBar />
-        <main className="flex-1 overflow-auto pb-20 lg:pb-0">
-          <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
-            <MissedFollowUpAlert />
+        <div className={isQuotationBuilder ? 'hidden lg:block' : ''}>
+          <TopBar />
+        </div>
+        <main className={`flex-1 overflow-auto ${isQuotationBuilder ? 'pb-0' : 'pb-20 lg:pb-0'}`}>
+          <div className={`${isQuotationBuilder ? 'p-0 lg:p-8' : 'p-4 sm:p-6 lg:p-8'} max-w-[1600px] mx-auto`}>
+            {!isQuotationBuilder && <MissedFollowUpAlert />}
             <Suspense fallback={<RouteFallback />}>
               <Outlet />
             </Suspense>
           </div>
         </main>
-        <PanelMobileNav />
+        {!isQuotationBuilder && <PanelMobileNav />}
       </div>
     </div>
   );

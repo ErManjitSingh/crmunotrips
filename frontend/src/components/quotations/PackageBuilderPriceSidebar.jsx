@@ -9,6 +9,7 @@ import {
 import { motion } from 'framer-motion';
 import { calculatePricing, formatINR } from './quotationUtils';
 import ActionTile from '../ui/ActionTile';
+import { cn } from '../../lib/utils';
 
 const READONLY_COST_KEYS = new Set(['hotelCost', 'cabCost', 'activityCost', 'flightCost', 'baseCost']);
 
@@ -28,6 +29,8 @@ export default function PackageBuilderPriceSidebar({
   saving,
   draftLabel = 'Save as Draft',
   submitLabel = 'Review & Continue',
+  hideActions = false,
+  className = '',
 }) {
   const computed = useMemo(() => calculatePricing(pricing || {}), [pricing]);
   const youSave = Number(computed.youSave ?? pricing?.discount ?? 0) || 0;
@@ -70,7 +73,7 @@ export default function PackageBuilderPriceSidebar({
   ];
 
   return (
-    <aside className="xl:sticky xl:top-4 space-y-3">
+    <aside className={cn('xl:sticky xl:top-4 space-y-3', className)}>
       <div className="rounded-2xl border border-violet-200 bg-gradient-to-b from-violet-50 via-white to-fuchsia-50 shadow-[0_8px_30px_rgba(109,40,217,0.12)] overflow-hidden">
         <div className="h-1.5 w-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-amber-400" />
         <div className="px-5 pt-5 pb-4 border-b border-violet-100 bg-gradient-to-br from-violet-600 to-indigo-700 text-white">
@@ -184,25 +187,29 @@ export default function PackageBuilderPriceSidebar({
           </div>
         </div>
 
-        <div className="px-5 pb-5 space-y-2">
-          <button
-            type="button"
-            disabled={saving}
-            onClick={onSubmit}
-            className="w-full h-11 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold shadow-md shadow-violet-600/25 transition-colors disabled:opacity-60"
-          >
-            {saving ? 'Saving…' : submitLabel || 'Review & Continue'}
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={onSaveDraft}
-            className="w-full h-10 rounded-xl border border-violet-200 bg-violet-50 text-sm font-semibold text-violet-700 hover:bg-violet-100 inline-flex items-center justify-center gap-1.5"
-          >
-            <Save className="w-4 h-4" />
-            {draftLabel}
-          </button>
-        </div>
+        {!hideActions ? (
+          <div className="px-5 pb-5 space-y-2">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={onSubmit}
+              className="w-full h-11 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold shadow-md shadow-violet-600/25 transition-colors disabled:opacity-60"
+            >
+              {saving ? 'Saving…' : submitLabel || 'Review & Continue'}
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={onSaveDraft}
+              className="w-full h-10 rounded-xl border border-violet-200 bg-violet-50 text-sm font-semibold text-violet-700 hover:bg-violet-100 inline-flex items-center justify-center gap-1.5"
+            >
+              <Save className="w-4 h-4" />
+              {draftLabel}
+            </button>
+          </div>
+        ) : (
+          <div className="pb-2" />
+        )}
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3.5 space-y-2.5">

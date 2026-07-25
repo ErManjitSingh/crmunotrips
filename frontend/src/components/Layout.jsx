@@ -22,7 +22,8 @@ function LayoutShell() {
       pathname === '/leads' ||
       /^\/leads\/(inbox\/new|new-leads|hot|unassigned|assigned|converted|lost)$/.test(pathname)
     );
-  const isMobileImmersive = isAdminDashboard || isAdminLeadDetail || isAdminLeadList;
+  const isQuotationBuilder = pathname === '/quotations/new';
+  const isMobileImmersive = isAdminDashboard || isAdminLeadDetail || isAdminLeadList || isQuotationBuilder;
   const sidebarProps = { user };
 
   return (
@@ -37,14 +38,14 @@ function LayoutShell() {
         <div className={isMobileImmersive ? 'hidden lg:block' : ''}>
           <TopBar />
         </div>
-        <main className="flex-1 overflow-auto pb-20 lg:pb-0">
+        <main className={`flex-1 overflow-auto ${isQuotationBuilder ? 'pb-0 lg:pb-0' : 'pb-20 lg:pb-0'}`}>
           <div className={`${isMobileImmersive ? 'p-0 lg:p-8' : 'p-4 sm:p-6 lg:p-8'} max-w-[1600px] mx-auto`}>
             <Suspense fallback={<RouteFallback />}>
               <Outlet />
             </Suspense>
           </div>
         </main>
-        <MobileNav />
+        {!isQuotationBuilder && <MobileNav />}
       </div>
     </div>
   );
