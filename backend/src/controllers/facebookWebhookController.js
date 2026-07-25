@@ -33,17 +33,20 @@ const receiveWebhook = asyncHandler(async (req, res) => {
 /** Status for ops (no secrets) */
 const webhookStatus = asyncHandler(async (_req, res) => {
   const cfg = getConfig();
+  const primaryCallback = 'https://app.unotrips.com/api/facebook/webhook';
+  const altCallback = 'https://app.unotrips.com/api/webhooks/facebook';
   res.json({
     ok: true,
     configured: isConfigured(),
     hasVerifyToken: Boolean(cfg.verifyToken),
     hasPageAccessToken: Boolean(cfg.pageAccessToken),
     hasAppSecret: Boolean(cfg.appSecret),
-    callbackUrl: 'https://testing.unotrips.com/api/webhooks/facebook',
+    callbackUrl: primaryCallback,
+    alternateCallbackUrl: altCallback,
     defaultDestination: cfg.defaultDestination,
     instructions: [
       '1. Create Meta App → add Webhooks product → Page → subscribe leadgen',
-      '2. Callback URL: https://testing.unotrips.com/api/webhooks/facebook',
+      `2. Callback URL: ${primaryCallback}`,
       '3. Verify token must match FACEBOOK_VERIFY_TOKEN in backend .env',
       '4. Set FACEBOOK_PAGE_ACCESS_TOKEN (long-lived Page token with leads_retrieval)',
       '5. POST /{page-id}/subscribed_apps?subscribed_fields=leadgen',

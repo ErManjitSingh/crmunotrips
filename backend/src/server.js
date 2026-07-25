@@ -44,6 +44,7 @@ app.use(
       if (
         req.originalUrl &&
         (req.originalUrl.startsWith('/api/webhooks/facebook') ||
+          req.originalUrl.startsWith('/api/facebook/webhook') ||
           req.originalUrl.startsWith('/api/webhooks/whatsapp'))
       ) {
         req.rawBody = buf;

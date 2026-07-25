@@ -91,6 +91,8 @@ const facebookWebhookRoutes = require('./facebookWebhookRoutes');
 const whatsappWebhookRoutes = require('./whatsappWebhookRoutes');
 router.use('/public', publicLeadRoutes);
 router.use('/webhooks/facebook', facebookWebhookRoutes);
+// Alias — Meta docs/users often enter /api/facebook/webhook
+router.use('/facebook/webhook', facebookWebhookRoutes);
 router.use('/webhooks/whatsapp', whatsappWebhookRoutes);
 
 module.exports = router;

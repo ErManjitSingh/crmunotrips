@@ -1,15 +1,23 @@
 # Facebook Lead Ads → CRM (direct webhook)
 
-## Callback URL
-https://testing.unotrips.com/api/webhooks/facebook
+## Callback URL (use this in Meta)
+```
+https://app.unotrips.com/api/facebook/webhook
+```
+
+Also works (legacy):
+```
+https://app.unotrips.com/api/webhooks/facebook
+```
 
 ## Verify token (must match backend `.env`)
 `FACEBOOK_VERIFY_TOKEN=unotrips-fb-verify-2026`
 
 ## Status check
-https://testing.unotrips.com/api/webhooks/facebook/status
+https://app.unotrips.com/api/facebook/webhook/status  
+https://app.unotrips.com/api/webhooks/facebook/status
 
-## Backend env (VPS)
+## Backend env (VPS `/var/www/app-unotrips-crm/backend/.env`)
 ```
 FACEBOOK_VERIFY_TOKEN=unotrips-fb-verify-2026
 FACEBOOK_PAGE_ACCESS_TOKEN=<long-lived page token>
@@ -22,7 +30,7 @@ FACEBOOK_GRAPH_VERSION=v21.0
 1. developers.facebook.com → Create App (Business)
 2. Add products: **Webhooks**, **Marketing API** (or Lead Access)
 3. Webhooks → Page → Subscribe
-   - Callback URL: `https://testing.unotrips.com/api/webhooks/facebook`
+   - Callback URL: `https://app.unotrips.com/api/facebook/webhook`
    - Verify Token: same as `FACEBOOK_VERIFY_TOKEN`
    - Subscribe field: **leadgen**
 4. Generate long-lived **Page Access Token** with:
@@ -39,3 +47,7 @@ curl -X POST "https://graph.facebook.com/v21.0/{PAGE_ID}/subscribed_apps?subscri
 8. Submit a test lead from Ads Manager → Lead Forms → Preview / Test.
 
 Leads land in CRM with source **Facebook Lead**.
+
+## What Meta means by “URL not found”
+Meta does a GET to your Callback URL with `hub.mode`, `hub.verify_token`, `hub.challenge`.  
+If the path is wrong (404), verification fails. Use the Callback URL above exactly (HTTPS, no trailing slash issues).

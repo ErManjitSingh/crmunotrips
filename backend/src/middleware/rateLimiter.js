@@ -7,6 +7,7 @@ function isAuthOrHealth(req) {
     path.startsWith('/api/auth/login') ||
     path.startsWith('/api/auth/register') ||
     path.startsWith('/api/webhooks/facebook') ||
+    path.startsWith('/api/facebook/webhook') ||
     path.startsWith('/api/webhooks/whatsapp')
   );
 }
