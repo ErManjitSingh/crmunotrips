@@ -17,7 +17,11 @@ function SalesExecutiveShell() {
   const isDashboard = pathname === '/sales-executive/dashboard';
   const isQuotationBuilder = pathname === '/sales-executive/quotations/new';
   const isQuotationsList = pathname === '/sales-executive/quotations';
-  const isMobileImmersive = isDashboard || isQuotationBuilder || isQuotationsList;
+  const isLeadsList = pathname.startsWith('/sales-executive/leads')
+    && !pathname.includes('/add')
+    && !pathname.includes('/view')
+    && !pathname.includes('/edit');
+  const isMobileImmersive = isDashboard || isQuotationBuilder || isQuotationsList || isLeadsList;
 
   const sidebarProps = {
     user,

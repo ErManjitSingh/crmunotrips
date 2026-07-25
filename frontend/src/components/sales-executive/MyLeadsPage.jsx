@@ -11,6 +11,7 @@ import ExecutivePageShell from './ExecutivePageShell';
 import { Button } from '../ui/button';
 import ExecutiveLeadKpiStrip from './ExecutiveLeadKpiStrip';
 import ExecutiveLeadsFilterBar from './ExecutiveLeadsFilterBar';
+import MobileExecutiveLeads from './MobileExecutiveLeads';
 import ExecutivePipelineCta from './ExecutivePipelineCta';
 import {
   ExecLeadIdCell,
@@ -61,6 +62,7 @@ export default function MyLeadsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [destinationFilter, setDestinationFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 25 });
   const [modal, setModal] = useState(null);
   const [modalStatus, setModalStatus] = useState('contacted');
@@ -113,6 +115,7 @@ export default function MyLeadsPage() {
     setStatusFilter('');
     setDestinationFilter('');
     setPriorityFilter('');
+    setSourceFilter('');
   }, [filter]);
 
   const handleChangeStatus = async () => {
@@ -239,6 +242,28 @@ export default function MyLeadsPage() {
   ], [queryClient]);
 
   return (
+    <>
+      <MobileExecutiveLeads
+        filter={filter}
+        title={meta.title}
+        subtitle={meta.desc}
+        leads={leads}
+        loading={isLoading}
+        search={search}
+        onSearchChange={setSearch}
+        statusFilter={isAllView ? statusFilter : ''}
+        onStatusChange={setStatusFilter}
+        destinationFilter={destinationFilter}
+        onDestinationChange={setDestinationFilter}
+        priorityFilter={priorityFilter}
+        onPriorityChange={setPriorityFilter}
+        sourceFilter={sourceFilter}
+        onSourceChange={setSourceFilter}
+        onRefresh={fetchLeads}
+        onOpenLead={(lead) => navigate(`/sales-executive/leads/${lead._id}/view`)}
+      />
+
+      <div className="hidden lg:block">
     <ExecutivePageShell
       title={meta.title}
       description={meta.desc}
@@ -324,6 +349,8 @@ export default function MyLeadsPage() {
       )}
 
       <ExecutivePipelineCta />
+    </ExecutivePageShell>
+      </div>
 
       <ActionModal open={modal?.type === 'status'} title="Change Status" onClose={() => setModal(null)}>
         <select
@@ -411,6 +438,6 @@ export default function MyLeadsPage() {
         onClose={() => setCommercialLeadId(null)}
         onSaved={() => fetchLeads()}
       />
-    </ExecutivePageShell>
+    </>
   );
 }
