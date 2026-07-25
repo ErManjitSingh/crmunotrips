@@ -459,6 +459,16 @@ export default function ExecutiveQuotationsPage() {
         open={!!selected && !showPdf}
         onClose={() => { setSelected(null); setShowPdf(false); }}
         onDownloadPdf={() => setShowPdf(true)}
+        onEdit={() => setShowPdf(true)}
+        onFollowUp={(q) => {
+          const leadId = q?.lead?._id || q?.lead;
+          if (leadId) window.location.assign(`/sales-executive/follow-ups?leadId=${leadId}`);
+          else window.location.assign('/sales-executive/follow-ups');
+        }}
+        onAddNote={(q) => {
+          const leadId = q?.lead?._id || q?.lead;
+          if (leadId) window.location.assign(`/sales-executive/leads/${leadId}/view`);
+        }}
         actions={
           selected?.status === 'draft' ? (
             <Button size="sm" variant="outline" className="flex-1" onClick={() => { handleSubmit(selected._id); setSelected(null); }}>
