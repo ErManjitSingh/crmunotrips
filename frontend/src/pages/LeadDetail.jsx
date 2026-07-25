@@ -160,18 +160,11 @@ export default function LeadDetail() {
       {!showFullProfile && (
         <MobileLeadDetailSummary
           lead={lead}
-          onAssign={userCanAssignLeads ? () => openAssign(lead) : undefined}
-          onCreateQuote={
-            can('quotations', 'create')
-              ? () => navigate(`/quotations/new?leadId=${id}`)
-              : undefined
-          }
-          onLogCallNote={() => setCallNoteOpen(true)}
           editHref={canEditLead ? `/leads/${id}/edit` : undefined}
         />
       )}
 
-      <div className={showFullProfile ? 'block' : 'hidden lg:block'}>
+      <div className={showFullProfile ? 'block px-4 pt-4 lg:px-0 lg:pt-0' : 'hidden lg:block'}>
         <LeadDetailLayout
         lead={lead}
         leadId={id}

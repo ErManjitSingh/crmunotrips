@@ -215,7 +215,7 @@ export default function LeadDetailHeader({
       <div id="payment-advance" className={cn(DETAIL_CARD, 'overflow-hidden scroll-mt-24')}>
         <div className="p-5 sm:p-6 flex flex-col xl:flex-row min-w-0 xl:items-stretch gap-5">
           <div className="flex-1 min-w-0 space-y-4">
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-5">
+            <div className="flex flex-row gap-4 sm:gap-5">
               <div
                 className={cn(
                   'w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-full flex items-center justify-center text-2xl font-bold text-white shrink-0 shadow-md',
@@ -235,7 +235,7 @@ export default function LeadDetailHeader({
                   <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                     {lead.name}
                   </h1>
-                  <LeadStatusBadge status={status} pulse={status === 'new'} />
+                  <LeadStatusBadge status={status} pulse={status === 'new'} size="sm" />
                   {(lead.isHot || temperature.toLowerCase() === 'hot') && (
                     <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
                   )}
@@ -244,7 +244,7 @@ export default function LeadDetailHeader({
                   {formatLeadId(lead._id || lead.leadId)} · Lead 360 · {lead.destination || '—'}
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="hidden sm:grid sm:grid-cols-3 gap-2.5">
                   {lead.phone ? (
                     <ContactChip icon={Phone} href={`tel:${lead.phone}`}>{lead.phone}</ContactChip>
                   ) : null}
@@ -256,6 +256,15 @@ export default function LeadDetailHeader({
                   </ContactChip>
                 </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2.5 sm:hidden">
+              {lead.phone ? (
+                <ContactChip icon={Phone} href={`tel:${lead.phone}`}>{lead.phone}</ContactChip>
+              ) : null}
+              <ContactChip icon={MapPin}>
+                {[lead.city, lead.state].filter(Boolean).join(', ') || lead.destination || 'India'}
+              </ContactChip>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-1 border-t border-slate-100">
