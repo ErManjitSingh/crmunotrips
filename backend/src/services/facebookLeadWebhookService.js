@@ -269,8 +269,17 @@ async function fetchLeadFromGraph(leadgenId) {
 
   if (!res.ok) {
     const msg = data?.error?.message || `Graph API error ${res.status}`;
-    const err = new ApiError(502, `Facebook lead fetch failed: ${msg}`);
-    err.graphError = data?.error;
+    // Never echo the access token if Graph includes it in the error text.
+    const safeMsg = String(msg).replace(/EAAG\w+|EAAf\w+/g, '[TOKEN_REDACTED]');
+    const err = new ApiError(502, `Facebook lead fetch failed: ${safeMsg}`);
+    err.graphError = data?.error
+      ? {
+          message: safeMsg,
+          type: data.error.type,
+          code: data.error.code,
+          fbtrace_id: data.error.fbtrace_id,
+        }
+      : undefined;
     throw err;
   }
   return data;
@@ -427,6 +436,35 @@ function processFacebookWebhookAsync(body = {}) {
   });
 }
 
+async function probePageTokenHealth() {
+  const { pageAccessToken, graphVersion } = getConfig();
+  if (!pageAccessToken) {
+    return { ok: false, error: 'FACEBOOK_PAGE_ACCESS_TOKEN missing' };
+  }
+  try {
+    const url = new URL(`https://graph.facebook.com/${graphVersion}/me`);
+    url.searchParams.set('access_token', pageAccessToken);
+    url.searchParams.set('fields', 'id,name');
+    const res = await fetch(url.toString());
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = String(data?.error?.message || `HTTP ${res.status}`).replace(
+        /EAAG\w+|EAAf\w+/g,
+        '[TOKEN_REDACTED]'
+      );
+      return {
+        ok: false,
+        error: msg,
+        code: data?.error?.code,
+        hint: 'Regenerate a long-lived Page Access Token in Graph API Explorer (User or Page → select the Page), then set FACEBOOK_PAGE_ACCESS_TOKEN on the VPS.',
+      };
+    }
+    return { ok: true, id: data.id, name: data.name };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
 function getDiagnostics() {
   const cfg = getConfig();
   const db = getDbStatus();
@@ -515,6 +553,7 @@ module.exports = {
   mapLeadFields,
   extractLeadgenEvents,
   getDiagnostics,
+  probePageTokenHealth,
   recordIncomingWebhook,
   getRecentEvents: () => recentEvents.slice(),
 };

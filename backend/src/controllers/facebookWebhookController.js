@@ -6,6 +6,7 @@ const {
   verifyRequestSignature,
   processFacebookWebhookAsync,
   getDiagnostics,
+  probePageTokenHealth,
   recordIncomingWebhook,
   getConfig,
 } = require('../services/facebookLeadWebhookService');
@@ -78,8 +79,10 @@ const webhookDebug = asyncHandler(async (req, res) => {
   if (!cfg.verifyToken || provided !== cfg.verifyToken) {
     throw new ApiError(401, 'Invalid debug token');
   }
+  const pageToken = await probePageTokenHealth();
   res.json({
     ...getDiagnostics(),
+    pageToken,
     note: 'If recentEvents has no Meta POSTs, the Callback URL is not subscribed/verified in Meta App → Webhooks (subscribed_apps alone does not deliver).',
   });
 });
