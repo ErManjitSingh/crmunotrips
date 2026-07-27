@@ -37,6 +37,12 @@ export const leadManagementSections = [
         countKey: 'leads.all',
       },
       {
+        path: '/whatsapp',
+        label: 'WhatsApp Leads',
+        icon: MessageCircle,
+        permission: leadPerm,
+      },
+      {
         path: '/leads/returned',
         label: 'Returned Leads',
         icon: Undo2,
@@ -112,12 +118,6 @@ export const leadManagementSections = [
         path: '/leads/reactivated',
         label: 'Reactivated Leads',
         icon: RefreshCw,
-        permission: leadPerm,
-      },
-      {
-        path: '/whatsapp',
-        label: 'WhatsApp Leads',
-        icon: MessageCircle,
         permission: leadPerm,
       },
     ],
