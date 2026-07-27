@@ -249,22 +249,23 @@ async function fetchGraphJson(pathWithQuery) {
  */
 async function resolveFacebookCampaignMeta({ adId, formId, graphLead = {} }) {
   const resolved = {
-    campaignName: '',
-    adsetName: '',
-    adName: '',
+    campaignName: String(graphLead.campaign_name || '').trim(),
+    adsetName: String(graphLead.adset_name || '').trim(),
+    adName: String(graphLead.ad_name || '').trim(),
     formName: '',
   };
 
   const effectiveAdId = adId || graphLead.ad_id || '';
   const effectiveFormId = formId || graphLead.form_id || '';
 
-  if (effectiveAdId) {
+  // Enrich from Ad node when campaign_name missing on lead object
+  if (effectiveAdId && !resolved.campaignName) {
     const ad = await fetchGraphJson(
       `https://graph.facebook.com/${GRAPH_VERSION}/${effectiveAdId}?fields=name,adset{id,name,campaign{id,name}}`
     );
     if (ad) {
-      resolved.adName = String(ad.name || '').trim();
-      resolved.adsetName = String(ad.adset?.name || '').trim();
+      resolved.adName = resolved.adName || String(ad.name || '').trim();
+      resolved.adsetName = resolved.adsetName || String(ad.adset?.name || '').trim();
       resolved.campaignName = String(ad.adset?.campaign?.name || '').trim();
     }
   }
@@ -276,12 +277,15 @@ async function resolveFacebookCampaignMeta({ adId, formId, graphLead = {} }) {
     if (form?.name) resolved.formName = String(form.name).trim();
   }
 
-  // Best display label for "which camp/form"
+  // Optional ops override when Graph cannot read form/campaign (common on test leads)
+  const envLabel = String(process.env.FACEBOOK_DEFAULT_CAMPAIGN_LABEL || '').trim();
+
   resolved.displayLabel =
     resolved.campaignName ||
     resolved.adName ||
     resolved.adsetName ||
     resolved.formName ||
+    envLabel ||
     '';
 
   debugLog('campaign_meta', {
@@ -423,7 +427,10 @@ async function fetchLeadFromGraph(leadgenId) {
 
   const url = new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${leadgenId}`);
   url.searchParams.set('access_token', pageAccessToken);
-  url.searchParams.set('fields', 'id,created_time,ad_id,form_id,field_data');
+  url.searchParams.set(
+    'fields',
+    'id,created_time,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,field_data'
+  );
 
   debugLog('graph_fetch_start', { leadgenId, graphVersion: GRAPH_VERSION });
   const started = Date.now();
