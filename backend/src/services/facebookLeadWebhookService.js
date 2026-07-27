@@ -159,6 +159,58 @@ function pickFirst(map, keys) {
   return '';
 }
 
+/** Extract last 10 digits from any phone-like string. */
+function extractPhoneDigits(raw = '') {
+  const digits = String(raw).replace(/\D/g, '');
+  if (digits.length >= 10) return digits.slice(-10);
+  return digits;
+}
+
+/**
+ * Find a usable phone in known keys, then scan all Instant Form field values.
+ */
+function resolvePhoneFromFields(fields = {}) {
+  const named = pickFirst(fields, [
+    'phone_number',
+    'phone',
+    'mobile',
+    'mobile_number',
+    'contact_number',
+    'contact_no',
+    'whatsapp',
+    'whatsapp_number',
+    'cell_phone',
+    'cellphone',
+    'telephone',
+    'tel',
+    'ph_number',
+    'phone_no',
+  ]);
+  const fromNamed = extractPhoneDigits(named);
+  if (fromNamed.length >= 10) return fromNamed;
+
+  for (const [key, value] of Object.entries(fields)) {
+    if (/email|name|city|date|destination|message|remark|comment/i.test(key)) continue;
+    const digits = extractPhoneDigits(value);
+    if (digits.length >= 10) return digits;
+  }
+
+  // Last resort: any value in the form with 10+ digits
+  for (const value of Object.values(fields)) {
+    const digits = extractPhoneDigits(value);
+    if (digits.length >= 10) return digits;
+  }
+
+  return fromNamed || '';
+}
+
+/** Stable placeholder so CRM can still store the Facebook lead. */
+function fallbackPhoneFromLeadgenId(leadgenId = '') {
+  const digits = String(leadgenId).replace(/\D/g, '');
+  if (digits.length >= 10) return digits.slice(-10);
+  return (`9${digits}0000000000`).slice(0, 10);
+}
+
 function mapLeadFields(graphLead = {}, meta = {}) {
   const fields = fieldDataToMap(graphLead.field_data || []);
   const name = pickFirst(fields, [
@@ -173,15 +225,13 @@ function mapLeadFields(graphLead = {}, meta = {}) {
   const last = pickFirst(fields, ['last_name', 'lastname']);
   const combinedName = [first, last].filter(Boolean).join(' ').trim();
 
-  const phone = pickFirst(fields, [
-    'phone_number',
-    'phone',
-    'mobile',
-    'mobile_number',
-    'contact_number',
-    'whatsapp',
-    'whatsapp_number',
-  ]);
+  let phone = resolvePhoneFromFields(fields);
+  let phoneFallback = false;
+  if (phone.length < 10) {
+    phone = fallbackPhoneFromLeadgenId(graphLead.id || meta.leadgenId);
+    phoneFallback = true;
+  }
+
   const email = pickFirst(fields, ['email', 'email_address', 'work_email']);
   const destination = pickFirst(fields, [
     'destination',
@@ -220,11 +270,14 @@ function mapLeadFields(graphLead = {}, meta = {}) {
     meta.formId ? `FB Form: ${meta.formId}` : '',
     meta.adId ? `FB Ad: ${meta.adId}` : '',
     meta.pageId ? `FB Page: ${meta.pageId}` : '',
+    phoneFallback
+      ? 'WARNING: No valid phone in Instant Form — used placeholder from leadgen id. Add a Phone question to the form.'
+      : '',
     ...Object.entries(fields).map(([k, v]) => `${k}: ${v}`),
   ].filter(Boolean);
 
   return {
-    name: name || combinedName || `Facebook Lead ${(phone || '').slice(-4) || 'unknown'}`,
+    name: name || combinedName || `Facebook Lead ${phone.slice(-4)}`,
     phone,
     email,
     destination: destination || defaultDestination,
@@ -241,6 +294,7 @@ function mapLeadFields(graphLead = {}, meta = {}) {
     externalLeadId: String(graphLead.id || meta.leadgenId || ''),
     externalLeadSource: 'facebook_leadgen',
     _mappedFields: fields,
+    _phoneFallback: phoneFallback,
   };
 }
 
@@ -318,15 +372,16 @@ async function ingestFacebookLeadgen({ leadgenId, pageId, formId, adId, adgroupI
     leadgenId,
     name: payload.name,
     hasPhone: Boolean(payload.phone),
+    phoneFallback: Boolean(payload._phoneFallback),
     hasEmail: Boolean(payload.email),
     destination: payload.destination,
     fields: payload._mappedFields,
   });
 
-  if (!payload.phone) {
+  if (!payload.phone || String(payload.phone).replace(/\D/g, '').length < 10) {
     throw new ApiError(
       400,
-      `Facebook lead ${leadgenId} has no phone number. Form fields: ${Object.keys(payload._mappedFields || {}).join(', ') || '(none)'}`
+      `Facebook lead ${leadgenId} has no usable phone. Form fields: ${Object.keys(payload._mappedFields || {}).join(', ') || '(none)'}`
     );
   }
 
@@ -335,15 +390,16 @@ async function ingestFacebookLeadgen({ leadgenId, pageId, formId, adId, adgroupI
     return { duplicate: true, lead: again };
   }
 
-  const { _mappedFields, ...persistPayload } = payload;
+  const { _mappedFields, _phoneFallback, ...persistPayload } = payload;
   const lead = await ingestPublicLead(persistPayload);
   debugLog('ingest_mongo_ok', {
     leadgenId,
     mongoId: lead?._id,
     leadId: lead?.leadId,
     phone: lead?.phone,
+    phoneFallback: Boolean(_phoneFallback),
   });
-  return { duplicate: false, lead };
+  return { duplicate: false, lead, phoneFallback: Boolean(_phoneFallback) };
 }
 
 function extractLeadgenEvents(body = {}) {
