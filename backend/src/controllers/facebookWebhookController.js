@@ -4,53 +4,83 @@ const {
   isConfigured,
   verifyWebhookChallenge,
   verifyRequestSignature,
-  processFacebookWebhook,
+  processFacebookWebhookAsync,
+  getDiagnostics,
+  recordIncomingWebhook,
   getConfig,
 } = require('../services/facebookLeadWebhookService');
 
-/** Meta webhook verification (hub.challenge) */
+/** Meta webhook verification (hub.challenge) — must return plain-text challenge */
 const verifyWebhook = asyncHandler(async (req, res) => {
+  recordIncomingWebhook({
+    method: 'GET',
+    path: req.originalUrl,
+    query: req.query || {},
+    headers: req.headers || {},
+    body: null,
+    rawBodyLength: 0,
+  });
+
   const challenge = verifyWebhookChallenge(req.query || {});
-  res.status(200).send(challenge);
+  res.status(200).type('text/plain').send(challenge);
 });
 
-/** Meta leadgen notifications */
+/**
+ * Meta leadgen notifications.
+ * Always ACK with HTTP 200 quickly, then process Graph + Mongo asynchronously.
+ * Returning non-200 causes Meta "Pending" / retries / delivery failures.
+ */
 const receiveWebhook = asyncHandler(async (req, res) => {
+  recordIncomingWebhook({
+    method: 'POST',
+    path: req.originalUrl,
+    query: req.query || {},
+    headers: req.headers || {},
+    body: req.body || {},
+    rawBodyLength: req.rawBody ? Buffer.byteLength(req.rawBody) : 0,
+  });
+
   if (!isConfigured()) {
-    throw new ApiError(503, 'Facebook lead webhook is not configured');
+    console.error('[facebookWebhook] POST received but FACEBOOK_* env incomplete');
+    // Still ACK so Meta does not mark delivery as failed while we fix env.
+    return res.status(200).json({
+      success: true,
+      accepted: false,
+      message: 'Webhook endpoint alive but Facebook lead webhook is not fully configured',
+    });
   }
 
   const signature = req.headers['x-hub-signature-256'];
   if (!verifyRequestSignature(req.rawBody, signature)) {
+    console.error('[facebookWebhook] invalid signature — rejecting');
     throw new ApiError(401, 'Invalid Facebook webhook signature');
   }
 
-  // Acknowledge immediately-friendly: still process synchronously but keep work light.
-  const summary = await processFacebookWebhook(req.body || {});
-  res.status(200).json({ success: true, ...summary });
+  // ACK first (Meta requires ~20s; Graph+Mongo can exceed that under load)
+  res.status(200).json({ success: true, accepted: true });
+
+  processFacebookWebhookAsync(req.body || {});
 });
 
 /** Status for ops (no secrets) */
 const webhookStatus = asyncHandler(async (_req, res) => {
+  res.json(getDiagnostics());
+});
+
+/**
+ * Debug dump — recent inbound verify/POST events + env/db checks.
+ * Protect with ?token=FACEBOOK_VERIFY_TOKEN (or header x-fb-debug-token).
+ */
+const webhookDebug = asyncHandler(async (req, res) => {
   const cfg = getConfig();
-  const primaryCallback = 'https://app.unotrips.com/api/facebook/webhook';
-  const altCallback = 'https://app.unotrips.com/api/webhooks/facebook';
+  const provided =
+    String(req.query.token || req.headers['x-fb-debug-token'] || '').trim();
+  if (!cfg.verifyToken || provided !== cfg.verifyToken) {
+    throw new ApiError(401, 'Invalid debug token');
+  }
   res.json({
-    ok: true,
-    configured: isConfigured(),
-    hasVerifyToken: Boolean(cfg.verifyToken),
-    hasPageAccessToken: Boolean(cfg.pageAccessToken),
-    hasAppSecret: Boolean(cfg.appSecret),
-    callbackUrl: primaryCallback,
-    alternateCallbackUrl: altCallback,
-    defaultDestination: cfg.defaultDestination,
-    instructions: [
-      '1. Create Meta App → add Webhooks product → Page → subscribe leadgen',
-      `2. Callback URL: ${primaryCallback}`,
-      '3. Verify token must match FACEBOOK_VERIFY_TOKEN in backend .env',
-      '4. Set FACEBOOK_PAGE_ACCESS_TOKEN (long-lived Page token with leads_retrieval)',
-      '5. POST /{page-id}/subscribed_apps?subscribed_fields=leadgen',
-    ],
+    ...getDiagnostics(),
+    note: 'If recentEvents has no Meta POSTs, the Callback URL is not subscribed/verified in Meta App → Webhooks (subscribed_apps alone does not deliver).',
   });
 });
 
@@ -58,4 +88,5 @@ module.exports = {
   verifyWebhook,
   receiveWebhook,
   webhookStatus,
+  webhookDebug,
 };

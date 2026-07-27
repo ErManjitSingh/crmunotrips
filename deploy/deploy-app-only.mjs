@@ -55,6 +55,20 @@ if [ -f "$APP/backend/.env" ]; then
   if grep -q '^CORS_ORIGINS=' "$APP/backend/.env"; then
     sed -i 's|^CORS_ORIGINS=.*|CORS_ORIGINS=https://app.unotrips.com,https://unotrips.com,https://www.unotrips.com|' "$APP/backend/.env"
   fi
+  if ! grep -q '^FACEBOOK_VERIFY_TOKEN=' "$APP/backend/.env" 2>/dev/null; then
+    echo 'FACEBOOK_VERIFY_TOKEN=unotrips-fb-verify-2026' >> "$APP/backend/.env"
+  fi
+  if ! grep -q '^FACEBOOK_DEFAULT_DESTINATION=' "$APP/backend/.env" 2>/dev/null; then
+    echo 'FACEBOOK_DEFAULT_DESTINATION=Not specified' >> "$APP/backend/.env"
+  fi
+  if ! grep -q '^FACEBOOK_GRAPH_VERSION=' "$APP/backend/.env" 2>/dev/null; then
+    echo 'FACEBOOK_GRAPH_VERSION=v21.0' >> "$APP/backend/.env"
+  fi
+  if grep -q '^FACEBOOK_WEBHOOK_DEBUG=' "$APP/backend/.env" 2>/dev/null; then
+    sed -i 's|^FACEBOOK_WEBHOOK_DEBUG=.*|FACEBOOK_WEBHOOK_DEBUG=true|' "$APP/backend/.env"
+  else
+    echo 'FACEBOOK_WEBHOOK_DEBUG=true' >> "$APP/backend/.env"
+  fi
 fi
 if [ -f "$APP/frontend/.env" ]; then
   sed -i 's|^VITE_API_URL=.*|VITE_API_URL=https://app.unotrips.com/api|' "$APP/frontend/.env" || true

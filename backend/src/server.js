@@ -16,6 +16,7 @@ const { startNotificationScheduler } = require('./services/notificationScheduler
 const { purgeOldActivityLogs } = require('./services/activityService');
 const { startEmailInboxPoller } = require('./services/emailInboxService');
 const { archiveOldTrips } = require('./services/operationsArchiveService');
+const { validateEnvOnBoot: validateFacebookEnv } = require('./services/facebookLeadWebhookService');
 
 const app = express();
 
@@ -41,11 +42,11 @@ app.use(
   express.json({
     limit: '10mb',
     verify: (req, _res, buf) => {
+      const url = String(req.originalUrl || req.url || '');
       if (
-        req.originalUrl &&
-        (req.originalUrl.startsWith('/api/webhooks/facebook') ||
-          req.originalUrl.startsWith('/api/facebook/webhook') ||
-          req.originalUrl.startsWith('/api/webhooks/whatsapp'))
+        url.startsWith('/api/webhooks/facebook') ||
+        url.startsWith('/api/facebook/webhook') ||
+        url.startsWith('/api/webhooks/whatsapp')
       ) {
         req.rawBody = buf;
       }
@@ -99,6 +100,8 @@ async function start() {
   httpServer.listen(port, () => {
     console.log(`[API] Running on http://127.0.0.1:${port}`);
     console.log(`[API] Health: http://127.0.0.1:${port}/api/health`);
+    console.log('[API] Facebook webhook: /api/facebook/webhook');
+    validateFacebookEnv();
   });
 }
 
