@@ -215,9 +215,86 @@ function fallbackPhoneFromLeadgenId(leadgenId = '') {
   return (`9${digits}0000000000`).slice(0, 10);
 }
 
+/** Meta Lead Ads Testing Tool placeholder text */
+function isDummyMetaValue(value = '') {
+  const text = String(value || '').trim();
+  return !text || /test lead|dummy data/i.test(text);
+}
+
+function cleanPersonName(...candidates) {
+  for (const c of candidates) {
+    const text = String(c || '').trim();
+    if (text && !isDummyMetaValue(text)) return text;
+  }
+  return '';
+}
+
+async function fetchGraphJson(pathWithQuery) {
+  const { pageAccessToken } = getConfig();
+  const url = pathWithQuery.includes('access_token=')
+    ? pathWithQuery
+    : `${pathWithQuery}${pathWithQuery.includes('?') ? '&' : '?'}access_token=${encodeURIComponent(pageAccessToken)}`;
+  const res = await fetch(url);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    debugLog('graph_extra_fail', { url: pathWithQuery.split('?')[0], error: data?.error?.message });
+    return null;
+  }
+  return data;
+}
+
+/**
+ * Resolve campaign / ad / form labels for CRM display.
+ * Prefers campaign name (what ads managers recognize).
+ */
+async function resolveFacebookCampaignMeta({ adId, formId, graphLead = {} }) {
+  const resolved = {
+    campaignName: '',
+    adsetName: '',
+    adName: '',
+    formName: '',
+  };
+
+  const effectiveAdId = adId || graphLead.ad_id || '';
+  const effectiveFormId = formId || graphLead.form_id || '';
+
+  if (effectiveAdId) {
+    const ad = await fetchGraphJson(
+      `https://graph.facebook.com/${GRAPH_VERSION}/${effectiveAdId}?fields=name,adset{id,name,campaign{id,name}}`
+    );
+    if (ad) {
+      resolved.adName = String(ad.name || '').trim();
+      resolved.adsetName = String(ad.adset?.name || '').trim();
+      resolved.campaignName = String(ad.adset?.campaign?.name || '').trim();
+    }
+  }
+
+  if (effectiveFormId) {
+    const form = await fetchGraphJson(
+      `https://graph.facebook.com/${GRAPH_VERSION}/${effectiveFormId}?fields=name`
+    );
+    if (form?.name) resolved.formName = String(form.name).trim();
+  }
+
+  // Best display label for "which camp/form"
+  resolved.displayLabel =
+    resolved.campaignName ||
+    resolved.adName ||
+    resolved.adsetName ||
+    resolved.formName ||
+    '';
+
+  debugLog('campaign_meta', {
+    adId: effectiveAdId || null,
+    formId: effectiveFormId || null,
+    ...resolved,
+  });
+  return resolved;
+}
+
 function mapLeadFields(graphLead = {}, meta = {}) {
   const fields = fieldDataToMap(graphLead.field_data || []);
-  const name = pickFirst(fields, [
+  const rawName = pickFirst(fields, [
     'full_name',
     'full name',
     'name',
@@ -228,6 +305,7 @@ function mapLeadFields(graphLead = {}, meta = {}) {
   const first = pickFirst(fields, ['first_name', 'firstname']);
   const last = pickFirst(fields, ['last_name', 'lastname']);
   const combinedName = [first, last].filter(Boolean).join(' ').trim();
+  const personName = cleanPersonName(rawName, combinedName);
 
   let phone = resolvePhoneFromFields(fields);
   let phoneFallback = false;
@@ -236,8 +314,10 @@ function mapLeadFields(graphLead = {}, meta = {}) {
     phoneFallback = true;
   }
 
-  const email = pickFirst(fields, ['email', 'email_address', 'work_email']);
-  const destination = pickFirst(fields, [
+  const emailRaw = pickFirst(fields, ['email', 'email_address', 'work_email']);
+  const email = isDummyMetaValue(emailRaw) ? undefined : emailRaw;
+
+  const destinationRaw = pickFirst(fields, [
     'destination',
     'preferred_destination',
     'travel_destination',
@@ -245,21 +325,21 @@ function mapLeadFields(graphLead = {}, meta = {}) {
     'city',
     'trip_destination',
   ]);
-  const city = pickFirst(fields, ['city', 'your_city', 'current_city']);
-  const travelDate = pickFirst(fields, [
+  const cityRaw = pickFirst(fields, ['city', 'your_city', 'current_city']);
+  const travelDateRaw = pickFirst(fields, [
     'travel_date',
     'travel_dates',
     'preferred_travel_date',
     'when_do_you_want_to_travel',
   ]);
-  const travelers = pickFirst(fields, [
+  const travelersRaw = pickFirst(fields, [
     'travelers',
     'travellers',
     'number_of_travelers',
     'no_of_travellers',
     'guests',
   ]);
-  const message = pickFirst(fields, [
+  const messageRaw = pickFirst(fields, [
     'message',
     'comments',
     'remark',
@@ -268,37 +348,70 @@ function mapLeadFields(graphLead = {}, meta = {}) {
     'query',
   ]);
 
+  const campaignLabel = String(meta.campaignLabel || meta.campaignName || '').trim();
+  const formName = String(meta.formName || '').trim();
+
+  // Name priority: real person → campaign → form → Facebook Lead
+  const name =
+    personName ||
+    campaignLabel ||
+    formName ||
+    `Facebook Lead ${phone.slice(-4)}`;
+
   const { defaultDestination } = getConfig();
+  const destination = isDummyMetaValue(destinationRaw)
+    ? defaultDestination
+    : destinationRaw || defaultDestination;
+
   const noteLines = [
     `FB Leadgen: ${graphLead.id || meta.leadgenId || ''}`,
-    meta.formId ? `FB Form: ${meta.formId}` : '',
-    meta.adId ? `FB Ad: ${meta.adId}` : '',
+    campaignLabel ? `FB Campaign: ${campaignLabel}` : '',
+    meta.adsetName ? `FB Adset: ${meta.adsetName}` : '',
+    meta.adName ? `FB Ad: ${meta.adName}` : '',
+    formName ? `FB Form: ${formName}` : '',
+    meta.formId ? `FB Form ID: ${meta.formId}` : '',
+    meta.adId ? `FB Ad ID: ${meta.adId}` : '',
     meta.pageId ? `FB Page: ${meta.pageId}` : '',
+    !personName
+      ? 'NOTE: No real customer name in form (Meta test dummy or missing) — showing campaign/form name.'
+      : '',
     phoneFallback
       ? 'WARNING: No valid phone in Instant Form — used placeholder from leadgen id. Add a Phone question to the form.'
       : '',
-    ...Object.entries(fields).map(([k, v]) => `${k}: ${v}`),
+    ...Object.entries(fields)
+      .filter(([, v]) => !isDummyMetaValue(v))
+      .map(([k, v]) => `${k}: ${v}`),
   ].filter(Boolean);
 
+  // sourceLabel / landingPage carry campaign so CRM lists show camp context
+  const sourceLabel = campaignLabel
+    ? `Facebook · ${campaignLabel}`
+    : formName
+      ? `Facebook · ${formName}`
+      : 'Facebook Lead';
+
   return {
-    name: name || combinedName || `Facebook Lead ${phone.slice(-4)}`,
+    name,
     phone,
     email,
-    destination: destination || defaultDestination,
-    city: city || undefined,
-    travelDate: travelDate || undefined,
-    travelers: travelers || undefined,
-    message: message || undefined,
+    destination,
+    city: isDummyMetaValue(cityRaw) ? undefined : cityRaw || undefined,
+    travelDate: isDummyMetaValue(travelDateRaw) ? undefined : travelDateRaw || undefined,
+    travelers: isDummyMetaValue(travelersRaw) ? undefined : travelersRaw || undefined,
+    message: isDummyMetaValue(messageRaw) ? undefined : messageRaw || undefined,
     notes: noteLines.join('\n'),
+    landingPage: campaignLabel || formName || undefined,
     channel: 'facebook',
     source: 'Facebook Lead',
-    sourceLabel: 'Facebook Lead',
+    sourceLabel,
     sourceKey: 'facebook_ads',
     captureType: 'facebook_lead_ads',
     externalLeadId: String(graphLead.id || meta.leadgenId || ''),
     externalLeadSource: 'facebook_leadgen',
     _mappedFields: fields,
     _phoneFallback: phoneFallback,
+    _personName: personName,
+    _campaignLabel: campaignLabel,
   };
 }
 
@@ -363,18 +476,31 @@ async function ingestFacebookLeadgen({ leadgenId, pageId, formId, adId, adgroupI
   }
 
   const graphLead = await fetchLeadFromGraph(leadgenId);
+  const campaignMeta = await resolveFacebookCampaignMeta({
+    adId: adId || graphLead.ad_id || '',
+    formId: formId || graphLead.form_id || '',
+    graphLead,
+  });
+
   const payload = mapLeadFields(graphLead, {
     leadgenId,
     pageId,
-    formId,
-    adId,
+    formId: formId || graphLead.form_id || '',
+    adId: adId || graphLead.ad_id || '',
     adgroupId,
     createdTime,
+    campaignName: campaignMeta.campaignName,
+    campaignLabel: campaignMeta.displayLabel,
+    adsetName: campaignMeta.adsetName,
+    adName: campaignMeta.adName,
+    formName: campaignMeta.formName,
   });
 
   debugLog('ingest_mapped', {
     leadgenId,
     name: payload.name,
+    personName: payload._personName || null,
+    campaignLabel: payload._campaignLabel || null,
     hasPhone: Boolean(payload.phone),
     phoneFallback: Boolean(payload._phoneFallback),
     hasEmail: Boolean(payload.email),
@@ -394,14 +520,24 @@ async function ingestFacebookLeadgen({ leadgenId, pageId, formId, adId, adgroupI
     return { duplicate: true, lead: again };
   }
 
-  const { _mappedFields, _phoneFallback, ...persistPayload } = payload;
+  const {
+    _mappedFields,
+    _phoneFallback,
+    _personName,
+    _campaignLabel,
+    ...persistPayload
+  } = payload;
   const lead = await ingestPublicLead(persistPayload);
   debugLog('ingest_mongo_ok', {
     leadgenId,
     mongoId: lead?._id,
     leadId: lead?.leadId,
     phone: lead?.phone,
+    name: lead?.name,
+    sourceLabel: lead?.sourceLabel,
     phoneFallback: Boolean(_phoneFallback),
+    personName: _personName || null,
+    campaignLabel: _campaignLabel || null,
   });
   return { duplicate: false, lead, phoneFallback: Boolean(_phoneFallback) };
 }

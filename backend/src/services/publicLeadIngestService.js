@@ -96,9 +96,13 @@ function resolvePublicLeadSource(raw = {}) {
     String(raw.channel || '').toLowerCase() === 'facebook';
 
   if (isFacebook) {
+    const explicitLabel = String(raw.sourceLabel || '').trim();
     return {
       source: 'facebook_ads',
-      sourceLabel: 'Facebook Lead',
+      sourceLabel:
+        explicitLabel && !['facebook', 'facebook lead', 'facebook_ads', 'fb lead'].includes(explicitLabel.toLowerCase())
+          ? explicitLabel
+          : 'Facebook Lead',
       channel: 'facebook',
     };
   }
