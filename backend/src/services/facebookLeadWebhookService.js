@@ -161,7 +161,11 @@ function pickFirst(map, keys) {
 
 /** Extract last 10 digits from any phone-like string. */
 function extractPhoneDigits(raw = '') {
-  const digits = String(raw).replace(/\D/g, '');
+  const text = String(raw || '').trim();
+  // Meta Lead Ads Testing Tool sends placeholders like:
+  // "<test lead: dummy data for phone>"
+  if (!text || /test lead|dummy data/i.test(text)) return '';
+  const digits = text.replace(/\D/g, '');
   if (digits.length >= 10) return digits.slice(-10);
   return digits;
 }
