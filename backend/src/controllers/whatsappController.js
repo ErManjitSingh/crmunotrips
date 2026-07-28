@@ -19,12 +19,42 @@ const {
   normalizePhone,
 } = require('../services/whatsappCloudService');
 
+function isSalesExecutive(req) {
+  return req.user?.role === 'sales_executive';
+}
+
+function leadScopeFilter(req, extra = {}) {
+  const filter = { ...extra, isDeleted: { $ne: true } };
+  if (req.branchId) filter.branchId = req.branchId;
+  if (isSalesExecutive(req)) filter.assignedTo = req.user._id;
+  return filter;
+}
+
+async function findScopedLead(req, leadId, select = '_id') {
+  const lead = await Lead.findOne(leadScopeFilter(req, { _id: leadId })).select(select);
+  if (!lead) throw new ApiError(404, 'Lead not found');
+  return lead;
+}
+
+async function assertConversationAccess(req, conversation) {
+  if (!conversation) throw new ApiError(404, 'Conversation not found');
+  if (!isSalesExecutive(req)) return conversation;
+  if (!conversation.lead) throw new ApiError(403, 'This chat is not assigned to you');
+  await findScopedLead(req, conversation.lead, '_id');
+  return conversation;
+}
+
 const listConversations = asyncHandler(async (req, res) => {
   const { status, search, onlyUnlinked } = req.query;
   const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 40, maxLimit: 100 });
+  const executiveOnly = isSalesExecutive(req);
+
+  // Executives only see chats linked to leads assigned to them
+  if (executiveOnly && (onlyUnlinked === '1' || onlyUnlinked === 'true')) {
+    return res.json(paginatedResponse([], { page, limit, total: 0 }));
+  }
 
   const filter = { isArchived: { $ne: true } };
-  // Include conversations not yet tagged with a branch (webhook ingest used to omit branchId)
   if (req.branchId) {
     filter.$and = [
       {
@@ -36,7 +66,14 @@ const listConversations = asyncHandler(async (req, res) => {
       },
     ];
   }
-  if (onlyUnlinked === '1' || onlyUnlinked === 'true') filter.lead = null;
+
+  if (executiveOnly) {
+    const myLeadIds = await Lead.find(leadScopeFilter(req)).distinct('_id');
+    filter.lead = { $in: myLeadIds };
+  } else if (onlyUnlinked === '1' || onlyUnlinked === 'true') {
+    filter.lead = null;
+  }
+
   if (search) {
     const q = String(search).trim();
     const searchOr = [
@@ -66,12 +103,12 @@ const listConversations = asyncHandler(async (req, res) => {
     const lead = c.lead ? enrichLead(c.lead) : null;
     if (status && lead && lead.status !== status) return null;
     if (status && !lead) return null;
+    if (executiveOnly && !lead) return null;
     return {
       _id: c._id,
       conversationId: c._id,
       phone: c.phone,
       waId: c.waId || (c.phone ? `91${c.phone}` : ''),
-      // Always prefer WhatsApp profile name — never overwrite with CRM lead name
       profileName: c.profileName || '',
       leadId: lead?._id || null,
       lead,
@@ -88,10 +125,9 @@ const listConversations = asyncHandler(async (req, res) => {
     };
   }).filter(Boolean);
 
-  // Fallback: also include classic channel=whatsapp leads with no conversation row yet
+  // Fallback: classic channel=whatsapp leads with no conversation (not for unlinked-only)
   if (!onlyUnlinked && page === 1) {
-    const leadFilter = { channel: 'whatsapp', isDeleted: { $ne: true } };
-    if (req.branchId) leadFilter.branchId = req.branchId;
+    const leadFilter = leadScopeFilter(req, { channel: 'whatsapp' });
     if (status) leadFilter.status = status;
     const linkedPhones = new Set(rows.filter((r) => r.leadId).map((r) => normalizePhone(r.phone)));
     const orphanLeads = await Lead.find(leadFilter)
@@ -109,7 +145,8 @@ const listConversations = asyncHandler(async (req, res) => {
         _id: `lead-${lead._id}`,
         conversationId: null,
         phone,
-        profileName: lead.name,
+        waId: phone ? `91${phone}` : '',
+        profileName: lead.name || '',
         leadId: lead._id,
         lead,
         hasLead: true,
@@ -127,7 +164,7 @@ const listConversations = asyncHandler(async (req, res) => {
 
 const getMessagesByConversation = asyncHandler(async (req, res) => {
   const conversation = await WhatsAppConversation.findById(req.params.conversationId).select('_id lead');
-  if (!conversation) throw new ApiError(404, 'Conversation not found');
+  await assertConversationAccess(req, conversation);
 
   const messages = await WhatsAppMessage.find({ conversation: conversation._id })
     .sort({ timestamp: 1 })
@@ -136,11 +173,7 @@ const getMessagesByConversation = asyncHandler(async (req, res) => {
 });
 
 const getMessages = asyncHandler(async (req, res) => {
-  const lead = await Lead.findOne({
-    _id: req.params.leadId,
-    ...(req.branchId ? { branchId: req.branchId } : {}),
-  }).select('_id phone whatsapp');
-  if (!lead) throw new ApiError(404, 'Lead not found');
+  const lead = await findScopedLead(req, req.params.leadId, '_id phone whatsapp');
 
   const phone = normalizePhone(lead.phone || lead.whatsapp);
   const conversation = phone
@@ -156,11 +189,7 @@ const getMessages = asyncHandler(async (req, res) => {
 });
 
 const getNotes = asyncHandler(async (req, res) => {
-  const lead = await Lead.findOne({
-    _id: req.params.leadId,
-    ...(req.branchId ? { branchId: req.branchId } : {}),
-  }).select('_id');
-  if (!lead) throw new ApiError(404, 'Lead not found');
+  const lead = await findScopedLead(req, req.params.leadId, '_id');
 
   const notes = await WhatsAppNote.find({ lead: lead._id })
     .populate('user', 'name email')
@@ -170,11 +199,7 @@ const getNotes = asyncHandler(async (req, res) => {
 });
 
 const getFollowUpsForLead = asyncHandler(async (req, res) => {
-  const lead = await Lead.findOne({
-    _id: req.params.leadId,
-    ...(req.branchId ? { branchId: req.branchId } : {}),
-  }).select('_id');
-  if (!lead) throw new ApiError(404, 'Lead not found');
+  const lead = await findScopedLead(req, req.params.leadId, '_id');
 
   const followups = await FollowUp.find({
     lead: lead._id,
@@ -187,6 +212,9 @@ const getFollowUpsForLead = asyncHandler(async (req, res) => {
 });
 
 const listExecutives = asyncHandler(async (req, res) => {
+  if (isSalesExecutive(req)) {
+    throw new ApiError(403, 'Not allowed');
+  }
   const executives = await User.find({
     role: 'sales_executive',
     status: 'active',
@@ -206,16 +234,12 @@ const postMessage = asyncHandler(async (req, res) => {
 
   if (conversationId) {
     conversation = await WhatsAppConversation.findById(conversationId);
-    if (!conversation) throw new ApiError(404, 'Conversation not found');
+    await assertConversationAccess(req, conversation);
     if (conversation.lead) {
-      lead = await Lead.findById(conversation.lead);
+      lead = await findScopedLead(req, conversation.lead, '_id name phone whatsapp branchId');
     }
   } else if (leadId) {
-    lead = await Lead.findOne({
-      _id: leadId,
-      ...(req.branchId ? { branchId: req.branchId } : {}),
-    });
-    if (!lead) throw new ApiError(404, 'Lead not found');
+    lead = await findScopedLead(req, leadId, '_id name phone whatsapp branchId');
     const phone = normalizePhone(lead.phone || lead.whatsapp);
     conversation = phone ? await WhatsAppConversation.findOne({ phone }) : null;
     if (!conversation && phone) {
@@ -223,6 +247,7 @@ const postMessage = asyncHandler(async (req, res) => {
         phone,
         profileName: lead.name || '',
         lead: lead._id,
+        branchId: lead.branchId || req.branchId || undefined,
         lastMessageText: text || '',
         lastMessageAt: new Date(),
         lastDirection: 'outgoing',
@@ -274,11 +299,7 @@ const postNote = asyncHandler(async (req, res) => {
   const { leadId, text } = req.body;
   if (!leadId || !text?.trim()) throw new ApiError(400, 'leadId and text are required');
 
-  const lead = await Lead.findOne({
-    _id: leadId,
-    ...(req.branchId ? { branchId: req.branchId } : {}),
-  });
-  if (!lead) throw new ApiError(404, 'Lead not found');
+  await findScopedLead(req, leadId, '_id');
 
   const note = await WhatsAppNote.create({
     lead: leadId,
@@ -291,9 +312,15 @@ const postNote = asyncHandler(async (req, res) => {
 });
 
 const updateWhatsAppLead = asyncHandler(async (req, res) => {
+  const body = { ...req.body };
+  // Executives cannot reassign leads from WhatsApp inbox
+  if (isSalesExecutive(req)) {
+    delete body.assignedTo;
+  }
+
   const lead = await Lead.findOneAndUpdate(
-    { _id: req.params.id, ...(req.branchId ? { branchId: req.branchId } : {}) },
-    req.body,
+    leadScopeFilter(req, { _id: req.params.id }),
+    body,
     { new: true, runValidators: true }
   )
     .populate(LEAD_LIST_POPULATE)
@@ -307,6 +334,8 @@ const markRead = asyncHandler(async (req, res) => {
   const conversationId = req.query.conversationId || req.body?.conversationId;
 
   if (conversationId) {
+    const conversation = await WhatsAppConversation.findById(conversationId).select('_id lead');
+    await assertConversationAccess(req, conversation);
     await WhatsAppConversation.findByIdAndUpdate(conversationId, { unreadCount: 0 });
     await WhatsAppMessage.updateMany(
       { conversation: conversationId, direction: 'incoming' },
@@ -315,22 +344,20 @@ const markRead = asyncHandler(async (req, res) => {
   }
 
   if (leadId && leadId !== 'none') {
-    const lead = await Lead.findOne({
-      _id: leadId,
-      ...(req.branchId ? { branchId: req.branchId } : {}),
-    }).select('_id');
-    if (lead) {
-      await WhatsAppMessage.updateMany(
-        { lead: lead._id, direction: 'incoming' },
-        { status: 'read' }
-      );
-    }
+    const lead = await findScopedLead(req, leadId, '_id');
+    await WhatsAppMessage.updateMany(
+      { lead: lead._id, direction: 'incoming' },
+      { status: 'read' }
+    );
   }
 
   res.json({ success: true });
 });
 
 const createLeadFromChat = asyncHandler(async (req, res) => {
+  if (isSalesExecutive(req)) {
+    throw new ApiError(403, 'Only managers/admins can create leads from WhatsApp chats');
+  }
   const { conversationId, name, destination, email, city, message } = req.body || {};
   if (!conversationId) throw new ApiError(400, 'conversationId is required');
 
@@ -359,7 +386,6 @@ const createLeadFromChat = asyncHandler(async (req, res) => {
 
 const cloudStatus = asyncHandler(async (_req, res) => {
   res.json({
-    ok: true,
     configured: isConfigured(),
     inboxMode: isConfigured() ? 'cloud_api' : 'local_only',
   });

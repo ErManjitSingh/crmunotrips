@@ -182,6 +182,7 @@ function App() {
             >
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<ExecutiveDashboard />} />
+              <Route path="whatsapp" element={<WhatsAppLeads />} />
               <Route path="leads/add" element={<LeadForm />} />
               <Route path="leads/:id/edit" element={<LeadForm />} />
               <Route path="leads/:id/view" element={<ExecutiveLeadDetailPage />} />

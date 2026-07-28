@@ -21,7 +21,8 @@ function SalesExecutiveShell() {
     && !pathname.includes('/add')
     && !pathname.includes('/view')
     && !pathname.includes('/edit');
-  const isMobileImmersive = isDashboard || isQuotationBuilder || isQuotationsList || isLeadsList;
+  const isWhatsApp = pathname === '/sales-executive/whatsapp';
+  const isMobileImmersive = isDashboard || isQuotationBuilder || isQuotationsList || isLeadsList || isWhatsApp;
 
   const sidebarProps = {
     user,

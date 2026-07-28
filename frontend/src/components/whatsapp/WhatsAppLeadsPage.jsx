@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { toast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import API from '../../api/axios';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -18,6 +19,8 @@ import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/foll
 
 export default function WhatsAppLeadsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isExecutive = user?.role === 'sales_executive';
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState('');
@@ -47,7 +50,7 @@ export default function WhatsAppLeadsPage() {
       const res = await API.get('/whatsapp/executives', { skipSuccessToast: true });
       return res.data || [];
     },
-    enabled: modals.assign,
+    enabled: modals.assign && !isExecutive,
     staleTime: 5 * 60_000,
   });
 
@@ -216,12 +219,17 @@ export default function WhatsAppLeadsPage() {
         setModals((m) => ({ ...m, note: true }));
         break;
       case 'quotation':
-        navigate(`/quotations/new?leadId=${lead._id}`);
+        navigate(
+          isExecutive
+            ? `/sales-executive/quotations/new?leadId=${lead._id}`
+            : `/quotations/new?leadId=${lead._id}`
+        );
         break;
       case 'status':
         setModals((m) => ({ ...m, status: true }));
         break;
       case 'assign':
+        if (isExecutive) break;
         setModals((m) => ({ ...m, assign: true }));
         break;
       default:
@@ -273,7 +281,9 @@ export default function WhatsAppLeadsPage() {
             }}
             onToggleInfo={() => setMobileView('info')}
             showInfoToggle={Boolean(selected?.lead)}
-            onCreateLead={!selected?.lead && selected?.conversationId ? handleCreateLead : undefined}
+            onCreateLead={
+              !isExecutive && !selected?.lead && selected?.conversationId ? handleCreateLead : undefined
+            }
             creatingLead={creatingLead}
           />
         }
@@ -284,8 +294,11 @@ export default function WhatsAppLeadsPage() {
             followups={followups}
             onClose={() => setMobileView('chat')}
             onAction={handleAction}
-            onCreateLead={!selected?.lead && selected?.conversationId ? handleCreateLead : undefined}
+            onCreateLead={
+              !isExecutive && !selected?.lead && selected?.conversationId ? handleCreateLead : undefined
+            }
             creatingLead={creatingLead}
+            canAssign={!isExecutive}
             contact={
               selected
                 ? {

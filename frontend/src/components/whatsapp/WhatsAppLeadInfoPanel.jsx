@@ -39,6 +39,7 @@ export default function WhatsAppLeadInfoPanel({
   onAction,
   onCreateLead,
   creatingLead,
+  canAssign = true,
   className,
 }) {
   if (!lead && !contact) {
@@ -139,7 +140,7 @@ export default function WhatsAppLeadInfoPanel({
 
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-wider text-wa-text-muted mb-2">Quick Actions</h4>
-          <WhatsAppQuickActions lead={lead} onAction={onAction} />
+          <WhatsAppQuickActions lead={lead} onAction={onAction} canAssign={canAssign} />
         </div>
 
         <WhatsAppFollowUpPanel lead={lead} followups={followups} />
