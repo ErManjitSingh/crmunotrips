@@ -1,9 +1,9 @@
-import { motion } from 'framer-motion';
+import { memo } from 'react';
 import { cn } from '../../lib/utils';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
 import { formatMessageTime, formatWhatsAppPhone, resolveWhatsAppDisplayName } from './whatsappUtils';
 
-export default function WhatsAppLeadListItem({ conversation, active, onClick }) {
+function WhatsAppLeadListItem({ conversation, active, onClick }) {
   const lead = conversation.lead;
   const name = resolveWhatsAppDisplayName(
     { profileName: conversation.profileName, phone: conversation.phone, waId: conversation.waId },
@@ -16,12 +16,11 @@ export default function WhatsAppLeadListItem({ conversation, active, onClick }) 
     lastMessage?.direction === 'outgoing' ? `You: ${lastMessage.text}` : lastMessage?.text;
 
   return (
-    <motion.button
+    <button
       type="button"
       onClick={onClick}
-      whileTap={{ scale: 0.98 }}
       className={cn(
-        'w-full flex items-center gap-3 px-3 py-3 text-left transition-colors border-b border-wa-divider/50',
+        'w-full flex items-center gap-3 px-3 py-3 text-left border-b border-wa-divider/50',
         active ? 'bg-wa-list-active' : 'hover:bg-wa-list-hover'
       )}
     >
@@ -79,6 +78,8 @@ export default function WhatsAppLeadListItem({ conversation, active, onClick }) 
           )}
         </div>
       </div>
-    </motion.button>
+    </button>
   );
 }
+
+export default memo(WhatsAppLeadListItem);

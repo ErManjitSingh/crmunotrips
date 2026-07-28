@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
 import { toast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import API from '../../api/axios';
@@ -17,7 +16,18 @@ import AssignLeadModal from './modals/AssignLeadModal';
 import CreateFollowUpModal from './modals/CreateFollowUpModal';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/followupApi';
 
-export default function WhatsAppLeadsPage() {
+function contactFromSelected(selected) {
+  if (!selected) return null;
+  return {
+    phone: selected.phone,
+    waId: selected.waId,
+    profileName: selected.profileName,
+    botAnswers: selected.botAnswers,
+    botStep: selected.botStep,
+  };
+}
+
+function WhatsAppLeadsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isExecutive = user?.role === 'sales_executive';
@@ -28,7 +38,8 @@ export default function WhatsAppLeadsPage() {
   const [mobileView, setMobileView] = useState('list');
   const [modals, setModals] = useState({ note: false, status: false, assign: false, followup: false });
   const [creatingLead, setCreatingLead] = useState(false);
-  const debouncedSearch = useDebouncedValue(search, 300);
+  const [sending, setSending] = useState(false);
+  const debouncedSearch = useDebouncedValue(search, 280);
 
   const conversationsQuery = useQuery({
     queryKey: ['whatsapp', 'conversations', { statusFilter, search: debouncedSearch }],
@@ -39,8 +50,10 @@ export default function WhatsAppLeadsPage() {
       const res = await API.get('/whatsapp/conversations', { params, skipSuccessToast: true });
       return res.data?.data || [];
     },
-    staleTime: 15_000,
-    refetchInterval: 20_000,
+    staleTime: 45_000,
+    refetchInterval: 45_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
     placeholderData: (prev) => prev,
   });
 
@@ -51,88 +64,142 @@ export default function WhatsAppLeadsPage() {
       return res.data || [];
     },
     enabled: modals.assign && !isExecutive,
-    staleTime: 5 * 60_000,
+    staleTime: 10 * 60_000,
   });
 
   const detailsKey = selected?.conversationId || selected?.leadId || null;
 
-  const detailsQuery = useQuery({
-    queryKey: ['whatsapp', 'details', detailsKey],
+  const threadQuery = useQuery({
+    queryKey: ['whatsapp', 'thread', detailsKey],
     queryFn: async () => {
-      const conversationId = selected.conversationId;
-      const leadId = selected.leadId;
-
-      const messagePromise = conversationId
-        ? API.get(`/whatsapp/messages/conversation/${conversationId}`, { skipSuccessToast: true })
-        : leadId
-          ? API.get(`/whatsapp/messages/${leadId}`, { skipSuccessToast: true })
-          : Promise.resolve({ data: [] });
-
-      const notePromise = leadId
-        ? API.get(`/whatsapp/notes/${leadId}`, { skipSuccessToast: true })
-        : Promise.resolve({ data: [] });
-      const fuPromise = leadId
-        ? API.get(`/whatsapp/followups/${leadId}`, { skipSuccessToast: true })
-        : Promise.resolve({ data: [] });
-
-      const [msgRes, noteRes, fuRes] = await Promise.all([
-        messagePromise,
-        notePromise,
-        fuPromise,
-      ]);
-
-      return {
-        messages: msgRes.data || [],
-        notes: noteRes.data || [],
-        followups: fuRes.data || [],
-      };
+      const params = {};
+      if (selected.conversationId) params.conversationId = selected.conversationId;
+      if (selected.leadId) params.leadId = selected.leadId;
+      const res = await API.get('/whatsapp/thread', { params, skipSuccessToast: true });
+      return res.data || { messages: [], notes: [], followups: [] };
     },
     enabled: !!detailsKey,
-    staleTime: 10_000,
+    staleTime: 20_000,
+    refetchInterval: selected ? 30_000 : false,
+    refetchIntervalInBackground: false,
+    placeholderData: (prev) => prev,
   });
 
   const conversations = conversationsQuery.data ?? [];
-  const messages = detailsQuery.data?.messages ?? [];
-  const notes = detailsQuery.data?.notes ?? [];
-  const followups = detailsQuery.data?.followups ?? [];
+  const messages = threadQuery.data?.messages ?? [];
+  const notes = threadQuery.data?.notes ?? [];
+  const followups = threadQuery.data?.followups ?? [];
   const executives = executivesQuery.data ?? [];
   const loading = conversationsQuery.isLoading && !conversationsQuery.data;
-  const messagesLoading = detailsQuery.isLoading && !!detailsKey;
+  const messagesLoading = threadQuery.isLoading && !!detailsKey && !threadQuery.data;
 
-  const refreshConversations = () => {
+  const refreshConversations = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['whatsapp', 'conversations'] });
-  };
+  }, [queryClient]);
+
+  const refreshThread = useCallback(() => {
+    if (detailsKey) {
+      queryClient.invalidateQueries({ queryKey: ['whatsapp', 'thread', detailsKey] });
+    }
+  }, [queryClient, detailsKey]);
 
   useDataRefresh(['whatsapp', 'leads'], () => {
     refreshConversations();
-    if (detailsKey) {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp', 'details', detailsKey] });
-    }
+    refreshThread();
   });
 
-  const handleSelect = (conv) => {
+  const handleSelect = useCallback((conv) => {
     setSelected(conv);
     setMobileView('chat');
     if (conv.unreadCount > 0 || conv.unread) {
+      // Optimistic clear — don't wait for network
+      setSelected({ ...conv, unreadCount: 0 });
+      queryClient.setQueriesData({ queryKey: ['whatsapp', 'conversations'] }, (old) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((c) =>
+          (c.conversationId || c._id) === (conv.conversationId || conv._id)
+            ? { ...c, unreadCount: 0 }
+            : c
+        );
+      });
       API.put(`/whatsapp/read/${conv.leadId || 'none'}`, {}, {
         params: conv.conversationId ? { conversationId: conv.conversationId } : undefined,
         skipSuccessToast: true,
-      }).then(refreshConversations).catch(() => {});
+        skipDataRefresh: true,
+      }).catch(() => {});
     }
-  };
+  }, [queryClient]);
 
-  const handleSend = async (payload) => {
-    if (!selected) return;
-    await API.post('/whatsapp/messages', {
-      leadId: selected.leadId || undefined,
-      conversationId: selected.conversationId || undefined,
-      ...payload,
-    });
-    queryClient.invalidateQueries({ queryKey: ['whatsapp', 'details', detailsKey] });
-    refreshConversations();
-  };
+  const handleSend = useCallback(async (payload) => {
+    if (!selected || sending) return;
+    const text = payload?.text?.trim();
+    if (!text && !payload?.attachment) return;
 
-  const handleCreateLead = async () => {
+    const tempId = `temp-${Date.now()}`;
+    const optimistic = {
+      _id: tempId,
+      direction: 'outgoing',
+      type: payload.type || 'text',
+      text: text || '',
+      attachment: payload.attachment || null,
+      status: 'sent',
+      timestamp: new Date().toISOString(),
+    };
+
+    queryClient.setQueryData(['whatsapp', 'thread', detailsKey], (old) => ({
+      messages: [...(old?.messages || []), optimistic],
+      notes: old?.notes || [],
+      followups: old?.followups || [],
+      botAnswers: old?.botAnswers,
+      botStep: old?.botStep,
+    }));
+
+    setSending(true);
+    try {
+      const res = await API.post(
+        '/whatsapp/messages',
+        {
+          leadId: selected.leadId || undefined,
+          conversationId: selected.conversationId || undefined,
+          ...payload,
+        },
+        { skipDataRefresh: true }
+      );
+      queryClient.setQueryData(['whatsapp', 'thread', detailsKey], (old) => ({
+        ...(old || {}),
+        messages: (old?.messages || []).map((m) => (m._id === tempId ? res.data : m)),
+      }));
+      queryClient.setQueriesData({ queryKey: ['whatsapp', 'conversations'] }, (old) => {
+        if (!Array.isArray(old)) return old;
+        const key = selected.conversationId || selected._id;
+        const updated = old.map((c) =>
+          (c.conversationId || c._id) === key
+            ? {
+                ...c,
+                lastMessage: {
+                  text,
+                  direction: 'outgoing',
+                  timestamp: new Date().toISOString(),
+                },
+                updatedAt: new Date().toISOString(),
+              }
+            : c
+        );
+        updated.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+        return updated;
+      });
+    } catch (err) {
+      queryClient.setQueryData(['whatsapp', 'thread', detailsKey], (old) => ({
+        ...(old || {}),
+        messages: (old?.messages || []).filter((m) => m._id !== tempId),
+      }));
+      toast.error(err?.response?.data?.message || 'Send failed');
+    } finally {
+      setSending(false);
+    }
+  }, [selected, sending, detailsKey, queryClient]);
+
+  const handleCreateLead = useCallback(async () => {
     if (!selected?.conversationId) {
       toast.error('Conversation not linked yet');
       return;
@@ -166,9 +233,11 @@ export default function WhatsAppLeadsPage() {
             source: lead.source,
             sourceLabel: lead.sourceLabel,
             status: lead.status || 'new',
+            travelDate: lead.travelDate,
+            travelers: lead.travelers,
           },
         }));
-        queryClient.invalidateQueries({ queryKey: ['whatsapp', 'details'] });
+        queryClient.invalidateQueries({ queryKey: ['whatsapp', 'thread'] });
         queryClient.invalidateQueries({ queryKey: ['leads'] });
       }
     } catch (err) {
@@ -176,22 +245,22 @@ export default function WhatsAppLeadsPage() {
     } finally {
       setCreatingLead(false);
     }
-  };
+  }, [selected, refreshConversations, queryClient]);
 
-  const handleUpdateLead = async (updates) => {
+  const handleUpdateLead = useCallback(async (updates) => {
     if (!selected?.leadId) return;
     const res = await API.put(`/whatsapp/leads/${selected.leadId}`, updates);
     setSelected((prev) => ({ ...prev, lead: res.data }));
     refreshConversations();
-  };
+  }, [selected?.leadId, refreshConversations]);
 
-  const handleAddNote = async (text) => {
+  const handleAddNote = useCallback(async (text) => {
     if (!selected?.leadId) return;
     await API.post('/whatsapp/notes', { leadId: selected.leadId, text });
-    queryClient.invalidateQueries({ queryKey: ['whatsapp', 'details', detailsKey] });
-  };
+    refreshThread();
+  }, [selected?.leadId, refreshThread]);
 
-  const handleCreateFollowUp = async (data) => {
+  const handleCreateFollowUp = useCallback(async (data) => {
     if (!selected?.leadId) throw new Error('No lead selected');
     await createExecutiveFollowUp(
       buildFollowUpPayload({
@@ -201,11 +270,11 @@ export default function WhatsAppLeadsPage() {
         category: data.category || 'warm',
       })
     );
-    queryClient.invalidateQueries({ queryKey: ['whatsapp', 'details', detailsKey] });
+    refreshThread();
     await handleUpdateLead({ nextFollowUp: data.scheduledAt });
-  };
+  }, [selected?.leadId, refreshThread, handleUpdateLead]);
 
-  const handleAction = (key) => {
+  const handleAction = useCallback((key) => {
     if (!selected?.lead) return;
     const lead = selected.lead;
     switch (key) {
@@ -235,16 +304,14 @@ export default function WhatsAppLeadsPage() {
       default:
         break;
     }
-  };
+  }, [selected?.lead, isExecutive, navigate]);
 
   const selectedKey = selected?.conversationId || selected?.leadId;
+  const contact = useMemo(() => contactFromSelected(selected), [selected]);
+  const canCreateLead = !isExecutive && !selected?.lead && selected?.conversationId;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-2 mb-0"
-    >
+    <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-2 mb-0">
       <WhatsAppInboxLayout
         mobileView={mobileView}
         className="h-[calc(100dvh-5.5rem)] lg:h-[calc(100dvh-6rem)]"
@@ -263,15 +330,7 @@ export default function WhatsAppLeadsPage() {
         chatPanel={
           <WhatsAppConversation
             lead={selected?.lead}
-            contact={
-              selected
-                ? {
-                    phone: selected.phone,
-                    waId: selected.waId,
-                    profileName: selected.profileName,
-                  }
-                : null
-            }
+            contact={contact}
             messages={messages}
             loading={messagesLoading}
             onSend={handleSend}
@@ -280,10 +339,8 @@ export default function WhatsAppLeadsPage() {
               setSelected(null);
             }}
             onToggleInfo={() => setMobileView('info')}
-            showInfoToggle={Boolean(selected?.lead)}
-            onCreateLead={
-              !isExecutive && !selected?.lead && selected?.conversationId ? handleCreateLead : undefined
-            }
+            showInfoToggle={Boolean(selected?.lead || selected?.botAnswers)}
+            onCreateLead={canCreateLead ? handleCreateLead : undefined}
             creatingLead={creatingLead}
           />
         }
@@ -294,20 +351,10 @@ export default function WhatsAppLeadsPage() {
             followups={followups}
             onClose={() => setMobileView('chat')}
             onAction={handleAction}
-            onCreateLead={
-              !isExecutive && !selected?.lead && selected?.conversationId ? handleCreateLead : undefined
-            }
+            onCreateLead={canCreateLead ? handleCreateLead : undefined}
             creatingLead={creatingLead}
             canAssign={!isExecutive}
-            contact={
-              selected
-                ? {
-                    phone: selected.phone,
-                    waId: selected.waId,
-                    profileName: selected.profileName,
-                  }
-                : null
-            }
+            contact={contact}
           />
         }
       />
@@ -337,6 +384,8 @@ export default function WhatsAppLeadsPage() {
         onSubmit={handleCreateFollowUp}
         leadName={selected?.lead?.name}
       />
-    </motion.div>
+    </div>
   );
 }
+
+export default memo(WhatsAppLeadsPage);

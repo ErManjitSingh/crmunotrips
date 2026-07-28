@@ -1,12 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 import { MessageCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
 import WhatsAppConversationHeader from './WhatsAppConversationHeader';
 import WhatsAppMessageBubble from './WhatsAppMessageBubble';
 import WhatsAppMessageInput from './WhatsAppMessageInput';
 import { groupMessagesByDate, formatDateDivider } from './whatsappUtils';
 
-export default function WhatsAppConversation({
+function WhatsAppConversation({
   lead,
   contact,
   messages,
@@ -19,17 +18,19 @@ export default function WhatsAppConversation({
   creatingLead,
 }) {
   const bottomRef = useRef(null);
-  const groups = groupMessagesByDate(messages);
+  const groups = useMemo(() => groupMessagesByDate(messages), [messages]);
   const hasThread = Boolean(lead || contact);
+  const lastId = messages.length ? messages[messages.length - 1]?._id : null;
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (!lastId) return;
+    bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+  }, [lastId]);
 
   if (!hasThread) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-wa-chat-bg text-center p-8">
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-sm">
+        <div className="max-w-sm">
           <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-wa-panel border-2 border-dashed border-wa-border flex items-center justify-center">
             <MessageCircle className="w-12 h-12 text-emerald-500/50" />
           </div>
@@ -37,7 +38,7 @@ export default function WhatsAppConversation({
           <p className="text-sm text-wa-text-secondary leading-relaxed">
             Customer chats yahan dikhenge. Jis chat se lead banana ho, Create Lead dabao — source WhatsApp set ho jayega.
           </p>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -54,7 +55,7 @@ export default function WhatsAppConversation({
         creatingLead={creatingLead}
       />
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 space-y-2 wa-chat-pattern">
+      <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-8 py-4 space-y-2 wa-chat-pattern">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
@@ -79,3 +80,5 @@ export default function WhatsAppConversation({
     </div>
   );
 }
+
+export default memo(WhatsAppConversation);

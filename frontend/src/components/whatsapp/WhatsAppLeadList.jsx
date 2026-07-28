@@ -1,10 +1,10 @@
+import { memo } from 'react';
 import { Search } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import { STATUS_FILTERS } from './constants';
 import WhatsAppLeadListItem from './WhatsAppLeadListItem';
 
-export default function WhatsAppLeadList({
+function WhatsAppLeadList({
   conversations,
   selectedId,
   onSelect,
@@ -54,7 +54,7 @@ export default function WhatsAppLeadList({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overscroll-contain">
         {loading ? (
           <div className="p-4 space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
@@ -76,18 +76,21 @@ export default function WhatsAppLeadList({
             <p className="text-xs text-wa-text-muted mt-1">Try adjusting your filters</p>
           </div>
         ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {conversations.map((conv) => (
+          conversations.map((conv) => {
+            const id = conv.conversationId || conv._id;
+            return (
               <WhatsAppLeadListItem
-                key={conv._id}
+                key={id}
                 conversation={conv}
-                active={selectedId === (conv.conversationId || conv._id) || selectedId === conv.leadId}
+                active={selectedId === id || selectedId === conv.leadId}
                 onClick={() => onSelect(conv)}
               />
-            ))}
-          </motion.div>
+            );
+          })
         )}
       </div>
     </div>
   );
 }
+
+export default memo(WhatsAppLeadList);

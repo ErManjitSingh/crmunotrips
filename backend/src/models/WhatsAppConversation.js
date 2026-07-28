@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const whatsAppConversationSchema = new mongoose.Schema(
   {
-    phone: { type: String, required: true, index: true },
+    phone: { type: String, required: true },
     waId: { type: String, index: true },
     profileName: { type: String, default: '' },
     lastMessageText: { type: String, default: '' },
@@ -18,7 +18,6 @@ const whatsAppConversationSchema = new mongoose.Schema(
       type: String,
       enum: ['idle', 'await_travel_date', 'await_travelers', 'completed', 'paused'],
       default: 'idle',
-      index: true,
     },
     botAnswers: {
       travelDateRaw: { type: String, default: '' },
@@ -32,5 +31,8 @@ const whatsAppConversationSchema = new mongoose.Schema(
 );
 
 whatsAppConversationSchema.index({ phone: 1 }, { unique: true });
+whatsAppConversationSchema.index({ isArchived: 1, lastMessageAt: -1 });
+whatsAppConversationSchema.index({ lead: 1, lastMessageAt: -1 });
+whatsAppConversationSchema.index({ branchId: 1, lastMessageAt: -1 });
 
 module.exports = mongoose.model('WhatsAppConversation', whatsAppConversationSchema);

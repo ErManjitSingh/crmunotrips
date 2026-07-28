@@ -9,7 +9,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const {
   LEAD_LIST_POPULATE,
   enrichLead,
-  FOLLOWUP_POPULATE,
+  FOLLOWUP_LIST_POPULATE,
 } = require('../utils/queryHelpers');
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
 const {
@@ -18,6 +18,13 @@ const {
   isConfigured,
   normalizePhone,
 } = require('../services/whatsappCloudService');
+
+/** Slim fields for inbox list — avoid shipping full Lead docs */
+const INBOX_LEAD_SELECT =
+  'name phone whatsapp email city destination status budget travelDate travelers adults source sourceLabel assignedTo leadId updatedAt channel';
+
+const MESSAGE_SELECT = 'direction type text attachment status timestamp waMessageId conversation lead';
+const MESSAGE_LIMIT = 150;
 
 function isSalesExecutive(req) {
   return req.user?.role === 'sales_executive';
@@ -44,12 +51,46 @@ async function assertConversationAccess(req, conversation) {
   return conversation;
 }
 
+function mapConversationRow(c, lead) {
+  return {
+    _id: c._id,
+    conversationId: c._id,
+    phone: c.phone,
+    waId: c.waId || (c.phone ? `91${c.phone}` : ''),
+    profileName: c.profileName || '',
+    leadId: lead?._id || null,
+    lead: lead || null,
+    hasLead: Boolean(lead),
+    botStep: c.botStep || 'idle',
+    botAnswers: c.botAnswers || null,
+    lastMessage: c.lastMessageText
+      ? {
+          text: c.lastMessageText,
+          direction: c.lastDirection,
+          timestamp: c.lastMessageAt,
+        }
+      : null,
+    unreadCount: c.unreadCount || 0,
+    updatedAt: c.lastMessageAt || c.updatedAt,
+  };
+}
+
+async function loadRecentMessages(filter) {
+  const rows = await WhatsAppMessage.find(filter)
+    .select(MESSAGE_SELECT)
+    .sort({ timestamp: -1 })
+    .limit(MESSAGE_LIMIT)
+    .lean();
+  rows.reverse();
+  return rows;
+}
+
 const listConversations = asyncHandler(async (req, res) => {
-  const { status, search, onlyUnlinked } = req.query;
+  const { status, search, onlyUnlinked, includeOrphans } = req.query;
   const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 40, maxLimit: 100 });
   const executiveOnly = isSalesExecutive(req);
+  const wantOrphans = includeOrphans === '1' || includeOrphans === 'true';
 
-  // Executives only see chats linked to leads assigned to them
   if (executiveOnly && (onlyUnlinked === '1' || onlyUnlinked === 'true')) {
     return res.json(paginatedResponse([], { page, limit, total: 0 }));
   }
@@ -67,76 +108,64 @@ const listConversations = asyncHandler(async (req, res) => {
     ];
   }
 
-  if (executiveOnly) {
-    const myLeadIds = await Lead.find(leadScopeFilter(req)).distinct('_id');
-    filter.lead = { $in: myLeadIds };
+  // Resolve lead id scopes once (executive + status) — filter in Mongo, not JS
+  let scopedLeadIds = null;
+  if (executiveOnly || status) {
+    const leadFilter = leadScopeFilter(req);
+    if (status) leadFilter.status = status;
+    scopedLeadIds = await Lead.find(leadFilter).select('_id').lean();
+    const ids = scopedLeadIds.map((l) => l._id);
+    if (!ids.length) {
+      return res.json(paginatedResponse([], { page, limit, total: 0 }));
+    }
+    filter.lead = { $in: ids };
   } else if (onlyUnlinked === '1' || onlyUnlinked === 'true') {
     filter.lead = null;
   }
 
   if (search) {
     const q = String(search).trim();
-    const searchOr = [
-      { phone: new RegExp(q.replace(/\D/g, '').slice(-10) || q, 'i') },
-      { profileName: new RegExp(q, 'i') },
-      { lastMessageText: new RegExp(q, 'i') },
-    ];
-    if (filter.$and) filter.$and.push({ $or: searchOr });
-    else filter.$or = searchOr;
+    const digits = q.replace(/\D/g, '').slice(-10);
+    const searchOr = [];
+    if (digits) searchOr.push({ phone: digits });
+    if (q) {
+      const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      searchOr.push({ profileName: rx }, { lastMessageText: rx });
+    }
+    if (searchOr.length) {
+      if (filter.$and) filter.$and.push({ $or: searchOr });
+      else filter.$or = searchOr;
+    }
   }
 
-  const [conversations, total] = await Promise.all([
-    WhatsAppConversation.find(filter)
-      .populate({
-        path: 'lead',
-        select: '-notes',
-        populate: LEAD_LIST_POPULATE,
-      })
-      .sort({ lastMessageAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    WhatsAppConversation.countDocuments(filter),
-  ]);
+  // Skip expensive countDocuments on inbox — total ≈ page size is enough for UI
+  const conversations = await WhatsAppConversation.find(filter)
+    .populate({
+      path: 'lead',
+      select: INBOX_LEAD_SELECT,
+      populate: [{ path: 'assignedTo', select: 'name email' }],
+    })
+    .sort({ lastMessageAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
 
   let rows = conversations.map((c) => {
     const lead = c.lead ? enrichLead(c.lead) : null;
-    if (status && lead && lead.status !== status) return null;
-    if (status && !lead) return null;
     if (executiveOnly && !lead) return null;
-    return {
-      _id: c._id,
-      conversationId: c._id,
-      phone: c.phone,
-      waId: c.waId || (c.phone ? `91${c.phone}` : ''),
-      profileName: c.profileName || '',
-      leadId: lead?._id || null,
-      lead,
-      hasLead: Boolean(lead),
-      botStep: c.botStep || 'idle',
-      botAnswers: c.botAnswers || null,
-      lastMessage: c.lastMessageText
-        ? {
-            text: c.lastMessageText,
-            direction: c.lastDirection,
-            timestamp: c.lastMessageAt,
-          }
-        : null,
-      unreadCount: c.unreadCount || 0,
-      updatedAt: c.lastMessageAt || c.updatedAt,
-    };
+    return mapConversationRow(c, lead);
   }).filter(Boolean);
 
-  // Fallback: classic channel=whatsapp leads with no conversation (not for unlinked-only)
-  if (!onlyUnlinked && page === 1) {
+  // Legacy orphan leads — off by default (slow); enable with ?includeOrphans=1
+  if (wantOrphans && !onlyUnlinked && page === 1) {
     const leadFilter = leadScopeFilter(req, { channel: 'whatsapp' });
     if (status) leadFilter.status = status;
     const linkedPhones = new Set(rows.filter((r) => r.leadId).map((r) => normalizePhone(r.phone)));
     const orphanLeads = await Lead.find(leadFilter)
-      .select('-notes')
-      .populate(LEAD_LIST_POPULATE)
+      .select(INBOX_LEAD_SELECT)
+      .populate([{ path: 'assignedTo', select: 'name email' }])
       .sort({ updatedAt: -1 })
-      .limit(25)
+      .limit(15)
       .lean();
 
     for (const leadRaw of orphanLeads) {
@@ -152,63 +181,137 @@ const listConversations = asyncHandler(async (req, res) => {
         leadId: lead._id,
         lead,
         hasLead: true,
+        botStep: null,
+        botAnswers: null,
         lastMessage: null,
         unreadCount: 0,
         updatedAt: lead.updatedAt,
       });
     }
+    rows.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
   }
 
-  rows.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
-
-  res.json(paginatedResponse(rows.slice(0, limit), { page, limit, total: Math.max(total, rows.length) }));
+  const pageRows = rows.slice(0, limit);
+  res.json(
+    paginatedResponse(pageRows, {
+      page,
+      limit,
+      total: skip + pageRows.length + (pageRows.length === limit ? 1 : 0),
+    })
+  );
 });
 
 const getMessagesByConversation = asyncHandler(async (req, res) => {
-  const conversation = await WhatsAppConversation.findById(req.params.conversationId).select('_id lead');
-  await assertConversationAccess(req, conversation);
-
-  const messages = await WhatsAppMessage.find({ conversation: conversation._id })
-    .sort({ timestamp: 1 })
+  const conversation = await WhatsAppConversation.findById(req.params.conversationId)
+    .select('_id lead')
     .lean();
+  await assertConversationAccess(req, conversation);
+  const messages = await loadRecentMessages({ conversation: conversation._id });
   res.json(messages);
 });
 
 const getMessages = asyncHandler(async (req, res) => {
   const lead = await findScopedLead(req, req.params.leadId, '_id phone whatsapp');
-
   const phone = normalizePhone(lead.phone || lead.whatsapp);
   const conversation = phone
-    ? await WhatsAppConversation.findOne({ phone }).select('_id')
+    ? await WhatsAppConversation.findOne({ phone }).select('_id').lean()
     : null;
 
   const filter = conversation
     ? { $or: [{ lead: lead._id }, { conversation: conversation._id }] }
     : { lead: lead._id };
 
-  const messages = await WhatsAppMessage.find(filter).sort({ timestamp: 1 }).lean();
+  const messages = await loadRecentMessages(filter);
   res.json(messages);
+});
+
+/** Single round-trip for chat open: messages (+ notes/followups when lead linked) */
+const getThread = asyncHandler(async (req, res) => {
+  const conversationId = req.query.conversationId || req.body?.conversationId;
+  const leadId = req.query.leadId || req.body?.leadId;
+  const includeMeta = req.query.meta !== '0' && req.query.meta !== 'false';
+
+  let conversation = null;
+  let lead = null;
+
+  if (conversationId) {
+    conversation = await WhatsAppConversation.findById(conversationId)
+      .select('_id lead phone botAnswers botStep')
+      .lean();
+    await assertConversationAccess(req, conversation);
+    if (conversation.lead) {
+      lead = await findScopedLead(req, conversation.lead, '_id');
+    }
+  } else if (leadId) {
+    lead = await findScopedLead(req, leadId, '_id phone whatsapp');
+  } else {
+    throw new ApiError(400, 'conversationId or leadId is required');
+  }
+
+  const msgFilter = conversation
+    ? lead
+      ? { $or: [{ conversation: conversation._id }, { lead: lead._id }] }
+      : { conversation: conversation._id }
+    : { lead: lead._id };
+
+  const messagesPromise = loadRecentMessages(msgFilter);
+
+  let notesPromise = Promise.resolve([]);
+  let followupsPromise = Promise.resolve([]);
+  if (includeMeta && lead?._id) {
+    notesPromise = WhatsAppNote.find({ lead: lead._id })
+      .select('text createdAt user')
+      .populate('user', 'name')
+      .sort({ createdAt: -1 })
+      .limit(40)
+      .lean();
+    followupsPromise = FollowUp.find({
+      lead: lead._id,
+      ...(req.branchId ? { branchId: req.branchId } : {}),
+    })
+      .select('scheduledAt status category remarks outcome createdAt assignedTo')
+      .populate(FOLLOWUP_LIST_POPULATE)
+      .sort({ scheduledAt: -1 })
+      .limit(20)
+      .lean();
+  }
+
+  const [messages, notes, followups] = await Promise.all([
+    messagesPromise,
+    notesPromise,
+    followupsPromise,
+  ]);
+
+  res.json({
+    messages,
+    notes,
+    followups,
+    botAnswers: conversation?.botAnswers || null,
+    botStep: conversation?.botStep || null,
+  });
 });
 
 const getNotes = asyncHandler(async (req, res) => {
   const lead = await findScopedLead(req, req.params.leadId, '_id');
-
   const notes = await WhatsAppNote.find({ lead: lead._id })
-    .populate('user', 'name email')
+    .select('text createdAt user')
+    .populate('user', 'name')
     .sort({ createdAt: -1 })
+    .limit(40)
     .lean();
   res.json(notes);
 });
 
 const getFollowUpsForLead = asyncHandler(async (req, res) => {
   const lead = await findScopedLead(req, req.params.leadId, '_id');
-
   const followups = await FollowUp.find({
     lead: lead._id,
     ...(req.branchId ? { branchId: req.branchId } : {}),
   })
-    .populate(FOLLOWUP_POPULATE)
+    .select('scheduledAt status category remarks outcome createdAt assignedTo')
+    .populate(FOLLOWUP_LIST_POPULATE)
     .sort({ scheduledAt: -1 })
+    .limit(20)
     .lean();
   res.json(followups);
 });
@@ -253,6 +356,8 @@ const postMessage = asyncHandler(async (req, res) => {
         lastMessageText: text || '',
         lastMessageAt: new Date(),
         lastDirection: 'outgoing',
+        botEnabled: false,
+        botStep: 'paused',
       });
     }
   } else {
@@ -273,32 +378,36 @@ const postMessage = asyncHandler(async (req, res) => {
     }
   }
 
-  const msg = await WhatsAppMessage.create({
-    conversation: conversation?._id,
-    lead: lead?._id || conversation?.lead || undefined,
-    waMessageId,
-    fromPhone: toPhone || '',
-    direction: 'outgoing',
-    type,
-    text: text || '',
-    attachment: attachment || null,
-    status,
-    timestamp: new Date(),
-    sentBy: req.user._id,
-  });
-
-  if (conversation) {
-    conversation.lastMessageText = text || conversation.lastMessageText;
-    conversation.lastMessageAt = new Date();
-    conversation.lastDirection = 'outgoing';
-    await conversation.save();
-    try {
-      const { pauseWhatsAppBot } = require('../services/whatsappQuestionnaireBot');
-      await pauseWhatsAppBot(conversation._id);
-    } catch {
-      /* ignore */
-    }
-  }
+  const now = new Date();
+  const [msg] = await Promise.all([
+    WhatsAppMessage.create({
+      conversation: conversation?._id,
+      lead: lead?._id || conversation?.lead || undefined,
+      waMessageId,
+      fromPhone: toPhone || '',
+      direction: 'outgoing',
+      type,
+      text: text || '',
+      attachment: attachment || null,
+      status,
+      timestamp: now,
+      sentBy: req.user._id,
+    }),
+    conversation
+      ? WhatsAppConversation.updateOne(
+          { _id: conversation._id },
+          {
+            $set: {
+              lastMessageText: text || conversation.lastMessageText,
+              lastMessageAt: now,
+              lastDirection: 'outgoing',
+              botStep: conversation.botStep === 'completed' ? 'completed' : 'paused',
+              botEnabled: false,
+            },
+          }
+        )
+      : Promise.resolve(),
+  ]);
 
   res.status(201).json(msg);
 });
@@ -315,13 +424,15 @@ const postNote = asyncHandler(async (req, res) => {
     user: req.user._id,
   });
 
-  const populated = await WhatsAppNote.findById(note._id).populate('user', 'name email').lean();
+  const populated = await WhatsAppNote.findById(note._id)
+    .select('text createdAt user')
+    .populate('user', 'name')
+    .lean();
   res.status(201).json(populated);
 });
 
 const updateWhatsAppLead = asyncHandler(async (req, res) => {
   const body = { ...req.body };
-  // Executives cannot reassign leads from WhatsApp inbox
   if (isSalesExecutive(req)) {
     delete body.assignedTo;
   }
@@ -331,47 +442,56 @@ const updateWhatsAppLead = asyncHandler(async (req, res) => {
     body,
     { new: true, runValidators: true }
   )
-    .populate(LEAD_LIST_POPULATE)
+    .select(INBOX_LEAD_SELECT)
+    .populate([{ path: 'assignedTo', select: 'name email' }])
     .lean();
   if (!lead) throw new ApiError(404, 'Lead not found');
 
-  // On assign (or any update), push auto-collected WA answers onto the lead
-  try {
-    const conversation = await WhatsAppConversation.findOne({ lead: lead._id });
-    if (conversation?.botAnswers) {
-      const { syncBotAnswersToLead } = require('../services/whatsappQuestionnaireBot');
-      await syncBotAnswersToLead(conversation);
+  // Sync bot answers only when assigning (or if travel fields empty)
+  const needsSync =
+    body.assignedTo ||
+    (!lead.travelDate && !lead.travelers);
+  if (needsSync) {
+    try {
+      const conversation = await WhatsAppConversation.findOne({ lead: lead._id })
+        .select('lead botAnswers')
+        .lean();
+      if (conversation?.botAnswers) {
+        const { syncBotAnswersToLead } = require('../services/whatsappQuestionnaireBot');
+        await syncBotAnswersToLead(conversation);
+        const refreshed = await Lead.findById(lead._id)
+          .select(INBOX_LEAD_SELECT)
+          .populate([{ path: 'assignedTo', select: 'name email' }])
+          .lean();
+        return res.json(enrichLead(refreshed || lead));
+      }
+    } catch (err) {
+      console.error('[whatsappBot] sync on lead update failed', err.message);
     }
-  } catch (err) {
-    console.error('[whatsappBot] sync on lead update failed', err.message);
   }
 
-  const refreshed = await Lead.findById(lead._id)
-    .populate(LEAD_LIST_POPULATE)
-    .lean();
-  res.json(enrichLead(refreshed || lead));
+  res.json(enrichLead(lead));
 });
 
 const markRead = asyncHandler(async (req, res) => {
   const { leadId } = req.params;
   const conversationId = req.query.conversationId || req.body?.conversationId;
 
+  // Inbox only needs unreadCount=0 — skip heavy updateMany on all messages
   if (conversationId) {
-    const conversation = await WhatsAppConversation.findById(conversationId).select('_id lead');
+    const conversation = await WhatsAppConversation.findById(conversationId)
+      .select('_id lead unreadCount')
+      .lean();
     await assertConversationAccess(req, conversation);
-    await WhatsAppConversation.findByIdAndUpdate(conversationId, { unreadCount: 0 });
-    await WhatsAppMessage.updateMany(
-      { conversation: conversationId, direction: 'incoming' },
-      { status: 'read' }
-    );
-  }
-
-  if (leadId && leadId !== 'none') {
-    const lead = await findScopedLead(req, leadId, '_id');
-    await WhatsAppMessage.updateMany(
-      { lead: lead._id, direction: 'incoming' },
-      { status: 'read' }
-    );
+    if (conversation.unreadCount) {
+      await WhatsAppConversation.updateOne({ _id: conversationId }, { $set: { unreadCount: 0 } });
+    }
+  } else if (leadId && leadId !== 'none') {
+    const lead = await findScopedLead(req, leadId, '_id phone whatsapp');
+    const phone = normalizePhone(lead.phone || lead.whatsapp);
+    if (phone) {
+      await WhatsAppConversation.updateOne({ phone }, { $set: { unreadCount: 0 } });
+    }
   }
 
   res.json({ success: true });
@@ -403,6 +523,8 @@ const createLeadFromChat = asyncHandler(async (req, res) => {
       source: result.lead?.source,
       sourceLabel: result.lead?.sourceLabel,
       status: result.lead?.status,
+      travelDate: result.lead?.travelDate,
+      travelers: result.lead?.travelers,
     },
   });
 });
@@ -418,6 +540,7 @@ module.exports = {
   listConversations,
   getMessages,
   getMessagesByConversation,
+  getThread,
   getNotes,
   getFollowUpsForLead,
   listExecutives,

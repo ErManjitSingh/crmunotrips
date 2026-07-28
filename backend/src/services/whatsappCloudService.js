@@ -76,7 +76,23 @@ function mapMessageType(type) {
 
 async function findLeadByPhone(phone10) {
   if (!phone10 || phone10.length < 10) return null;
-  // Match primary phone / WhatsApp only — not alternatePhone (causes wrong person links)
+  // Prefer exact indexed matches first (avoid slow regex scans)
+  const exact = await Lead.findOne({
+    isDeleted: { $ne: true },
+    $or: [
+      { phone: phone10 },
+      { phone: `91${phone10}` },
+      { phone: `+91${phone10}` },
+      { whatsapp: phone10 },
+      { whatsapp: `91${phone10}` },
+      { whatsapp: `+91${phone10}` },
+    ],
+  })
+    .select('_id name phone whatsapp destination status channel branchId')
+    .lean();
+  if (exact) return exact;
+
+  // Fallback: trailing-digits match (legacy formats)
   const candidates = await Lead.find({
     isDeleted: { $ne: true },
     $or: [
@@ -85,7 +101,7 @@ async function findLeadByPhone(phone10) {
     ],
   })
     .select('_id name phone whatsapp destination status channel branchId')
-    .limit(20)
+    .limit(8)
     .lean();
 
   return (

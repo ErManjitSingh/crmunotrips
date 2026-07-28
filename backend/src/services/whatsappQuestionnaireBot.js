@@ -53,17 +53,6 @@ function parseTravelers(raw = '') {
   return n;
 }
 
-function botSummary(answers = {}) {
-  const parts = [];
-  if (answers.travelDateRaw || answers.travelDate) {
-    parts.push(`Travel date: ${answers.travelDateRaw || answers.travelDate}`);
-  }
-  if (answers.travelers) {
-    parts.push(`Travelers: ${answers.travelers}`);
-  }
-  return parts.join('\n');
-}
-
 async function sendAndStoreBotReply(conversation, text) {
   const { sendWhatsAppText } = require('./whatsappCloudService');
   const phone = conversation.phone;
@@ -77,22 +66,29 @@ async function sendAndStoreBotReply(conversation, text) {
   }
 
   const now = new Date();
-  await WhatsAppMessage.create({
-    conversation: conversation._id,
-    lead: conversation.lead || undefined,
-    waMessageId,
-    fromPhone: phone,
-    direction: 'outgoing',
-    type: 'text',
-    text,
-    status: 'sent',
-    timestamp: now,
-  });
-
-  conversation.lastMessageText = text;
-  conversation.lastMessageAt = now;
-  conversation.lastDirection = 'outgoing';
-  await conversation.save();
+  await Promise.all([
+    WhatsAppMessage.create({
+      conversation: conversation._id,
+      lead: conversation.lead || undefined,
+      waMessageId,
+      fromPhone: phone,
+      direction: 'outgoing',
+      type: 'text',
+      text,
+      status: 'sent',
+      timestamp: now,
+    }),
+    WhatsAppConversation.updateOne(
+      { _id: conversation._id },
+      {
+        $set: {
+          lastMessageText: text,
+          lastMessageAt: now,
+          lastDirection: 'outgoing',
+        },
+      }
+    ),
+  ]);
 }
 
 async function syncBotAnswersToLead(conversation) {
@@ -106,29 +102,9 @@ async function syncBotAnswersToLead(conversation) {
     update.adults = answers.travelers;
   }
 
-  const summary = botSummary(answers);
-  if (summary) {
-    const lead = await Lead.findById(conversation.lead).select('notes specialRequirements').lean();
-    if (lead) {
-      const marker = '[WhatsApp auto details]';
-      const block = `${marker}\n${summary}`;
-      const notes = String(lead.notes || '');
-      if (!notes.includes(marker)) {
-        update.notes = notes ? `${notes}\n\n${block}` : block;
-      }
-      if (!answers.travelDate && answers.travelDateRaw) {
-        const sr = String(lead.specialRequirements || '');
-        if (!sr.includes(answers.travelDateRaw)) {
-          update.specialRequirements = sr
-            ? `${sr}; Travel date: ${answers.travelDateRaw}`
-            : `Travel date: ${answers.travelDateRaw}`;
-        }
-      }
-    }
-  }
-
   if (!Object.keys(update).length) return null;
-  return Lead.findByIdAndUpdate(conversation.lead, { $set: update }, { new: true });
+  // Fast path — structured fields only (no notes read)
+  return Lead.updateOne({ _id: conversation.lead }, { $set: update });
 }
 
 async function askTravelDate(conversation) {

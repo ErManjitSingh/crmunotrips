@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion';
-import { FileText, Image as ImageIcon, File, Download } from 'lucide-react';
+import { memo } from 'react';
+import { FileText, File, Download } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { MESSAGE_STATUS_ICON } from './constants';
 import { formatMessageTime } from './whatsappUtils';
@@ -8,13 +8,13 @@ function AttachmentPreview({ type, text, attachment }) {
   if (type === 'image' && attachment?.url) {
     return (
       <div className="rounded-lg overflow-hidden mb-1 max-w-[280px]">
-        <img src={attachment.url} alt={text || 'Image'} className="w-full h-auto object-cover" />
+        <img src={attachment.url} alt={text || 'Image'} className="w-full h-auto object-cover" loading="lazy" />
         {text && <p className="text-xs mt-1 opacity-80">{text}</p>}
       </div>
     );
   }
 
-  const Icon = type === 'pdf' ? FileText : type === 'document' ? File : FileText;
+  const Icon = type === 'pdf' ? FileText : File;
   return (
     <div className="flex items-center gap-3 p-2.5 rounded-lg bg-black/5 dark:bg-white/5 mb-1 min-w-[200px]">
       <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center shrink-0', type === 'pdf' ? 'bg-red-500/15 text-red-500' : 'bg-blue-500/15 text-blue-500')}>
@@ -29,16 +29,11 @@ function AttachmentPreview({ type, text, attachment }) {
   );
 }
 
-export default function WhatsAppMessageBubble({ message }) {
+function WhatsAppMessageBubble({ message }) {
   const isOutgoing = message.direction === 'outgoing';
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.2 }}
-      className={cn('flex', isOutgoing ? 'justify-end' : 'justify-start')}
-    >
+    <div className={cn('flex', isOutgoing ? 'justify-end' : 'justify-start')}>
       <div
         className={cn(
           'relative max-w-[75%] sm:max-w-[65%] px-3 py-1.5 rounded-lg shadow-sm',
@@ -62,6 +57,8 @@ export default function WhatsAppMessageBubble({ message }) {
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
+
+export default memo(WhatsAppMessageBubble);

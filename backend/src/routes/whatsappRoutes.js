@@ -4,6 +4,7 @@ const {
   listConversations,
   getMessages,
   getMessagesByConversation,
+  getThread,
   getNotes,
   getFollowUpsForLead,
   listExecutives,
@@ -20,6 +21,7 @@ router.use(protect);
 
 router.get('/status', cloudStatus);
 router.get('/conversations', listConversations);
+router.get('/thread', getThread);
 router.get('/messages/conversation/:conversationId', getMessagesByConversation);
 router.get('/messages/:leadId', getMessages);
 router.get('/notes/:leadId', getNotes);
