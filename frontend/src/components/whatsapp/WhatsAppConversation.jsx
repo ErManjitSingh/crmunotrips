@@ -29,14 +29,14 @@ function WhatsAppConversation({
 
   if (!hasThread) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-wa-chat-bg text-center p-8">
+      <div className="flex flex-col items-center justify-center h-full bg-[#f7f3eb] text-center p-8">
         <div className="max-w-sm">
-          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-wa-panel border-2 border-dashed border-wa-border flex items-center justify-center">
-            <MessageCircle className="w-12 h-12 text-emerald-500/50" />
+          <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-white border border-dashed border-slate-200 flex items-center justify-center shadow-sm">
+            <MessageCircle className="w-10 h-10 text-emerald-500/60" />
           </div>
-          <h3 className="text-xl font-semibold text-wa-text-primary mb-2">WhatsApp Inbox</h3>
-          <p className="text-sm text-wa-text-secondary leading-relaxed">
-            Customer chats yahan dikhenge. Jis chat se lead banana ho, Create Lead dabao — source WhatsApp set ho jayega.
+          <h3 className="text-lg font-semibold text-slate-800 mb-2">WhatsApp Inbox</h3>
+          <p className="text-sm text-slate-500 leading-relaxed">
+            Select a chat from the left to view messages and lead details.
           </p>
         </div>
       </div>
@@ -44,7 +44,7 @@ function WhatsAppConversation({
   }
 
   return (
-    <div className="flex flex-col h-full bg-wa-chat-bg">
+    <div className="flex flex-col h-full bg-[#f7f3eb]">
       <WhatsAppConversationHeader
         lead={lead}
         contact={contact}
@@ -64,7 +64,7 @@ function WhatsAppConversation({
           groups.map((item) =>
             item.type === 'divider' ? (
               <div key={item.key} className="flex justify-center my-3">
-                <span className="px-3 py-1 rounded-lg bg-wa-panel/80 backdrop-blur text-[11px] font-medium text-wa-text-muted shadow-sm">
+                <span className="px-3 py-1 rounded-full bg-white/90 border border-slate-200/70 text-[11px] font-medium text-slate-500 shadow-sm">
                   {formatDateDivider(item.date)}
                 </span>
               </div>

@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { Smile, Paperclip, Send, X, FileText, Image as ImageIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { Button } from '../ui/button';
 
 const ATTACH_OPTIONS = [
   { type: 'image', label: 'Photo', icon: ImageIcon },
@@ -43,7 +42,7 @@ export default function WhatsAppMessageInput({ onSend, disabled }) {
   };
 
   return (
-    <div className="shrink-0 px-3 py-2.5 bg-wa-header/90 backdrop-blur-md border-t border-wa-border">
+    <div className="shrink-0 px-4 py-3 bg-white border-t border-slate-200/80">
       {showAttach && (
         <div className="flex gap-3 mb-3 px-1">
           {ATTACH_OPTIONS.map(({ type, label, icon: Icon }) => (
@@ -53,56 +52,57 @@ export default function WhatsAppMessageInput({ onSend, disabled }) {
               onClick={() => handleAttach(type)}
               className="flex flex-col items-center gap-1.5 group"
             >
-              <div className="w-12 h-12 rounded-full bg-wa-input border border-wa-border flex items-center justify-center group-hover:bg-emerald-500/10 group-hover:border-emerald-500/30 transition-colors">
-                <Icon className="w-5 h-5 text-wa-text-secondary group-hover:text-emerald-500" />
+              <div className="w-11 h-11 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center group-hover:bg-emerald-50 group-hover:border-emerald-200 transition-colors">
+                <Icon className="w-5 h-5 text-slate-500 group-hover:text-emerald-600" />
               </div>
-              <span className="text-[10px] text-wa-text-muted">{label}</span>
+              <span className="text-[10px] text-slate-400">{label}</span>
             </button>
           ))}
         </div>
       )}
 
-      <div className="flex items-end gap-2">
+      <div className="flex items-center gap-2">
         <button
           type="button"
-          className="p-2 rounded-lg hover:bg-wa-list-hover text-wa-text-muted shrink-0"
+          className="p-2 rounded-full hover:bg-slate-50 text-slate-400 shrink-0"
           aria-label="Emoji"
         >
-          <Smile className="w-6 h-6" />
+          <Smile className="w-5 h-5" />
         </button>
 
         <button
           type="button"
           onClick={() => setShowAttach((s) => !s)}
-          className={cn('p-2 rounded-lg hover:bg-wa-list-hover shrink-0 transition-colors', showAttach ? 'text-emerald-500' : 'text-wa-text-muted')}
+          className={cn(
+            'p-2 rounded-full hover:bg-slate-50 shrink-0 transition-colors',
+            showAttach ? 'text-emerald-600' : 'text-slate-400'
+          )}
           aria-label="Attach"
         >
-          {showAttach ? <X className="w-6 h-6" /> : <Paperclip className="w-6 h-6" />}
+          {showAttach ? <X className="w-5 h-5" /> : <Paperclip className="w-5 h-5" />}
         </button>
 
-        <div className="flex-1 relative">
-          <textarea
+        <div className="flex-1">
+          <input
             ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={disabled}
-            placeholder="Type a message"
-            rows={1}
-            className="w-full resize-none rounded-xl px-4 py-2.5 bg-wa-input border border-wa-border text-sm text-wa-text-primary placeholder:text-wa-text-muted focus:outline-none focus:ring-2 focus:ring-emerald-500/30 max-h-32"
-            style={{ minHeight: '42px' }}
+            placeholder="Type a message..."
+            className="w-full rounded-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300"
           />
         </div>
 
-        <Button
+        <button
           type="button"
           onClick={handleSend}
           disabled={!text.trim() || disabled}
-          size="icon"
-          className="shrink-0 rounded-full w-11 h-11 bg-emerald-500 hover:bg-emerald-600 border-emerald-500 shadow-lg shadow-emerald-500/25 disabled:opacity-40"
+          className="shrink-0 w-11 h-11 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/25 disabled:opacity-40 transition-colors"
+          aria-label="Send"
         >
-          <Send className="w-5 h-5" />
-        </Button>
+          <Send className="w-4 h-4 ml-0.5" />
+        </button>
       </div>
     </div>
   );

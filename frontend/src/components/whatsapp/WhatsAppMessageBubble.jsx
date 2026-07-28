@@ -16,7 +16,7 @@ function AttachmentPreview({ type, text, attachment }) {
 
   const Icon = type === 'pdf' ? FileText : File;
   return (
-    <div className="flex items-center gap-3 p-2.5 rounded-lg bg-black/5 dark:bg-white/5 mb-1 min-w-[200px]">
+    <div className="flex items-center gap-3 p-2.5 rounded-lg bg-black/5 mb-1 min-w-[200px]">
       <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center shrink-0', type === 'pdf' ? 'bg-red-500/15 text-red-500' : 'bg-blue-500/15 text-blue-500')}>
         <Icon className="w-5 h-5" />
       </div>
@@ -36,10 +36,10 @@ function WhatsAppMessageBubble({ message }) {
     <div className={cn('flex', isOutgoing ? 'justify-end' : 'justify-start')}>
       <div
         className={cn(
-          'relative max-w-[75%] sm:max-w-[65%] px-3 py-1.5 rounded-lg shadow-sm',
+          'relative max-w-[75%] sm:max-w-[65%] px-3 py-2 rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.06)]',
           isOutgoing
-            ? 'bg-wa-bubble-out text-wa-bubble-out-text rounded-tr-none'
-            : 'bg-wa-bubble-in text-wa-bubble-in-text rounded-tl-none'
+            ? 'bg-[#dcf8c6] text-slate-900 rounded-tr-md'
+            : 'bg-white text-slate-900 rounded-tl-md border border-white/80'
         )}
       >
         {message.type !== 'text' ? (
@@ -48,10 +48,10 @@ function WhatsAppMessageBubble({ message }) {
           <p className="text-[13.5px] leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
         )}
 
-        <div className={cn('flex items-center gap-1 justify-end mt-0.5 -mb-0.5', isOutgoing ? 'text-emerald-100/70' : 'text-wa-text-muted')}>
+        <div className={cn('flex items-center gap-1 justify-end mt-1', isOutgoing ? 'text-emerald-700/50' : 'text-slate-400')}>
           <span className="text-[10px]">{formatMessageTime(message.timestamp)}</span>
           {isOutgoing && (
-            <span className={cn('text-[11px]', message.status === 'read' ? 'text-sky-300' : '')}>
+            <span className={cn('text-[11px] leading-none', message.status === 'read' ? 'text-sky-500' : '')}>
               {MESSAGE_STATUS_ICON[message.status] || '✓'}
             </span>
           )}

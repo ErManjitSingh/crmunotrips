@@ -36,22 +36,22 @@
     --sidebar-image-active-text: #ea580c;
     --sidebar-image-scrim: rgba(255, 252, 248, 0.72);
 
-    /* WhatsApp Inbox — light */
+    /* WhatsApp Inbox — light (CRM mockup) */
     --wa-panel: #ffffff;
-    --wa-header: #f0f2f5;
-    --wa-chat-bg: #efeae2;
-    --wa-input: #f0f2f5;
-    --wa-border: #e9edef;
-    --wa-divider: #e9edef;
-    --wa-list-hover: #f5f6f6;
-    --wa-list-active: #f0f2f5;
-    --wa-text-primary: #111b21;
-    --wa-text-secondary: #667781;
-    --wa-text-muted: #8696a0;
-    --wa-bubble-out: #d9fdd3;
-    --wa-bubble-out-text: #111b21;
+    --wa-header: #ffffff;
+    --wa-chat-bg: #f7f3eb;
+    --wa-input: #f3f4f6;
+    --wa-border: #e8ecf1;
+    --wa-divider: #eef1f5;
+    --wa-list-hover: #f8fafc;
+    --wa-list-active: #e8f8ef;
+    --wa-text-primary: #0f172a;
+    --wa-text-secondary: #64748b;
+    --wa-text-muted: #94a3b8;
+    --wa-bubble-out: #dcf8c6;
+    --wa-bubble-out-text: #0f172a;
     --wa-bubble-in: #ffffff;
-    --wa-bubble-in-text: #111b21;
+    --wa-bubble-in-text: #0f172a;
   }
 
   .dark {
@@ -132,17 +132,34 @@
     border-color: rgba(255, 255, 255, 0.08);
   }
 
+  .wa-inbox {
+    background: #ffffff;
+    /* Keep WhatsApp surface light even when CRM is in dark mode */
+    --wa-panel: #ffffff;
+    --wa-header: #ffffff;
+    --wa-chat-bg: #f7f3eb;
+    --wa-input: #f3f4f6;
+    --wa-border: #e8ecf1;
+    --wa-divider: #eef1f5;
+    --wa-list-hover: #f8fafc;
+    --wa-list-active: #e8f8ef;
+    --wa-text-primary: #0f172a;
+    --wa-text-secondary: #64748b;
+    --wa-text-muted: #94a3b8;
+    --wa-bubble-out: #dcf8c6;
+    --wa-bubble-out-text: #0f172a;
+    --wa-bubble-in: #ffffff;
+    --wa-bubble-in-text: #0f172a;
+  }
+
   .wa-chat-pattern {
     background-color: var(--wa-chat-bg);
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-image: radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.04) 1px, transparent 0);
+    background-size: 18px 18px;
   }
 
   .dark .wa-chat-pattern {
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  }
-
-  .wa-inbox {
-    background: var(--wa-panel);
+    background-image: radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.04) 1px, transparent 0);
   }
 
   .card-premium {

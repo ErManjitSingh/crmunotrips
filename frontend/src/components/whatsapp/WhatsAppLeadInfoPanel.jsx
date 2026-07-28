@@ -1,19 +1,43 @@
-import { X, Mail, MapPin, Globe, Calendar, Wallet, User, Tag, Users } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import {
+  X,
+  Mail,
+  MapPin,
+  Globe,
+  Calendar,
+  Wallet,
+  User,
+  Users,
+  Phone,
+  StickyNote,
+  CalendarClock,
+  MoreHorizontal,
+  MessageCircle,
+  FolderOpen,
+  Activity,
+} from 'lucide-react';
 import { cn } from '../../lib/utils';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
-import WhatsAppQuickActions from './WhatsAppQuickActions';
 import WhatsAppNotesTimeline from './WhatsAppNotesTimeline';
 import WhatsAppFollowUpPanel from './WhatsAppFollowUpPanel';
-import { formatBudget, formatTravelDate, getInitials, formatWhatsAppPhone, resolveWhatsAppDisplayName } from './whatsappUtils';
+import { INFO_TABS } from './constants';
+import {
+  formatBudget,
+  formatTravelDate,
+  getInitials,
+  formatWhatsAppPhone,
+  resolveWhatsAppDisplayName,
+} from './whatsappUtils';
 
 function InfoRow({ icon: Icon, label, value }) {
   return (
-    <div className="flex items-center gap-2.5 py-1.5">
-      <Icon className="w-3.5 h-3.5 text-wa-text-muted shrink-0" />
+    <div className="flex items-center gap-3 py-2">
+      <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+        <Icon className="w-3.5 h-3.5 text-slate-400" />
+      </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] text-wa-text-muted">{label}</p>
-        <p className="text-xs text-wa-text-primary truncate">{value || '—'}</p>
+        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">{label}</p>
+        <p className="text-[13px] text-slate-800 truncate font-medium">{value || 'Not provided'}</p>
       </div>
     </div>
   );
@@ -21,23 +45,24 @@ function InfoRow({ icon: Icon, label, value }) {
 
 function Section({ title, children }) {
   return (
-    <div className="space-y-2">
-      <h4 className="text-xs font-semibold uppercase tracking-wider text-wa-text-muted">{title}</h4>
-      <div className="rounded-xl bg-wa-input/40 border border-wa-border/50 p-3 space-y-0.5">
+    <div className="space-y-1">
+      <h4 className="text-[11px] font-semibold uppercase tracking-wider text-violet-600/80 px-0.5">
+        {title}
+      </h4>
+      <div className="rounded-xl border border-slate-100 bg-white px-3 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         {children}
       </div>
     </div>
   );
 }
 
-function BotAnswersSection({ botAnswers }) {
+function BotAnswersBlock({ botAnswers }) {
   if (!botAnswers) return null;
   const hasDate = botAnswers.travelDate || botAnswers.travelDateRaw;
   const hasTravelers = botAnswers.travelers != null && botAnswers.travelers !== '';
   if (!hasDate && !hasTravelers) return null;
-
   return (
-    <Section title="Auto collected (WhatsApp)">
+    <Section title="Auto collected">
       <InfoRow
         icon={Calendar}
         label="Kab jana hai"
@@ -56,6 +81,14 @@ function BotAnswersSection({ botAnswers }) {
   );
 }
 
+const QUICK_ACTIONS = [
+  { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, tone: 'text-emerald-600 bg-emerald-50' },
+  { key: 'call', label: 'Call', icon: Phone, tone: 'text-sky-600 bg-sky-50' },
+  { key: 'note', label: 'Note', icon: StickyNote, tone: 'text-amber-600 bg-amber-50' },
+  { key: 'followup', label: 'Follow Up', icon: CalendarClock, tone: 'text-violet-600 bg-violet-50' },
+  { key: 'more', label: 'More', icon: MoreHorizontal, tone: 'text-slate-600 bg-slate-50' },
+];
+
 export default function WhatsAppLeadInfoPanel({
   lead,
   contact,
@@ -68,123 +101,206 @@ export default function WhatsAppLeadInfoPanel({
   canAssign = true,
   className,
 }) {
+  const [tab, setTab] = useState('details');
+  const [showMore, setShowMore] = useState(false);
   const botAnswers = contact?.botAnswers || null;
+  const name = resolveWhatsAppDisplayName(contact || {}, lead);
+  const phone = formatWhatsAppPhone(contact?.waId || contact?.phone || lead?.phone);
   const travelDate = lead?.travelDate || botAnswers?.travelDate || null;
   const travelDateLabel = travelDate
     ? formatTravelDate(travelDate)
     : botAnswers?.travelDateRaw || null;
-  const travelers =
-    lead?.travelers || lead?.adults || botAnswers?.travelers || null;
+  const travelers = lead?.travelers || lead?.adults || botAnswers?.travelers || null;
 
   if (!lead && !contact) {
     return (
-      <div className={cn('flex flex-col items-center justify-center h-full bg-wa-panel border-l border-wa-border p-6 text-center', className)}>
-        <p className="text-sm text-wa-text-muted">Select a chat to view details</p>
+      <div className={cn('flex flex-col items-center justify-center h-full bg-white border-l border-slate-200/80 p-6 text-center', className)}>
+        <p className="text-sm text-slate-400">Select a chat to view details</p>
       </div>
     );
   }
 
-  if (!lead && contact) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className={cn('flex flex-col h-full bg-wa-panel/95 backdrop-blur-xl border-l border-wa-border', className)}
-      >
-        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-wa-border bg-wa-header/80">
-          <h3 className="font-semibold text-wa-text-primary text-sm">New WhatsApp Chat</h3>
+  const handleQuick = (key) => {
+    if (key === 'whatsapp') return;
+    if (key === 'more') {
+      setShowMore((v) => !v);
+      return;
+    }
+    onAction?.(key);
+  };
+
+  return (
+    <div className={cn('flex flex-col h-full bg-white border-l border-slate-200/80', className)}>
+      <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-100">
+        <h3 className="font-semibold text-slate-900 text-sm">Lead Information</h3>
+        <div className="flex items-center gap-1">
           {onClose && (
-            <button type="button" onClick={onClose} className="xl:hidden p-1.5 rounded-lg hover:bg-wa-list-hover text-wa-text-muted">
+            <button
+              type="button"
+              onClick={onClose}
+              className="xl:hidden p-1.5 rounded-lg hover:bg-slate-50 text-slate-400"
+            >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <div className="text-center pb-4 border-b border-wa-border/50">
-            <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white font-bold text-xl shadow-lg mb-3">
-              {getInitials(resolveWhatsAppDisplayName(contact))}
-            </div>
-            <h3 className="font-bold text-wa-text-primary">{resolveWhatsAppDisplayName(contact)}</h3>
-            <p className="text-xs text-wa-text-muted mt-1 tabular-nums">{formatWhatsAppPhone(contact.waId || contact.phone)}</p>
-          </div>
-          <BotAnswersSection botAnswers={botAnswers} />
-          <p className="text-sm text-wa-text-secondary">
-            Ye chat abhi lead nahi hai. Create Lead dabao — CRM me WhatsApp source ke saath lead ban jayegi.
-            Auto collected details lead me save ho jayengi.
-          </p>
-          {onCreateLead && (
-            <button
-              type="button"
-              onClick={onCreateLead}
-              disabled={creatingLead}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 disabled:opacity-60"
-            >
-              {creatingLead ? 'Creating…' : 'Create Lead'}
-            </button>
-          )}
-        </div>
-      </motion.div>
-    );
-  }
+      </div>
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className={cn('flex flex-col h-full bg-wa-panel/95 backdrop-blur-xl border-l border-wa-border', className)}
-    >
-      <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-wa-border bg-wa-header/80">
-        <h3 className="font-semibold text-wa-text-primary text-sm">Lead Information</h3>
-        {onClose && (
-          <button type="button" onClick={onClose} className="xl:hidden p-1.5 rounded-lg hover:bg-wa-list-hover text-wa-text-muted">
-            <X className="w-4 h-4" />
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-500 to-blue-400 p-5 text-center text-white shadow-lg shadow-violet-500/20">
+          <div className="w-16 h-16 mx-auto rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white font-bold text-xl border-2 border-white/30 mb-3">
+            {getInitials(name)}
+          </div>
+          <h3 className="font-bold text-lg leading-tight">{name}</h3>
+          <p className="text-sm text-white/85 mt-1 tabular-nums">{phone}</p>
+          <div className="mt-3 flex justify-center">
+            {lead ? (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-white/20 border border-white/25">
+                {lead.status === 'new' ? 'New Lead' : String(lead.status || '').replace(/_/g, ' ')}
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-400/30 border border-white/20">
+                New chat
+              </span>
+            )}
+          </div>
+        </div>
+
+        {!lead && onCreateLead && (
+          <button
+            type="button"
+            onClick={onCreateLead}
+            disabled={creatingLead}
+            className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 disabled:opacity-60"
+          >
+            {creatingLead ? 'Creating…' : 'Create Lead'}
           </button>
         )}
-      </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
-        <div className="flex flex-col items-center text-center pb-4 border-b border-wa-border/50">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white font-bold text-xl shadow-lg mb-3">
-            {getInitials(resolveWhatsAppDisplayName(contact || {}, lead))}
-          </div>
-          <h3 className="font-bold text-wa-text-primary">{resolveWhatsAppDisplayName(contact || {}, lead)}</h3>
-          <p className="text-xs text-wa-text-muted mt-1 tabular-nums">
-            {formatWhatsAppPhone(contact?.waId || contact?.phone || lead.phone)}
-          </p>
-          <div className="mt-2">
-            <LeadStatusBadge status={lead.status} />
-          </div>
+        {lead && (
+          <>
+            <div className="grid grid-cols-5 gap-1">
+              {QUICK_ACTIONS.map(({ key, label, icon: Icon, tone }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleQuick(key)}
+                  className="flex flex-col items-center gap-1.5 group"
+                >
+                  <span className={cn('w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105', tone)}>
+                    <Icon className="w-4.5 h-4.5" />
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-500">{label}</span>
+                </button>
+              ))}
+            </div>
+
+            {showMore && (
+              <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-slate-50 border border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => onAction?.('quotation')}
+                  className="text-xs font-semibold text-slate-700 px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50"
+                >
+                  Quotation
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAction?.('status')}
+                  className="text-xs font-semibold text-slate-700 px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50"
+                >
+                  Lead status
+                </button>
+                {canAssign && (
+                  <button
+                    type="button"
+                    onClick={() => onAction?.('assign')}
+                    className="text-xs font-semibold text-slate-700 px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 col-span-2"
+                  >
+                    Assign Lead
+                  </button>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="flex gap-1 overflow-x-auto scrollbar-none border-b border-slate-100 pb-px">
+          {INFO_TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={cn(
+                'shrink-0 px-3 py-2 text-[12px] font-semibold border-b-2 -mb-px transition-colors',
+                tab === t.key
+                  ? 'text-violet-600 border-violet-600'
+                  : 'text-slate-400 border-transparent hover:text-slate-600'
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
 
-        <Section title="Customer Details">
-          <InfoRow icon={User} label="WhatsApp" value={formatWhatsAppPhone(contact?.waId || contact?.phone || lead.phone)} />
-          <InfoRow icon={User} label="CRM lead" value={lead.name} />
-          <InfoRow icon={Mail} label="Email" value={lead.email} />
-          <InfoRow icon={MapPin} label="City" value={lead.city} />
-        </Section>
+        {tab === 'details' && (
+          <div className="space-y-4">
+            <Section title="Customer Details">
+              <InfoRow icon={Phone} label="WhatsApp" value={phone} />
+              <InfoRow icon={User} label="CRM Lead" value={lead?.name || name} />
+              <InfoRow icon={Mail} label="Email" value={lead?.email} />
+              <InfoRow icon={MapPin} label="City" value={lead?.city} />
+            </Section>
+            <BotAnswersBlock botAnswers={botAnswers} />
+            {lead && (
+              <Section title="Assignment">
+                <InfoRow icon={User} label="Assigned Executive" value={lead.assignedTo?.name} />
+                <div className="py-2 px-1">
+                  <LeadStatusBadge status={lead.status} />
+                </div>
+              </Section>
+            )}
+          </div>
+        )}
 
-        <Section title="Travel Details">
-          <InfoRow icon={Globe} label="Destination" value={lead.destination} />
-          <InfoRow icon={Calendar} label="Travel Date" value={travelDateLabel} />
-          <InfoRow icon={Users} label="Travelers" value={travelers != null ? String(travelers) : '—'} />
-          <InfoRow icon={Wallet} label="Budget" value={formatBudget(lead.budget)} />
-        </Section>
+        {tab === 'travel' && (
+          <div className="space-y-4">
+            <Section title="Travel Details">
+              <InfoRow icon={Globe} label="Destination" value={lead?.destination} />
+              <InfoRow icon={Calendar} label="Travel Date" value={travelDateLabel} />
+              <InfoRow icon={Users} label="Travelers" value={travelers != null ? String(travelers) : null} />
+              <InfoRow icon={Wallet} label="Budget" value={lead ? formatBudget(lead.budget) : null} />
+            </Section>
+            <BotAnswersBlock botAnswers={botAnswers} />
+          </div>
+        )}
 
-        <BotAnswersSection botAnswers={botAnswers} />
+        {tab === 'notes' && (
+          lead ? (
+            <WhatsAppNotesTimeline notes={notes || []} onAddNote={() => onAction?.('note')} />
+          ) : (
+            <p className="text-xs text-slate-400 italic">Create a lead to add notes.</p>
+          )
+        )}
 
-        <Section title="Lead Details">
-          <InfoRow icon={Tag} label="Lead Source" value={lead.sourceLabel || 'WhatsApp'} />
-          <InfoRow icon={User} label="Assigned Executive" value={lead.assignedTo?.name} />
-        </Section>
+        {tab === 'activity' && (
+          lead ? (
+            <WhatsAppFollowUpPanel lead={lead} followups={followups || []} />
+          ) : (
+            <div className="text-center py-8 text-slate-400">
+              <Activity className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              <p className="text-xs">No activity yet</p>
+            </div>
+          )
+        )}
 
-        <div>
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-wa-text-muted mb-2">Quick Actions</h4>
-          <WhatsAppQuickActions lead={lead} onAction={onAction} canAssign={canAssign} />
-        </div>
-
-        <WhatsAppFollowUpPanel lead={lead} followups={followups} />
-        <WhatsAppNotesTimeline notes={notes} onAddNote={() => onAction('note')} />
+        {tab === 'files' && (
+          <div className="text-center py-10 text-slate-400">
+            <FolderOpen className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p className="text-xs">No files attached</p>
+          </div>
+        )}
       </div>
-    </motion.div>
+    </div>
   );
 }

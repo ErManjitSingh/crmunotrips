@@ -4,8 +4,6 @@ export const STATUS_FILTERS = [
   { key: 'working_progress', label: 'Working Progress' },
   { key: 'follow_up', label: 'Follow Up' },
   { key: 'converted', label: 'Converted' },
-  { key: 'lost', label: 'Lost' },
-  { key: 'booked_from_another_company', label: 'Booked From Another Company' },
 ];
 
 export const LEAD_STATUSES = [
@@ -26,3 +24,11 @@ export const MESSAGE_STATUS_ICON = {
   delivered: '✓✓',
   read: '✓✓',
 };
+
+export const INFO_TABS = [
+  { key: 'details', label: 'Details' },
+  { key: 'travel', label: 'Travel' },
+  { key: 'notes', label: 'Notes' },
+  { key: 'activity', label: 'Activity' },
+  { key: 'files', label: 'Files' },
+];

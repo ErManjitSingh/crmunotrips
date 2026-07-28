@@ -8,21 +8,24 @@ export default function WhatsAppInboxLayout({
   className,
 }) {
   return (
-    <div className={cn('wa-inbox flex overflow-hidden rounded-2xl border border-wa-border shadow-2xl shadow-black/10', className)}>
-      {/* Left — Lead List */}
+    <div
+      className={cn(
+        'wa-inbox flex overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)]',
+        className
+      )}
+    >
       <div
         className={cn(
-          'w-full lg:w-[340px] xl:w-[380px] shrink-0 flex flex-col',
+          'w-full lg:w-[340px] xl:w-[360px] shrink-0 flex flex-col bg-white',
           mobileView !== 'list' && 'hidden lg:flex'
         )}
       >
         {listPanel}
       </div>
 
-      {/* Center — Conversation */}
       <div
         className={cn(
-          'flex-1 min-w-0 flex flex-col border-x border-wa-border',
+          'flex-1 min-w-0 flex flex-col border-x border-slate-200/80',
           mobileView === 'info' && 'hidden lg:flex',
           mobileView === 'list' && 'hidden lg:flex',
           mobileView === 'chat' && 'flex'
@@ -31,10 +34,9 @@ export default function WhatsAppInboxLayout({
         {chatPanel}
       </div>
 
-      {/* Right — Lead Info */}
       <div
         className={cn(
-          'w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col',
+          'w-full lg:w-[300px] xl:w-[340px] shrink-0 flex flex-col bg-white',
           mobileView === 'info' ? 'flex fixed inset-0 z-30 lg:relative lg:inset-auto' : 'hidden xl:flex',
           mobileView === 'list' && 'hidden xl:flex',
           mobileView === 'chat' && 'hidden xl:flex'

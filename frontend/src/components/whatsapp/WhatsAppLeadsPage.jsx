@@ -39,12 +39,14 @@ function WhatsAppLeadsPage() {
   const [modals, setModals] = useState({ note: false, status: false, assign: false, followup: false });
   const [creatingLead, setCreatingLead] = useState(false);
   const [sending, setSending] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
   const debouncedSearch = useDebouncedValue(search, 280);
 
   const conversationsQuery = useQuery({
     queryKey: ['whatsapp', 'conversations', { statusFilter, search: debouncedSearch }],
     queryFn: async () => {
-      const params = { page: 1, limit: 50 };
+      const params = { page: 1, limit: 100 };
       if (statusFilter) params.status = statusFilter;
       if (debouncedSearch) params.search = debouncedSearch;
       const res = await API.get('/whatsapp/conversations', { params, skipSuccessToast: true });
@@ -92,6 +94,26 @@ function WhatsAppLeadsPage() {
   const executives = executivesQuery.data ?? [];
   const loading = conversationsQuery.isLoading && !conversationsQuery.data;
   const messagesLoading = threadQuery.isLoading && !!detailsKey && !threadQuery.data;
+
+  const activeCount = useMemo(
+    () => conversations.filter((c) => (c.unreadCount || 0) > 0 || c.lastDirection === 'incoming').length || conversations.length,
+    [conversations]
+  );
+
+  const pagedConversations = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return conversations.slice(start, start + pageSize);
+  }, [conversations, page, pageSize]);
+
+  const handleStatusFilterChange = useCallback((key) => {
+    setStatusFilter(key);
+    setPage(1);
+  }, []);
+
+  const handleSearchChange = useCallback((value) => {
+    setSearch(value);
+    setPage(1);
+  }, []);
 
   const refreshConversations = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['whatsapp', 'conversations'] });
@@ -317,14 +339,19 @@ function WhatsAppLeadsPage() {
         className="h-[calc(100dvh-5.5rem)] lg:h-[calc(100dvh-6rem)]"
         listPanel={
           <WhatsAppLeadList
-            conversations={conversations}
+            conversations={pagedConversations}
             selectedId={selectedKey}
             onSelect={handleSelect}
             search={search}
-            onSearchChange={setSearch}
+            onSearchChange={handleSearchChange}
             statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
+            onStatusFilterChange={handleStatusFilterChange}
             loading={loading}
+            activeCount={activeCount}
+            page={page}
+            pageSize={pageSize}
+            total={conversations.length}
+            onPageChange={setPage}
           />
         }
         chatPanel={
