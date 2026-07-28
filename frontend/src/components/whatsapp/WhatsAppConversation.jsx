@@ -29,7 +29,7 @@ function WhatsAppConversation({
 
   if (!hasThread) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-[#f7f3eb] text-center p-8">
+      <div className="flex flex-col items-center justify-center h-full wa-chat-pattern text-center p-8">
         <div className="max-w-sm">
           <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-white border border-dashed border-slate-200 flex items-center justify-center shadow-sm">
             <MessageCircle className="w-10 h-10 text-emerald-500/60" />
@@ -44,7 +44,7 @@ function WhatsAppConversation({
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#f7f3eb]">
+    <div className="flex flex-col h-full bg-[#e5ddd5]">
       <WhatsAppConversationHeader
         lead={lead}
         contact={contact}
