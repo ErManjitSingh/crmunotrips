@@ -9,7 +9,7 @@ export const WIZARD_STEPS = [
 
 export const LEAD_SOURCES = [
   { value: 'google_ads', label: 'Website (Google Ads)' },
-  { value: 'facebook_ads', label: 'Facebook Lead' },
+  { value: 'facebook_ads', label: 'DPW2' },
   { value: 'website', label: 'DPW' },
   { value: 'whatsapp', label: 'WhatsApp' },
   { value: 'referral', label: 'Referral' },

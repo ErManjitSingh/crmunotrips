@@ -405,12 +405,8 @@ function mapLeadFields(graphLead = {}, meta = {}) {
       .map(([k, v]) => `${k}: ${v}`),
   ].filter(Boolean);
 
-  // sourceLabel / landingPage carry campaign so CRM lists show camp context
-  const sourceLabel = campaignLabel
-    ? `Facebook · ${campaignLabel}`
-    : formName
-      ? `Facebook · ${formName}`
-      : 'Facebook Lead';
+  // Campaign stays on landingPage; CRM source badge is DPW2
+  const sourceLabel = 'DPW2';
 
   return {
     name,
@@ -424,12 +420,12 @@ function mapLeadFields(graphLead = {}, meta = {}) {
     notes: noteLines.join('\n'),
     landingPage: campaignLabel || formName || undefined,
     channel: 'facebook',
-    source: 'Facebook Lead',
+    source: 'facebook_ads',
     sourceLabel,
     sourceKey: 'facebook_ads',
     captureType: 'facebook_lead_ads',
-    externalLeadId: String(graphLead.id || meta.leadgenId || ''),
     externalLeadSource: 'facebook_leadgen',
+    externalLeadId: String(graphLead.id || meta.leadgenId || ''),
     _mappedFields: fields,
     _phoneFallback: phoneFallback,
     _personName: personName,

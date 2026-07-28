@@ -7,10 +7,11 @@ const SOURCE_LABELS = {
   phone: 'Phone',
   other: 'Other',
   google_ads: 'Google Ads',
-  facebook_ads: 'Facebook Lead',
+  facebook_ads: 'DPW2',
   organic: 'Organic',
   DPW: 'DPW',
-  'Facebook Lead': 'Facebook Lead',
+  DPW2: 'DPW2',
+  'Facebook Lead': 'DPW2',
 };
 
 export function getInitials(name) {

@@ -74,7 +74,7 @@ async function resolvePublicBranchId(explicitBranchId) {
 
 /**
  * Website / Meta landers → DPW.
- * Facebook Lead Ads → Facebook Lead.
+ * Facebook Lead Ads → DPW2.
  * WhatsApp chats → WhatsApp.
  */
 function resolvePublicLeadSource(raw = {}) {
@@ -96,13 +96,9 @@ function resolvePublicLeadSource(raw = {}) {
     String(raw.channel || '').toLowerCase() === 'facebook';
 
   if (isFacebook) {
-    const explicitLabel = String(raw.sourceLabel || '').trim();
     return {
       source: 'facebook_ads',
-      sourceLabel:
-        explicitLabel && !['facebook', 'facebook lead', 'facebook_ads', 'fb lead'].includes(explicitLabel.toLowerCase())
-          ? explicitLabel
-          : 'Facebook Lead',
+      sourceLabel: 'DPW2',
       channel: 'facebook',
     };
   }
@@ -156,7 +152,7 @@ async function ingestPublicLead(raw = {}) {
   const rawSourceText = String(raw.landingPage || raw.page || raw.landing || raw.sourceLabel || raw.source || '').trim();
   const landingPage =
     rawSourceText &&
-    !['dpw', 'website', 'facebook', 'facebook lead', 'facebook_ads', 'fb lead', 'meta', 'whatsapp'].includes(
+    !['dpw', 'dpw2', 'website', 'facebook', 'facebook lead', 'facebook_ads', 'fb lead', 'meta', 'whatsapp'].includes(
       rawSourceText.toLowerCase()
     )
       ? rawSourceText

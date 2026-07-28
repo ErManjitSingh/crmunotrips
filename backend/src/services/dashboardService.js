@@ -209,7 +209,7 @@ const SOURCE_LABELS = {
   phone: 'Phone',
   other: 'Organic',
   google_ads: 'Google Ads',
-  facebook_ads: 'Facebook Lead',
+  facebook_ads: 'DPW2',
   organic: 'Organic',
   instagram: 'Instagram',
 };

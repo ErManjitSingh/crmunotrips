@@ -14,7 +14,7 @@ const SOURCE_LABELS = {
   email: 'Email',
   social: 'Social Media',
   google_ads: 'Google Ads',
-  facebook_ads: 'Facebook Lead',
+  facebook_ads: 'DPW2',
   organic: 'Organic',
   other: 'Other',
 };
