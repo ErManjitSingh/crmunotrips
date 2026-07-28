@@ -24,15 +24,28 @@ const listConversations = asyncHandler(async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 40, maxLimit: 100 });
 
   const filter = { isArchived: { $ne: true } };
-  if (req.branchId) filter.branchId = req.branchId;
+  // Include conversations not yet tagged with a branch (webhook ingest used to omit branchId)
+  if (req.branchId) {
+    filter.$and = [
+      {
+        $or: [
+          { branchId: req.branchId },
+          { branchId: null },
+          { branchId: { $exists: false } },
+        ],
+      },
+    ];
+  }
   if (onlyUnlinked === '1' || onlyUnlinked === 'true') filter.lead = null;
   if (search) {
     const q = String(search).trim();
-    filter.$or = [
+    const searchOr = [
       { phone: new RegExp(q.replace(/\D/g, '').slice(-10) || q, 'i') },
       { profileName: new RegExp(q, 'i') },
       { lastMessageText: new RegExp(q, 'i') },
     ];
+    if (filter.$and) filter.$and.push({ $or: searchOr });
+    else filter.$or = searchOr;
   }
 
   const [conversations, total] = await Promise.all([

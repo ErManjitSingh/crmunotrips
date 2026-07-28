@@ -81,8 +81,20 @@ async function findLeadByPhone(phone10) {
     isDeleted: { $ne: true },
     $or: [{ phone: re }, { whatsapp: re }, { alternatePhone: re }],
   })
-    .select('_id name phone destination status channel')
+    .select('_id name phone destination status channel branchId')
     .lean();
+}
+
+async function resolveWhatsAppBranchId(lead) {
+  if (lead?.branchId) return lead.branchId;
+  const fromEnv = process.env.WHATSAPP_DEFAULT_BRANCH_ID || process.env.PUBLIC_LEAD_BRANCH_ID;
+  if (fromEnv) return fromEnv;
+  try {
+    const { resolvePublicBranchId } = require('./publicLeadIngestService');
+    return await resolvePublicBranchId();
+  } catch {
+    return null;
+  }
 }
 
 async function upsertConversation({ phone, waId, profileName, text, direction, timestamp }) {
@@ -90,9 +102,13 @@ async function upsertConversation({ phone, waId, profileName, text, direction, t
   if (!phone10) return null;
 
   let conversation = await WhatsAppConversation.findOne({ phone: phone10 });
-  const lead = conversation?.lead
-    ? null
-    : await findLeadByPhone(phone10);
+  let lead = null;
+  if (conversation?.lead) {
+    lead = await Lead.findById(conversation.lead).select('_id branchId').lean();
+  } else {
+    lead = await findLeadByPhone(phone10);
+  }
+  const branchId = await resolveWhatsAppBranchId(lead);
 
   if (!conversation) {
     conversation = await WhatsAppConversation.create({
@@ -104,6 +120,7 @@ async function upsertConversation({ phone, waId, profileName, text, direction, t
       lastDirection: direction,
       unreadCount: direction === 'incoming' ? 1 : 0,
       lead: lead?._id || null,
+      branchId: branchId || undefined,
     });
   } else {
     conversation.profileName = profileName || conversation.profileName;
@@ -113,6 +130,7 @@ async function upsertConversation({ phone, waId, profileName, text, direction, t
     conversation.lastDirection = direction;
     if (direction === 'incoming') conversation.unreadCount = (conversation.unreadCount || 0) + 1;
     if (!conversation.lead && lead?._id) conversation.lead = lead._id;
+    if (!conversation.branchId && branchId) conversation.branchId = branchId;
     await conversation.save();
   }
 
@@ -288,6 +306,7 @@ async function createLeadFromConversation(conversationId, extras = {}, actor = n
   });
 
   conversation.lead = lead._id;
+  if (lead.branchId) conversation.branchId = lead.branchId;
   await conversation.save();
   await WhatsAppMessage.updateMany(
     { conversation: conversation._id, lead: { $exists: false } },
