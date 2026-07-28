@@ -76,22 +76,21 @@ function mapMessageType(type) {
 
 async function findLeadByPhone(phone10) {
   if (!phone10 || phone10.length < 10) return null;
-  // Exact last-10 digit match only (avoid false links to other leads)
+  // Match primary phone / WhatsApp only — not alternatePhone (causes wrong person links)
   const candidates = await Lead.find({
     isDeleted: { $ne: true },
     $or: [
       { phone: new RegExp(`${phone10}$`) },
       { whatsapp: new RegExp(`${phone10}$`) },
-      { alternatePhone: new RegExp(`${phone10}$`) },
     ],
   })
-    .select('_id name phone whatsapp alternatePhone destination status channel branchId')
+    .select('_id name phone whatsapp destination status channel branchId')
     .limit(20)
     .lean();
 
   return (
     candidates.find((lead) => {
-      const phones = [lead.phone, lead.whatsapp, lead.alternatePhone].map((p) => normalizePhone(p));
+      const phones = [lead.phone, lead.whatsapp].map((p) => normalizePhone(p));
       return phones.includes(phone10);
     }) || null
   );
@@ -117,11 +116,11 @@ async function upsertConversation({ phone, waId, profileName, text, direction, t
   let lead = null;
   if (conversation?.lead) {
     lead = await Lead.findById(conversation.lead)
-      .select('_id branchId phone whatsapp alternatePhone')
+      .select('_id branchId phone whatsapp')
       .lean();
     // Drop wrong auto-link if CRM lead phone ≠ WhatsApp sender
     if (lead) {
-      const leadPhones = [lead.phone, lead.whatsapp, lead.alternatePhone].map((p) => normalizePhone(p));
+      const leadPhones = [lead.phone, lead.whatsapp].map((p) => normalizePhone(p));
       if (!leadPhones.includes(phone10)) {
         conversation.lead = null;
         lead = null;
