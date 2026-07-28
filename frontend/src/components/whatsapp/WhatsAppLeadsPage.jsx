@@ -111,7 +111,7 @@ export default function WhatsAppLeadsPage() {
     setSelected(conv);
     setMobileView('chat');
     if (conv.unreadCount > 0 || conv.unread) {
-      API.put(`/whatsapp/read/${conv.leadId || 'none'}`, null, {
+      API.put(`/whatsapp/read/${conv.leadId || 'none'}`, {}, {
         params: conv.conversationId ? { conversationId: conv.conversationId } : undefined,
         skipSuccessToast: true,
       }).then(refreshConversations).catch(() => {});
