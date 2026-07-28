@@ -90,7 +90,10 @@ function HotelCard({ meta, options = [], onOpenPicker, emptyLabel }) {
             {meta?.tierName && <span>{meta.tierName}</span>}
             {meta?.meals && <span>· {meta.meals}</span>}
             {Number(meta?.priceDelta) > 0 && (
-              <span className="font-semibold text-emerald-600">· {formatINR(meta.priceDelta)}/night</span>
+              <span className="font-semibold text-emerald-600">· +{formatINR(meta.priceDelta)}/night upgrade</span>
+            )}
+            {!(Number(meta?.priceDelta) > 0) && (
+              <span className="font-medium text-slate-500">· Included</span>
             )}
           </div>
         </div>

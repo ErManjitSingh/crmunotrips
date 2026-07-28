@@ -44,12 +44,22 @@ const BADGE_STYLES = [
 
 /** Price of an option relative to currently selected stay/cab. */
 function getOptionAmount(opt = {}) {
+  // Prefer true upgrade / cost delta. Catalog starting_price is display-only (included in package).
   const explicit =
-    Number(opt.perNight ?? opt.priceDelta ?? opt.cost ?? opt.totalAmount ?? 0) || 0;
-  const start = Number(opt.startingPrice ?? opt.starting_price ?? 0) || 0;
-  // Package upgrade_price is often null — fall back to catalog starting price.
+    Number(opt.perNight ?? opt.priceDelta ?? opt.cost ?? opt.totalAmount ?? opt.upgrade_price ?? 0) || 0;
   if (explicit !== 0) return explicit;
-  return start;
+  // For relative UI against current absolute rate, fall back to catalog rate when no upgrade.
+  return Number(opt.absolutePerNight ?? opt.startingPrice ?? opt.starting_price ?? 0) || 0;
+}
+
+/** Absolute nightly rate for "vs current" comparisons (not the cost delta). */
+function getAbsoluteNightly(opt = {}) {
+  return (
+    Number(opt.absolutePerNight ?? 0) ||
+    Number(opt.startingPrice ?? opt.starting_price ?? 0) ||
+    Number(opt.perNight ?? opt.priceDelta ?? 0) ||
+    0
+  );
 }
 
 function formatRelativePrice(amount, basePrice, { isCurrent = false } = {}) {
@@ -223,8 +233,12 @@ function CabOptionCard({ cab, selected, onSelect, basePrice = 0 }) {
 /** Horizontal list-row hotel card (mockup style, stacked vertically). */
 function HotelListRow({ option, selected, loading, onSelect, showDay, index, basePrice = 0 }) {
   const image = option.image || option.images?.[0];
-  const amount = getOptionAmount(option);
-  const rel = formatRelativePrice(amount, basePrice, { isCurrent: selected });
+  const upgrade = Number(option.priceDelta ?? option.upgrade_price ?? 0) || 0;
+  const absolute = getAbsoluteNightly(option);
+  // Compare absolute nightly rates so upgrade-only options don't look like −₹base.
+  const compareAmount = absolute > 0 ? absolute : Number(basePrice || 0) + upgrade;
+  const amount = absolute > 0 ? absolute : upgrade;
+  const rel = formatRelativePrice(compareAmount, basePrice, { isCurrent: selected });
   const stars = Number(option.starRating || 0);
   const badge = hotelBadge(option, index);
   const amenities = (option.amenities || []).slice(0, 3);
@@ -526,7 +540,7 @@ function buildFallbackRooms(option) {
       id: option.roomTypeId || `pkg-room-${option.id || option.name}`,
       name: option.tierName || 'Standard Room',
       description: 'Package room option',
-      pricePerNight: Number(option.priceDelta || 0),
+      pricePerNight: Number(option.startingPrice || option.absolutePerNight || option.priceDelta || 0),
       mealPlanOptions: FALLBACK_MEAL_PLANS,
       images: option.images || (option.image ? [option.image] : []),
       fromPackage: true,
@@ -641,11 +655,22 @@ export default function PackageResourcePickerDrawer({
   const selectMealPlan = (plan) => {
     if (!packageHotel || !selectedRoom) return;
     const absolute = Number(plan.absolutePrice || 0);
-    const perNight =
+    const absolutePerNight =
       absolute > 0
         ? absolute
         : Number(selectedRoom.pricePerNight || 0) + Number(plan.price || 0);
-    const totalCost = perNight * stayNights;
+    const base = Number(basePrice || 0);
+    const packageUpgrade =
+      Number(packageHotel.priceDelta ?? packageHotel.upgrade_price ?? 0) || 0;
+    // Package baseCost already includes default stay.
+    // Prefer absolute delta vs current rate; if included rate unknown, fall back to package upgrade only
+    // (never add full catalog rates on top of package price).
+    const costDeltaPerNight =
+      base > 0
+        ? Math.round((absolutePerNight - base) * 100) / 100
+        : packageUpgrade;
+    // One day-row = one night (day-wise seed model). Do not multiply by full stay here.
+    const totalCost = costDeltaPerNight;
     const catalogHotel = hotelDetail || packageHotel;
 
     onSelect?.({
@@ -660,7 +685,7 @@ export default function PackageResourcePickerDrawer({
       startingPrice: packageHotel.startingPrice || catalogHotel.startingPrice || 0,
       tierName: selectedRoom.name,
       meals: plan.label,
-      priceDelta: perNight,
+      priceDelta: costDeltaPerNight,
       room: {
         id: selectedRoom.id,
         name: selectedRoom.name,
@@ -674,9 +699,11 @@ export default function PackageResourcePickerDrawer({
         price: Number(plan.price || 0),
         absolutePrice: absolute,
       },
-      perNight,
+      perNight: costDeltaPerNight,
+      absolutePerNight,
+      includedRate: base,
       totalCost,
-      nights: stayNights,
+      nights: 1,
     });
   };
 

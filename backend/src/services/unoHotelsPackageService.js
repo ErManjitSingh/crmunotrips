@@ -207,11 +207,8 @@ function applyCatalogToOption(option = {}, catalog = null, stay = null) {
   const startingPrice = Number(
     hotel.starting_price ?? hotel.startingPrice ?? option.starting_price ?? option.startingPrice ?? 0
   );
-  const upgradePrice = Number(
-    option.price_delta ?? option.upgrade_price ?? option.price ?? 0
-  );
-  // Package day-options often ship upgrade_price=null; use catalog rate so diffs work.
-  const priceDelta = upgradePrice > 0 ? upgradePrice : startingPrice > 0 ? startingPrice : 0;
+  // True package upgrade only — never fall back to catalog rate (that double-counts vs package baseCost).
+  const priceDelta = Number(option.price_delta ?? option.upgrade_price ?? 0) || 0;
 
   return {
     ...option,
@@ -232,7 +229,7 @@ function applyCatalogToOption(option = {}, catalog = null, stay = null) {
     starting_price: startingPrice,
     startingPrice,
     price_delta: priceDelta,
-    upgrade_price: option.upgrade_price ?? upgradePrice,
+    upgrade_price: priceDelta,
   };
 }
 
@@ -312,10 +309,8 @@ function mapHotelMeta(option = {}) {
   const startingPrice = Number(
     option.starting_price ?? option.startingPrice ?? 0
   );
-  const upgradeOrDelta = Number(
-    option.price_delta ?? option.upgrade_price ?? option.price ?? 0
-  );
-  const priceDelta = upgradeOrDelta > 0 ? upgradeOrDelta : startingPrice > 0 ? startingPrice : 0;
+  // Upgrade delta only — package baseCost already includes the default hotel.
+  const priceDelta = Number(option.price_delta ?? option.upgrade_price ?? 0) || 0;
   return {
     id: option.hotel_id || option.id || name,
     hotelId: option.hotel_id || option.id || null,

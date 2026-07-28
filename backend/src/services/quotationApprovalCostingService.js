@@ -42,11 +42,12 @@ function buildCosting2({ quotation, markupPercent, actor }) {
   const c1 = quotation.costing1 || snapshotCosting1(quotation);
   const baseCost = toNum(c1.baseCost);
   const pct = Math.max(0, toNum(markupPercent));
-  const markup = Math.round((baseCost * pct) / 100);
-  const afterMarkup = baseCost + markup - toNum(c1.discount);
-  const taxes = c1.gstEnabled ? Math.round(afterMarkup * 0.05) : toNum(c1.taxes);
-  const grandTotal = Math.max(0, afterMarkup + taxes);
-  const profitMargin = afterMarkup > 0 ? Math.round((markup / afterMarkup) * 1000) / 10 : 0;
+  const disc = toNum(c1.discount);
+  // Match create-path formula: GST on costs, then markup on (costs + GST), then discount.
+  const taxes = c1.gstEnabled ? Math.round(baseCost * 0.05 * 100) / 100 : toNum(c1.taxes);
+  const markup = pct > 0 ? Math.round((baseCost + taxes) * (pct / 100) * 100) / 100 : 0;
+  const grandTotal = Math.max(0, baseCost + taxes + markup - disc);
+  const profitMargin = grandTotal > 0 ? Math.round(((markup - disc) / grandTotal) * 1000) / 10 : 0;
 
   return {
     label: 'Costing 2',
@@ -55,7 +56,7 @@ function buildCosting2({ quotation, markupPercent, actor }) {
     markup,
     profitMargin,
     taxes,
-    discount: toNum(c1.discount),
+    discount: disc,
     grandTotal,
     gstEnabled: Boolean(c1.gstEnabled),
     setBy: actor?._id,

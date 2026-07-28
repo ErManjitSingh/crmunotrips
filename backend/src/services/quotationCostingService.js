@@ -4,13 +4,19 @@ function toNumber(value) {
 }
 
 function resolveUnitPrice(item = {}) {
+  // Prefer line total / explicit cost. Never use catalog startingPrice — package base already includes it.
+  if (item.total != null && item.total !== '' && Number.isFinite(Number(item.total))) {
+    return toNumber(item.total);
+  }
   return toNumber(
     item.sellPrice ??
       item.price ??
       item.cost ??
-      item.startingPrice ??
       item.amount ??
-      item.unitPrice
+      item.unitPrice ??
+      item.priceDelta ??
+      item.perNight ??
+      0
   );
 }
 

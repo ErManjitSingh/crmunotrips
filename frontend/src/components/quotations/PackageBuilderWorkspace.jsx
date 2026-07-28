@@ -425,14 +425,19 @@ export default function PackageBuilderWorkspace({
     if (!day || !option) return;
     const roomName = option.room?.name || option.tierName || 'Standard Room';
     const mealLabel = option.mealPlan?.label || option.meals || day.meals || 'As per package';
+    // Cost contribution is upgrade delta only (package baseCost already includes default stay).
     const perNight = Number(option.perNight ?? option.priceDelta ?? 0);
-    const stayNights = Math.max(1, Number(option.nights || day.stayNights || 1));
-    const totalCost = Number(option.totalCost ?? perNight * stayNights);
+    const absolutePerNight = Number(
+      option.absolutePerNight ?? option.startingPrice ?? 0
+    );
+    const stayNights = 1;
+    const totalCost = Number(option.totalCost ?? perNight);
     const hotelMeta = {
       ...option,
       tierName: roomName,
       meals: mealLabel,
       priceDelta: perNight,
+      absolutePerNight,
       room: option.room || { name: roomName },
       mealPlan: option.mealPlan || { label: mealLabel },
     };
@@ -463,11 +468,13 @@ export default function PackageBuilderWorkspace({
         location: option.location || '',
         city: option.city || '',
         slug: option.slug || '',
-        startingPrice: option.startingPrice || 0,
+        startingPrice: option.startingPrice || absolutePerNight || 0,
       },
       room: option.room || { name: roomName },
       mealPlan: option.mealPlan || { label: mealLabel },
       perNight,
+      absolutePerNight,
+      includedRate: Number(option.includedRate ?? 0),
       totalCost,
       nights: stayNights,
       fromPackage: true,
@@ -512,22 +519,30 @@ export default function PackageBuilderWorkspace({
   }, [picker, itinerary]);
 
   const hotelBasePrice = useMemo(() => {
-    const pickAmount = (meta, dayHotel) => {
-      const perNight = Number(dayHotel?.perNight ?? meta?.perNight ?? 0) || 0;
-      const delta = Number(meta?.priceDelta ?? 0) || 0;
-      const start = Number(meta?.startingPrice ?? dayHotel?.hotel?.startingPrice ?? 0) || 0;
-      if (perNight !== 0) return perNight;
-      if (delta !== 0) return delta;
-      return start;
+    // Absolute nightly rate of the current selection (for "vs current" UI), not the cost delta.
+    const pickAbsolute = (meta, dayHotel) => {
+      const absolute =
+        Number(dayHotel?.absolutePerNight ?? meta?.absolutePerNight ?? 0) || 0;
+      const included =
+        Number(
+          dayHotel?.includedRate ??
+            dayHotel?.hotel?.startingPrice ??
+            meta?.startingPrice ??
+            meta?.includedRate ??
+            0
+        ) || 0;
+      if (absolute > 0) return absolute;
+      if (included > 0) return included;
+      return 0;
     };
     if (picker?.type === 'hotel' && picker.day) {
       const meta = picker.day.hotelMeta;
       const dayHotel = (dayWiseHotels || []).find((h) => h.day === picker.day.day);
-      return pickAmount(meta, dayHotel);
+      return pickAbsolute(meta, dayHotel);
     }
     const firstMeta = itinerary?.find((d) => d.hotelMeta)?.hotelMeta;
     const firstDayHotel = (dayWiseHotels || [])[0];
-    return pickAmount(firstMeta, firstDayHotel);
+    return pickAbsolute(firstMeta, firstDayHotel);
   }, [picker, itinerary, dayWiseHotels]);
 
   const cabBasePrice = Number(

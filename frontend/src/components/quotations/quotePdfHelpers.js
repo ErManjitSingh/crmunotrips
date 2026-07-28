@@ -97,6 +97,8 @@ export function buildSelectedHotelsSnapshot(dayWiseHotels) {
       nights: entry.nights || 1,
       price: entry.perNight,
       total: entry.totalCost ?? entry.perNight,
+      absolutePerNight: entry.absolutePerNight,
+      priceDelta: entry.perNight,
       externalSource: entry.hotel.externalSource || 'uno_hotels',
     }));
 }

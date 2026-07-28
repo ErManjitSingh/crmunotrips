@@ -385,14 +385,23 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     const defaultCab = packageCabs.find((c) => c.isDefault) || packageCabs[0] || null;
     setSelectedUnoCab(defaultCab);
 
-    setState((s) => ({
-      ...s,
-      pricing: {
+    setState((s) => {
+      const nextPricing = {
         ...s.pricing,
         baseCost: normalized.startingPrice || 0,
-        ...calculatePricing({ ...s.pricing, baseCost: normalized.startingPrice || 0 }),
-      },
-    }));
+        hotelCost: sumDayWiseHotelCost(seededHotels),
+        cabCost: Number(defaultCab?.totalAmount || defaultCab?.cost || 0),
+        flightCost: 0,
+        activityCost: 0,
+      };
+      return {
+        ...s,
+        pricing: {
+          ...nextPricing,
+          ...calculatePricing(nextPricing),
+        },
+      };
+    });
   };
 
   const selectPackage = async (pkg) => {

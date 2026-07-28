@@ -114,10 +114,10 @@ export function mapHotelOption(option = {}) {
     formatMealsLabel(option.meals) ||
     formatMealPlanCode(option.meal_plan || option.default_meal_plan);
   const startingPrice = Number(option.starting_price ?? option.startingPrice ?? 0);
-  const upgradeOrDelta = Number(
-    option.price_delta ?? option.priceDelta ?? option.upgrade_price ?? option.price ?? 0
-  );
-  const priceDelta = upgradeOrDelta > 0 ? upgradeOrDelta : startingPrice > 0 ? startingPrice : 0;
+  // True upgrade only — do not fall back to catalog starting_price (double-counts package base).
+  const priceDelta = Number(
+    option.price_delta ?? option.priceDelta ?? option.upgrade_price ?? 0
+  ) || 0;
   return {
     id: option.id || option.hotel_id || option.hotelId || name,
     name,
@@ -356,9 +356,12 @@ export function seedDayWiseHotelsFromItinerary(itinerary = []) {
         },
         room: { name: meta.tierName || 'Standard Room' },
         mealPlan: { label: meta.meals || day.meals || 'As per package' },
-        perNight: Number(meta.priceDelta || meta.startingPrice || 0),
-        totalCost: Number(meta.priceDelta || meta.startingPrice || 0),
-        nights: day.stayNights || 1,
+        // Package baseCost already includes default hotels — only upgrade deltas add cost.
+        perNight: Number(meta.priceDelta || 0),
+        totalCost: Number(meta.priceDelta || 0),
+        absolutePerNight: Number(meta.startingPrice || 0),
+        includedRate: Number(meta.startingPrice || 0),
+        nights: 1,
         fromPackage: true,
         hotelOptions: day.hotelOptions || [],
       };

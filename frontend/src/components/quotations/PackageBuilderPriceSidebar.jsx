@@ -58,8 +58,9 @@ export default function PackageBuilderPriceSidebar({
       : 0;
 
   const rows = [
-    { key: 'hotelCost', label: 'Hotel Cost', readOnly: true },
-    { key: 'cabCost', label: 'Transport Cost', readOnly: true },
+    { key: 'baseCost', label: 'Package Cost', readOnly: true },
+    { key: 'hotelCost', label: 'Hotel Upgrade', readOnly: true },
+    { key: 'cabCost', label: 'Transport Upgrade', readOnly: true },
     { key: 'activityCost', label: 'Activities', readOnly: true },
     { key: 'taxes', label: 'GST (5%)', readOnly: true },
     { key: 'markup', label: 'Markup', readOnly: true },
