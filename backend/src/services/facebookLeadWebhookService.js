@@ -363,9 +363,11 @@ function mapLeadFields(graphLead = {}, meta = {}) {
     `Facebook Lead ${phone.slice(-4)}`;
 
   const { defaultDestination } = getConfig();
-  const destination = isDummyMetaValue(destinationRaw)
-    ? defaultDestination
-    : destinationRaw || defaultDestination;
+  // Instant forms often have no destination question — show campaign name instead
+  const hasRealDestination = Boolean(destinationRaw) && !isDummyMetaValue(destinationRaw);
+  const destination = hasRealDestination
+    ? destinationRaw
+    : campaignLabel || formName || defaultDestination;
 
   const noteLines = [
     `FB Leadgen: ${graphLead.id || meta.leadgenId || ''}`,
