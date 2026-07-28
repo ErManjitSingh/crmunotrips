@@ -5,7 +5,7 @@ const BranchAssignmentSettings = require('../models/BranchAssignmentSettings');
 const LeadAssignmentLog = require('../models/LeadAssignmentLog');
 const { normalizeDestinationKey } = require('../models/Destination');
 const { notifyLeadAssigned } = require('./notificationService');
-const { LEAD_AUTO_ASSIGNMENT_ENABLED } = require('../config/assignment');
+const { isLeadAutoAssignmentEnabled } = require('../config/assignment');
 const {
   ACTIVE_LEAD_STATUSES,
   filterEligibleExecutives,
@@ -163,7 +163,7 @@ async function writeAssignmentLog({
 }
 
 async function autoAssignLead(lead, { triggeredBy } = {}) {
-  if (!LEAD_AUTO_ASSIGNMENT_ENABLED) {
+  if (!(await isLeadAutoAssignmentEnabled())) {
     return { assigned: false, reason: 'auto_assignment_disabled' };
   }
   if (lead.assignedTo) {

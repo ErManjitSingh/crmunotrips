@@ -1,12 +1,12 @@
 const { autoAssignLeadBySkill } = require('./skillAssignmentService');
 const { autoAssignLead } = require('./destinationAssignmentService');
-const { LEAD_AUTO_ASSIGNMENT_ENABLED } = require('../config/assignment');
+const { isLeadAutoAssignmentEnabled } = require('../config/assignment');
 
 /**
  * Runs skill-based assignment first, then destination-based if still unassigned.
  */
 async function runLeadAutoAssignment(lead, { triggeredBy } = {}) {
-  if (!LEAD_AUTO_ASSIGNMENT_ENABLED) {
+  if (!(await isLeadAutoAssignmentEnabled())) {
     return { success: false, reason: 'Auto lead assignment is disabled (manual assign only)' };
   }
 

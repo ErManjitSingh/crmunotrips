@@ -37,7 +37,7 @@ const Payment = require('../models/Payment');
 const Booking = require('../models/Booking');
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
 const { runLeadAutoAssignment } = require('../services/leadAutoAssignmentService');
-const { LEAD_AUTO_ASSIGNMENT_ENABLED } = require('../config/assignment');
+const { isLeadAutoAssignmentEnabled } = require('../config/assignment');
 const { detectLeadType } = require('../services/leadTypeDetectionService');
 const { DEMO_LEADS } = require('../data/demoLeads');
 const { clearAllLeadsData } = require('../services/clearAllLeadsService');
@@ -319,7 +319,7 @@ const createLead = asyncHandler(async (req, res) => {
     req.body.skipAutoAssign !== true &&
     lead.branchId;
 
-  if (shouldAutoAssign && LEAD_AUTO_ASSIGNMENT_ENABLED) {
+  if (shouldAutoAssign && (await isLeadAutoAssignmentEnabled())) {
     await runLeadAutoAssignment(lead, { triggeredBy: req.user });
   }
 

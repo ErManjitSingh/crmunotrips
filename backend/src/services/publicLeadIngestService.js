@@ -6,7 +6,7 @@ const { normalizeLeadInput } = require('../utils/normalizeLeadInput');
 const { detectLeadType } = require('../services/leadTypeDetectionService');
 const { applyLeadMetrics } = require('../services/leadScoringService');
 const { runLeadAutoAssignment } = require('../services/leadAutoAssignmentService');
-const { LEAD_AUTO_ASSIGNMENT_ENABLED } = require('../config/assignment');
+const { isLeadAutoAssignmentEnabled } = require('../config/assignment');
 const { logLeadActivity } = require('./leadActivityService');
 const { invalidate: invalidateDashboardCache } = require('./dashboardCacheService');
 const { findDuplicateLeads } = require('./duplicateDetectionService');
@@ -254,7 +254,7 @@ async function ingestPublicLead(raw = {}) {
     },
   });
 
-  if (!data.assignedTo && data.branchId && LEAD_AUTO_ASSIGNMENT_ENABLED) {
+  if (!data.assignedTo && data.branchId && (await isLeadAutoAssignmentEnabled())) {
     await runLeadAutoAssignment(lead, { triggeredBy: null });
   }
 

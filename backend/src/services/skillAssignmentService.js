@@ -11,7 +11,7 @@ const {
   advanceRoundRobin,
 } = require('./assignmentCoreService');
 const { notifyLeadAssigned } = require('./notificationService');
-const { LEAD_AUTO_ASSIGNMENT_ENABLED } = require('../config/assignment');
+const { isLeadAutoAssignmentEnabled } = require('../config/assignment');
 
 async function getBranchSkillSettings(branchId) {
   if (!branchId) return null;
@@ -97,7 +97,7 @@ async function writeSkillAssignmentLog({
 }
 
 async function autoAssignLeadBySkill(lead, { triggeredBy } = {}) {
-  if (!LEAD_AUTO_ASSIGNMENT_ENABLED) {
+  if (!(await isLeadAutoAssignmentEnabled())) {
     return { assigned: false, reason: 'auto_assignment_disabled' };
   }
   if (lead.assignedTo) {

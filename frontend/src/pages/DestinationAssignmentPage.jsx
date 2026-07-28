@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { toast } from '../context/ToastContext';
 import { useDataRefresh } from '../hooks/useDataRefresh';
 import { cn } from '../lib/utils';
-import AutoAssignOffBanner, { AutoAssignOnBanner } from '../components/assignment/AutoAssignOffBanner';
+import AutoAssignMasterToggle from '../components/assignment/AutoAssignOffBanner';
 
 const TABS = [
   { id: 'destinations', label: 'Destination Master', icon: MapPin },
@@ -217,7 +217,10 @@ export default function DestinationAssignmentPage() {
         }
       />
 
-      {leadAutoAssignmentEnabled ? <AutoAssignOnBanner /> : <AutoAssignOffBanner />}
+      <AutoAssignMasterToggle
+        enabled={leadAutoAssignmentEnabled}
+        onChange={setLeadAutoAssignmentEnabled}
+      />
 
       <div className="flex flex-wrap gap-2 border-b border-subtle pb-2">
         {TABS.map(({ id, label, icon: Icon }) => (
