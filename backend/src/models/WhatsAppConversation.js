@@ -12,6 +12,21 @@ const whatsAppConversationSchema = new mongoose.Schema(
     lead: { type: mongoose.Schema.Types.ObjectId, ref: 'Lead', index: true, default: null },
     branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', index: true },
     isArchived: { type: Boolean, default: false },
+    /** Auto Q&A bot: travel date → travelers */
+    botEnabled: { type: Boolean, default: true },
+    botStep: {
+      type: String,
+      enum: ['idle', 'await_travel_date', 'await_travelers', 'completed', 'paused'],
+      default: 'idle',
+      index: true,
+    },
+    botAnswers: {
+      travelDateRaw: { type: String, default: '' },
+      travelDate: { type: Date },
+      travelersRaw: { type: String, default: '' },
+      travelers: { type: Number },
+      completedAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

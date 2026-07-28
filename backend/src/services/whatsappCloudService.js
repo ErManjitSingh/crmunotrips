@@ -223,6 +223,20 @@ async function processWhatsAppWebhook(body = {}) {
             timestamp: ts,
           });
 
+          // New inbound only (idempotent duplicates return {_id} without direction)
+          const isNewInbound = saved && saved.direction === 'incoming';
+          if (isNewInbound) {
+            setImmediate(() => {
+              const { runWhatsAppQuestionnaireBot } = require('./whatsappQuestionnaireBot');
+              runWhatsAppQuestionnaireBot({
+                conversationId: conversation._id,
+                inboundText: text || saved.text || '',
+              }).catch((err) => {
+                console.error('[whatsappBot] questionnaire failed', err.message);
+              });
+            });
+          }
+
           results.push({
             ok: true,
             type: 'message',
@@ -313,6 +327,7 @@ async function createLeadFromConversation(conversationId, extras = {}, actor = n
     .filter((line) => line.trim().length > 10)
     .join('\n');
 
+  const answers = conversation.botAnswers || {};
   const lead = await ingestPublicLead({
     name: extras.name || conversation.profileName || `WhatsApp ${conversation.phone.slice(-4)}`,
     phone: conversation.phone,
@@ -321,6 +336,8 @@ async function createLeadFromConversation(conversationId, extras = {}, actor = n
     city: extras.city || '',
     message: extras.message || '',
     transcript,
+    travelDate: answers.travelDate || extras.travelDate || undefined,
+    travelers: answers.travelers || extras.travelers || undefined,
     channel: 'whatsapp',
     source: 'WhatsApp',
     sourceLabel: 'WhatsApp',
@@ -340,11 +357,19 @@ async function createLeadFromConversation(conversationId, extras = {}, actor = n
     { $set: { lead: lead._id } }
   );
 
+  try {
+    const { syncBotAnswersToLead } = require('./whatsappQuestionnaireBot');
+    await syncBotAnswersToLead(conversation);
+  } catch (err) {
+    console.error('[whatsappBot] sync on create lead failed', err.message);
+  }
+
   if (actor?._id) {
     // actor optional for activity already logged by ingest
   }
 
-  return { duplicate: false, lead };
+  const refreshed = await Lead.findById(lead._id).lean();
+  return { duplicate: false, lead: refreshed || lead };
 }
 
 module.exports = {

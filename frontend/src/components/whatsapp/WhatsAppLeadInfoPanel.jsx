@@ -1,4 +1,4 @@
-import { X, Mail, MapPin, Globe, Calendar, Wallet, User, Tag } from 'lucide-react';
+import { X, Mail, MapPin, Globe, Calendar, Wallet, User, Tag, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
@@ -30,6 +30,32 @@ function Section({ title, children }) {
   );
 }
 
+function BotAnswersSection({ botAnswers }) {
+  if (!botAnswers) return null;
+  const hasDate = botAnswers.travelDate || botAnswers.travelDateRaw;
+  const hasTravelers = botAnswers.travelers != null && botAnswers.travelers !== '';
+  if (!hasDate && !hasTravelers) return null;
+
+  return (
+    <Section title="Auto collected (WhatsApp)">
+      <InfoRow
+        icon={Calendar}
+        label="Kab jana hai"
+        value={
+          botAnswers.travelDate
+            ? formatTravelDate(botAnswers.travelDate)
+            : botAnswers.travelDateRaw || '—'
+        }
+      />
+      <InfoRow
+        icon={Users}
+        label="Travelers"
+        value={hasTravelers ? String(botAnswers.travelers) : '—'}
+      />
+    </Section>
+  );
+}
+
 export default function WhatsAppLeadInfoPanel({
   lead,
   contact,
@@ -42,6 +68,14 @@ export default function WhatsAppLeadInfoPanel({
   canAssign = true,
   className,
 }) {
+  const botAnswers = contact?.botAnswers || null;
+  const travelDate = lead?.travelDate || botAnswers?.travelDate || null;
+  const travelDateLabel = travelDate
+    ? formatTravelDate(travelDate)
+    : botAnswers?.travelDateRaw || null;
+  const travelers =
+    lead?.travelers || lead?.adults || botAnswers?.travelers || null;
+
   if (!lead && !contact) {
     return (
       <div className={cn('flex flex-col items-center justify-center h-full bg-wa-panel border-l border-wa-border p-6 text-center', className)}>
@@ -73,8 +107,10 @@ export default function WhatsAppLeadInfoPanel({
             <h3 className="font-bold text-wa-text-primary">{resolveWhatsAppDisplayName(contact)}</h3>
             <p className="text-xs text-wa-text-muted mt-1 tabular-nums">{formatWhatsAppPhone(contact.waId || contact.phone)}</p>
           </div>
+          <BotAnswersSection botAnswers={botAnswers} />
           <p className="text-sm text-wa-text-secondary">
             Ye chat abhi lead nahi hai. Create Lead dabao — CRM me WhatsApp source ke saath lead ban jayegi.
+            Auto collected details lead me save ho jayengi.
           </p>
           {onCreateLead && (
             <button
@@ -129,9 +165,12 @@ export default function WhatsAppLeadInfoPanel({
 
         <Section title="Travel Details">
           <InfoRow icon={Globe} label="Destination" value={lead.destination} />
-          <InfoRow icon={Calendar} label="Travel Date" value={formatTravelDate(lead.travelDate)} />
+          <InfoRow icon={Calendar} label="Travel Date" value={travelDateLabel} />
+          <InfoRow icon={Users} label="Travelers" value={travelers != null ? String(travelers) : '—'} />
           <InfoRow icon={Wallet} label="Budget" value={formatBudget(lead.budget)} />
         </Section>
+
+        <BotAnswersSection botAnswers={botAnswers} />
 
         <Section title="Lead Details">
           <InfoRow icon={Tag} label="Lead Source" value={lead.sourceLabel || 'WhatsApp'} />

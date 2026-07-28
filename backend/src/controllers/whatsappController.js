@@ -113,6 +113,8 @@ const listConversations = asyncHandler(async (req, res) => {
       leadId: lead?._id || null,
       lead,
       hasLead: Boolean(lead),
+      botStep: c.botStep || 'idle',
+      botAnswers: c.botAnswers || null,
       lastMessage: c.lastMessageText
         ? {
             text: c.lastMessageText,
@@ -290,6 +292,12 @@ const postMessage = asyncHandler(async (req, res) => {
     conversation.lastMessageAt = new Date();
     conversation.lastDirection = 'outgoing';
     await conversation.save();
+    try {
+      const { pauseWhatsAppBot } = require('../services/whatsappQuestionnaireBot');
+      await pauseWhatsAppBot(conversation._id);
+    } catch {
+      /* ignore */
+    }
   }
 
   res.status(201).json(msg);
@@ -326,7 +334,22 @@ const updateWhatsAppLead = asyncHandler(async (req, res) => {
     .populate(LEAD_LIST_POPULATE)
     .lean();
   if (!lead) throw new ApiError(404, 'Lead not found');
-  res.json(enrichLead(lead));
+
+  // On assign (or any update), push auto-collected WA answers onto the lead
+  try {
+    const conversation = await WhatsAppConversation.findOne({ lead: lead._id });
+    if (conversation?.botAnswers) {
+      const { syncBotAnswersToLead } = require('../services/whatsappQuestionnaireBot');
+      await syncBotAnswersToLead(conversation);
+    }
+  } catch (err) {
+    console.error('[whatsappBot] sync on lead update failed', err.message);
+  }
+
+  const refreshed = await Lead.findById(lead._id)
+    .populate(LEAD_LIST_POPULATE)
+    .lean();
+  res.json(enrichLead(refreshed || lead));
 });
 
 const markRead = asyncHandler(async (req, res) => {
