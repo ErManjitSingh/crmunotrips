@@ -19,6 +19,39 @@ function isMediaPlaceholder(text = '') {
   return /^\[(Image|Document|Audio|Video|Sticker)\]$/i.test(String(text).trim());
 }
 
+/** Auto Q&A starts only on greeting messages */
+function isGreeting(text = '') {
+  const t = String(text || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '') // strip emoji
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t) return false;
+
+  // Exact / short greetings: hi, hii, hello, hey, namaste, etc.
+  if (
+    /^(hi+|h+i+o*|hello+|hey+|helo+|hellow+|hlo+|namaste|namaskar|hola|yo+|sup|hai+|hy+)$/.test(t)
+  ) {
+    return true;
+  }
+
+  // good morning / evening / afternoon / night
+  if (/^good\s*(morning|evening|afternoon|night)$/.test(t)) return true;
+
+  // "hi there", "hello sir", "hey bro" — keep short
+  if (
+    /^(hi+|hello+|hey+|namaste|namaskar)\b/.test(t) &&
+    t.split(' ').length <= 4 &&
+    t.length <= 28
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 function parseTravelDate(raw = '') {
   const text = String(raw || '').trim();
   if (!text) return null;
@@ -188,18 +221,46 @@ async function runWhatsAppQuestionnaireBot({ conversationId, inboundText }) {
 
   const conversation = await WhatsAppConversation.findById(conversationId);
   if (!conversation) return { skipped: true, reason: 'missing' };
-  if (conversation.botEnabled === false) return { skipped: true, reason: 'disabled' };
 
   const step = conversation.botStep || 'idle';
-  if (step === 'completed' || step === 'paused') {
-    return { skipped: true, reason: step };
+  // Agent paused the bot — stay quiet
+  if (step === 'paused' || conversation.botEnabled === false) {
+    return { skipped: true, reason: 'paused' };
   }
 
   const text = String(inboundText || '').trim();
 
-  if (step === 'idle') {
+  // Start (or restart after completed) only on Hi / Hello / Hey …
+  if (step === 'idle' || step === 'completed') {
+    if (!isGreeting(text)) {
+      return { skipped: true, reason: step === 'idle' ? 'waiting_for_greeting' : 'completed' };
+    }
+    // Reset answers when restarting a completed flow
+    if (step === 'completed') {
+      await WhatsAppConversation.updateOne(
+        { _id: conversation._id },
+        {
+          $set: {
+            botStep: 'idle',
+            botAnswers: {},
+          },
+        }
+      );
+      conversation.botStep = 'idle';
+      conversation.botAnswers = {};
+    }
     await askTravelDate(conversation);
     return { ok: true, step: 'await_travel_date' };
+  }
+
+  // Once started, ignore further greetings as answers — re-ask current question
+  if (isGreeting(text) && (step === 'await_travel_date' || step === 'await_travelers')) {
+    if (step === 'await_travel_date') {
+      await sendAndStoreBotReply(conversation, QUESTIONS.travelDate);
+    } else {
+      await sendAndStoreBotReply(conversation, QUESTIONS.travelers);
+    }
+    return { ok: true, reasked: true, reason: 'greeting_during_flow' };
   }
 
   if (!text || isMediaPlaceholder(text)) {
@@ -238,5 +299,6 @@ module.exports = {
   pauseWhatsAppBot,
   parseTravelDate,
   parseTravelers,
+  isGreeting,
   QUESTIONS,
 };
