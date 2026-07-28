@@ -1,18 +1,30 @@
 const WhatsAppConversation = require('../models/WhatsAppConversation');
 const WhatsAppMessage = require('../models/WhatsAppMessage');
 const Lead = require('../models/Lead');
+const {
+  STOP_REPLY,
+  START_REPLY,
+  MAX_REASKS,
+  isOptOutRequest,
+  isOptInRequest,
+  assertCanSendBot,
+  markBotSent,
+  applyOptOut,
+  applyOptIn,
+  canRestartCompleted,
+} = require('./whatsappBotSafety');
 
+/**
+ * Keep copy short + helpful. Long marketing blasts hurt Meta quality rating.
+ * First message mentions STOP so users (and Meta) see clear opt-out.
+ */
 const QUESTIONS = {
   travelDate:
-    'Namaste! Uno Trips me aapka swagat hai.\n\nKab jana hai ghumne?\n(jaise: 15/08/2026 ya 15 Aug 2026)',
-  travelers:
-    'Bahut accha!\n\nKitne travelers hain?\n(sirf number likhein, jaise: 4)',
-  done:
-    'Shukriya! Aapki details save ho gayi hain.\n\nHamari team jald hi aapse contact karegi.',
-  reaskTravelDate:
-    'Date samajh nahi aayi. Please dobara likhein (jaise: 15/08/2026 ya 15 Aug 2026).',
-  reaskTravelers:
-    'Please sirf number likhein — kitne travelers hain? (jaise: 2, 4, 6)',
+    'Namaste! Uno Trips 👋\n\nKab travel karna hai?\n(jaise: 15/08/2026)\n\n_Auto band karne ke liye STOP likhein._',
+  travelers: 'Great — kitne travelers hain?\n(sirf number, jaise: 4)',
+  done: 'Shukriya! Details save ho gayi hain.\nHamari team jaldi contact karegi.',
+  reaskTravelDate: 'Date dobara bhejein (jaise: 15/08/2026).',
+  reaskTravelers: 'Sirf number likhein (jaise: 2 ya 4).',
 };
 
 function isMediaPlaceholder(text = '') {
@@ -24,23 +36,20 @@ function isGreeting(text = '') {
   const t = String(text || '')
     .trim()
     .toLowerCase()
-    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '') // strip emoji
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   if (!t) return false;
 
-  // Exact / short greetings: hi, hii, hello, hey, namaste, etc.
   if (
     /^(hi+|h+i+o*|hello+|hey+|helo+|hellow+|hlo+|namaste|namaskar|hola|yo+|sup|hai+|hy+)$/.test(t)
   ) {
     return true;
   }
 
-  // good morning / evening / afternoon / night
   if (/^good\s*(morning|evening|afternoon|night)$/.test(t)) return true;
 
-  // "hi there", "hello sir", "hey bro" — keep short
   if (
     /^(hi+|hello+|hey+|namaste|namaskar)\b/.test(t) &&
     t.split(' ').length <= 4 &&
@@ -87,6 +96,12 @@ function parseTravelers(raw = '') {
 }
 
 async function sendAndStoreBotReply(conversation, text) {
+  const gate = await assertCanSendBot(conversation);
+  if (!gate.ok) {
+    console.warn('[whatsappBot] send blocked', conversation?.phone, gate.reason);
+    return null;
+  }
+
   const { sendWhatsAppText } = require('./whatsappCloudService');
   const phone = conversation.phone;
   let waMessageId;
@@ -94,6 +109,20 @@ async function sendAndStoreBotReply(conversation, text) {
     const data = await sendWhatsAppText({ toPhone: phone, text });
     waMessageId = data?.messages?.[0]?.id;
   } catch (err) {
+    const msg = String(err.message || '');
+    // Meta spam / quality / rate errors → hard pause this chat
+    if (/spam|restrict|quality|rate|too many|131047|131026|130429/i.test(msg)) {
+      await WhatsAppConversation.updateOne(
+        { _id: conversation._id },
+        {
+          $set: {
+            botEnabled: false,
+            botStep: 'paused',
+            botBlockedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          },
+        }
+      );
+    }
     console.error('[whatsappBot] send failed', err.message);
     throw err;
   }
@@ -110,6 +139,7 @@ async function sendAndStoreBotReply(conversation, text) {
       text,
       status: 'sent',
       timestamp: now,
+      // no sentBy → counts as bot message for safety limits
     }),
     WhatsAppConversation.updateOne(
       { _id: conversation._id },
@@ -121,7 +151,11 @@ async function sendAndStoreBotReply(conversation, text) {
         },
       }
     ),
+    markBotSent(conversation._id),
   ]);
+
+  conversation.botLastSentAt = now;
+  return true;
 }
 
 async function syncBotAnswersToLead(conversation) {
@@ -136,7 +170,6 @@ async function syncBotAnswersToLead(conversation) {
   }
 
   if (!Object.keys(update).length) return null;
-  // Fast path — structured fields only (no notes read)
   return Lead.updateOne({ _id: conversation.lead }, { $set: update });
 }
 
@@ -145,20 +178,49 @@ async function askTravelDate(conversation) {
     {
       _id: conversation._id,
       botEnabled: { $ne: false },
+      botOptOut: { $ne: true },
       botStep: { $in: [null, undefined, 'idle'] },
     },
-    { $set: { botStep: 'await_travel_date' } },
+    {
+      $set: {
+        botStep: 'await_travel_date',
+        botSessionStartedAt: new Date(),
+        botReaskCount: 0,
+      },
+    },
     { new: true }
   );
   if (!claimed) return;
   await sendAndStoreBotReply(claimed, QUESTIONS.travelDate);
 }
 
+async function maybeReask(conversation, step, replyText) {
+  const count = Number(conversation.botReaskCount || 0);
+  if (count >= MAX_REASKS) {
+    // Stop looping — hand off to human quietly
+    await WhatsAppConversation.updateOne(
+      { _id: conversation._id },
+      { $set: { botStep: 'paused', botEnabled: false, botReaskCount: 0 } }
+    );
+    await sendAndStoreBotReply(
+      conversation,
+      'Theek hai — team member aapse personally baat karega.'
+    );
+    return false;
+  }
+  await WhatsAppConversation.updateOne(
+    { _id: conversation._id },
+    { $inc: { botReaskCount: 1 } }
+  );
+  conversation.botReaskCount = count + 1;
+  await sendAndStoreBotReply(conversation, replyText);
+  return true;
+}
+
 async function handleTravelDateAnswer(conversation, text) {
   const travelDate = parseTravelDate(text);
-  // Accept free-text dates even if unparsed, so flow continues
   if (!text || isMediaPlaceholder(text)) {
-    await sendAndStoreBotReply(conversation, QUESTIONS.reaskTravelDate);
+    await maybeReask(conversation, 'await_travel_date', QUESTIONS.reaskTravelDate);
     return;
   }
 
@@ -166,11 +228,13 @@ async function handleTravelDateAnswer(conversation, text) {
     {
       _id: conversation._id,
       botEnabled: { $ne: false },
+      botOptOut: { $ne: true },
       botStep: 'await_travel_date',
     },
     {
       $set: {
         botStep: 'await_travelers',
+        botReaskCount: 0,
         'botAnswers.travelDateRaw': text,
         ...(travelDate ? { 'botAnswers.travelDate': travelDate } : {}),
       },
@@ -186,7 +250,7 @@ async function handleTravelDateAnswer(conversation, text) {
 async function handleTravelersAnswer(conversation, text) {
   const travelers = parseTravelers(text);
   if (!travelers) {
-    await sendAndStoreBotReply(conversation, QUESTIONS.reaskTravelers);
+    await maybeReask(conversation, 'await_travelers', QUESTIONS.reaskTravelers);
     return;
   }
 
@@ -194,11 +258,14 @@ async function handleTravelersAnswer(conversation, text) {
     {
       _id: conversation._id,
       botEnabled: { $ne: false },
+      botOptOut: { $ne: true },
       botStep: 'await_travelers',
     },
     {
       $set: {
         botStep: 'completed',
+        botReaskCount: 0,
+        botCompletedAt: new Date(),
         'botAnswers.travelersRaw': text,
         'botAnswers.travelers': travelers,
         'botAnswers.completedAt': new Date(),
@@ -222,20 +289,42 @@ async function runWhatsAppQuestionnaireBot({ conversationId, inboundText }) {
   const conversation = await WhatsAppConversation.findById(conversationId);
   if (!conversation) return { skipped: true, reason: 'missing' };
 
-  const step = conversation.botStep || 'idle';
-  // Agent paused the bot — stay quiet
-  if (step === 'paused' || conversation.botEnabled === false) {
-    return { skipped: true, reason: 'paused' };
-  }
-
   const text = String(inboundText || '').trim();
 
-  // Start (or restart after completed) only on Hi / Hello / Hey …
+  // Always honor STOP / START first (compliance + quality)
+  if (isOptOutRequest(text)) {
+    await applyOptOut(conversation._id);
+    const fresh = await WhatsAppConversation.findById(conversationId);
+    // allow one confirmation even if opted out — temporary override
+    if (fresh) {
+      fresh.botOptOut = false;
+      fresh.botEnabled = true;
+      await sendAndStoreBotReply(fresh, STOP_REPLY);
+      await applyOptOut(conversation._id);
+    }
+    return { ok: true, optedOut: true };
+  }
+
+  if (isOptInRequest(text)) {
+    await applyOptIn(conversation._id);
+    const fresh = await WhatsAppConversation.findById(conversationId);
+    if (fresh) await sendAndStoreBotReply(fresh, START_REPLY);
+    return { ok: true, optedIn: true };
+  }
+
+  const step = conversation.botStep || 'idle';
+  if (step === 'paused' || conversation.botEnabled === false || conversation.botOptOut === true) {
+    return { skipped: true, reason: 'paused_or_opted_out' };
+  }
+
+  // Start only on greeting; completed chats have 48h cooldown (anti-abuse)
   if (step === 'idle' || step === 'completed') {
     if (!isGreeting(text)) {
       return { skipped: true, reason: step === 'idle' ? 'waiting_for_greeting' : 'completed' };
     }
-    // Reset answers when restarting a completed flow
+    if (step === 'completed' && !canRestartCompleted(conversation)) {
+      return { skipped: true, reason: 'restart_cooldown' };
+    }
     if (step === 'completed') {
       await WhatsAppConversation.updateOne(
         { _id: conversation._id },
@@ -243,6 +332,7 @@ async function runWhatsAppQuestionnaireBot({ conversationId, inboundText }) {
           $set: {
             botStep: 'idle',
             botAnswers: {},
+            botReaskCount: 0,
           },
         }
       );
@@ -253,21 +343,16 @@ async function runWhatsAppQuestionnaireBot({ conversationId, inboundText }) {
     return { ok: true, step: 'await_travel_date' };
   }
 
-  // Once started, ignore further greetings as answers — re-ask current question
+  // Extra Hi during flow → do NOT re-send (spam signal). Silently ignore.
   if (isGreeting(text) && (step === 'await_travel_date' || step === 'await_travelers')) {
-    if (step === 'await_travel_date') {
-      await sendAndStoreBotReply(conversation, QUESTIONS.travelDate);
-    } else {
-      await sendAndStoreBotReply(conversation, QUESTIONS.travelers);
-    }
-    return { ok: true, reasked: true, reason: 'greeting_during_flow' };
+    return { skipped: true, reason: 'greeting_ignored_during_flow' };
   }
 
   if (!text || isMediaPlaceholder(text)) {
     if (step === 'await_travel_date') {
-      await sendAndStoreBotReply(conversation, QUESTIONS.reaskTravelDate);
+      await maybeReask(conversation, step, QUESTIONS.reaskTravelDate);
     } else if (step === 'await_travelers') {
-      await sendAndStoreBotReply(conversation, QUESTIONS.reaskTravelers);
+      await maybeReask(conversation, step, QUESTIONS.reaskTravelers);
     }
     return { ok: true, reasked: true };
   }

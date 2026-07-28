@@ -14,6 +14,8 @@ const whatsAppConversationSchema = new mongoose.Schema(
     isArchived: { type: Boolean, default: false },
     /** Auto Q&A bot: travel date → travelers */
     botEnabled: { type: Boolean, default: true },
+    botOptOut: { type: Boolean, default: false, index: true },
+    botOptOutAt: { type: Date },
     botStep: {
       type: String,
       enum: ['idle', 'await_travel_date', 'await_travelers', 'completed', 'paused'],
@@ -26,6 +28,12 @@ const whatsAppConversationSchema = new mongoose.Schema(
       travelers: { type: Number },
       completedAt: { type: Date },
     },
+    botSessionStartedAt: { type: Date },
+    botLastSentAt: { type: Date },
+    botSentCount: { type: Number, default: 0 },
+    botReaskCount: { type: Number, default: 0 },
+    botCompletedAt: { type: Date },
+    botBlockedUntil: { type: Date },
   },
   { timestamps: true }
 );
