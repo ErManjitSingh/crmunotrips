@@ -142,7 +142,7 @@ export default function LeadContactActions({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             {onChangeStatus ? (
-              <DropdownMenuItem onClick={onChangeStatus}>Change Status</DropdownMenuItem>
+              <DropdownMenuItem onClick={onChangeStatus}>Lead status</DropdownMenuItem>
             ) : null}
             {onLogCallNote ? (
               <DropdownMenuItem onClick={onLogCallNote}>Log Call Note</DropdownMenuItem>

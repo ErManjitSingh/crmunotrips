@@ -6,7 +6,14 @@ const monthlySalesTargetSchema = new mongoose.Schema(
     branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', index: true },
     year: { type: Number, required: true },
     month: { type: Number, required: true, min: 1, max: 12 },
-    revenueTarget: { type: Number, required: true, min: 0 },
+    /** Primary ₹ target (UI: Target) — used by dashboard progress */
+    revenueTarget: { type: Number, required: true, min: 0, default: 0 },
+    /** Package total ₹ target (quotation package total) */
+    packageTarget: { type: Number, min: 0, default: 0 },
+    /** Total sales ₹ target */
+    totalSalesTarget: { type: Number, min: 0, default: 0 },
+    /** Profit ₹ target */
+    profitTarget: { type: Number, min: 0, default: 0 },
     setBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     setByName: { type: String, trim: true },
     notes: { type: String, trim: true, maxlength: 500 },

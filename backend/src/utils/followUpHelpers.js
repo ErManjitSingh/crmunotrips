@@ -2,7 +2,22 @@ const FollowUp = require('../models/FollowUp');
 const Lead = require('../models/Lead');
 const { promoteReactivatedLeadOnFollowUp } = require('../services/reactivationService');
 
-const FOLLOWUP_CATEGORIES = ['warm', 'cold', 'converted', 'expected_conv'];
+const FOLLOWUP_CATEGORIES = [
+  'call_picked',
+  'call_not_picked',
+  'dead_lead',
+  'cold',
+  'warm',
+  'converted',
+  'expected_conv',
+];
+
+const CALL_NOT_PICKED_REASON_LABELS = {
+  switched_off: 'Switched off',
+  not_reachable: 'Not reachable',
+  not_answering: 'Not answering',
+  does_not_exist: 'Does not exist',
+};
 
 function buildFollowUpCategoryFilter(category) {
   if (category && FOLLOWUP_CATEGORIES.includes(category)) {
@@ -46,9 +61,17 @@ async function applyCategoryToLead(lead, category, status) {
     if (['new', 'contacted', 'follow_up'].includes(lead.status)) {
       lead.status = 'negotiation';
     }
-  } else if (category === 'warm') {
+  } else if (category === 'warm' || category === 'call_picked') {
     if (lead.status === 'new') {
       lead.status = 'follow_up';
+    }
+  } else if (category === 'dead_lead') {
+    lead.status = 'lost';
+    lead.temperature = 'cold';
+    lead.isHot = false;
+  } else if (category === 'call_not_picked') {
+    if (lead.status === 'new') {
+      lead.status = 'contacted';
     }
   }
 
@@ -60,7 +83,7 @@ async function applyCategoryToLead(lead, category, status) {
 function normalizeFollowUpPayload(body, user, lead) {
   const { buildColdReminderAt, coldReasonLabel } = require('../services/coldLeadService');
   let scheduledAt = body.scheduledAt ? new Date(body.scheduledAt) : null;
-  const category = FOLLOWUP_CATEGORIES.includes(body.category) ? body.category : 'warm';
+  const category = FOLLOWUP_CATEGORIES.includes(body.category) ? body.category : 'call_picked';
 
   if ((!scheduledAt || Number.isNaN(scheduledAt.getTime())) && category === 'cold') {
     scheduledAt = buildColdReminderAt();
@@ -73,10 +96,28 @@ function normalizeFollowUpPayload(body, user, lead) {
   }
 
   let notes = body.notes || body.remarks || '';
+  let outcome = body.outcome || '';
+
   if (category === 'cold' && body.coldReason) {
     const reasonText = coldReasonLabel(body.coldReason);
     const prefix = `Cold lead — reason: ${reasonText}. Auto reminder in 4 hours.`;
     notes = notes ? `${prefix} ${notes}` : prefix;
+  }
+
+  if (category === 'call_not_picked') {
+    const reasonKey = body.notPickedReason || body.outcome || '';
+    const reasonText = CALL_NOT_PICKED_REASON_LABELS[reasonKey] || reasonKey;
+    if (reasonKey) {
+      outcome = reasonKey;
+      const prefix = `Call not picked — ${reasonText}`;
+      notes = notes ? `${prefix}. ${notes}` : prefix;
+    }
+  }
+
+  if (category === 'dead_lead') {
+    const prefix = 'Dead lead';
+    notes = notes ? `${prefix}. ${notes}` : prefix;
+    outcome = outcome || 'dead_lead';
   }
 
   return {
@@ -84,7 +125,7 @@ function normalizeFollowUpPayload(body, user, lead) {
     type: body.type || 'call',
     scheduledAt,
     notes,
-    outcome: body.outcome || '',
+    outcome,
     priority: body.priority || lead.priority || 'medium',
     category,
     assignedTo: body.assignedTo || lead.assignedTo || user._id,
@@ -95,6 +136,7 @@ function normalizeFollowUpPayload(body, user, lead) {
 
 module.exports = {
   FOLLOWUP_CATEGORIES,
+  CALL_NOT_PICKED_REASON_LABELS,
   buildFollowUpCategoryFilter,
   syncLeadFollowUpDates,
   applyCategoryToLead,

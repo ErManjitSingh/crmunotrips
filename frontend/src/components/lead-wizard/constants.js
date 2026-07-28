@@ -44,13 +44,13 @@ export const PRIORITIES = [
 export const INTENT_LABEL = 'Intent';
 
 export const COLD_LEAD_REASONS = [
-  { value: 'not_answering', label: 'Not answering calls' },
+  { value: 'not_answering', label: 'Not answering' },
   { value: 'asked_callback_later', label: 'Asked to call later' },
   { value: 'budget_not_ready', label: 'Budget not ready' },
   { value: 'dates_not_final', label: 'Travel dates not final' },
   { value: 'comparing_options', label: 'Comparing other options' },
-  { value: 'low_interest', label: 'Low interest / browsing only' },
   { value: 'wrong_time', label: 'Called at wrong time' },
+  { value: 'destination_not_final', label: 'Travel destination not final' },
   { value: 'other', label: 'Other' },
 ];
 

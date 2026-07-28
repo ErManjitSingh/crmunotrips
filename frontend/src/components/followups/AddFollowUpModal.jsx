@@ -2,18 +2,24 @@ import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import AppModal from '../ui/AppModal';
-import { FOLLOWUP_PRIORITIES, FOLLOWUP_CATEGORIES, FOLLOWUP_TYPES } from './constants';
+import {
+  FOLLOWUP_PRIORITIES,
+  FOLLOWUP_CATEGORY_OPTIONS,
+  FOLLOWUP_TYPES,
+  CALL_NOT_PICKED_REASONS,
+} from './constants';
 import { COLD_LEAD_REASONS } from '../lead-wizard/constants';
 
 const emptyForm = {
   lead: '',
   type: 'call',
-  category: 'warm',
+  category: 'call_picked',
   date: '',
   time: '10:00',
   priority: 'medium',
   remarks: '',
   coldReason: '',
+  notPickedReason: '',
 };
 
 function plusFourHoursLocal() {
@@ -46,12 +52,13 @@ export default function AddFollowUpModal({
       setForm({
         lead: editData.lead?._id || fixedLeadId || '',
         type: editData.type || 'call',
-        category: editData.category || 'warm',
+        category: editData.category || 'call_picked',
         date: d.toISOString().split('T')[0],
         time: d.toTimeString().slice(0, 5),
         priority: editData.priority || 'medium',
         remarks: editData.notes || '',
         coldReason: editData.coldReason || '',
+        notPickedReason: editData.notPickedReason || editData.outcome || '',
       });
     } else {
       const today = new Date().toISOString().split('T')[0];
@@ -59,18 +66,24 @@ export default function AddFollowUpModal({
     }
   }, [editData, open, fixedLeadId]);
 
-  const applyColdDefaults = (nextCategory) => {
-    if (nextCategory !== 'cold') {
-      setForm((prev) => ({ ...prev, category: nextCategory }));
+  const applyCategoryDefaults = (nextCategory) => {
+    if (nextCategory === 'cold') {
+      const slot = plusFourHoursLocal();
+      setForm((prev) => ({
+        ...prev,
+        category: 'cold',
+        type: 'call',
+        date: slot.date,
+        time: slot.time,
+        notPickedReason: '',
+      }));
       return;
     }
-    const slot = plusFourHoursLocal();
     setForm((prev) => ({
       ...prev,
-      category: 'cold',
-      type: 'call',
-      date: slot.date,
-      time: slot.time,
+      category: nextCategory,
+      coldReason: nextCategory === 'cold' ? prev.coldReason : '',
+      notPickedReason: nextCategory === 'call_not_picked' ? prev.notPickedReason : '',
     }));
   };
 
@@ -89,7 +102,11 @@ export default function AddFollowUpModal({
       setError('Please select why this is a cold lead');
       return;
     }
-    if (!form.remarks?.trim() && form.category !== 'cold') {
+    if (form.category === 'call_not_picked' && !form.notPickedReason) {
+      setError('Please select why the call was not picked');
+      return;
+    }
+    if (!form.remarks?.trim() && form.category !== 'cold' && form.category !== 'call_not_picked') {
       setError('Please enter remarks');
       return;
     }
@@ -97,11 +114,18 @@ export default function AddFollowUpModal({
     setSaving(true);
     try {
       const coldLabel = COLD_LEAD_REASONS.find((r) => r.value === form.coldReason)?.label;
-      const remarks = form.category === 'cold'
-        ? [form.remarks?.trim(), coldLabel ? `Cold reason: ${coldLabel}` : '']
-            .filter(Boolean)
-            .join(' — ') || `Cold lead — ${coldLabel}`
-        : form.remarks.trim();
+      const notPickedLabel = CALL_NOT_PICKED_REASONS.find((r) => r.value === form.notPickedReason)?.label;
+
+      let remarks = form.remarks?.trim() || '';
+      if (form.category === 'cold') {
+        remarks = [remarks, coldLabel ? `Cold reason: ${coldLabel}` : '']
+          .filter(Boolean)
+          .join(' — ') || `Cold lead — ${coldLabel}`;
+      } else if (form.category === 'call_not_picked') {
+        remarks = [remarks, notPickedLabel ? `Call not picked: ${notPickedLabel}` : '']
+          .filter(Boolean)
+          .join(' — ') || `Call not picked — ${notPickedLabel}`;
+      }
 
       await onSubmit({
         ...form,
@@ -109,6 +133,8 @@ export default function AddFollowUpModal({
         scheduledAt: `${form.date}T${form.time}:00`,
         notes: remarks,
         coldReason: form.category === 'cold' ? form.coldReason : undefined,
+        notPickedReason: form.category === 'call_not_picked' ? form.notPickedReason : undefined,
+        outcome: form.category === 'call_not_picked' ? form.notPickedReason : undefined,
       });
       if (!editData) {
         const today = new Date().toISOString().split('T')[0];
@@ -121,6 +147,8 @@ export default function AddFollowUpModal({
       setSaving(false);
     }
   };
+
+  const remarksOptional = form.category === 'cold' || form.category === 'call_not_picked';
 
   return (
     <AppModal open={open} onClose={onClose} size="lg" className="p-6">
@@ -160,16 +188,39 @@ export default function AddFollowUpModal({
           <label className="text-xs font-medium text-content-muted mb-1 block">Follow-up Category *</label>
           <select
             value={form.category}
-            onChange={(e) => applyColdDefaults(e.target.value)}
+            onChange={(e) => applyCategoryDefaults(e.target.value)}
             required
             className="input-premium w-full h-11 rounded-xl font-medium"
           >
-            {FOLLOWUP_CATEGORIES.map((c) => (
+            {FOLLOWUP_CATEGORY_OPTIONS.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>
-          <p className="text-[10px] text-content-muted mt-1">Warm → Cold → Converted → Expected Conv.</p>
         </div>
+
+        {form.category === 'call_not_picked' && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 space-y-3">
+            <p className="text-xs font-semibold text-amber-800">
+              Call not picked — select the reason
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {CALL_NOT_PICKED_REASONS.map((reason) => (
+                <button
+                  key={reason.value}
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, notPickedReason: reason.value }))}
+                  className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+                    form.notPickedReason === reason.value
+                      ? 'border-amber-500 bg-amber-100 text-amber-900'
+                      : 'border-subtle bg-white text-content-secondary hover:border-amber-300'
+                  }`}
+                >
+                  {reason.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {form.category === 'cold' && (
           <div className="rounded-xl border border-sky-200 bg-sky-50/80 p-3 space-y-3">
@@ -230,15 +281,21 @@ export default function AddFollowUpModal({
 
         <div>
           <label className="text-xs font-medium text-content-muted mb-1 block">
-            Comments {form.category === 'cold' ? '(optional)' : '*'}
+            Comments {remarksOptional ? '(optional)' : '*'}
           </label>
           <textarea
             value={form.remarks}
             onChange={(e) => setForm({ ...form, remarks: e.target.value })}
-            required={form.category !== 'cold'}
+            required={!remarksOptional}
             rows={3}
             className="input-premium w-full rounded-xl resize-none"
-            placeholder={form.category === 'cold' ? 'Add notes about this cold lead…' : 'What to discuss on this follow-up...'}
+            placeholder={
+              form.category === 'cold'
+                ? 'Add notes about this cold lead…'
+                : form.category === 'call_not_picked'
+                  ? 'Optional notes…'
+                  : 'What to discuss on this follow-up...'
+            }
           />
         </div>
 

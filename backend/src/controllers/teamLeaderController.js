@@ -11,7 +11,7 @@ const {
   getTeamForLeader,
   getLeaderLeadScopeFilter,
 } = require('../services/teamScopeService');
-const { getMonthlyTarget, buildTargetProgress } = require('../services/salesTargetService');
+const { getMonthlyTargets, buildTargetProgress } = require('../services/salesTargetService');
 const { buildTeamLeaderDashboard } = require('../services/dashboardService');
 const { sumConvertedPackageRevenue } = require('../utils/convertedPackageRevenue');
 const { stampExecutiveAssignment } = require('../services/leadExecutiveStallService');
@@ -230,7 +230,8 @@ const listExecutives = asyncHandler(async (req, res) => {
         }),
       ]);
 
-      const targetStats = buildTargetProgress(revenue, await getMonthlyTarget(exId));
+      const targets = await getMonthlyTargets(exId);
+      const targetStats = buildTargetProgress(revenue, targets.revenueTarget);
 
       return {
         _id: ex._id,
@@ -244,6 +245,10 @@ const listExecutives = asyncHandler(async (req, res) => {
         conversionRate: assignedLeads ? Math.round((conversions / assignedLeads) * 1000) / 10 : 0,
         contacted,
         monthlyTarget: targetStats.monthlyTarget,
+        revenueTarget: targets.revenueTarget,
+        packageTarget: targets.packageTarget,
+        totalSalesTarget: targets.totalSalesTarget,
+        profitTarget: targets.profitTarget,
         targetProgress: targetStats.progress,
       };
     })

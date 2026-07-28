@@ -13,7 +13,7 @@ const actions = [
   { key: 'followup', label: 'Create Follow Up', icon: CalendarClock, variant: 'outline' },
   { key: 'note', label: 'Add Note', icon: StickyNote, variant: 'outline' },
   { key: 'quotation', label: 'Create Quotation', icon: FileText, variant: 'emerald' },
-  { key: 'status', label: 'Change Status', icon: RefreshCw, variant: 'outline' },
+  { key: 'status', label: 'Lead status', icon: RefreshCw, variant: 'outline' },
   { key: 'assign', label: 'Assign Lead', icon: UserPlus, variant: 'outline' },
 ];
 

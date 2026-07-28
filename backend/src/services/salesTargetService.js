@@ -12,11 +12,54 @@ function currentPeriod(date = new Date()) {
   return { year: date.getFullYear(), month: date.getMonth() + 1 };
 }
 
+function defaultRow(role) {
+  const revenueTarget = DEFAULT_TARGETS[role] || DEFAULT_TARGETS.sales_executive;
+  return {
+    revenueTarget,
+    packageTarget: 0,
+    totalSalesTarget: revenueTarget,
+    profitTarget: 0,
+    isDefault: true,
+  };
+}
+
+function normalizeAmount(value, fallback = 0) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new ApiError(400, 'Target values must be valid numbers ≥ 0');
+  }
+  return n;
+}
+
+function shapeTargetRow(row, role) {
+  if (!row) return defaultRow(role);
+  return {
+    revenueTarget: row.revenueTarget ?? 0,
+    packageTarget: row.packageTarget ?? 0,
+    totalSalesTarget: row.totalSalesTarget ?? row.revenueTarget ?? 0,
+    profitTarget: row.profitTarget ?? 0,
+    isDefault: false,
+    setByName: row.setByName,
+    updatedAt: row.updatedAt,
+  };
+}
+
+async function getMonthlyTargetDoc(userId, { year, month } = currentPeriod()) {
+  return MonthlySalesTarget.findOne({ userId, year, month }).lean();
+}
+
 async function getMonthlyTarget(userId, { year, month } = currentPeriod()) {
-  const row = await MonthlySalesTarget.findOne({ userId, year, month }).lean();
+  const row = await getMonthlyTargetDoc(userId, { year, month });
   if (row) return row.revenueTarget;
   const user = await User.findById(userId).select('role').lean();
   return DEFAULT_TARGETS[user?.role] || DEFAULT_TARGETS.sales_executive;
+}
+
+async function getMonthlyTargets(userId, { year, month } = currentPeriod()) {
+  const row = await getMonthlyTargetDoc(userId, { year, month });
+  const user = await User.findById(userId).select('role').lean();
+  return shapeTargetRow(row, user?.role);
 }
 
 async function assertCanSetTarget(req, targetUserId) {
@@ -44,11 +87,34 @@ async function assertCanSetTarget(req, targetUserId) {
   throw new ApiError(403, 'You do not have permission to set sales targets');
 }
 
-async function setMonthlyTarget(req, { userId, revenueTarget, year, month, notes }) {
+async function setMonthlyTarget(req, {
+  userId,
+  revenueTarget,
+  packageTarget,
+  totalSalesTarget,
+  profitTarget,
+  year,
+  month,
+  notes,
+}) {
   const period = year && month ? { year: Number(year), month: Number(month) } : currentPeriod();
-  const amount = Number(revenueTarget);
-  if (!Number.isFinite(amount) || amount < 0) {
-    throw new ApiError(400, 'Valid revenue target is required');
+
+  const existing = await getMonthlyTargetDoc(userId, period);
+  const target = normalizeAmount(revenueTarget, existing?.revenueTarget ?? 0);
+  const packages = normalizeAmount(packageTarget, existing?.packageTarget ?? 0);
+  const totalSales = normalizeAmount(
+    totalSalesTarget,
+    existing?.totalSalesTarget ?? existing?.revenueTarget ?? 0
+  );
+  const profit = normalizeAmount(profitTarget, existing?.profitTarget ?? 0);
+
+  if (
+    revenueTarget === undefined &&
+    packageTarget === undefined &&
+    totalSalesTarget === undefined &&
+    profitTarget === undefined
+  ) {
+    throw new ApiError(400, 'At least one target field is required');
   }
 
   const targetUser = await assertCanSetTarget(req, userId);
@@ -59,7 +125,10 @@ async function setMonthlyTarget(req, { userId, revenueTarget, year, month, notes
       userId,
       year: period.year,
       month: period.month,
-      revenueTarget: amount,
+      revenueTarget: target,
+      packageTarget: packages,
+      totalSalesTarget: totalSales,
+      profitTarget: profit,
       branchId: targetUser.branchId || req.branchId || null,
       setBy: req.user._id,
       setByName: req.user.name,
@@ -69,6 +138,17 @@ async function setMonthlyTarget(req, { userId, revenueTarget, year, month, notes
   ).lean();
 
   return doc;
+}
+
+function mapListedUser(u, map) {
+  const shaped = shapeTargetRow(map[String(u._id)], u.role);
+  return {
+    userId: u._id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    ...shaped,
+  };
 }
 
 async function listTargetsForManager(req, { year, month } = currentPeriod()) {
@@ -88,17 +168,7 @@ async function listTargetsForManager(req, { year, month } = currentPeriod()) {
   }).lean();
 
   const map = Object.fromEntries(targets.map((t) => [String(t.userId), t]));
-
-  return users.map((u) => ({
-    userId: u._id,
-    name: u.name,
-    email: u.email,
-    role: u.role,
-    revenueTarget: map[String(u._id)]?.revenueTarget ?? DEFAULT_TARGETS[u.role] ?? DEFAULT_TARGETS.sales_executive,
-    isDefault: !map[String(u._id)],
-    setByName: map[String(u._id)]?.setByName,
-    updatedAt: map[String(u._id)]?.updatedAt,
-  }));
+  return users.map((u) => mapListedUser(u, map));
 }
 
 async function listTargetsForLeader(req, { year, month } = currentPeriod()) {
@@ -113,17 +183,7 @@ async function listTargetsForLeader(req, { year, month } = currentPeriod()) {
   }).lean();
 
   const map = Object.fromEntries(targets.map((t) => [String(t.userId), t]));
-
-  return users.map((u) => ({
-    userId: u._id,
-    name: u.name,
-    email: u.email,
-    role: u.role,
-    revenueTarget: map[String(u._id)]?.revenueTarget ?? DEFAULT_TARGETS.sales_executive,
-    isDefault: !map[String(u._id)],
-    setByName: map[String(u._id)]?.setByName,
-    updatedAt: map[String(u._id)]?.updatedAt,
-  }));
+  return users.map((u) => mapListedUser(u, map));
 }
 
 function buildTargetProgress(revenueAchieved, monthlyTarget) {
@@ -139,6 +199,8 @@ module.exports = {
   DEFAULT_TARGETS,
   currentPeriod,
   getMonthlyTarget,
+  getMonthlyTargetDoc,
+  getMonthlyTargets,
   setMonthlyTarget,
   listTargetsForManager,
   listTargetsForLeader,

@@ -217,7 +217,7 @@ export default function ExecutiveLeadDetailPage() {
         }}
       />
 
-      <ActionModal open={statusModalOpen} title="Change Status" onClose={() => setStatusModalOpen(false)}>
+      <ActionModal open={statusModalOpen} title="Lead status" onClose={() => setStatusModalOpen(false)}>
         <select
           value={modalStatus}
           onChange={(e) => setModalStatus(e.target.value)}

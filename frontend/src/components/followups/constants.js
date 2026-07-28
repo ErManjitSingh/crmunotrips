@@ -39,12 +39,28 @@ export const FOLLOWUP_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-/** Pipeline: warm → cold → converted → expected conversion */
+/** Pipeline follow-up categories */
 export const FOLLOWUP_CATEGORIES = [
+  { value: 'call_picked', label: 'Call picked', color: 'text-emerald-800 bg-gradient-to-r from-emerald-400/25 to-teal-400/15 border-emerald-400/50' },
+  { value: 'call_not_picked', label: 'Call not picked', color: 'text-amber-800 bg-gradient-to-r from-amber-400/25 to-orange-400/15 border-amber-400/50' },
+  { value: 'dead_lead', label: 'Dead lead', color: 'text-red-800 bg-gradient-to-r from-red-400/25 to-rose-400/15 border-red-400/50' },
+  { value: 'cold', label: 'Cold lead', color: 'text-sky-800 bg-gradient-to-r from-sky-400/25 to-cyan-400/15 border-sky-400/50' },
+  // legacy values (existing records / filters)
   { value: 'warm', label: 'Warm', color: 'text-orange-800 bg-gradient-to-r from-orange-400/25 to-amber-400/15 border-orange-400/50' },
-  { value: 'cold', label: 'Cold', color: 'text-sky-800 bg-gradient-to-r from-sky-400/25 to-cyan-400/15 border-sky-400/50' },
   { value: 'converted', label: 'Converted', color: 'text-emerald-800 bg-gradient-to-r from-emerald-400/25 to-teal-400/15 border-emerald-400/50' },
   { value: 'expected_conv', label: 'Expected Conversion', color: 'text-violet-800 bg-gradient-to-r from-violet-400/25 to-purple-400/15 border-violet-400/50' },
+];
+
+/** Categories shown when creating/editing a follow-up */
+export const FOLLOWUP_CATEGORY_OPTIONS = FOLLOWUP_CATEGORIES.filter((c) =>
+  ['call_picked', 'call_not_picked', 'dead_lead', 'cold'].includes(c.value)
+);
+
+export const CALL_NOT_PICKED_REASONS = [
+  { value: 'switched_off', label: 'Switched off' },
+  { value: 'not_reachable', label: 'Not reachable' },
+  { value: 'not_answering', label: 'Not answering' },
+  { value: 'does_not_exist', label: 'Does not exist' },
 ];
 
 export const KPI_CONFIG = [

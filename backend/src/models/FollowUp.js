@@ -26,8 +26,16 @@ const followUpSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['warm', 'cold', 'converted', 'expected_conv'],
-      default: 'warm',
+      enum: [
+        'call_picked',
+        'call_not_picked',
+        'dead_lead',
+        'cold',
+        'warm',
+        'converted',
+        'expected_conv',
+      ],
+      default: 'call_picked',
       index: true,
     },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },

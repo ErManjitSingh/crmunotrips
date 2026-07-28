@@ -4,14 +4,16 @@ const LeadNote = require('../models/LeadNote');
 const COLD_REMINDER_HOURS = 4;
 
 const COLD_REASON_LABELS = {
-  not_answering: 'Not answering calls',
+  not_answering: 'Not answering',
   asked_callback_later: 'Asked to call later',
   budget_not_ready: 'Budget not ready',
   dates_not_final: 'Travel dates not final',
   comparing_options: 'Comparing other options',
-  low_interest: 'Low interest / browsing only',
   wrong_time: 'Called at wrong time',
+  destination_not_final: 'Travel destination not final',
   other: 'Other',
+  // legacy
+  low_interest: 'Low interest / browsing only',
 };
 
 function coldReasonLabel(reason) {

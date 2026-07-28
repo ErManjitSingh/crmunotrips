@@ -17,7 +17,7 @@ export default function ChangeStatusModal({ open, onClose, onSubmit, currentStat
     <AppModal open={open} onClose={onClose} size="md">
       <form onSubmit={handleSubmit} className="p-6 space-y-4">
         <div>
-          <h3 className="text-lg font-semibold text-content-primary">Change Lead Status</h3>
+          <h3 className="text-lg font-semibold text-content-primary">Lead status</h3>
           <p className="text-sm text-content-secondary mt-1">Update the pipeline stage for this lead</p>
         </div>
         <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">

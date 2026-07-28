@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react';
 import AppModal from '../../ui/AppModal';
 import { Button } from '../../ui/button';
-import { FOLLOWUP_CATEGORIES } from '../../followups/constants';
+import {
+  FOLLOWUP_CATEGORY_OPTIONS,
+  CALL_NOT_PICKED_REASONS,
+} from '../../followups/constants';
+import { COLD_LEAD_REASONS } from '../../lead-wizard/constants';
 
 export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName }) {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('10:00');
-  const [category, setCategory] = useState('warm');
+  const [category, setCategory] = useState('call_picked');
+  const [coldReason, setColdReason] = useState('');
+  const [notPickedReason, setNotPickedReason] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -16,7 +22,9 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
       setDate(new Date().toISOString().split('T')[0]);
       setError('');
       setNotes('');
-      setCategory('warm');
+      setCategory('call_picked');
+      setColdReason('');
+      setNotPickedReason('');
     }
   }, [open]);
 
@@ -26,11 +34,27 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
       setError('Please select date');
       return;
     }
+    if (category === 'cold' && !coldReason) {
+      setError('Please select why this is a cold lead');
+      return;
+    }
+    if (category === 'call_not_picked' && !notPickedReason) {
+      setError('Please select why the call was not picked');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
       const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
-      await onSubmit({ scheduledAt, notes, type: 'whatsapp', category });
+      await onSubmit({
+        scheduledAt,
+        notes,
+        type: 'whatsapp',
+        category,
+        coldReason: category === 'cold' ? coldReason : undefined,
+        notPickedReason: category === 'call_not_picked' ? notPickedReason : undefined,
+        outcome: category === 'call_not_picked' ? notPickedReason : undefined,
+      });
       onClose();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save');
@@ -53,14 +77,62 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
           <label className="text-xs font-medium text-content-secondary mb-1 block">Follow-up Category *</label>
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setColdReason('');
+              setNotPickedReason('');
+            }}
             className="w-full rounded-lg border border-strong bg-surface px-3 py-2.5 text-sm font-medium"
           >
-            {FOLLOWUP_CATEGORIES.map((c) => (
+            {FOLLOWUP_CATEGORY_OPTIONS.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>
         </div>
+
+        {category === 'call_not_picked' && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 space-y-2">
+            <p className="text-xs font-semibold text-amber-800">Call not picked — reason *</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {CALL_NOT_PICKED_REASONS.map((reason) => (
+                <button
+                  key={reason.value}
+                  type="button"
+                  onClick={() => setNotPickedReason(reason.value)}
+                  className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold ${
+                    notPickedReason === reason.value
+                      ? 'border-amber-500 bg-amber-100 text-amber-900'
+                      : 'border-subtle bg-white text-content-secondary'
+                  }`}
+                >
+                  {reason.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {category === 'cold' && (
+          <div className="rounded-xl border border-sky-200 bg-sky-50/80 p-3 space-y-2">
+            <p className="text-xs font-semibold text-sky-800">Cold lead — reason *</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {COLD_LEAD_REASONS.map((reason) => (
+                <button
+                  key={reason.value}
+                  type="button"
+                  onClick={() => setColdReason(reason.value)}
+                  className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold ${
+                    coldReason === reason.value
+                      ? 'border-sky-500 bg-sky-100 text-sky-800'
+                      : 'border-subtle bg-white text-content-secondary'
+                  }`}
+                >
+                  {reason.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -91,7 +163,7 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Follow-up agenda..."
             rows={3}
-            required
+            required={category !== 'cold' && category !== 'call_not_picked'}
             className="w-full rounded-xl border border-strong bg-surface px-4 py-3 text-sm resize-none"
           />
         </div>
@@ -105,4 +177,4 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
       </form>
     </AppModal>
   );
-};
+}

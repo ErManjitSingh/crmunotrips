@@ -352,7 +352,7 @@ export default function MyLeadsPage() {
     </ExecutivePageShell>
       </div>
 
-      <ActionModal open={modal?.type === 'status'} title="Change Status" onClose={() => setModal(null)}>
+      <ActionModal open={modal?.type === 'status'} title="Lead status" onClose={() => setModal(null)}>
         <select
           value={modalStatus}
           onChange={(e) => setModalStatus(e.target.value)}

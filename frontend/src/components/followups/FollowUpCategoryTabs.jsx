@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { FOLLOWUP_CATEGORIES } from './constants';
+import { FOLLOWUP_CATEGORY_OPTIONS } from './constants';
 
-const TABS = [{ id: '', label: 'All' }, ...FOLLOWUP_CATEGORIES.map((c) => ({ id: c.value, label: c.label }))];
+const TABS = [{ id: '', label: 'All' }, ...FOLLOWUP_CATEGORY_OPTIONS.map((c) => ({ id: c.value, label: c.label }))];
 
 export default function FollowUpCategoryTabs({ value, onChange, layoutId = 'fu-cat-tab' }) {
   return (

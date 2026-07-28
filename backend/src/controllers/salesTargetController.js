@@ -5,7 +5,7 @@ const {
   listTargetsForManager,
   listTargetsForLeader,
   currentPeriod,
-  getMonthlyTarget,
+  getMonthlyTargets,
 } = require('../services/salesTargetService');
 
 const listTargets = asyncHandler(async (req, res) => {
@@ -21,13 +21,13 @@ const listTargets = asyncHandler(async (req, res) => {
     return res.json(await listTargetsForLeader(req, period));
   }
   if (req.user.role === 'sales_executive') {
-    const revenueTarget = await getMonthlyTarget(req.user._id, period);
+    const targets = await getMonthlyTargets(req.user._id, period);
     return res.json([
       {
         userId: req.user._id,
         name: req.user.name,
         role: req.user.role,
-        revenueTarget,
+        ...targets,
       },
     ]);
   }
@@ -42,6 +42,9 @@ const upsertTarget = asyncHandler(async (req, res) => {
   const doc = await setMonthlyTarget(req, {
     userId: req.body.userId,
     revenueTarget: req.body.revenueTarget,
+    packageTarget: req.body.packageTarget,
+    totalSalesTarget: req.body.totalSalesTarget,
+    profitTarget: req.body.profitTarget,
     year: req.body.year,
     month: req.body.month,
     notes: req.body.notes,

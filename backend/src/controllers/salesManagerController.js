@@ -15,7 +15,7 @@ const {
   notifyQuotationApproved,
   notifyQuotationRejected,
 } = require('../services/notificationService');
-const { getMonthlyTarget, buildTargetProgress } = require('../services/salesTargetService');
+const { getMonthlyTargets, buildTargetProgress } = require('../services/salesTargetService');
 const {
   loadLeadCore,
   loadLeadRelated,
@@ -213,7 +213,8 @@ const listExecutives = asyncHandler(async (req, res) => {
       const temperature = Object.fromEntries(tempAgg.map((t) => [t._id || 'unknown', t.count]));
       const byStatus = Object.fromEntries(statusAgg.map((s) => [s._id || 'unknown', s.count]));
 
-      const targetStats = buildTargetProgress(revenueAgg, await getMonthlyTarget(exId));
+      const targets = await getMonthlyTargets(exId);
+      const targetStats = buildTargetProgress(revenueAgg, targets.revenueTarget);
 
       return {
         _id: ex._id,
@@ -229,6 +230,10 @@ const listExecutives = asyncHandler(async (req, res) => {
         conversionRate: assignedLeads ? Math.round((conversions / assignedLeads) * 1000) / 10 : 0,
         contacted,
         monthlyTarget: targetStats.monthlyTarget,
+        revenueTarget: targets.revenueTarget,
+        packageTarget: targets.packageTarget,
+        totalSalesTarget: targets.totalSalesTarget,
+        profitTarget: targets.profitTarget,
         targetProgress: targetStats.progress,
         temperature: {
           hot: temperature.hot || 0,

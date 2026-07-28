@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import AddFollowUpModal from '../followups/AddFollowUpModal';
 import FollowUpCategoryBadge from '../followups/FollowUpCategoryBadge';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/followupApi';
-import { FOLLOWUP_CATEGORIES } from '../followups/constants';
+import { FOLLOWUP_CATEGORY_OPTIONS } from '../followups/constants';
 
 function fmt(iso) {
   if (!iso) return '—';
@@ -119,7 +119,7 @@ export default function LeadFollowUpSection({
 
         {canCreate && (
           <div className="px-5 pb-4 text-[10px] text-content-muted">
-            Categories: {FOLLOWUP_CATEGORIES.map((c) => c.label).join(' · ')}
+            Categories: {FOLLOWUP_CATEGORY_OPTIONS.map((c) => c.label).join(' · ')}
           </div>
         )}
       </div>

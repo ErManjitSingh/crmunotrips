@@ -80,8 +80,8 @@ export default function ExecutiveFollowUpsPage() {
         const monthStart = startOfMonth();
         setKpiCounts({
           total: summary.total ?? rows.length,
-          warm: rows.filter((f) => f.category === 'warm').length,
-          cold: rows.filter((f) => f.category === 'cold').length,
+          warm: rows.filter((f) => f.category === 'warm' || f.category === 'call_picked').length,
+          cold: rows.filter((f) => f.category === 'cold' || f.category === 'call_not_picked').length,
           converted: rows.filter(
             (f) =>
               f.category === 'converted' ||

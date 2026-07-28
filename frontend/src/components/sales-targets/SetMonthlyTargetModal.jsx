@@ -9,19 +9,33 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+function toInput(value) {
+  if (value === undefined || value === null || value === '') return '';
+  return String(value);
+}
+
 export default function SetMonthlyTargetModal({ open, onClose, user, onSaved }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [amount, setAmount] = useState('');
+  const [target, setTarget] = useState('');
+  const [packageTarget, setPackageTarget] = useState('');
+  const [totalSales, setTotalSales] = useState('');
+  const [profit, setProfit] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open || !user) return;
     setYear(now.getFullYear());
     setMonth(now.getMonth() + 1);
-    setAmount(user.monthlyTarget ? String(user.monthlyTarget) : '');
+    const revenue = user.revenueTarget ?? user.monthlyTarget;
+    setTarget(toInput(revenue));
+    setPackageTarget(toInput(user.packageTarget));
+    setTotalSales(toInput(user.totalSalesTarget ?? revenue));
+    setProfit(toInput(user.profitTarget));
   }, [open, user]);
+
+  const hasAnyValue = [target, packageTarget, totalSales, profit].some((v) => v !== '');
 
   const handleSave = async () => {
     if (!user?.userId && !user?._id) return;
@@ -29,7 +43,10 @@ export default function SetMonthlyTargetModal({ open, onClose, user, onSaved }) 
     try {
       await setSalesTarget({
         userId: user.userId || user._id,
-        revenueTarget: Number(amount),
+        revenueTarget: Number(target || 0),
+        packageTarget: Number(packageTarget || 0),
+        totalSalesTarget: Number(totalSales || 0),
+        profitTarget: Number(profit || 0),
         year,
         month,
       });
@@ -77,21 +94,56 @@ export default function SetMonthlyTargetModal({ open, onClose, user, onSaved }) 
           </label>
         </div>
 
-        <label className="block text-sm mb-6">
-          <span className="text-xs font-semibold uppercase tracking-wide text-content-muted">Revenue target (₹)</span>
-          <input
-            type="number"
-            min={0}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="e.g. 1500000"
-            className="mt-1 w-full rounded-xl border border-subtle bg-surface px-3 py-2.5 text-sm"
-          />
-        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+          <label className="text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-content-muted">Target (₹)</span>
+            <input
+              type="number"
+              min={0}
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              placeholder="e.g. 1500000"
+              className="mt-1 w-full rounded-xl border border-subtle bg-surface px-3 py-2.5 text-sm"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-content-muted">Package total (₹)</span>
+            <input
+              type="number"
+              min={0}
+              value={packageTarget}
+              onChange={(e) => setPackageTarget(e.target.value)}
+              placeholder="e.g. 1200000"
+              className="mt-1 w-full rounded-xl border border-subtle bg-surface px-3 py-2.5 text-sm"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-content-muted">Total sales (₹)</span>
+            <input
+              type="number"
+              min={0}
+              value={totalSales}
+              onChange={(e) => setTotalSales(e.target.value)}
+              placeholder="e.g. 1500000"
+              className="mt-1 w-full rounded-xl border border-subtle bg-surface px-3 py-2.5 text-sm"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-content-muted">Profit (₹)</span>
+            <input
+              type="number"
+              min={0}
+              value={profit}
+              onChange={(e) => setProfit(e.target.value)}
+              placeholder="e.g. 250000"
+              className="mt-1 w-full rounded-xl border border-subtle bg-surface px-3 py-2.5 text-sm"
+            />
+          </label>
+        </div>
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button type="button" onClick={handleSave} disabled={saving || !amount} className="bg-sky-600 hover:bg-sky-500 text-white">
+          <Button type="button" onClick={handleSave} disabled={saving || !hasAnyValue} className="bg-sky-600 hover:bg-sky-500 text-white">
             {saving ? 'Saving…' : 'Save Target'}
           </Button>
         </div>

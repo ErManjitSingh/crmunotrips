@@ -356,7 +356,7 @@ async function notifyFollowUpMissed(followUp, lead) {
 
 async function notifyFollowUpOutcome(followUp, lead) {
   const category = followUp.category;
-  if (!category || !['warm', 'converted', 'expected_conv', 'cold'].includes(category)) return;
+  if (!category || !['warm', 'converted', 'expected_conv', 'cold', 'call_picked', 'call_not_picked', 'dead_lead'].includes(category)) return;
 
   const branchId = lead?.branchId || followUp.branchId || null;
   const leadName = lead?.name || 'Lead';
@@ -365,6 +365,9 @@ async function notifyFollowUpOutcome(followUp, lead) {
     cold: 'Cold Lead',
     converted: 'Converted Lead',
     expected_conv: 'Expected Conversion',
+    call_picked: 'Call Picked',
+    call_not_picked: 'Call Not Picked',
+    dead_lead: 'Dead Lead',
   };
   const label = categoryLabels[category] || category;
 

@@ -55,6 +55,9 @@ export default function TeamPerformancePage() {
     columnHelper.accessor((r) => r.byStatus?.lost ?? 0, { id: 'lost', header: 'Lost' }),
     columnHelper.accessor('revenue', { header: 'Revenue', cell: (i) => <span className="font-bold tabular-nums">{formatCurrency(i.getValue())}</span> }),
     columnHelper.accessor('monthlyTarget', { header: 'Target', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue())}</span> }),
+    columnHelper.accessor('packageTarget', { header: 'Package total', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue() || 0)}</span> }),
+    columnHelper.accessor('totalSalesTarget', { header: 'Total sales', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue() || 0)}</span> }),
+    columnHelper.accessor('profitTarget', { header: 'Profit', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue() || 0)}</span> }),
     columnHelper.accessor('targetProgress', { header: 'Target %', cell: (i) => <span className="text-sky-700 font-semibold">{i.getValue() ?? 0}%</span> }),
     columnHelper.accessor('conversionRate', { header: 'CR %', cell: (i) => <span className="text-emerald-600 font-semibold">{i.getValue()}%</span> }),
     columnHelper.display({
@@ -94,7 +97,12 @@ export default function TeamPerformancePage() {
                 className="px-3 py-2 rounded-xl border border-subtle bg-surface-elevated/50 text-sm hover:border-sky-400/40"
               >
                 <span className="font-semibold">{tl.name}</span>
-                <span className="text-content-muted ml-2">{formatCurrency(tl.revenueTarget)}</span>
+                <span className="text-content-muted ml-2">
+                  T {formatCurrency(tl.revenueTarget)}
+                  {tl.packageTarget ? ` · Pkg ${formatCurrency(tl.packageTarget)}` : ''}
+                  {tl.totalSalesTarget ? ` · Sales ${formatCurrency(tl.totalSalesTarget)}` : ''}
+                  {tl.profitTarget ? ` · Profit ${formatCurrency(tl.profitTarget)}` : ''}
+                </span>
               </button>
             ))}
           </div>
