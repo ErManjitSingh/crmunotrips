@@ -38,11 +38,11 @@ const webhookStatus = asyncHandler(async (_req, res) => {
     hasAccessToken: Boolean(cfg.accessToken),
     hasPhoneNumberId: Boolean(cfg.phoneNumberId),
     hasAppSecret: Boolean(cfg.appSecret),
-    callbackUrl: 'https://testing.unotrips.com/api/webhooks/whatsapp',
+    callbackUrl: 'https://app.unotrips.com/api/webhooks/whatsapp',
     defaultDestination: cfg.defaultDestination,
     instructions: [
       '1. Meta App → WhatsApp → Configuration → Webhook',
-      '2. Callback URL: https://testing.unotrips.com/api/webhooks/whatsapp',
+      '2. Callback URL: https://app.unotrips.com/api/webhooks/whatsapp',
       '3. Verify token = WHATSAPP_VERIFY_TOKEN',
       '4. Subscribe: messages',
       '5. Set WHATSAPP_ACCESS_TOKEN + WHATSAPP_PHONE_NUMBER_ID in backend .env',

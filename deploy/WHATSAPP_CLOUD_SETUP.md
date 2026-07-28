@@ -7,13 +7,13 @@
 - Reply from CRM sends via Cloud API (when tokens set)
 
 ## Callback URL
-https://testing.unotrips.com/api/webhooks/whatsapp
+https://app.unotrips.com/api/webhooks/whatsapp
 
 ## Verify token
 `WHATSAPP_VERIFY_TOKEN=unotrips-wa-verify-2026`
 
 ## Status
-https://testing.unotrips.com/api/webhooks/whatsapp/status
+https://app.unotrips.com/api/webhooks/whatsapp/status
 
 ## Backend `.env`
 ```
@@ -28,7 +28,7 @@ WHATSAPP_DEFAULT_DESTINATION=Not specified
 1. developers.facebook.com → App → **WhatsApp** → API Setup
 2. Add phone number / use test number first
 3. Configuration → Webhook:
-   - Callback: `https://testing.unotrips.com/api/webhooks/whatsapp`
+   - Callback: `https://app.unotrips.com/api/webhooks/whatsapp`
    - Verify token: `unotrips-wa-verify-2026`
    - Subscribe field: **messages**
 4. Copy **Phone number ID** + **permanent token** into `.env`
