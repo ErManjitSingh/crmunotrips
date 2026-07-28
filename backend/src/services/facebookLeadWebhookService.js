@@ -221,6 +221,21 @@ function isDummyMetaValue(value = '') {
   return !text || /test lead|dummy data/i.test(text);
 }
 
+/** Meta numeric ids should not be shown as destination/campaign labels */
+function looksLikeMetaId(value = '') {
+  return /^\d{8,}$/.test(String(value || '').trim());
+}
+
+function usableCampaignLabel(...candidates) {
+  for (const c of candidates) {
+    const text = String(c || '').trim();
+    if (!text || isDummyMetaValue(text) || looksLikeMetaId(text)) continue;
+    if (/^facebook(\s+lead)?$/i.test(text) || /^not specified$/i.test(text)) continue;
+    return text;
+  }
+  return '';
+}
+
 function cleanPersonName(...candidates) {
   for (const c of candidates) {
     const text = String(c || '').trim();
@@ -280,13 +295,13 @@ async function resolveFacebookCampaignMeta({ adId, formId, graphLead = {} }) {
   // Optional ops override when Graph cannot read form/campaign (common on test leads)
   const envLabel = String(process.env.FACEBOOK_DEFAULT_CAMPAIGN_LABEL || '').trim();
 
-  resolved.displayLabel =
-    resolved.campaignName ||
-    resolved.adName ||
-    resolved.adsetName ||
-    resolved.formName ||
-    envLabel ||
-    '';
+  resolved.displayLabel = usableCampaignLabel(
+    resolved.campaignName,
+    resolved.adName,
+    resolved.adsetName,
+    resolved.formName,
+    envLabel
+  );
 
   debugLog('campaign_meta', {
     adId: effectiveAdId || null,
@@ -352,8 +367,9 @@ function mapLeadFields(graphLead = {}, meta = {}) {
     'query',
   ]);
 
-  const campaignLabel = String(meta.campaignLabel || meta.campaignName || '').trim();
-  const formName = String(meta.formName || '').trim();
+  const campaignLabel = usableCampaignLabel(meta.campaignLabel, meta.campaignName);
+  const formNameRaw = String(meta.formName || '').trim();
+  const formName = usableCampaignLabel(formNameRaw);
 
   // Name priority: real person → campaign → form → Facebook Lead
   const name =
@@ -374,7 +390,7 @@ function mapLeadFields(graphLead = {}, meta = {}) {
     campaignLabel ? `FB Campaign: ${campaignLabel}` : '',
     meta.adsetName ? `FB Adset: ${meta.adsetName}` : '',
     meta.adName ? `FB Ad: ${meta.adName}` : '',
-    formName ? `FB Form: ${formName}` : '',
+    formName && !looksLikeMetaId(formName) ? `FB Form: ${formName}` : '',
     meta.formId ? `FB Form ID: ${meta.formId}` : '',
     meta.adId ? `FB Ad ID: ${meta.adId}` : '',
     meta.pageId ? `FB Page: ${meta.pageId}` : '',
