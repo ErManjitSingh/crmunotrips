@@ -70,7 +70,9 @@ const listConversations = asyncHandler(async (req, res) => {
       _id: c._id,
       conversationId: c._id,
       phone: c.phone,
-      profileName: c.profileName || lead?.name || `+91 ${c.phone}`,
+      waId: c.waId || (c.phone ? `91${c.phone}` : ''),
+      // Always prefer WhatsApp profile name — never overwrite with CRM lead name
+      profileName: c.profileName || '',
       leadId: lead?._id || null,
       lead,
       hasLead: Boolean(lead),

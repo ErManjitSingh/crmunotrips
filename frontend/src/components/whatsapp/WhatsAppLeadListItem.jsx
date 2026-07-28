@@ -1,11 +1,15 @@
 import { motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
-import { formatMessageTime } from './whatsappUtils';
+import { formatMessageTime, formatWhatsAppPhone, resolveWhatsAppDisplayName } from './whatsappUtils';
 
 export default function WhatsAppLeadListItem({ conversation, active, onClick }) {
   const lead = conversation.lead;
-  const name = lead?.name || conversation.profileName || `+91 ${conversation.phone || ''}`;
+  const name = resolveWhatsAppDisplayName(
+    { profileName: conversation.profileName, phone: conversation.phone, waId: conversation.waId },
+    lead
+  );
+  const phoneLabel = formatWhatsAppPhone(conversation.waId || conversation.phone);
   const lastMessage = conversation.lastMessage;
   const unreadCount = conversation.unreadCount || 0;
   const preview =
@@ -62,6 +66,7 @@ export default function WhatsAppLeadListItem({ conversation, active, onClick }) 
           </p>
         </div>
         <div className="flex items-center gap-2 mt-1.5">
+          <span className="text-[10px] text-wa-text-muted tabular-nums shrink-0">{phoneLabel}</span>
           {lead ? (
             <>
               <LeadStatusBadge status={lead.status} size="sm" />

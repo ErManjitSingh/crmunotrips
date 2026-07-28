@@ -5,7 +5,7 @@ import LeadStatusBadge from '../leads/LeadStatusBadge';
 import WhatsAppQuickActions from './WhatsAppQuickActions';
 import WhatsAppNotesTimeline from './WhatsAppNotesTimeline';
 import WhatsAppFollowUpPanel from './WhatsAppFollowUpPanel';
-import { formatBudget, formatTravelDate, getInitials } from './whatsappUtils';
+import { formatBudget, formatTravelDate, getInitials, formatWhatsAppPhone, resolveWhatsAppDisplayName } from './whatsappUtils';
 
 function InfoRow({ icon: Icon, label, value }) {
   return (
@@ -67,10 +67,10 @@ export default function WhatsAppLeadInfoPanel({
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="text-center pb-4 border-b border-wa-border/50">
             <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white font-bold text-xl shadow-lg mb-3">
-              {getInitials(contact.profileName || contact.phone)}
+              {getInitials(resolveWhatsAppDisplayName(contact))}
             </div>
-            <h3 className="font-bold text-wa-text-primary">{contact.profileName || 'WhatsApp User'}</h3>
-            <p className="text-xs text-wa-text-muted mt-1">{contact.phone}</p>
+            <h3 className="font-bold text-wa-text-primary">{resolveWhatsAppDisplayName(contact)}</h3>
+            <p className="text-xs text-wa-text-muted mt-1 tabular-nums">{formatWhatsAppPhone(contact.waId || contact.phone)}</p>
           </div>
           <p className="text-sm text-wa-text-secondary">
             Ye chat abhi lead nahi hai. Create Lead dabao — CRM me WhatsApp source ke saath lead ban jayegi.
@@ -108,16 +108,20 @@ export default function WhatsAppLeadInfoPanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         <div className="flex flex-col items-center text-center pb-4 border-b border-wa-border/50">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white font-bold text-xl shadow-lg mb-3">
-            {getInitials(lead.name)}
+            {getInitials(resolveWhatsAppDisplayName(contact || {}, lead))}
           </div>
-          <h3 className="font-bold text-wa-text-primary">{lead.name}</h3>
+          <h3 className="font-bold text-wa-text-primary">{resolveWhatsAppDisplayName(contact || {}, lead)}</h3>
+          <p className="text-xs text-wa-text-muted mt-1 tabular-nums">
+            {formatWhatsAppPhone(contact?.waId || contact?.phone || lead.phone)}
+          </p>
           <div className="mt-2">
             <LeadStatusBadge status={lead.status} />
           </div>
         </div>
 
         <Section title="Customer Details">
-          <InfoRow icon={User} label="Phone" value={lead.phone} />
+          <InfoRow icon={User} label="WhatsApp" value={formatWhatsAppPhone(contact?.waId || contact?.phone || lead.phone)} />
+          <InfoRow icon={User} label="CRM lead" value={lead.name} />
           <InfoRow icon={Mail} label="Email" value={lead.email} />
           <InfoRow icon={MapPin} label="City" value={lead.city} />
         </Section>

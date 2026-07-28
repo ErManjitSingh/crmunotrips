@@ -1,7 +1,7 @@
 import { ArrowLeft, Phone, Info, UserPlus } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
-import { getInitials } from './whatsappUtils';
+import { getInitials, formatWhatsAppPhone, resolveWhatsAppDisplayName } from './whatsappUtils';
 
 export default function WhatsAppConversationHeader({
   lead,
@@ -12,8 +12,9 @@ export default function WhatsAppConversationHeader({
   onCreateLead,
   creatingLead,
 }) {
-  const name = lead?.name || contact?.profileName || `+91 ${contact?.phone || ''}`;
-  const phone = lead?.phone || contact?.phone || '';
+  const name = resolveWhatsAppDisplayName(contact || {}, lead);
+  const phone = formatWhatsAppPhone(contact?.waId || contact?.phone);
+  const dialDigits = String(contact?.waId || contact?.phone || '').replace(/\D/g, '').slice(-10);
 
   if (!lead && !contact) return null;
 
@@ -35,7 +36,7 @@ export default function WhatsAppConversationHeader({
       <div className="flex-1 min-w-0">
         <h3 className="font-semibold text-wa-text-primary truncate">{name}</h3>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-xs text-wa-text-muted truncate">{phone}</span>
+          <span className="text-xs text-wa-text-muted truncate tabular-nums">{phone}</span>
           {lead ? (
             <LeadStatusBadge status={lead.status} size="sm" />
           ) : (
@@ -61,9 +62,9 @@ export default function WhatsAppConversationHeader({
             {lead.assignedTo.name}
           </span>
         )}
-        {phone && (
+        {dialDigits && (
           <a
-            href={`tel:${phone}`}
+            href={`tel:+91${dialDigits}`}
             className="p-2 rounded-lg hover:bg-wa-list-hover text-wa-text-secondary transition-colors"
             aria-label="Call"
           >

@@ -50,6 +50,24 @@ export function getPhoneDigits(phone) {
   return (phone || '').replace(/\D/g, '');
 }
 
+/** WhatsApp-style display: +91 82194 40351 */
+export function formatWhatsAppPhone(phoneOrWaId) {
+  const digits = getPhoneDigits(phoneOrWaId);
+  if (!digits) return '';
+  const local = digits.length >= 10 ? digits.slice(-10) : digits;
+  if (local.length === 10) {
+    return `+91 ${local.slice(0, 5)} ${local.slice(5)}`;
+  }
+  return digits.startsWith('91') ? `+${digits}` : `+91 ${digits}`;
+}
+
+/** Chat title like WhatsApp: profile name, else number */
+export function resolveWhatsAppDisplayName(contact = {}, lead = null) {
+  const profile = String(contact.profileName || '').trim();
+  if (profile) return profile;
+  return formatWhatsAppPhone(contact.waId || contact.phone) || lead?.name || 'WhatsApp';
+}
+
 export function groupMessagesByDate(messages) {
   const groups = [];
   let currentDate = null;

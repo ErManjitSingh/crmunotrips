@@ -259,6 +259,7 @@ export default function WhatsAppLeadsPage() {
               selected
                 ? {
                     phone: selected.phone,
+                    waId: selected.waId,
                     profileName: selected.profileName,
                   }
                 : null
@@ -289,6 +290,7 @@ export default function WhatsAppLeadsPage() {
               selected
                 ? {
                     phone: selected.phone,
+                    waId: selected.waId,
                     profileName: selected.profileName,
                   }
                 : null
