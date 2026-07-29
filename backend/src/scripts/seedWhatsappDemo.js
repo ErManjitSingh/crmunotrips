@@ -4,11 +4,16 @@
  * Safe to re-run — skips leads that already exist by demo phone number.
  */
 require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
+// Prefer live app DB when seeding on VPS (PM2/app.unotrips.com)
+if (!process.env.MONGO_URI || /testing_unotrips_crm/i.test(process.env.MONGO_URI)) {
+  process.env.MONGO_URI = process.env.APP_MONGO_URI || 'mongodb://127.0.0.1:27017/app_unotrips_crm';
+}
 const { connectDB } = require('../config/db');
 const User = require('../models/User');
 const Branch = require('../models/Branch');
 const Lead = require('../models/Lead');
 const WhatsAppMessage = require('../models/WhatsAppMessage');
+const WhatsAppConversation = require('../models/WhatsAppConversation');
 
 const DEMO_PHONE_PREFIX = '+91 99000 000';
 
@@ -233,12 +238,34 @@ async function seedWhatsappDemo() {
       notes: 'Demo WhatsApp lead — safe to delete',
     });
 
+    const phone10 = phone.replace(/\D/g, '').slice(-10);
+    const conversation = await WhatsAppConversation.findOneAndUpdate(
+      { phone: phone10 },
+      {
+        $set: {
+          phone: phone10,
+          waId: `91${phone10}`,
+          profileName: demo.name,
+          lead: lead._id,
+          lastMessageText: lastThread.text,
+          lastMessageAt: lastContactedAt,
+          lastDirection: lastThread.direction,
+          unreadCount: lastThread.direction === 'incoming' ? 1 : 0,
+          branchId,
+          isArchived: false,
+        },
+      },
+      { upsert: true, new: true }
+    );
+
     const messages = demo.threads.map((t) => ({
+      conversation: conversation._id,
       lead: lead._id,
+      fromPhone: phone10,
       direction: t.direction,
       type: 'text',
       text: t.text,
-      status: t.status || (t.direction === 'incoming' ? 'sent' : 'read'),
+      status: t.status || (t.direction === 'incoming' ? 'received' : 'read'),
       timestamp: hoursAgoDate(t.hoursAgo),
       sentBy: t.direction === 'outgoing' ? (assignedTo || admin._id) : undefined,
     }));
