@@ -61,6 +61,10 @@ function HotelCard({ meta, options = [], onOpenPicker, emptyLabel }) {
   const image = meta?.image || meta?.images?.[0];
   const stars = Math.min(5, Math.round(Number(meta?.starRating || 0)));
   const hasOptions = options.length > 0;
+  const priceDelta = Number(meta?.priceDelta || 0);
+  const absoluteNight = Number(
+    meta?.absolutePerNight ?? meta?.startingPrice ?? meta?.includedRate ?? 0
+  );
 
   return (
     <div className="rounded-xl border border-violet-200 bg-violet-50/70 overflow-hidden shadow-sm shadow-violet-100/50">
@@ -89,11 +93,17 @@ function HotelCard({ meta, options = [], onOpenPicker, emptyLabel }) {
             )}
             {meta?.tierName && <span>{meta.tierName}</span>}
             {meta?.meals && <span>· {meta.meals}</span>}
-            {Number(meta?.priceDelta) > 0 && (
-              <span className="font-semibold text-emerald-600">· +{formatINR(meta.priceDelta)}/night upgrade</span>
-            )}
-            {!(Number(meta?.priceDelta) > 0) && (
-              <span className="font-medium text-slate-500">· Included</span>
+            {priceDelta > 0 ? (
+              <span className="font-semibold text-emerald-600">
+                · +{formatINR(priceDelta)}/night upgrade
+                {absoluteNight > 0 ? (
+                  <span className="font-medium text-slate-500"> ({formatINR(absoluteNight)}/night)</span>
+                ) : null}
+              </span>
+            ) : absoluteNight > 0 ? (
+              <span className="font-semibold text-violet-700">· {formatINR(absoluteNight)}/night</span>
+            ) : (
+              <span className="font-medium text-slate-400">· Not included</span>
             )}
           </div>
         </div>
@@ -165,6 +175,9 @@ function SortableDayCard({
           tierName: hotelSel.room?.name,
           location: hotelSel.hotel.location,
           priceDelta: hotelSel.perNight,
+          absolutePerNight: hotelSel.absolutePerNight,
+          startingPrice: hotelSel.hotel?.startingPrice || hotelSel.absolutePerNight,
+          includedRate: hotelSel.includedRate,
         }
       : day.hotel
         ? { name: day.hotel, meals: day.meals }

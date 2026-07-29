@@ -44,8 +44,10 @@ export function calculatePricing({
   };
 }
 
-export function formatINR(n) {
-  return `₹${Number(n || 0).toLocaleString('en-IN')}`;
+export function formatINR(n, { zeroLabel } = {}) {
+  const value = Number(n || 0);
+  if (value === 0 && zeroLabel) return zeroLabel;
+  return `₹${value.toLocaleString('en-IN')}`;
 }
 
 export function getPackageTypeConfig(type) {

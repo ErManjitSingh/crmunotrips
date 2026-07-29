@@ -14,7 +14,7 @@ import { logSelectedPackageDebug } from '../../lib/logPackageDebug';
 import { resolvePackageItinerary, seedDayWiseHotelsFromItinerary } from '../../lib/packageItineraryMapper';
 import { resolvePackageCabs } from '../../lib/packageCabMapper';
 import InclusionExclusionEditor, { cleanInclusionExclusionLines } from './InclusionExclusionEditor';
-import { sumDayWiseHotelCost } from './DayWiseHotelSelector';
+import { resolvePackageHotelPricing } from './DayWiseHotelSelector';
 import { buildSelectedCabSnapshot } from './UnoCabSelector';
 import { parsePackageNights } from './UnoHotelSelector';
 import { WIZARD_STEPS } from './constants';
@@ -386,10 +386,12 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setSelectedUnoCab(defaultCab);
 
     setState((s) => {
+      const packageStart = Number(normalized.startingPrice || 0);
+      const { baseCost, hotelCost } = resolvePackageHotelPricing(packageStart, seededHotels);
       const nextPricing = {
         ...s.pricing,
-        baseCost: normalized.startingPrice || 0,
-        hotelCost: sumDayWiseHotelCost(seededHotels),
+        baseCost,
+        hotelCost,
         cabCost: Number(defaultCab?.totalAmount || defaultCab?.cost || 0),
         flightCost: 0,
         activityCost: 0,
@@ -449,12 +451,14 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   };
 
   useEffect(() => {
-    const hotelCost = sumDayWiseHotelCost(dayWiseHotels);
+    const packageAnchor = Number(selectedPkgDetail?.startingPrice || 0);
+    const { baseCost, hotelCost } = resolvePackageHotelPricing(packageAnchor, dayWiseHotels);
     const cabCost = Number(selectedUnoCab?.totalAmount || selectedUnoCab?.cost || 0);
     const flightCost = flights.filter((f) => state.selectedFlightIds.includes(f._id)).reduce((s, f) => s + (f.cost || 0), 0);
     const activityCost = activities.filter((a) => state.selectedActivityIds.includes(a._id)).reduce((s, a) => s + (a.price || 0), 0);
     const calc = calculatePricing({
       ...state.pricing,
+      baseCost,
       hotelCost,
       cabCost,
       flightCost,
@@ -464,6 +468,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       ...s,
       pricing: {
         ...s.pricing,
+        baseCost,
         hotelCost,
         cabCost,
         flightCost,
@@ -476,11 +481,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     }));
   }, [
     selectedUnoCab,
+    selectedPkgDetail?.startingPrice,
     state.selectedFlightIds,
     state.selectedActivityIds,
     flights,
     activities,
-    state.pricing.baseCost,
     state.pricing.taxes,
     state.pricing.markup,
     state.pricing.discount,

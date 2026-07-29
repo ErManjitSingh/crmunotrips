@@ -432,12 +432,24 @@ export default function PackageBuilderWorkspace({
     );
     const stayNights = 1;
     const totalCost = Number(option.totalCost ?? perNight);
+    const existing = (dayWiseHotels || []).find((h) => h.day === day.day);
+    // Keep original package-included rate stable across upgrades (for total itemization).
+    const includedRate = Number(
+      existing?.includedRate ??
+        existing?.hotel?.startingPrice ??
+        option.includedRate ??
+        day?.hotelMeta?.startingPrice ??
+        day?.hotelMeta?.includedRate ??
+        0
+    );
     const hotelMeta = {
       ...option,
       tierName: roomName,
       meals: mealLabel,
       priceDelta: perNight,
       absolutePerNight,
+      includedRate,
+      startingPrice: absolutePerNight || option.startingPrice || 0,
       room: option.room || { name: roomName },
       mealPlan: option.mealPlan || { label: mealLabel },
     };
@@ -474,7 +486,7 @@ export default function PackageBuilderWorkspace({
       mealPlan: option.mealPlan || { label: mealLabel },
       perNight,
       absolutePerNight,
-      includedRate: Number(option.includedRate ?? 0),
+      includedRate,
       totalCost,
       nights: stayNights,
       fromPackage: true,

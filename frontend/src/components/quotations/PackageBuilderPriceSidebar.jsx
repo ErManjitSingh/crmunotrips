@@ -59,7 +59,7 @@ export default function PackageBuilderPriceSidebar({
 
   const rows = [
     { key: 'baseCost', label: 'Package Cost', readOnly: true },
-    { key: 'hotelCost', label: 'Hotel Upgrade', readOnly: true },
+    { key: 'hotelCost', label: 'Hotels', readOnly: true },
     { key: 'cabCost', label: 'Transport Upgrade', readOnly: true },
     { key: 'activityCost', label: 'Activities', readOnly: true },
     { key: 'taxes', label: 'GST (5%)', readOnly: true },
@@ -124,12 +124,18 @@ export default function PackageBuilderPriceSidebar({
             />
           </label>
 
-          {rows.map(({ key, label, readOnly }) => (
+          {rows.map(({ key, label, readOnly }) => {
+            const amount =
+              key === 'taxes' ? computed.taxes : key === 'markup' ? computed.markup : pricing?.[key] || 0;
+            return (
             <div key={key} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50/80 border border-slate-100 px-2 py-1.5">
               <span className="text-xs font-semibold text-slate-600">{label}</span>
               {readOnly || READONLY_COST_KEYS.has(key) || key === 'taxes' || key === 'markup' ? (
-                <span className="w-[108px] h-8 inline-flex items-center justify-end px-2 text-sm font-semibold metric-tabular text-slate-800">
-                  {formatINR(key === 'taxes' ? computed.taxes : key === 'markup' ? computed.markup : pricing?.[key] || 0)}
+                <span className={cn(
+                  'min-w-[108px] h-8 inline-flex items-center justify-end px-2 text-sm font-semibold metric-tabular',
+                  Number(amount) === 0 ? 'text-slate-400' : 'text-slate-800'
+                )}>
+                  {formatINR(amount, { zeroLabel: 'Not included' })}
                 </span>
               ) : (
                 <input
@@ -141,7 +147,8 @@ export default function PackageBuilderPriceSidebar({
                 />
               )}
             </div>
-          ))}
+            );
+          })}
 
           <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50/80 border border-slate-100 px-2 py-1.5">
             <span className="text-xs font-semibold text-slate-600">Markup %</span>
@@ -178,7 +185,7 @@ export default function PackageBuilderPriceSidebar({
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">You Save</p>
               <p className="text-sm font-bold text-emerald-700 metric-tabular">
-                {formatINR(youSave)}
+                {formatINR(youSave, { zeroLabel: 'Not included' })}
               </p>
             </div>
             <div className="text-right">

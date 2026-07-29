@@ -128,6 +128,8 @@ export function mapHotelOption(option = {}) {
     meals,
     mealsRaw: option.meals || null,
     startingPrice,
+    absolutePerNight: startingPrice,
+    includedRate: startingPrice,
     priceDelta,
     tierName:
       option.tier_name ||

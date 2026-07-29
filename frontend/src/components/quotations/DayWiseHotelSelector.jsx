@@ -9,6 +9,56 @@ export function sumDayWiseHotelCost(selections = []) {
   return selections.reduce((sum, item) => sum + Number(item.totalCost || item.perNight || 0), 0);
 }
 
+/** Absolute selected stay value (rack / meal rate × nights). */
+export function sumDayWiseHotelAbsolute(selections = []) {
+  return selections.reduce((sum, item) => {
+    const nights = Math.max(1, Number(item.nights) || 1);
+    const absolute = Number(
+      item.absolutePerNight ?? item.hotel?.startingPrice ?? item.includedRate ?? 0
+    );
+    return sum + absolute * nights;
+  }, 0);
+}
+
+/** Package-included hotel portion (original rate when stay was seeded / selected). */
+export function sumDayWiseHotelIncluded(selections = []) {
+  return selections.reduce((sum, item) => {
+    const nights = Math.max(1, Number(item.nights) || 1);
+    const included = Number(item.includedRate ?? item.hotel?.startingPrice ?? 0);
+    return sum + included * nights;
+  }, 0);
+}
+
+/**
+ * Split package base vs hotel line so selected hotel rates appear in the total breakdown
+ * without changing the grand total (package + upgrades).
+ */
+export function resolvePackageHotelPricing(packageStartingPrice = 0, selections = []) {
+  const packageBase = Math.max(0, Number(packageStartingPrice) || 0);
+  const upgradeCost = sumDayWiseHotelCost(selections);
+  const absoluteCost = sumDayWiseHotelAbsolute(selections);
+  const includedCost = sumDayWiseHotelIncluded(selections);
+
+  // Itemize hotel rates into hotelCost when we can safely peel them out of package base.
+  if (absoluteCost > 0 && includedCost > 0 && includedCost <= packageBase) {
+    return {
+      baseCost: Math.round((packageBase - includedCost) * 100) / 100,
+      hotelCost: Math.round(absoluteCost * 100) / 100,
+    };
+  }
+
+  // Package price missing — use absolute selected hotel rates alone.
+  if (absoluteCost > 0 && packageBase === 0) {
+    return { baseCost: 0, hotelCost: Math.round(absoluteCost * 100) / 100 };
+  }
+
+  // Fallback: upgrade-only (avoid double-counting discounted packages).
+  return {
+    baseCost: packageBase,
+    hotelCost: Math.round(upgradeCost * 100) / 100,
+  };
+}
+
 export function isDayWiseHotelsComplete(selections = [], nights = 1) {
   const required = Math.max(1, Number(nights) || 1);
   if (selections.length < required) return false;
@@ -134,7 +184,12 @@ export default function DayWiseHotelSelector({ destination, nights = 1, value = 
           <span>
             Night {activeDay}: {activeSelection.hotel?.name} · {activeSelection.room?.name}
           </span>
-          <span className="font-semibold shrink-0">{formatINR(activeSelection.perNight)}/night</span>
+          <span className="font-semibold shrink-0">
+            {formatINR(activeSelection.perNight || activeSelection.absolutePerNight, {
+              zeroLabel: 'Not included',
+            })}
+            {Number(activeSelection.perNight || activeSelection.absolutePerNight || 0) > 0 ? '/night' : ''}
+          </span>
         </div>
       )}
 

@@ -2,7 +2,7 @@ import { calculatePricing, formatINR } from './quotationUtils';
 
 const FIELDS = [
   { key: 'baseCost', label: 'Package Cost', color: 'border-sky-400/30 bg-sky-500/5', readOnly: true },
-  { key: 'hotelCost', label: 'Hotel Upgrade', color: 'border-amber-400/30 bg-amber-500/5', readOnly: true },
+  { key: 'hotelCost', label: 'Hotels', color: 'border-amber-400/30 bg-amber-500/5', readOnly: true },
   { key: 'cabCost', label: 'Transport Upgrade', color: 'border-emerald-400/30 bg-emerald-500/5', readOnly: true },
   { key: 'activityCost', label: 'Activities', color: 'border-indigo-400/30 bg-indigo-500/5', readOnly: true },
   { key: 'taxes', label: 'GST (5%)', color: 'border-violet-400/30 bg-violet-500/5', readOnly: true },
@@ -48,7 +48,10 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false 
             <label className="text-[10px] uppercase font-semibold text-content-muted">{label}</label>
             {readOnly || fieldReadOnly ? (
               <p className="text-lg font-bold text-content-primary metric-tabular mt-1">
-                {formatINR(key === 'taxes' ? computed.taxes : key === 'markup' ? computed.markup : pricing?.[key])}
+                {formatINR(
+                  key === 'taxes' ? computed.taxes : key === 'markup' ? computed.markup : pricing?.[key],
+                  { zeroLabel: 'Not included' }
+                )}
               </p>
             ) : (
               <input
@@ -81,7 +84,7 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false 
         <div className="p-5 rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/15 to-teal-500/10">
           <p className="text-xs font-semibold uppercase text-emerald-600">You Save</p>
           <p className="text-3xl font-black text-emerald-700 dark:text-emerald-300 metric-tabular mt-1">
-            {formatINR(computed.youSave || pricing?.discount || 0)}
+            {formatINR(computed.youSave || pricing?.discount || 0, { zeroLabel: 'Not included' })}
           </p>
         </div>
         <div className="p-5 rounded-2xl border border-brand-400/30 bg-gradient-to-br from-brand-500/15 to-indigo-500/10">

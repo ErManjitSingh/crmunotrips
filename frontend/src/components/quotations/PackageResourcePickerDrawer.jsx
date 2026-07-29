@@ -66,7 +66,7 @@ function formatRelativePrice(amount, basePrice, { isCurrent = false } = {}) {
   if (isCurrent) {
     return {
       primary: 'Current',
-      secondary: amount > 0 ? formatINR(amount) : 'Included',
+      secondary: amount > 0 ? formatINR(amount) : 'Not included',
       tone: 'text-slate-700',
       chip: 'bg-slate-100 text-slate-600 border-slate-200',
       hint: 'Already selected',
@@ -76,29 +76,30 @@ function formatRelativePrice(amount, basePrice, { isCurrent = false } = {}) {
   if (diff === 0) {
     return {
       primary: 'Same price',
-      secondary: amount > 0 ? formatINR(amount) : 'Included',
+      secondary: amount > 0 ? formatINR(amount) : 'Not included',
       tone: 'text-slate-600',
       chip: 'bg-slate-100 text-slate-600 border-slate-200',
-      hint: 'No change vs current',
+      hint: amount > 0 ? 'Same as current stay' : 'No extra charge',
     };
   }
   if (diff > 0) {
     return {
       primary: `+${formatINR(diff)}`,
       secondary: amount > 0 ? formatINR(amount) : null,
-      tone: 'text-rose-600',
-      chip: 'bg-rose-50 text-rose-700 border-rose-200',
-      hint: 'Higher than current',
+      tone: 'text-emerald-700',
+      chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      hint: 'More than current',
     };
   }
   return {
     primary: `−${formatINR(Math.abs(diff))}`,
     secondary: amount > 0 ? formatINR(amount) : null,
-    tone: 'text-emerald-600',
-    chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    hint: 'Lower than current',
+    tone: 'text-sky-700',
+    chip: 'bg-sky-50 text-sky-700 border-sky-200',
+    hint: 'Less than current',
   };
 }
+
 function hotelBadge(option, index) {
   if (option.isDefault) return BADGE_STYLES[0];
   if (Number(option.starRating) >= 5) return BADGE_STYLES[2];
@@ -325,7 +326,7 @@ function HotelListRow({ option, selected, loading, onSelect, showDay, index, bas
                 {amount > 0 ? 'From' : 'Package'}
               </p>
               <p className="text-lg font-black text-violet-700 leading-none mt-0.5">
-                {amount > 0 ? formatINR(amount) : 'Included'}
+                {amount > 0 ? formatINR(amount) : 'Not included'}
               </p>
               {amount > 0 && (
                 <p className="text-[10px] font-medium text-slate-400 mt-0.5">Per night</p>
@@ -418,7 +419,7 @@ function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0 }) {
           <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
             <div>
               <p className="text-base font-black text-violet-700">
-                {price > 0 ? formatINR(price) : 'Package rate'}
+                {price > 0 ? formatINR(price) : 'Not included'}
                 {price > 0 && <span className="text-[10px] font-medium text-slate-400"> / night</span>}
               </p>
               <p className={cn('text-xs font-bold mt-0.5', rel.tone)}>{rel.primary}</p>
@@ -462,14 +463,18 @@ function MealPlanCard({ plan, roomPrice, nights, onSelect, basePrice = 0 }) {
       <div className="mt-3 pt-3 border-t border-slate-100 flex items-end justify-between gap-2">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Per night</p>
-          <p className="text-sm font-black text-violet-700">{formatINR(perNight)}</p>
+          <p className="text-sm font-black text-violet-700">
+            {formatINR(perNight, { zeroLabel: 'Not included' })}
+          </p>
           <p className={cn('text-xs font-bold mt-0.5', rel.tone)}>{rel.primary}</p>
         </div>
         <div className="text-right">
           <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
             {nights} night{nights !== 1 ? 's' : ''}
           </p>
-          <p className="text-base font-black text-slate-900">{formatINR(total)}</p>
+          <p className="text-base font-black text-slate-900">
+            {formatINR(total, { zeroLabel: 'Not included' })}
+          </p>
           <span className={cn('inline-flex mt-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold', rel.chip)}>
             vs current
           </span>
@@ -659,12 +664,23 @@ export default function PackageResourcePickerDrawer({
       absolute > 0
         ? absolute
         : Number(selectedRoom.pricePerNight || 0) + Number(plan.price || 0);
-    const base = Number(basePrice || 0);
     const packageUpgrade =
       Number(packageHotel.priceDelta ?? packageHotel.upgrade_price ?? 0) || 0;
+    // Prefer current stay absolute rate; if unknown, use default package hotel catalog rate
+    // so upgrade deltas still compute when basePrice prop was 0.
+    const defaultOption =
+      options.find((o) => o.isDefault || o.is_default || o.is_selected) || options[0] || null;
+    const defaultAbsolute =
+      Number(defaultOption?.absolutePerNight ?? defaultOption?.startingPrice ?? defaultOption?.starting_price ?? 0) || 0;
+    const base =
+      Number(basePrice || 0) > 0
+        ? Number(basePrice)
+        : defaultAbsolute > 0
+          ? defaultAbsolute
+          : 0;
     // Package baseCost already includes default stay.
-    // Prefer absolute delta vs current rate; if included rate unknown, fall back to package upgrade only
-    // (never add full catalog rates on top of package price).
+    // Prefer absolute delta vs current/default rate; if rates unknown, fall back to package upgrade only
+    // (never add full catalog rates on top of package price when we cannot compute a delta).
     const costDeltaPerNight =
       base > 0
         ? Math.round((absolutePerNight - base) * 100) / 100
@@ -682,7 +698,7 @@ export default function PackageResourcePickerDrawer({
       location: catalogHotel.location || packageHotel.location || '',
       city: catalogHotel.city || packageHotel.city || '',
       slug: catalogHotel.slug || packageHotel.slug || '',
-      startingPrice: packageHotel.startingPrice || catalogHotel.startingPrice || 0,
+      startingPrice: packageHotel.startingPrice || catalogHotel.startingPrice || absolutePerNight || 0,
       tierName: selectedRoom.name,
       meals: plan.label,
       priceDelta: costDeltaPerNight,
@@ -948,8 +964,10 @@ export default function PackageResourcePickerDrawer({
                       <p className="text-sm font-bold text-slate-900 truncate">{selectedRoom.name}</p>
                     </div>
                     <p className="text-sm font-black text-violet-700 shrink-0">
-                      {formatINR(selectedRoom.pricePerNight || 0)}
-                      <span className="text-[10px] font-medium text-slate-400"> /night</span>
+                      {formatINR(selectedRoom.pricePerNight || 0, { zeroLabel: 'Not included' })}
+                      {Number(selectedRoom.pricePerNight || 0) > 0 && (
+                        <span className="text-[10px] font-medium text-slate-400"> /night</span>
+                      )}
                     </p>
                   </div>
 
