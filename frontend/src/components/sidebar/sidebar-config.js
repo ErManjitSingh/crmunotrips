@@ -86,10 +86,10 @@ export const teamManagementItems = [
     roles: ['admin'],
   },
   {
-    path: '/team/sales-targets',
+    path: '/team?tab=performance',
     label: 'Sales Targets',
     icon: Target,
-    roles: ['admin'],
+    roles: ['admin', 'sales_manager'],
   },
   {
     path: '/team/attendance',

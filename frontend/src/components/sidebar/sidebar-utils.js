@@ -1,10 +1,21 @@
 export function isNavItemActive(pathname, path) {
-  if (path === '/' || path === '/admin/dashboard') {
+  const basePath = String(path || '').split('?')[0];
+  if (basePath === '/' || basePath === '/admin/dashboard') {
     return pathname === '/' || pathname === '/admin/dashboard';
   }
-  if (path === '/leads') return pathname === '/leads';
-  if (path === '/hr/dashboard') return pathname === '/hr/dashboard' || pathname === '/hr';
-  return pathname === path || pathname.startsWith(`${path}/`);
+  if (basePath === '/leads') return pathname === '/leads';
+  if (basePath === '/hr/dashboard') return pathname === '/hr/dashboard' || pathname === '/hr';
+  if (basePath === '/team' && String(path || '').includes('tab=performance')) {
+    return pathname === '/team' && (typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('tab') === 'performance'
+      : false);
+  }
+  if (basePath === '/team') {
+    return pathname === '/team' && (typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('tab') !== 'performance'
+      : true);
+  }
+  return pathname === basePath || pathname.startsWith(`${basePath}/`);
 }
 
 function matchesQuery(text, query) {

@@ -105,6 +105,17 @@ export default function UserDataTable({
                   <span className="text-sm font-semibold text-content-primary tabular-nums">{user.assignedLeads ?? 0}</span>
                 </td>
                 <td className={compactTd} onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-1.5">
+                    {showSetTarget(user) && (
+                      <button
+                        type="button"
+                        onClick={() => onSetTarget(user)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100"
+                      >
+                        <Target className="w-3 h-3" />
+                        Set Target
+                      </button>
+                    )}
                   {hasActions ? (
                   <DropdownMenuRoot>
                     <DropdownMenuTrigger asChild>
@@ -156,11 +167,12 @@ export default function UserDataTable({
                       )}
                     </DropdownMenuContent>
                   </DropdownMenuRoot>
-                  ) : (
+                  ) : !showSetTarget(user) ? (
                     <button type="button" onClick={() => navigate(`/team/users/${user._id}`)} className="p-2 rounded-xl hover:bg-surface-elevated text-content-muted">
                       <Eye className="w-4 h-4" />
                     </button>
-                  )}
+                  ) : null}
+                  </div>
                 </td>
               </tr>
             ))}

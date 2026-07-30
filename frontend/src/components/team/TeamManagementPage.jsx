@@ -220,9 +220,15 @@ export default function TeamManagementPage() {
   };
 
   const visibleTabs = useMemo(() => TABS.filter((t) => {
-    if (t.id === 'performance') return can('reports', 'view') || canSetTargets;
+    // Always show Sales Targets inside Team Management for anyone who can open this page
+    if (t.id === 'performance') return can('users', 'view') || canSetTargets;
     return can('users', 'view');
   }), [can, canSetTargets]);
+
+  useEffect(() => {
+    const next = searchParams.get('tab') || 'users';
+    if (next !== tab) setTab(next);
+  }, [searchParams]);
 
   const handleInvite = async (data) => {
     const res = await API.post('/users/invite', data);
@@ -242,7 +248,13 @@ export default function TeamManagementPage() {
   return (
     <div>
       <PageHeader
-        title={tab === 'roles' ? 'Role Management' : 'User Management & RBAC'}
+        title={
+          tab === 'roles'
+            ? 'Role Management'
+            : tab === 'performance'
+              ? 'Sales Targets'
+              : 'User Management & RBAC'
+        }
         description={
           tab === 'roles'
             ? 'Select a role, toggle module permissions, then save'
@@ -329,6 +341,27 @@ export default function TeamManagementPage() {
           <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
             {tab === 'users' && (
               <div className="space-y-4">
+                {canSetTargets && (
+                  <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-emerald-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Sales Targets</p>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        Set Target, Package, Total sales &amp; Profit for Executives and Team Leaders
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setTab('performance');
+                        setSearchParams({ tab: 'performance' }, { replace: true });
+                      }}
+                      className="bg-sky-600 hover:bg-sky-500 text-white shrink-0"
+                    >
+                      <Trophy className="w-4 h-4 mr-1.5" />
+                      Open Sales Targets
+                    </Button>
+                  </div>
+                )}
                 <div className="flex flex-col lg:flex-row gap-3">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
