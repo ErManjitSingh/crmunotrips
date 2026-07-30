@@ -74,7 +74,7 @@ export function DestinationWisePanel({
   onPeriodChange,
 }) {
   return (
-    <div className="rounded-xl border border-subtle bg-white p-3.5 shadow-sm dark:bg-slate-900/80">
+    <div className="flex h-full min-h-[320px] flex-col rounded-xl border border-subtle bg-white p-3.5 shadow-sm dark:bg-slate-900/80">
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
@@ -104,11 +104,13 @@ export function DestinationWisePanel({
       </div>
 
       {!rows.length ? (
-        <p className="py-8 text-center text-xs text-content-muted">No leads for this period</p>
+        <p className="flex flex-1 items-center justify-center py-8 text-center text-xs text-content-muted">
+          No leads for this period
+        </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="min-h-0 flex-1 overflow-auto">
           <table className="min-w-full text-left text-[11px]">
-            <thead>
+            <thead className="sticky top-0 bg-white dark:bg-slate-900/95">
               <tr className="border-b border-subtle text-content-muted">
                 <th className="px-2 py-2 font-semibold">Destination</th>
                 <th className="px-2 py-2 font-semibold text-right">Leads</th>

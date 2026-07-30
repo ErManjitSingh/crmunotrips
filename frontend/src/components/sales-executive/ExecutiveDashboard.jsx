@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { CalendarDays, Moon, Rocket, Sparkles, Sun, Target } from 'lucide-react';
+import { CalendarDays, Moon, Sparkles, Sun } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
 import { useDashboardQuery } from '../../features/dashboard/hooks/useDashboardQuery';
@@ -11,11 +11,11 @@ import API from '../../api/axios';
 import ExecutiveKpiCards from './dashboard/ExecutiveKpiCards';
 import ExecutiveDashboardPanels from './dashboard/ExecutiveDashboardPanels';
 import MobileExecutiveDashboard from './dashboard/MobileExecutiveDashboard';
+import QuotationBuilderPromoBanner from './dashboard/QuotationBuilderPromoBanner';
 import {
   ColdCallAlertsPanel,
   DestinationWisePanel,
 } from './dashboard/DestinationAndColdPanels';
-import { formatCurrency } from './executiveUtils';
 import { UNO_FAMILY_GREETING } from '../../lib/greeting';
 
 function getGreeting() {
@@ -143,10 +143,7 @@ export default function ExecutiveDashboard() {
     );
   }
 
-  const progress = Math.min(100, data?.target?.progress ?? 0);
   const hero = announcementFeed?.hero;
-  const monthlyTarget = data?.target?.monthlyTarget || 0;
-  const revenueAchieved = data?.target?.revenueAchieved || 0;
 
   return (
     <>
@@ -198,44 +195,18 @@ export default function ExecutiveDashboard() {
 
         <ExecutiveKpiCards kpis={data?.kpis} trends={data?.kpiTrends} />
 
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-500 to-rose-400 px-4 py-3.5 text-white shadow-lg shadow-violet-500/15"
-        >
-          <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
-          <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
-                <Rocket className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-amber-100">
-                  {hero?.badge || 'My Monthly Target'}
-                </p>
-                <h2 className="truncate text-sm font-bold sm:text-base">
-                  {hero?.title || `Target ${formatCurrency(monthlyTarget)} · Achieved ${formatCurrency(revenueAchieved)}`}
-                </h2>
-                <p className="mt-0.5 line-clamp-1 text-[11px] text-white/80">
-                  {hero?.description || `You are currently at ${progress}% of your monthly sales target.`}
-                </p>
-                <div className="mt-2 h-1.5 w-full max-w-md overflow-hidden rounded-full bg-black/20">
-                  <div className="h-full rounded-full bg-white" style={{ width: `${progress}%` }} />
-                </div>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2">
-              <Target className="h-4 w-4" />
-              <span className="text-lg font-bold">{progress}%</span>
-            </div>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-stretch">
+          <div className="min-w-0 h-full">
+            <QuotationBuilderPromoBanner half to="/sales-executive/quotations/new" />
           </div>
-        </motion.div>
-
-        <DestinationWisePanel
-          rows={data?.destinationWise?.rows || []}
-          period={destinationPeriod}
-          onPeriodChange={setDestinationPeriod}
-        />
+          <div className="min-w-0 h-full">
+            <DestinationWisePanel
+              rows={data?.destinationWise?.rows || []}
+              period={destinationPeriod}
+              onPeriodChange={setDestinationPeriod}
+            />
+          </div>
+        </div>
 
         <ExecutiveDashboardPanels data={data} announcements={announcementFeed?.carousel || []} />
       </div>
