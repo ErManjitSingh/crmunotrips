@@ -21,7 +21,7 @@ export const TABS = [
   { id: 'users', label: 'Users', icon: 'Users' },
   { id: 'roles', label: 'Role Management', icon: 'Shield' },
   { id: 'activity', label: 'Activity Log', icon: 'Activity' },
-  { id: 'performance', label: 'Performance', icon: 'Trophy' },
+  { id: 'performance', label: 'Sales Targets', icon: 'Trophy' },
 ];
 
 export function formatLastLogin(value) {

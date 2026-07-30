@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Eye, Pencil, KeyRound, UserCheck, UserX, Trash2, MoreHorizontal } from 'lucide-react';
+import { Eye, Pencil, KeyRound, UserCheck, UserX, Trash2, MoreHorizontal, Target } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import UserStatusBadge from './UserStatusBadge';
 import UserStatusToggle from './UserStatusToggle';
@@ -13,6 +13,8 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 
+const TARGETABLE_ROLES = new Set(['sales_executive', 'team_leader']);
+
 export default function UserDataTable({
   users,
   onEdit,
@@ -21,12 +23,20 @@ export default function UserDataTable({
   onToggleStatus,
   onDelete,
   onView,
+  onSetTarget,
   permissions = {},
   currentUserId,
+  currentUserRole,
   togglingUserId,
 }) {
   const navigate = useNavigate();
-  const hasActions = onEdit || onResetPassword || onDisable || onDelete || onView;
+  const hasActions = onEdit || onResetPassword || onDisable || onDelete || onView || onSetTarget;
+
+  const showSetTarget = (user) => {
+    if (!onSetTarget || !TARGETABLE_ROLES.has(user.role)) return false;
+    if (currentUserRole === 'team_leader') return user.role === 'sales_executive';
+    return true;
+  };
 
   if (!users.length) {
     return (
@@ -109,6 +119,11 @@ export default function UserDataTable({
                       {onEdit && (
                         <DropdownMenuItem onClick={() => onEdit(user)}>
                           <Pencil className="w-4 h-4 mr-2 text-violet-600" /> Edit User
+                        </DropdownMenuItem>
+                      )}
+                      {showSetTarget(user) && (
+                        <DropdownMenuItem onClick={() => onSetTarget(user)}>
+                          <Target className="w-4 h-4 mr-2 text-sky-600" /> Set Target
                         </DropdownMenuItem>
                       )}
                       {onResetPassword && (

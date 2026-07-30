@@ -13,6 +13,7 @@ import UserDetailDrawer from './UserDetailDrawer';
 import RoleManager from './RoleManager';
 import ActivityLogPanel from './ActivityLogPanel';
 import TeamPerformanceDashboard from './TeamPerformanceDashboard';
+import SetMonthlyTargetModal from '../sales-targets/SetMonthlyTargetModal';
 import { DEPARTMENTS, TABS } from './constants';
 import { toast } from '../../context/ToastContext';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
@@ -22,6 +23,15 @@ import { useAuth } from '../../context/AuthContext';
 const tabIcons = { Users, Shield, Activity, Trophy };
 const emptyFilters = { search: '', status: '', roleId: '', department: '' };
 const emptyActivityFilters = { search: '', type: '' };
+
+const TARGET_SETTER_ROLES = new Set(['admin', 'sales_manager', 'team_leader']);
+const TARGET_USER_ROLES = new Set(['sales_executive', 'team_leader']);
+
+function canSetTargetFor(authRole, targetRole) {
+  if (!TARGET_SETTER_ROLES.has(authRole)) return false;
+  if (authRole === 'team_leader') return targetRole === 'sales_executive';
+  return TARGET_USER_ROLES.has(targetRole);
+}
 
 export default function TeamManagementPage() {
   const { can } = usePermissions();
@@ -42,7 +52,10 @@ export default function TeamManagementPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [drawerUser, setDrawerUser] = useState(null);
+  const [targetUser, setTargetUser] = useState(null);
   const { confirm, dialogNode } = useConfirmDialog();
+
+  const canSetTargets = TARGET_SETTER_ROLES.has(authUser?.role);
 
   const fetchUsers = useCallback(() => {
     const params = {
@@ -207,9 +220,9 @@ export default function TeamManagementPage() {
   };
 
   const visibleTabs = useMemo(() => TABS.filter((t) => {
-    if (t.id === 'performance') return can('reports', 'view');
+    if (t.id === 'performance') return can('reports', 'view') || canSetTargets;
     return can('users', 'view');
-  }), [can]);
+  }), [can, canSetTargets]);
 
   const handleInvite = async (data) => {
     const res = await API.post('/users/invite', data);
@@ -233,9 +246,17 @@ export default function TeamManagementPage() {
         description={
           tab === 'roles'
             ? 'Select a role, toggle module permissions, then save'
-            : 'Enterprise-grade access control, roles, and team performance'
+            : tab === 'performance'
+              ? 'Set Target / Package / Total sales / Profit for executives and team leaders'
+              : 'Enterprise-grade access control, roles, and team performance'
         }
-        breadcrumbs={tab === 'roles' ? ['Admin', 'Role Management'] : ['Team', 'User Management']}
+        breadcrumbs={
+          tab === 'roles'
+            ? ['Admin', 'Role Management']
+            : tab === 'performance'
+              ? ['Team', 'Sales Targets']
+              : ['Team', 'User Management']
+        }
         actions={
           tab === 'users' && can('users', 'create') ? (
             <div className="flex items-center gap-2">
@@ -337,12 +358,22 @@ export default function TeamManagementPage() {
                   users={users}
                   permissions={userActions}
                   currentUserId={authUser?._id}
+                  currentUserRole={authUser?.role}
                   togglingUserId={togglingUserId}
                   onEdit={userActions.canEdit ? (u) => { setEditUser(u); setModalOpen(true); } : undefined}
                   onView={setDrawerUser}
                   onResetPassword={userActions.canManage ? handleResetPassword : undefined}
                   onToggleStatus={userActions.canToggleStatus ? handleToggleStatus : undefined}
                   onDelete={userActions.canDelete ? handleDelete : undefined}
+                  onSetTarget={canSetTargets ? (u) => {
+                    if (!canSetTargetFor(authUser?.role, u.role)) return;
+                    setTargetUser({
+                      ...u,
+                      userId: u._id,
+                      revenueTarget: u.revenueTarget,
+                      monthlyTarget: u.monthlyTarget,
+                    });
+                  } : undefined}
                 />
                 <div className="flex items-center justify-between px-1">
                   <p className="text-xs text-content-muted">
@@ -383,13 +414,27 @@ export default function TeamManagementPage() {
             {tab === 'activity' && (
               <ActivityLogPanel logs={logs} filters={activityFilters} onFilterChange={setActivityFilters} />
             )}
-            {tab === 'performance' && <TeamPerformanceDashboard data={performance} />}
+            {tab === 'performance' && (
+              <TeamPerformanceDashboard
+                data={performance}
+                canSetTargets={canSetTargets}
+                currentUserRole={authUser?.role}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       )}
 
       <UserFormModal open={modalOpen} onClose={() => { setModalOpen(false); setEditUser(null); }} onSave={handleSaveUser} user={editUser} roles={roles} />
       <InviteUserModal open={inviteOpen} onClose={() => setInviteOpen(false)} onInvite={handleInvite} roles={roles} />
+      <SetMonthlyTargetModal
+        open={!!targetUser}
+        user={targetUser}
+        onClose={() => setTargetUser(null)}
+        onSaved={() => {
+          if (tab === 'performance') fetchPerformance();
+        }}
+      />
       <UserDetailDrawer
         user={drawerUser}
         open={!!drawerUser}
