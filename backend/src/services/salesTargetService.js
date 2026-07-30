@@ -226,6 +226,7 @@ function buildTargetProgress(revenueAchieved, monthlyTarget) {
 module.exports = {
   DEFAULT_TARGETS,
   currentPeriod,
+  shapeTargetRow,
   getMonthlyTarget,
   getMonthlyTargetDoc,
   getMonthlyTargets,

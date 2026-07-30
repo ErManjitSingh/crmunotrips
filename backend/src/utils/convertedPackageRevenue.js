@@ -95,7 +95,46 @@ async function aggregateConvertedPackageRevenueByMonth(options = {}) {
   }));
 }
 
+async function sumConvertedPackageRevenueByAssignees({ assigneeIds = [], branchId } = {}) {
+  if (!assigneeIds.length) return {};
+
+  const rows = await Quotation.aggregate([
+    { $match: quotationSideMatch({ branchId }) },
+    {
+      $lookup: {
+        from: 'leads',
+        localField: 'lead',
+        foreignField: '_id',
+        as: 'leadDoc',
+      },
+    },
+    { $unwind: '$leadDoc' },
+    {
+      $match: packageQuotationMatch({
+        'leadDoc.assignedTo': { $in: assigneeIds },
+        ...(branchId ? { 'leadDoc.branchId': branchId } : {}),
+      }),
+    },
+    { $sort: { updatedAt: -1 } },
+    {
+      $group: {
+        _id: { lead: '$lead', assignee: '$leadDoc.assignedTo' },
+        amount: { $first: { $ifNull: ['$pricing.total', 0] } },
+      },
+    },
+    {
+      $group: {
+        _id: '$_id.assignee',
+        total: { $sum: '$amount' },
+      },
+    },
+  ]);
+
+  return Object.fromEntries(rows.map((r) => [String(r._id), r.total || 0]));
+}
+
 module.exports = {
   sumConvertedPackageRevenue,
   aggregateConvertedPackageRevenueByMonth,
+  sumConvertedPackageRevenueByAssignees,
 };

@@ -12,6 +12,7 @@ const {
   getLeaderLeadScopeFilter,
 } = require('../services/teamScopeService');
 const { getMonthlyTargets, buildTargetProgress } = require('../services/salesTargetService');
+const { buildExecutivePerformanceRows } = require('../services/executivePerformanceService');
 const { buildTeamLeaderDashboard } = require('../services/dashboardService');
 const { sumConvertedPackageRevenue } = require('../utils/convertedPackageRevenue');
 const { stampExecutiveAssignment } = require('../services/leadExecutiveStallService');
@@ -205,60 +206,13 @@ const listExecutives = asyncHandler(async (req, res) => {
     return;
   }
 
-  const execMembers = team.members.filter((m) => m.role === 'sales_executive');
-  const performance = await Promise.all(
-    execMembers.map(async (ex) => {
-      const exId = ex._id;
-      const [assignedLeads, followUpsDone, quotationsSent, conversions, revenue, contacted] = await Promise.all([
-        Lead.countDocuments({ assignedTo: exId, ...(req.branchId ? { branchId: req.branchId } : {}) }),
-        FollowUp.countDocuments({
-          assignedTo: exId,
-          status: 'completed',
-          ...(req.branchId ? { branchId: req.branchId } : {}),
-        }),
-        Quotation.countDocuments({ createdByExecutive: exId, ...(req.branchId ? { branchId: req.branchId } : {}) }),
-        Lead.countDocuments({
-          assignedTo: exId,
-          status: 'converted',
-          ...(req.branchId ? { branchId: req.branchId } : {}),
-        }),
-        sumConvertedPackageRevenue({ assigneeId: exId, branchId: req.branchId }),
-        Lead.countDocuments({
-          assignedTo: exId,
-          status: { $ne: 'new' },
-          ...(req.branchId ? { branchId: req.branchId } : {}),
-        }),
-      ]);
+  const execMembers = team.members
+    .filter((m) => m.role === 'sales_executive')
+    .map((m) => ({ _id: m._id, name: m.name, email: m.email }));
 
-      const targets = await getMonthlyTargets(exId);
-      const targetStats = buildTargetProgress(revenue, targets.revenueTarget);
-
-      return {
-        _id: ex._id,
-        name: ex.name,
-        email: ex.email,
-        role: 'sales_executive',
-        assignedLeads,
-        followUpsDone,
-        quotationsSent,
-        conversions,
-        revenue,
-        conversionRate: assignedLeads ? Math.round((conversions / assignedLeads) * 1000) / 10 : 0,
-        contacted,
-        monthlyTarget: targetStats.monthlyTarget,
-        revenueTarget: targets.revenueTarget,
-        packageTarget: targets.packageTarget,
-        totalSalesTarget: targets.totalSalesTarget,
-        profitTarget: targets.profitTarget,
-        periodType: targets.periodType,
-        workingDays: targets.workingDays,
-        targetProgress: targetStats.progress,
-      };
-    })
-  );
-
-  performance.sort((a, b) => b.revenue - a.revenue).forEach((e, i) => {
-    e.rank = i + 1;
+  const performance = await buildExecutivePerformanceRows(execMembers, {
+    branchId: req.branchId,
+    includeTemperature: false,
   });
 
   res.json(performance);

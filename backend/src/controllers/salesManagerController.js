@@ -16,6 +16,7 @@ const {
   notifyQuotationRejected,
 } = require('../services/notificationService');
 const { getMonthlyTargets, buildTargetProgress } = require('../services/salesTargetService');
+const { buildExecutivePerformanceRows } = require('../services/executivePerformanceService');
 const {
   loadLeadCore,
   loadLeadRelated,
@@ -179,86 +180,8 @@ const listExecutives = asyncHandler(async (req, res) => {
     .sort({ name: 1 })
     .lean();
 
-  const performance = await Promise.all(
-    executives.map(async (ex) => {
-      const exId = ex._id;
-      const [
-        assignedLeads,
-        followUpsDone,
-        quotationsSent,
-        conversions,
-        revenueAgg,
-        contacted,
-        tempAgg,
-        statusAgg,
-      ] = await Promise.all([
-        Lead.countDocuments({ assignedTo: exId }),
-        FollowUp.countDocuments({
-          $or: [{ assignedTo: exId }, { createdBy: exId }],
-          status: 'completed',
-        }),
-        Quotation.countDocuments({ createdByExecutive: exId }),
-        Lead.countDocuments({ assignedTo: exId, status: 'converted' }),
-        sumConvertedPackageRevenue({ assigneeId: exId }),
-        Lead.countDocuments({ assignedTo: exId, status: { $ne: 'new' } }),
-        Lead.aggregate([
-          { $match: { assignedTo: ex._id } },
-          { $group: { _id: '$temperature', count: { $sum: 1 } } },
-        ]),
-        Lead.aggregate([
-          { $match: { assignedTo: ex._id } },
-          { $group: { _id: '$status', count: { $sum: 1 } } },
-        ]),
-      ]);
-
-      const temperature = Object.fromEntries(tempAgg.map((t) => [t._id || 'unknown', t.count]));
-      const byStatus = Object.fromEntries(statusAgg.map((s) => [s._id || 'unknown', s.count]));
-
-      const targets = await getMonthlyTargets(exId);
-      const targetStats = buildTargetProgress(revenueAgg, targets.revenueTarget);
-
-      return {
-        _id: ex._id,
-        name: ex.name,
-        email: ex.email,
-        role: 'sales_executive',
-        assignedLeads,
-        leads: assignedLeads,
-        followUpsDone,
-        quotationsSent,
-        conversions,
-        converted: conversions,
-        revenue: revenueAgg,
-        conversionRate: assignedLeads ? Math.round((conversions / assignedLeads) * 1000) / 10 : 0,
-        contacted,
-        monthlyTarget: targetStats.monthlyTarget,
-        revenueTarget: targets.revenueTarget,
-        packageTarget: targets.packageTarget,
-        totalSalesTarget: targets.totalSalesTarget,
-        profitTarget: targets.profitTarget,
-        periodType: targets.periodType,
-        workingDays: targets.workingDays,
-        targetProgress: targetStats.progress,
-        temperature: {
-          hot: temperature.hot || 0,
-          warm: temperature.warm || 0,
-          cold: temperature.cold || 0,
-          vip: temperature.vip || 0,
-        },
-        byStatus: {
-          new: byStatus.new || 0,
-          contacted: byStatus.contacted || 0,
-          follow_up: (byStatus.follow_up || 0) + (byStatus.working_progress || 0),
-          quotation_sent: byStatus.quotation_sent || 0,
-          converted: byStatus.converted || 0,
-          lost: (byStatus.lost || 0) + (byStatus.booked_from_another_company || 0),
-        },
-      };
-    })
-  );
-
-  performance.sort((a, b) => b.revenue - a.revenue).forEach((e, i) => {
-    e.rank = i + 1;
+  const performance = await buildExecutivePerformanceRows(executives, {
+    includeTemperature: true,
   });
 
   res.json(performance);
