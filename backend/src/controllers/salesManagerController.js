@@ -220,6 +220,7 @@ const listExecutives = asyncHandler(async (req, res) => {
         _id: ex._id,
         name: ex.name,
         email: ex.email,
+        role: 'sales_executive',
         assignedLeads,
         leads: assignedLeads,
         followUpsDone,
@@ -234,6 +235,8 @@ const listExecutives = asyncHandler(async (req, res) => {
         packageTarget: targets.packageTarget,
         totalSalesTarget: targets.totalSalesTarget,
         profitTarget: targets.profitTarget,
+        periodType: targets.periodType,
+        workingDays: targets.workingDays,
         targetProgress: targetStats.progress,
         temperature: {
           hot: temperature.hot || 0,

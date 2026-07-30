@@ -55,7 +55,7 @@ export default function TeamPerformancePage() {
     columnHelper.accessor((r) => r.byStatus?.lost ?? 0, { id: 'lost', header: 'Lost' }),
     columnHelper.accessor('revenue', { header: 'Revenue', cell: (i) => <span className="font-bold tabular-nums">{formatCurrency(i.getValue())}</span> }),
     columnHelper.accessor('monthlyTarget', { header: 'Target', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue())}</span> }),
-    columnHelper.accessor('packageTarget', { header: 'Package total', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue() || 0)}</span> }),
+    columnHelper.accessor('packageTarget', { header: 'Package', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue() || 0)}</span> }),
     columnHelper.accessor('totalSalesTarget', { header: 'Total sales', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue() || 0)}</span> }),
     columnHelper.accessor('profitTarget', { header: 'Profit', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue() || 0)}</span> }),
     columnHelper.accessor('targetProgress', { header: 'Target %', cell: (i) => <span className="text-sky-700 font-semibold">{i.getValue() ?? 0}%</span> }),
@@ -83,28 +83,51 @@ export default function TeamPerformancePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Team Performance" description="Executive metrics, monthly targets, and rankings" breadcrumbs={['Team', 'Sales Targets']} />
+      <PageHeader title="Team Performance" description="Set Target / Package / Total sales / Profit for executives and team leaders (monthly or daily)" breadcrumbs={['Team', 'Sales Targets']} />
 
       {!loading && leaders.length > 0 && (
-        <div className="rounded-2xl border border-subtle bg-surface/80 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-content-muted mb-3">Team leader monthly targets</p>
-          <div className="flex flex-wrap gap-2">
-            {leaders.map((tl) => (
-              <button
-                key={tl.userId}
-                type="button"
-                onClick={() => setTargetUser(tl)}
-                className="px-3 py-2 rounded-xl border border-subtle bg-surface-elevated/50 text-sm hover:border-sky-400/40"
-              >
-                <span className="font-semibold">{tl.name}</span>
-                <span className="text-content-muted ml-2">
-                  T {formatCurrency(tl.revenueTarget)}
-                  {tl.packageTarget ? ` · Pkg ${formatCurrency(tl.packageTarget)}` : ''}
-                  {tl.totalSalesTarget ? ` · Sales ${formatCurrency(tl.totalSalesTarget)}` : ''}
-                  {tl.profitTarget ? ` · Profit ${formatCurrency(tl.profitTarget)}` : ''}
-                </span>
-              </button>
-            ))}
+        <div className="rounded-2xl border border-subtle bg-surface/80 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-content-muted">Team leader targets</p>
+            <p className="text-[11px] text-content-muted">Target · Package · Total sales · Profit</p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-subtle">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-subtle bg-surface-elevated/50">
+                  <th className="text-left px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted">Team Leader</th>
+                  <th className="text-left px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted">Target</th>
+                  <th className="text-left px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted">Package</th>
+                  <th className="text-left px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted">Total sales</th>
+                  <th className="text-left px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted">Profit</th>
+                  <th className="text-left px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted">Period</th>
+                  <th className="px-3 py-2.5" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-subtle">
+                {leaders.map((tl) => (
+                  <tr key={tl.userId} className="hover:bg-sky-500/[0.03]">
+                    <td className="px-3 py-3 font-semibold text-content-primary">{tl.name}</td>
+                    <td className="px-3 py-3 tabular-nums">{formatCurrency(tl.revenueTarget || 0)}</td>
+                    <td className="px-3 py-3 tabular-nums">{formatCurrency(tl.packageTarget || 0)}</td>
+                    <td className="px-3 py-3 tabular-nums">{formatCurrency(tl.totalSalesTarget || 0)}</td>
+                    <td className="px-3 py-3 tabular-nums">{formatCurrency(tl.profitTarget || 0)}</td>
+                    <td className="px-3 py-3 text-xs capitalize text-content-muted">
+                      {tl.periodType === 'daily' ? `Daily × ${tl.workingDays || 26}d` : 'Monthly'}
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setTargetUser(tl)}
+                        className="text-xs font-semibold text-sky-700 hover:underline"
+                      >
+                        Set target
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

@@ -7,11 +7,9 @@ import {
   Save,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { calculatePricing, formatINR } from './quotationUtils';
+import { calculatePricing, formatINR, getDisplayedCostBreakdown } from './quotationUtils';
 import ActionTile from '../ui/ActionTile';
 import { cn } from '../../lib/utils';
-
-const READONLY_COST_KEYS = new Set(['hotelCost', 'cabCost', 'activityCost', 'flightCost', 'baseCost']);
 
 export default function PackageBuilderPriceSidebar({
   lead,
@@ -32,8 +30,8 @@ export default function PackageBuilderPriceSidebar({
   hideActions = false,
   className = '',
 }) {
-  const computed = useMemo(() => calculatePricing(pricing || {}), [pricing]);
-  const youSave = Number(computed.youSave ?? pricing?.discount ?? 0) || 0;
+  const breakdown = useMemo(() => getDisplayedCostBreakdown(pricing || {}), [pricing]);
+  const youSave = Number(breakdown.youSave ?? pricing?.discount ?? 0) || 0;
 
   const applyPricing = (partial) => {
     const next = { ...pricing, ...partial };
@@ -51,19 +49,18 @@ export default function PackageBuilderPriceSidebar({
     applyPricing({ [key]: Number(val) || 0 });
   };
 
-  const subtotalBeforeDiscount = Number(computed.subtotal || 0);
+  const subtotalBeforeDiscount = Number(breakdown.subtotalBeforeDiscount || 0);
   const savePct =
     subtotalBeforeDiscount > 0 && youSave > 0
       ? Math.round((youSave / subtotalBeforeDiscount) * 100)
       : 0;
 
   const rows = [
-    { key: 'baseCost', label: 'Package Cost', readOnly: true },
-    { key: 'hotelCost', label: 'Hotels', readOnly: true },
-    { key: 'cabCost', label: 'Transport Upgrade', readOnly: true },
-    { key: 'activityCost', label: 'Activities', readOnly: true },
-    { key: 'taxes', label: 'GST (5%)', readOnly: true },
-    { key: 'markup', label: 'Markup', readOnly: true },
+    { key: 'hotelCost', label: 'Hotel Cost' },
+    { key: 'transportCost', label: 'Transport Cost' },
+    { key: 'activityCost', label: 'Activities Cost' },
+    { key: 'markup', label: 'Markup' },
+    { key: 'taxes', label: 'GST (5%)' },
   ];
 
   const actions = [
@@ -81,12 +78,12 @@ export default function PackageBuilderPriceSidebar({
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/70">Package Summary</p>
           <div className="flex items-end gap-2 mt-2 flex-wrap">
             <motion.p
-              key={computed.total}
+              key={breakdown.finalTotal}
               initial={{ opacity: 0.5, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-3xl font-black text-white metric-tabular leading-none"
             >
-              {formatINR(computed.total)}
+              {formatINR(breakdown.finalTotal)}
             </motion.p>
             {savePct > 0 && (
               <span className="mb-0.5 inline-flex text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-400 text-emerald-950">
@@ -124,29 +121,18 @@ export default function PackageBuilderPriceSidebar({
             />
           </label>
 
-          {rows.map(({ key, label, readOnly }) => {
-            const amount =
-              key === 'taxes' ? computed.taxes : key === 'markup' ? computed.markup : pricing?.[key] || 0;
+          {rows.map(({ key, label }) => {
+            const amount = breakdown[key] || 0;
             return (
-            <div key={key} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50/80 border border-slate-100 px-2 py-1.5">
-              <span className="text-xs font-semibold text-slate-600">{label}</span>
-              {readOnly || READONLY_COST_KEYS.has(key) || key === 'taxes' || key === 'markup' ? (
+              <div key={key} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50/80 border border-slate-100 px-2 py-1.5">
+                <span className="text-xs font-semibold text-slate-600">{label}</span>
                 <span className={cn(
                   'min-w-[108px] h-8 inline-flex items-center justify-end px-2 text-sm font-semibold metric-tabular',
                   Number(amount) === 0 ? 'text-slate-400' : 'text-slate-800'
                 )}>
                   {formatINR(amount, { zeroLabel: 'Not included' })}
                 </span>
-              ) : (
-                <input
-                  type="number"
-                  min={0}
-                  value={pricing?.[key] || ''}
-                  onChange={(e) => updateNumber(key, e.target.value)}
-                  className="w-[108px] h-8 rounded-lg border border-violet-200 bg-white px-2 text-right text-sm font-semibold metric-tabular focus:outline-none focus:ring-2 focus:ring-violet-500/20 text-slate-800"
-                />
-              )}
-            </div>
+              </div>
             );
           })}
 
@@ -163,11 +149,6 @@ export default function PackageBuilderPriceSidebar({
             />
           </div>
 
-          <div className="flex items-center justify-between gap-3 rounded-lg bg-violet-50 border border-violet-100 px-2 py-2">
-            <span className="text-xs font-bold text-violet-800">Total Cost</span>
-            <span className="text-sm font-black text-violet-900 metric-tabular">{formatINR(computed.total + youSave)}</span>
-          </div>
-
           <div className="flex items-center justify-between gap-3 rounded-lg bg-emerald-50/80 border border-emerald-100 px-2 py-1.5">
             <span className="text-xs font-semibold text-emerald-700">Discount</span>
             <input
@@ -181,7 +162,7 @@ export default function PackageBuilderPriceSidebar({
         </div>
 
         <div className="px-5 pb-4">
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 flex items-center justify-between gap-2">
+          <div className="rounded-xl bg-violet-50 border border-violet-200 px-3 py-2.5 flex items-center justify-between gap-2">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">You Save</p>
               <p className="text-sm font-bold text-emerald-700 metric-tabular">
@@ -189,8 +170,8 @@ export default function PackageBuilderPriceSidebar({
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500">Final Total</p>
-              <p className="text-sm font-bold text-violet-800 metric-tabular">{formatINR(computed.total)}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500">Final Total Package Cost</p>
+              <p className="text-sm font-bold text-violet-800 metric-tabular">{formatINR(breakdown.finalTotal)}</p>
             </div>
           </div>
         </div>

@@ -14,6 +14,10 @@ const monthlySalesTargetSchema = new mongoose.Schema(
     totalSalesTarget: { type: Number, min: 0, default: 0 },
     /** Profit ₹ target */
     profitTarget: { type: Number, min: 0, default: 0 },
+    /** How the setter entered values: monthly totals or per-day amounts */
+    periodType: { type: String, enum: ['monthly', 'daily'], default: 'monthly' },
+    /** Working days used when periodType is daily (monthly = daily × workingDays) */
+    workingDays: { type: Number, min: 1, max: 31, default: 26 },
     setBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     setByName: { type: String, trim: true },
     notes: { type: String, trim: true, maxlength: 500 },

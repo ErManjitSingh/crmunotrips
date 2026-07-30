@@ -45,6 +45,8 @@ const upsertTarget = asyncHandler(async (req, res) => {
     packageTarget: req.body.packageTarget,
     totalSalesTarget: req.body.totalSalesTarget,
     profitTarget: req.body.profitTarget,
+    periodType: req.body.periodType,
+    workingDays: req.body.workingDays,
     year: req.body.year,
     month: req.body.month,
     notes: req.body.notes,

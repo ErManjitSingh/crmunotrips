@@ -36,7 +36,7 @@ export default function ExecutivePerformancePage() {
     columnHelper.accessor('conversions', { header: 'Converted' }),
     columnHelper.accessor('revenue', { header: 'Revenue', cell: (i) => <span className="font-bold tabular-nums">{formatCurrency(i.getValue())}</span> }),
     columnHelper.accessor('monthlyTarget', { header: 'Target', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue())}</span> }),
-    columnHelper.accessor('packageTarget', { header: 'Package total', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue() || 0)}</span> }),
+    columnHelper.accessor('packageTarget', { header: 'Package', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue() || 0)}</span> }),
     columnHelper.accessor('totalSalesTarget', { header: 'Total sales', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue() || 0)}</span> }),
     columnHelper.accessor('profitTarget', { header: 'Profit', cell: (i) => <span className="tabular-nums">{formatCurrency(i.getValue() || 0)}</span> }),
     columnHelper.accessor('targetProgress', { header: 'Target %', cell: (i) => <span className="text-sky-700 font-semibold">{i.getValue() ?? 0}%</span> }),
@@ -56,7 +56,7 @@ export default function ExecutivePerformancePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Executive Performance" description="Set monthly targets and track squad revenue" breadcrumbs={['Team Leader', 'Executive Performance']} />
+      <PageHeader title="Executive Performance" description="Set Target / Package / Total sales / Profit for executives (monthly or daily)" breadcrumbs={['Team Leader', 'Executive Performance']} />
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {executives.slice(0, 3).map((ex, i) => (

@@ -12,13 +12,25 @@ function currentPeriod(date = new Date()) {
   return { year: date.getFullYear(), month: date.getMonth() + 1 };
 }
 
-function defaultRow(role) {
+function daysInMonth(year, month) {
+  return new Date(year, month, 0).getDate();
+}
+
+function defaultWorkingDays(year, month) {
+  const dim = daysInMonth(year, month);
+  // Default to weekdays-ish count, capped by days in month
+  return Math.min(dim, 26);
+}
+
+function defaultRow(role, period = currentPeriod()) {
   const revenueTarget = DEFAULT_TARGETS[role] || DEFAULT_TARGETS.sales_executive;
   return {
     revenueTarget,
     packageTarget: 0,
     totalSalesTarget: revenueTarget,
     profitTarget: 0,
+    periodType: 'monthly',
+    workingDays: defaultWorkingDays(period.year, period.month),
     isDefault: true,
   };
 }
@@ -32,13 +44,18 @@ function normalizeAmount(value, fallback = 0) {
   return n;
 }
 
-function shapeTargetRow(row, role) {
-  if (!row) return defaultRow(role);
+function shapeTargetRow(row, role, period = currentPeriod()) {
+  if (!row) return defaultRow(role, period);
   return {
     revenueTarget: row.revenueTarget ?? 0,
     packageTarget: row.packageTarget ?? 0,
     totalSalesTarget: row.totalSalesTarget ?? row.revenueTarget ?? 0,
     profitTarget: row.profitTarget ?? 0,
+    periodType: row.periodType === 'daily' ? 'daily' : 'monthly',
+    workingDays: Math.min(
+      31,
+      Math.max(1, Number(row.workingDays) || defaultWorkingDays(period.year, period.month))
+    ),
     isDefault: false,
     setByName: row.setByName,
     updatedAt: row.updatedAt,
@@ -57,9 +74,10 @@ async function getMonthlyTarget(userId, { year, month } = currentPeriod()) {
 }
 
 async function getMonthlyTargets(userId, { year, month } = currentPeriod()) {
-  const row = await getMonthlyTargetDoc(userId, { year, month });
+  const period = { year, month };
+  const row = await getMonthlyTargetDoc(userId, period);
   const user = await User.findById(userId).select('role').lean();
-  return shapeTargetRow(row, user?.role);
+  return shapeTargetRow(row, user?.role, period);
 }
 
 async function assertCanSetTarget(req, targetUserId) {
@@ -93,6 +111,8 @@ async function setMonthlyTarget(req, {
   packageTarget,
   totalSalesTarget,
   profitTarget,
+  periodType,
+  workingDays,
   year,
   month,
   notes,
@@ -107,6 +127,11 @@ async function setMonthlyTarget(req, {
     existing?.totalSalesTarget ?? existing?.revenueTarget ?? 0
   );
   const profit = normalizeAmount(profitTarget, existing?.profitTarget ?? 0);
+  const type = periodType === 'daily' ? 'daily' : 'monthly';
+  const days = Math.min(
+    daysInMonth(period.year, period.month),
+    Math.max(1, Number(workingDays) || existing?.workingDays || defaultWorkingDays(period.year, period.month))
+  );
 
   if (
     revenueTarget === undefined &&
@@ -129,6 +154,8 @@ async function setMonthlyTarget(req, {
       packageTarget: packages,
       totalSalesTarget: totalSales,
       profitTarget: profit,
+      periodType: type,
+      workingDays: days,
       branchId: targetUser.branchId || req.branchId || null,
       setBy: req.user._id,
       setByName: req.user.name,
@@ -140,8 +167,8 @@ async function setMonthlyTarget(req, {
   return doc;
 }
 
-function mapListedUser(u, map) {
-  const shaped = shapeTargetRow(map[String(u._id)], u.role);
+function mapListedUser(u, map, period) {
+  const shaped = shapeTargetRow(map[String(u._id)], u.role, period);
   return {
     userId: u._id,
     name: u.name,
@@ -168,7 +195,7 @@ async function listTargetsForManager(req, { year, month } = currentPeriod()) {
   }).lean();
 
   const map = Object.fromEntries(targets.map((t) => [String(t.userId), t]));
-  return users.map((u) => mapListedUser(u, map));
+  return users.map((u) => mapListedUser(u, map, period));
 }
 
 async function listTargetsForLeader(req, { year, month } = currentPeriod()) {
@@ -183,7 +210,7 @@ async function listTargetsForLeader(req, { year, month } = currentPeriod()) {
   }).lean();
 
   const map = Object.fromEntries(targets.map((t) => [String(t.userId), t]));
-  return users.map((u) => mapListedUser(u, map));
+  return users.map((u) => mapListedUser(u, map, period));
 }
 
 function buildTargetProgress(revenueAchieved, monthlyTarget) {
