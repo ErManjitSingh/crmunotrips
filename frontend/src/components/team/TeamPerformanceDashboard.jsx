@@ -62,9 +62,10 @@ function TargetTable({ title, rows, canSetTargets, onSetTarget }) {
                     <button
                       type="button"
                       onClick={() => onSetTarget(row)}
-                      className="text-xs font-semibold text-sky-700 hover:underline"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-sky-600 text-white hover:bg-sky-500"
                     >
-                      Set target
+                      <Target className="w-3 h-3" />
+                      Set Target
                     </button>
                   </td>
                 )}
@@ -81,6 +82,7 @@ export default function TeamPerformanceDashboard({ data, canSetTargets = false, 
   const [targets, setTargets] = useState([]);
   const [loadingTargets, setLoadingTargets] = useState(true);
   const [targetUser, setTargetUser] = useState(null);
+  const [pickId, setPickId] = useState('');
 
   const loadTargets = () => {
     setLoadingTargets(true);
@@ -105,9 +107,15 @@ export default function TeamPerformanceDashboard({ data, canSetTargets = false, 
 
   const leaders = targets.filter((t) => t.role === 'team_leader' && canSetFor(t.role));
   const executives = targets.filter((t) => t.role === 'sales_executive');
-  // TL viewing: only their execs come from API already
   const showLeaders = leaders.length > 0 && (currentUserRole === 'admin' || currentUserRole === 'sales_manager');
   const showExecutives = executives.length > 0;
+  const pickOptions = targets.filter((t) => canSetFor(t.role));
+
+  const openPickedTarget = () => {
+    if (!pickId) return;
+    const row = pickOptions.find((p) => String(p.userId) === String(pickId));
+    if (row) setTargetUser(row);
+  };
 
   const chartData = (data?.members || []).map((m) => ({
     name: m.name.split(' ')[0],
@@ -117,20 +125,38 @@ export default function TeamPerformanceDashboard({ data, canSetTargets = false, 
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-emerald-50 p-4">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <p className="text-sm font-bold text-slate-900">Set monthly / daily sales targets</p>
-            <p className="text-xs text-slate-600 mt-0.5">
-              Target, Package, Total sales, and Profit — for Sales Executives and Team Leaders
-            </p>
-          </div>
-          {canSetTargets && (
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-sky-700 bg-sky-100 px-2 py-1 rounded-lg">
-              Set target from table
-            </span>
-          )}
+      <div className="rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-emerald-50 p-4 space-y-3">
+        <div>
+          <p className="text-sm font-bold text-slate-900">Set target for any executive</p>
+          <p className="text-xs text-slate-600 mt-0.5">
+            Target, Package, Total sales, and Profit — for Sales Executives and Team Leaders
+          </p>
         </div>
+        {canSetTargets && (
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select
+              value={pickId}
+              onChange={(e) => setPickId(e.target.value)}
+              className="flex-1 h-10 rounded-xl border border-sky-200 bg-white px-3 text-sm"
+            >
+              <option value="">Select sales executive / team leader…</option>
+              {pickOptions.map((p) => (
+                <option key={String(p.userId)} value={String(p.userId)}>
+                  {p.name} ({ROLE_LABELS[p.role] || p.role})
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!pickId}
+              onClick={openPickedTarget}
+              className="h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-sm font-semibold inline-flex items-center justify-center gap-1.5"
+            >
+              <Target className="w-4 h-4" />
+              Set Target
+            </button>
+          </div>
+        )}
       </div>
 
       {loadingTargets ? (

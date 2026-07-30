@@ -5,15 +5,11 @@ export function isNavItemActive(pathname, path) {
   }
   if (basePath === '/leads') return pathname === '/leads';
   if (basePath === '/hr/dashboard') return pathname === '/hr/dashboard' || pathname === '/hr';
-  if (basePath === '/team' && String(path || '').includes('tab=performance')) {
-    return pathname === '/team' && (typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('tab') === 'performance'
-      : false);
+  if (basePath === '/team/sales-targets') {
+    return pathname === '/team/sales-targets';
   }
   if (basePath === '/team') {
-    return pathname === '/team' && (typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('tab') !== 'performance'
-      : true);
+    return pathname === '/team';
   }
   return pathname === basePath || pathname.startsWith(`${basePath}/`);
 }

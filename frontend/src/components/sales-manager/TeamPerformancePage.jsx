@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-table';
 import API from '../../api/axios';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
+import { useAuth } from '../../context/AuthContext';
 import PageHeader from '../ui/PageHeader';
 import { formatCurrency } from './managerUtils';
 import SetMonthlyTargetModal from '../sales-targets/SetMonthlyTargetModal';
@@ -14,6 +15,8 @@ import { fetchSalesTargets } from '../../services/salesTargetsApi';
 const columnHelper = createColumnHelper();
 
 export default function TeamPerformancePage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [executives, setExecutives] = useState([]);
   const [leaders, setLeaders] = useState([]);
   const [allTargets, setAllTargets] = useState([]);
@@ -133,7 +136,7 @@ export default function TeamPerformancePage() {
       <PageHeader
         title="Sales Targets & Performance"
         description="Set Target / Package / Total sales / Profit for any sales executive or team leader"
-        breadcrumbs={['Sales Manager', 'Sales Targets']}
+        breadcrumbs={[isAdmin ? 'Admin' : 'Sales Manager', 'Sales Targets']}
       />
 
       <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-emerald-50 p-4 space-y-3">
