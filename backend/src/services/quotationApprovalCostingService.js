@@ -43,10 +43,11 @@ function buildCosting2({ quotation, markupPercent, actor }) {
   const baseCost = toNum(c1.baseCost);
   const pct = Math.max(0, toNum(markupPercent));
   const disc = toNum(c1.discount);
-  // Match create-path formula: GST on costs, then markup on (costs + GST), then discount.
-  const taxes = c1.gstEnabled ? Math.round(baseCost * 0.05 * 100) / 100 : toNum(c1.taxes);
-  const markup = pct > 0 ? Math.round((baseCost + taxes) * (pct / 100) * 100) / 100 : 0;
-  const grandTotal = Math.max(0, baseCost + taxes + markup - disc);
+  // Match create-path: markup on costs → discount → GST last on full package cost.
+  const markup = pct > 0 ? Math.round(baseCost * (pct / 100) * 100) / 100 : 0;
+  const packageCost = Math.max(0, baseCost + markup - disc);
+  const taxes = c1.gstEnabled ? Math.round(packageCost * 0.05 * 100) / 100 : toNum(c1.taxes);
+  const grandTotal = Math.max(0, packageCost + taxes);
   const profitMargin = grandTotal > 0 ? Math.round(((markup - disc) / grandTotal) * 1000) / 10 : 0;
 
   return {

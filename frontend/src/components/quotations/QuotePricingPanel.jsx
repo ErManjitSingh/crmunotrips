@@ -1,11 +1,9 @@
 import { calculatePricing, formatINR, getDisplayedCostBreakdown } from './quotationUtils';
 
-const FIELDS = [
+const COST_FIELDS = [
   { key: 'hotelCost', label: 'Hotel Cost', color: 'border-amber-400/30 bg-amber-500/5' },
   { key: 'transportCost', label: 'Transport Cost', color: 'border-emerald-400/30 bg-emerald-500/5' },
   { key: 'activityCost', label: 'Activities Cost', color: 'border-indigo-400/30 bg-indigo-500/5' },
-  { key: 'markup', label: 'Markup', color: 'border-green-400/30 bg-green-500/5' },
-  { key: 'taxes', label: 'GST (5%)', color: 'border-violet-400/30 bg-violet-500/5' },
 ];
 
 export default function QuotePricingPanel({ pricing, onChange, readOnly = false }) {
@@ -26,23 +24,8 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false 
 
   return (
     <div className="space-y-4">
-      {!readOnly && (
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 cursor-pointer">
-          <div>
-            <p className="text-sm font-semibold text-slate-800">Add 5% GST</p>
-            <p className="text-xs text-slate-500">Optional — sales executive choice</p>
-          </div>
-          <input
-            type="checkbox"
-            checked={Boolean(pricing?.gstEnabled)}
-            onChange={(e) => apply({ gstEnabled: e.target.checked })}
-            className="h-4 w-4 rounded border-violet-300 text-violet-600"
-          />
-        </label>
-      )}
-
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {FIELDS.map(({ key, label, color }) => (
+        {COST_FIELDS.map(({ key, label, color }) => (
           <div key={key} className={`p-3 rounded-xl border ${color}`}>
             <label className="text-[10px] uppercase font-semibold text-content-muted">{label}</label>
             <p className="text-lg font-bold text-content-primary metric-tabular mt-1">
@@ -51,31 +34,71 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false 
           </div>
         ))}
 
+        {/* Single markup: enter % + show amount */}
+        <div className="p-3 rounded-xl border border-green-400/30 bg-green-500/5">
+          <label className="text-[10px] uppercase font-semibold text-content-muted">Markup %</label>
+          {readOnly ? (
+            <p className="text-lg font-bold text-content-primary metric-tabular mt-1">
+              {Number(pricing?.markupPercent || 0)}%
+            </p>
+          ) : (
+            <input
+              type="number"
+              min={0}
+              step={0.1}
+              value={pricing?.markupPercent || ''}
+              onChange={(e) => apply({ markupPercent: Number(e.target.value) || 0 })}
+              className="input-premium w-full h-10 rounded-lg text-sm font-bold metric-tabular mt-1"
+            />
+          )}
+          <p className="mt-1 text-xs font-semibold text-green-700 metric-tabular">
+            = {formatINR(breakdown.markup, { zeroLabel: '—' })}
+          </p>
+        </div>
+
         {!readOnly && (
-          <>
-            <div className="p-3 rounded-xl border border-green-400/30 bg-green-500/5">
-              <label className="text-[10px] uppercase font-semibold text-content-muted">Markup %</label>
-              <input
-                type="number"
-                min={0}
-                step={0.1}
-                value={pricing?.markupPercent || ''}
-                onChange={(e) => apply({ markupPercent: Number(e.target.value) || 0 })}
-                className="input-premium w-full h-10 rounded-lg text-sm font-bold metric-tabular mt-1"
-              />
-            </div>
-            <div className="p-3 rounded-xl border border-red-400/30 bg-red-500/5">
-              <label className="text-[10px] uppercase font-semibold text-content-muted">Discount</label>
-              <input
-                type="number"
-                min={0}
-                value={pricing?.discount || ''}
-                onChange={(e) => apply({ discount: Number(e.target.value) || 0 })}
-                className="input-premium w-full h-10 rounded-lg text-sm font-bold metric-tabular mt-1"
-              />
-            </div>
-          </>
+          <div className="p-3 rounded-xl border border-red-400/30 bg-red-500/5">
+            <label className="text-[10px] uppercase font-semibold text-content-muted">Discount</label>
+            <input
+              type="number"
+              min={0}
+              value={pricing?.discount || ''}
+              onChange={(e) => apply({ discount: Number(e.target.value) || 0 })}
+              className="input-premium w-full h-10 rounded-lg text-sm font-bold metric-tabular mt-1"
+            />
+          </div>
         )}
+
+        {readOnly && (
+          <div className="p-3 rounded-xl border border-red-400/30 bg-red-500/5">
+            <label className="text-[10px] uppercase font-semibold text-content-muted">Discount</label>
+            <p className="text-lg font-bold text-content-primary metric-tabular mt-1">
+              {formatINR(breakdown.discount, { zeroLabel: '—' })}
+            </p>
+          </div>
+        )}
+
+        {/* GST last — on full package cost */}
+        <div className="p-3 rounded-xl border border-violet-400/30 bg-violet-500/5 col-span-2 sm:col-span-1">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <label className="text-[10px] uppercase font-semibold text-content-muted">GST (5%)</label>
+              <p className="text-[10px] text-content-muted mt-0.5">On full package cost</p>
+            </div>
+            {!readOnly && (
+              <input
+                type="checkbox"
+                checked={Boolean(pricing?.gstEnabled)}
+                onChange={(e) => apply({ gstEnabled: e.target.checked })}
+                className="h-4 w-4 rounded border-violet-300 text-violet-600"
+                title="Add 5% GST"
+              />
+            )}
+          </div>
+          <p className="text-lg font-bold text-content-primary metric-tabular mt-1">
+            {formatINR(breakdown.taxes, { zeroLabel: 'Not included' })}
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

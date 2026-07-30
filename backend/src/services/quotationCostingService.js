@@ -113,15 +113,15 @@ function calculateQuotationPricing({
     categoryTotals.flightCost +
     categoryTotals.activityCost;
 
-  const taxes = gstEnabled ? Math.round(costs * 0.05 * 100) / 100 : 0;
+  // Markup on costs, then discount, GST last on full package cost
   const markup =
     markupPercent > 0
-      ? Math.round((costs + taxes) * (markupPercent / 100) * 100) / 100
+      ? Math.round(costs * (markupPercent / 100) * 100) / 100
       : markupInput;
-
-  const gross = categoryTotals.subtotal + taxes + markup;
-  const total = Math.max(0, gross - discount);
-  const profitAmount = total - (categoryTotals.subtotal + taxes);
+  const packageCost = Math.max(0, costs + markup - discount);
+  const taxes = gstEnabled ? Math.round(packageCost * 0.05 * 100) / 100 : 0;
+  const total = Math.max(0, packageCost + taxes);
+  const profitAmount = markup - discount;
   const profitMargin = total > 0 ? Math.round((profitAmount / total) * 1000) / 10 : 0;
 
   return {

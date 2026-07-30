@@ -17,35 +17,43 @@ export function calculatePricing({
     Number(flightCost || 0) +
     Number(activityCost || 0);
 
-  const computedTaxes = gstEnabled
-    ? Math.round(costs * 0.05 * 100) / 100
-    : 0;
-
   const pct = Number(markupPercent) || 0;
   const computedMarkup =
     pct > 0
-      ? Math.round((costs + computedTaxes) * (pct / 100) * 100) / 100
+      ? Math.round(costs * (pct / 100) * 100) / 100
       : Math.max(0, Number(markup) || 0);
 
-  const subtotal = costs + computedTaxes + computedMarkup;
   const disc = Math.max(0, Number(discount) || 0);
-  const total = Math.max(0, subtotal - disc);
+  const packageBeforeDisc = costs + computedMarkup;
+  // Package cost before GST: costs + markup − discount
+  const packageCost = Math.max(0, packageBeforeDisc - disc);
+  // GST last — on full package cost (after discount)
+  const computedTaxes = gstEnabled
+    ? Math.round(packageCost * 0.05 * 100) / 100
+    : 0;
+
+  const total = Math.max(0, packageCost + computedTaxes);
+  const listWithGst = gstEnabled
+    ? Math.round(packageBeforeDisc * 0.05 * 100) / 100 + packageBeforeDisc
+    : packageBeforeDisc;
   const youSave = disc;
   const profit = computedMarkup - disc;
   const profitMargin = total > 0 ? Math.round((profit / total) * 1000) / 10 : 0;
 
   return {
-    subtotal,
+    subtotal: listWithGst,
     total,
     profitMargin,
     taxes: computedTaxes,
     markup: computedMarkup,
+    packageCost,
+    packageBeforeDisc,
     youSave,
   };
 }
 
 /**
- * Customer-facing costing rows: Hotel + Transport + Activities + Markup + GST = Final Total.
+ * Customer-facing costing rows: Hotel + Transport + Activities + Markup + Discount + GST = Final Total.
  * Folds residual package base (and flights) into hotel/transport so the visible lines sum correctly.
  */
 export function getDisplayedCostBreakdown(pricing = {}) {
@@ -71,6 +79,7 @@ export function getDisplayedCostBreakdown(pricing = {}) {
     taxes: calc.taxes,
     discount: Math.max(0, Number(pricing.discount || 0)),
     youSave: calc.youSave,
+    packageCost: calc.packageCost,
     subtotalBeforeDiscount: calc.subtotal,
     finalTotal: calc.total,
   };

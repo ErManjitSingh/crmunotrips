@@ -59,8 +59,6 @@ export default function PackageBuilderPriceSidebar({
     { key: 'hotelCost', label: 'Hotel Cost' },
     { key: 'transportCost', label: 'Transport Cost' },
     { key: 'activityCost', label: 'Activities Cost' },
-    { key: 'markup', label: 'Markup' },
-    { key: 'taxes', label: 'GST (5%)' },
   ];
 
   const actions = [
@@ -108,19 +106,6 @@ export default function PackageBuilderPriceSidebar({
         </div>
 
         <div className="px-5 py-4 space-y-2.5 bg-white/60">
-          <label className="flex items-center justify-between gap-3 rounded-lg bg-violet-50 border border-violet-100 px-2.5 py-2 cursor-pointer">
-            <div>
-              <p className="text-xs font-semibold text-slate-700">Add 5% GST</p>
-              <p className="text-[10px] text-slate-500">Optional — sales executive choice</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={Boolean(pricing?.gstEnabled)}
-              onChange={(e) => applyPricing({ gstEnabled: e.target.checked })}
-              className="h-4 w-4 rounded border-violet-300 text-violet-600 focus:ring-violet-500"
-            />
-          </label>
-
           {rows.map(({ key, label }) => {
             const amount = breakdown[key] || 0;
             return (
@@ -136,17 +121,29 @@ export default function PackageBuilderPriceSidebar({
             );
           })}
 
-          <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50/80 border border-slate-100 px-2 py-1.5">
-            <span className="text-xs font-semibold text-slate-600">Markup %</span>
-            <input
-              type="number"
-              min={0}
-              step={0.1}
-              value={pricing?.markupPercent || ''}
-              onChange={(e) => updateNumber('markupPercent', e.target.value)}
-              className="w-[108px] h-8 rounded-lg border border-violet-200 bg-white px-2 text-right text-sm font-semibold metric-tabular focus:outline-none focus:ring-2 focus:ring-violet-500/20 text-slate-800"
-              placeholder="0"
-            />
+          {/* Single markup row: enter % + show amount */}
+          <div className="rounded-lg border border-green-100 bg-green-50/70 px-2 py-2 space-y-1.5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold text-green-800">Markup %</span>
+              <input
+                type="number"
+                min={0}
+                step={0.1}
+                value={pricing?.markupPercent || ''}
+                onChange={(e) => updateNumber('markupPercent', e.target.value)}
+                className="w-[108px] h-8 rounded-lg border border-green-200 bg-white px-2 text-right text-sm font-semibold metric-tabular focus:outline-none focus:ring-2 focus:ring-green-500/20 text-slate-800"
+                placeholder="0"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 px-0.5">
+              <span className="text-[10px] font-medium text-green-700/80">Markup amount</span>
+              <span className={cn(
+                'text-sm font-semibold metric-tabular',
+                Number(breakdown.markup) === 0 ? 'text-slate-400' : 'text-green-800'
+              )}>
+                {formatINR(breakdown.markup, { zeroLabel: '—' })}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center justify-between gap-3 rounded-lg bg-emerald-50/80 border border-emerald-100 px-2 py-1.5">
@@ -158,6 +155,31 @@ export default function PackageBuilderPriceSidebar({
               onChange={(e) => updateNumber('discount', e.target.value)}
               className="w-[108px] h-8 rounded-lg border border-emerald-200 bg-white px-2 text-right text-sm font-semibold metric-tabular text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
+          </div>
+
+          {/* GST last — on full package cost */}
+          <div className="rounded-lg border border-violet-100 bg-violet-50/80 px-2 py-2 space-y-1.5">
+            <label className="flex items-center justify-between gap-3 cursor-pointer">
+              <div>
+                <p className="text-xs font-semibold text-slate-700">Add 5% GST</p>
+                <p className="text-[10px] text-slate-500">On full package cost</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={Boolean(pricing?.gstEnabled)}
+                onChange={(e) => applyPricing({ gstEnabled: e.target.checked })}
+                className="h-4 w-4 rounded border-violet-300 text-violet-600 focus:ring-violet-500"
+              />
+            </label>
+            <div className="flex items-center justify-between gap-3 px-0.5">
+              <span className="text-[10px] font-medium text-violet-700/80">GST (5%)</span>
+              <span className={cn(
+                'text-sm font-semibold metric-tabular',
+                Number(breakdown.taxes) === 0 ? 'text-slate-400' : 'text-violet-800'
+              )}>
+                {formatINR(breakdown.taxes, { zeroLabel: 'Not included' })}
+              </span>
+            </div>
           </div>
         </div>
 
