@@ -11,7 +11,8 @@ import API from '../../api/axios';
 import ExecutiveKpiCards from './dashboard/ExecutiveKpiCards';
 import ExecutiveDashboardPanels from './dashboard/ExecutiveDashboardPanels';
 import MobileExecutiveDashboard from './dashboard/MobileExecutiveDashboard';
-import QuotationBuilderPromoBanner from './dashboard/QuotationBuilderPromoBanner';
+import CrmUpdateSection from './dashboard/CrmUpdateSection';
+import RecentUpdatesRemindersRow from './dashboard/RecentUpdatesRemindersRow';
 import {
   ColdCallAlertsPanel,
   DestinationWisePanel,
@@ -195,18 +196,29 @@ export default function ExecutiveDashboard() {
 
         <ExecutiveKpiCards kpis={data?.kpis} trends={data?.kpiTrends} />
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-stretch">
-          <div className="min-w-0 h-full">
-            <QuotationBuilderPromoBanner half to="/sales-executive/quotations/new" />
-          </div>
-          <div className="min-w-0 h-full">
-            <DestinationWisePanel
-              rows={data?.destinationWise?.rows || []}
-              period={destinationPeriod}
-              onPeriodChange={setDestinationPeriod}
-            />
-          </div>
-        </div>
+        <CrmUpdateSection
+          target={data?.target}
+          announcements={[
+            ...(announcementFeed?.hero ? [announcementFeed.hero] : []),
+            ...(announcementFeed?.carousel || []),
+          ]}
+          now={now}
+        />
+
+        <RecentUpdatesRemindersRow
+          announcements={[
+            ...(announcementFeed?.hero ? [announcementFeed.hero] : []),
+            ...(announcementFeed?.carousel || []),
+          ]}
+          kpis={data?.kpis || {}}
+          upcomingFollowups={data?.upcomingFollowups || []}
+        />
+
+        <DestinationWisePanel
+          rows={data?.destinationWise?.rows || []}
+          period={destinationPeriod}
+          onPeriodChange={setDestinationPeriod}
+        />
 
         <ExecutiveDashboardPanels data={data} announcements={announcementFeed?.carousel || []} />
       </div>

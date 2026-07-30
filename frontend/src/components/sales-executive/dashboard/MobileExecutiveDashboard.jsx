@@ -19,7 +19,8 @@ import {
 import { toast } from '../../../context/ToastContext';
 import { useSidebar } from '../../../context/SidebarContext';
 import { formatCurrency } from '../executiveUtils';
-import QuotationBuilderPromoBanner from './QuotationBuilderPromoBanner';
+import CrmUpdateSection from './CrmUpdateSection';
+import RecentUpdatesRemindersRow from './RecentUpdatesRemindersRow';
 
 const KPI_CARDS = [
   { key: 'myLeads', label: 'Total Leads', icon: Users, tone: 'bg-blue-500', spark: '#7c3aed' },
@@ -208,7 +209,18 @@ export default function MobileExecutiveDashboard({
           })}
         </div>
 
-        <QuotationBuilderPromoBanner compact to="/sales-executive/quotations/new" />
+        <div className="mt-4 space-y-3">
+          <CrmUpdateSection
+            target={data?.target}
+            announcements={hero ? [hero] : []}
+            now={now}
+          />
+          <RecentUpdatesRemindersRow
+            announcements={hero ? [hero] : []}
+            kpis={kpis}
+            upcomingFollowups={data?.upcomingFollowups || []}
+          />
+        </div>
 
         <section className="relative mt-4 overflow-hidden rounded-2xl bg-gradient-to-r from-violet-700 via-fuchsia-600 to-rose-500 p-4 text-white shadow-lg shadow-fuchsia-500/15">
           <button type="button" className="absolute right-3 top-2 text-white/65" aria-label="Dismiss offer">×</button>
