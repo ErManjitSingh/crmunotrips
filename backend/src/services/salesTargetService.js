@@ -180,12 +180,13 @@ function mapListedUser(u, map, period) {
 
 async function listTargetsForManager(req, { year, month } = currentPeriod()) {
   const period = { year: Number(year), month: Number(month) };
+  // Admin + Sales Manager can set targets for any active executive / team leader.
   const users = await User.find({
     role: { $in: ['sales_executive', 'team_leader'] },
     status: 'active',
-    ...(req.branchId ? { branchId: req.branchId } : {}),
   })
     .select('name email role')
+    .sort({ role: 1, name: 1 })
     .lean();
 
   const targets = await MonthlySalesTarget.find({

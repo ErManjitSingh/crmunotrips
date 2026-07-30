@@ -16,8 +16,11 @@ const columnHelper = createColumnHelper();
 export default function TeamPerformancePage() {
   const [executives, setExecutives] = useState([]);
   const [leaders, setLeaders] = useState([]);
+  const [allTargets, setAllTargets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [targetUser, setTargetUser] = useState(null);
+  const [search, setSearch] = useState('');
+  const [pickId, setPickId] = useState('');
 
   const fetchExecutives = () => {
     setLoading(true);
@@ -26,7 +29,8 @@ export default function TeamPerformancePage() {
       fetchSalesTargets(),
     ])
       .then(([execRes, targets]) => {
-        setExecutives(execRes.data);
+        setExecutives(execRes.data || []);
+        setAllTargets(targets || []);
         setLeaders((targets || []).filter((t) => t.role === 'team_leader'));
       })
       .finally(() => setLoading(false));
@@ -37,6 +41,44 @@ export default function TeamPerformancePage() {
   }, []);
 
   useDataRefresh(['leads', 'followups', 'quotations', 'dashboard'], fetchExecutives);
+
+  const filteredExecutives = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return executives;
+    return executives.filter(
+      (ex) =>
+        String(ex.name || '').toLowerCase().includes(q) ||
+        String(ex.email || '').toLowerCase().includes(q)
+    );
+  }, [executives, search]);
+
+  const pickOptions = useMemo(() => {
+    const fromTargets = (allTargets || []).filter((t) => t.role === 'sales_executive' || t.role === 'team_leader');
+    if (fromTargets.length) return fromTargets;
+    return executives.map((ex) => ({
+      userId: ex._id,
+      name: ex.name,
+      role: 'sales_executive',
+      revenueTarget: ex.revenueTarget ?? ex.monthlyTarget,
+      packageTarget: ex.packageTarget,
+      totalSalesTarget: ex.totalSalesTarget,
+      profitTarget: ex.profitTarget,
+      periodType: ex.periodType,
+      workingDays: ex.workingDays,
+    }));
+  }, [allTargets, executives]);
+
+  const openPickedTarget = () => {
+    if (!pickId) return;
+    const row = pickOptions.find((p) => String(p.userId || p._id) === String(pickId));
+    if (!row) return;
+    setTargetUser({
+      ...row,
+      userId: row.userId || row._id,
+      _id: row._id || row.userId,
+    });
+  };
+
   const columns = useMemo(() => [
     columnHelper.accessor('rank', { header: 'Rank', cell: (i) => (
       <span className={`inline-flex w-7 h-7 items-center justify-center rounded-full text-xs font-bold ${i.getValue() === 1 ? 'bg-amber-500/20 text-amber-600' : 'bg-surface-elevated text-content-muted'}`}>
@@ -71,20 +113,66 @@ export default function TeamPerformancePage() {
           >
             View leads
           </Link>
-          <button type="button" onClick={() => setTargetUser(row.original)} className="text-xs font-semibold text-sky-700 hover:underline">
-            Set target
+          <button
+            type="button"
+            onClick={() => setTargetUser(row.original)}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100"
+          >
+            <Target className="w-3 h-3" />
+            Set Target
           </button>
         </div>
       ),
     }),
   ], []);
 
-  const table = useReactTable({ data: executives, columns, getCoreRowModel: getCoreRowModel() });
+  const table = useReactTable({ data: filteredExecutives, columns, getCoreRowModel: getCoreRowModel() });
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Team Performance" description="Set Target / Package / Total sales / Profit for executives and team leaders (monthly or daily)" breadcrumbs={['Team', 'Sales Targets']} />
+      <PageHeader
+        title="Sales Targets & Performance"
+        description="Set Target / Package / Total sales / Profit for any sales executive or team leader"
+        breadcrumbs={['Sales Manager', 'Sales Targets']}
+      />
 
+      <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-emerald-50 p-4 space-y-3">
+        <div>
+          <p className="text-sm font-bold text-slate-900">Set target for any executive</p>
+          <p className="text-xs text-slate-600 mt-0.5">
+            Pick any Sales Executive or Team Leader and set Target, Package, Total sales &amp; Profit
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <select
+            value={pickId}
+            onChange={(e) => setPickId(e.target.value)}
+            className="flex-1 h-10 rounded-xl border border-sky-200 bg-white px-3 text-sm"
+          >
+            <option value="">Select sales executive / team leader…</option>
+            {pickOptions.map((p) => (
+              <option key={String(p.userId || p._id)} value={String(p.userId || p._id)}>
+                {p.name} ({p.role === 'team_leader' ? 'Team Leader' : 'Sales Executive'})
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            disabled={!pickId}
+            onClick={openPickedTarget}
+            className="h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-sm font-semibold inline-flex items-center justify-center gap-1.5"
+          >
+            <Target className="w-4 h-4" />
+            Set Target
+          </button>
+        </div>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search executives in list…"
+          className="w-full h-10 rounded-xl border border-sky-200 bg-white px-3 text-sm"
+        />
+      </div>
       {!loading && leaders.length > 0 && (
         <div className="rounded-2xl border border-subtle bg-surface/80 p-4 space-y-3">
           <div className="flex items-center justify-between gap-2">
@@ -133,20 +221,22 @@ export default function TeamPerformancePage() {
       )}
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {!loading && executives.length === 0 ? (
+        {!loading && filteredExecutives.length === 0 ? (
           <div className="col-span-full rounded-2xl border border-dashed border-subtle bg-surface/60 p-12 text-center">
             <Users className="w-10 h-10 mx-auto mb-3 text-content-muted opacity-50" />
-            <p className="font-medium text-content-primary">No active sales executives</p>
-            <p className="text-sm text-content-muted mt-1">Add Sales Executives from Team Management to view performance here.</p>
+            <p className="font-medium text-content-primary">{executives.length ? 'No executives match your search' : 'No active sales executives'}</p>
+            <p className="text-sm text-content-muted mt-1">
+              {executives.length ? 'Try another name.' : 'Add Sales Executives from Team Management to view performance here.'}
+            </p>
           </div>
-        ) : executives.map((ex) => (
+        ) : filteredExecutives.map((ex) => (
           <div key={ex._id} className="relative overflow-hidden rounded-2xl border border-subtle bg-surface/80 backdrop-blur-xl p-4">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-brand-600 flex items-center justify-center text-white font-bold text-xs">
                 {ex.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
               </div>
-              <div>
-                <p className="font-bold text-sm text-content-primary">{ex.name}</p>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-sm text-content-primary truncate">{ex.name}</p>
                 <p className="text-xs text-content-muted">Rank #{ex.rank}</p>
               </div>
             </div>
@@ -163,9 +253,16 @@ export default function TeamPerformancePage() {
               <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">Converted {ex.conversions || 0}</span>
               <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700">Lost {ex.byStatus?.lost || 0}</span>
             </div>
-            <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="mt-3 flex items-center justify-between gap-2">
               <p className="text-xs text-emerald-600 font-semibold flex items-center gap-1"><TrendingUp className="w-3 h-3" /> {ex.conversionRate}% conversion</p>
-              <Link to={`/leads?agent=${ex._id}`} className="text-[10px] font-bold text-violet-600 hover:underline">Check leads →</Link>
+              <button
+                type="button"
+                onClick={() => setTargetUser(ex)}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-sky-600 text-white hover:bg-sky-500"
+              >
+                <Target className="w-3 h-3" />
+                Set Target
+              </button>
             </div>
           </div>
         ))}

@@ -46,7 +46,7 @@ export const salesManagerNavItems = [
   { path: '/sales-manager/skill-assignment', label: 'Skill Assignment', icon: Award },
   { path: '/sales-manager/teams', label: 'Team Management', icon: UsersRound },
   { path: '/sales-manager/follow-ups', label: 'Follow-up Monitoring', icon: CalendarClock, badgeKey: 'followups.due' },
-  { path: '/sales-manager/team', label: 'Team Performance', icon: Trophy },
+  { path: '/sales-manager/team', label: 'Sales Targets', icon: Trophy },
   {
     id: 'quotations',
     label: 'Quotations',

@@ -170,12 +170,13 @@ const assignLeads = asyncHandler(async (req, res) => {
 });
 
 const listExecutives = asyncHandler(async (req, res) => {
+  // Sales managers / admins can view & set targets for any active sales executive.
   const executives = await User.find({
     role: 'sales_executive',
     status: 'active',
-    ...(req.branchId ? { branchId: req.branchId } : {}),
   })
     .select('name email')
+    .sort({ name: 1 })
     .lean();
 
   const performance = await Promise.all(

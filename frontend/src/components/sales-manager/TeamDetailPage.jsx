@@ -9,6 +9,7 @@ import { Button } from '../ui/button';
 import Avatar from '../ui/Avatar';
 import TeamFormModal from './teams/TeamFormModal';
 import TeamMemberModal from './teams/TeamMemberModal';
+import SetMonthlyTargetModal from '../sales-targets/SetMonthlyTargetModal';
 import { formatCurrency } from './teams/teamUtils';
 
 export default function TeamDetailPage() {
@@ -24,6 +25,7 @@ export default function TeamDetailPage() {
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [memberModal, setMemberModal] = useState({ open: false, mode: null, member: null });
+  const [targetUser, setTargetUser] = useState(null);
 
   const fetchTeam = () => {
     setLoading(true);
@@ -100,14 +102,30 @@ export default function TeamDetailPage() {
           <h3 className="font-bold text-content-primary mb-4 flex items-center gap-2"><Crown className="w-4 h-4 text-amber-500" /> Team Leader</h3>
           <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/5 border border-amber-500/20">
             <Avatar name={team.teamLeader?.name} size="md" className="ring-2 ring-amber-500/30" />
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="font-bold text-content-primary">{team.teamLeader?.name}</p>
-              <p className="text-xs text-content-muted">{team.teamLeader?.email}</p>
+              <p className="text-xs text-content-muted truncate">{team.teamLeader?.email}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="w-full mt-4" onClick={() => setMemberModal({ open: true, mode: 'leader', member: null })}>
-            Change Team Leader
-          </Button>
+          <div className="grid grid-cols-1 gap-2 mt-4">
+            {team.teamLeader && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setTargetUser({
+                  ...team.teamLeader,
+                  userId: team.teamLeader._id,
+                  role: 'team_leader',
+                })}
+              >
+                <Target className="w-3.5 h-3.5 mr-1" /> Set Target
+              </Button>
+            )}
+            <Button variant="outline" size="sm" className="w-full" onClick={() => setMemberModal({ open: true, mode: 'leader', member: null })}>
+              Change Team Leader
+            </Button>
+          </div>
         </div>
 
         <div className="lg:col-span-2 rounded-2xl border border-subtle bg-surface/80 p-5">
@@ -128,6 +146,18 @@ export default function TeamDetailPage() {
                   <p className="text-xs text-content-muted">{m.email}</p>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-sky-700 border-sky-200"
+                    onClick={() => setTargetUser({
+                      ...m,
+                      userId: m._id,
+                      role: 'sales_executive',
+                    })}
+                  >
+                    <Target className="w-3.5 h-3.5 mr-1" /> Set Target
+                  </Button>
                   <Button size="sm" variant="ghost" onClick={() => setMemberModal({ open: true, mode: 'transfer', member: m })} title="Transfer">
                     <ArrowRightLeft className="w-3.5 h-3.5" />
                   </Button>
@@ -152,6 +182,11 @@ export default function TeamDetailPage() {
         leaders={leaders}
         onClose={() => setMemberModal({ open: false, mode: null, member: null })}
         onConfirm={handleMemberAction}
+      />
+      <SetMonthlyTargetModal
+        open={!!targetUser}
+        user={targetUser}
+        onClose={() => setTargetUser(null)}
       />
     </div>
   );
