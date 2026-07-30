@@ -1,4 +1,5 @@
 import { calculatePricing, formatINR, getDisplayedCostBreakdown } from './quotationUtils';
+import { perPersonFromTotal, resolvePartyOccupancy } from './partyCosting';
 
 const COST_FIELDS = [
   { key: 'hotelCost', label: 'Hotel Cost', color: 'border-amber-400/30 bg-amber-500/5' },
@@ -6,9 +7,12 @@ const COST_FIELDS = [
   { key: 'activityCost', label: 'Activities Cost', color: 'border-indigo-400/30 bg-indigo-500/5' },
 ];
 
-export default function QuotePricingPanel({ pricing, onChange, readOnly = false }) {
+export default function QuotePricingPanel({ pricing, onChange, readOnly = false, lead = null }) {
   const computed = calculatePricing(pricing || {});
   const breakdown = getDisplayedCostBreakdown(pricing || {});
+  const party = pricing?.party || resolvePartyOccupancy(lead || {});
+  const adults = Math.max(1, Number(party.adults) || 1);
+  const perPerson = perPersonFromTotal(breakdown.finalTotal, adults);
 
   const apply = (partial) => {
     const next = { ...pricing, ...partial };
@@ -24,6 +28,19 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false 
 
   return (
     <div className="space-y-4">
+      {(party.rooms || party.cabCount || adults > 1) && (
+        <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs text-slate-600">
+          <p className="font-semibold text-violet-800">Party costing</p>
+          <p className="mt-0.5">
+            {adults} adult{adults === 1 ? '' : 's'}
+            {party.children ? ` · ${party.children} child` : ''}
+            {' · '}{party.rooms || 1} room{party.mattresses ? ` + ${party.mattresses} mattress` : ''}
+            {' · '}{party.cabCount || 1} cab
+            {party.perPersonRate != null ? ` · package ${formatINR(party.perPersonRate)}/adult` : ''}
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {COST_FIELDS.map(({ key, label, color }) => (
           <div key={key} className={`p-3 rounded-xl border ${color}`}>
@@ -34,7 +51,6 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false 
           </div>
         ))}
 
-        {/* Single markup: enter % + show amount */}
         <div className="p-3 rounded-xl border border-green-400/30 bg-green-500/5">
           <label className="text-[10px] uppercase font-semibold text-content-muted">Markup %</label>
           {readOnly ? (
@@ -78,7 +94,6 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false 
           </div>
         )}
 
-        {/* GST last — on full package cost */}
         <div className="p-3 rounded-xl border border-violet-400/30 bg-violet-500/5 col-span-2 sm:col-span-1">
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -103,10 +118,11 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false 
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-5 rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/15 to-teal-500/10">
-          <p className="text-xs font-semibold uppercase text-emerald-600">You Save</p>
+          <p className="text-xs font-semibold uppercase text-emerald-600">Per Person</p>
           <p className="text-3xl font-black text-emerald-700 dark:text-emerald-300 metric-tabular mt-1">
-            {formatINR(breakdown.youSave || pricing?.discount || 0, { zeroLabel: 'Not included' })}
+            {formatINR(perPerson)}
           </p>
+          <p className="mt-1 text-[11px] text-emerald-700/80">Across {adults} adult{adults === 1 ? '' : 's'}</p>
         </div>
         <div className="p-5 rounded-2xl border border-brand-400/30 bg-gradient-to-br from-brand-500/15 to-indigo-500/10">
           <p className="text-xs font-semibold uppercase text-brand-600">Final Total Package Cost</p>

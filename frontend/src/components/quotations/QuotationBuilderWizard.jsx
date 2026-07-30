@@ -19,6 +19,7 @@ import { buildSelectedCabSnapshot } from './UnoCabSelector';
 import { parsePackageNights } from './UnoHotelSelector';
 import { WIZARD_STEPS } from './constants';
 import { calculatePricing, defaultItineraryDay, defaultWizardState, formatINR, matchesResourceDestination } from './quotationUtils';
+import { applyPartyCosting } from './partyCosting';
 import { buildSelectedHotelsSnapshot } from './quotePdfHelpers';
 import { unwrapList } from '../../utils/apiHelpers';
 import PackageBuilderWorkspace from './PackageBuilderWorkspace';
@@ -387,14 +388,34 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
 
     setState((s) => {
       const packageStart = Number(normalized.startingPrice || 0);
-      const { baseCost, hotelCost } = resolvePackageHotelPricing(packageStart, seededHotels);
+      const unit = resolvePackageHotelPricing(packageStart, seededHotels);
+      const unitCab = Number(defaultCab?.totalAmount || defaultCab?.cost || 0);
+      const party = applyPartyCosting({
+        unitBaseCost: unit.baseCost,
+        unitHotelCost: unit.hotelCost,
+        unitCabCost: unitCab,
+        lead: selectedLead,
+        pkg: normalized,
+        cabSeats: defaultCab?.seatingCapacity || 4,
+        dayWiseHotels: seededHotels,
+      });
       const nextPricing = {
         ...s.pricing,
-        baseCost,
-        hotelCost,
-        cabCost: Number(defaultCab?.totalAmount || defaultCab?.cost || 0),
+        baseCost: party.baseCost,
+        hotelCost: party.hotelCost,
+        cabCost: party.cabCost,
         flightCost: 0,
         activityCost: 0,
+        party: {
+          adults: party.adults,
+          children: party.children,
+          travelers: party.travelers,
+          rooms: party.rooms,
+          mattresses: party.mattresses,
+          cabCount: party.cabCount,
+          cabSeats: party.cabSeats,
+          perPersonRate: party.perPersonRate,
+        },
       };
       return {
         ...s,
@@ -452,36 +473,58 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
 
   useEffect(() => {
     const packageAnchor = Number(selectedPkgDetail?.startingPrice || 0);
-    const { baseCost, hotelCost } = resolvePackageHotelPricing(packageAnchor, dayWiseHotels);
-    const cabCost = Number(selectedUnoCab?.totalAmount || selectedUnoCab?.cost || 0);
+    const unit = resolvePackageHotelPricing(packageAnchor, dayWiseHotels);
+    const unitCab = Number(selectedUnoCab?.totalAmount || selectedUnoCab?.cost || 0);
     const flightCost = flights.filter((f) => state.selectedFlightIds.includes(f._id)).reduce((s, f) => s + (f.cost || 0), 0);
     const activityCost = activities.filter((a) => state.selectedActivityIds.includes(a._id)).reduce((s, a) => s + (a.price || 0), 0);
-    const calc = calculatePricing({
-      ...state.pricing,
-      baseCost,
-      hotelCost,
-      cabCost,
+    const party = applyPartyCosting({
+      unitBaseCost: unit.baseCost,
+      unitHotelCost: unit.hotelCost,
+      unitCabCost: unitCab,
       flightCost,
       activityCost,
+      lead: selectedLead,
+      pkg: selectedPkgDetail || {},
+      cabSeats: selectedUnoCab?.seatingCapacity || 4,
+      dayWiseHotels,
+    });
+    const calc = calculatePricing({
+      ...state.pricing,
+      baseCost: party.baseCost,
+      hotelCost: party.hotelCost,
+      cabCost: party.cabCost,
+      flightCost: party.flightCost,
+      activityCost: party.activityCost,
     });
     setState((s) => ({
       ...s,
       pricing: {
         ...s.pricing,
-        baseCost,
-        hotelCost,
-        cabCost,
-        flightCost,
-        activityCost,
+        baseCost: party.baseCost,
+        hotelCost: party.hotelCost,
+        cabCost: party.cabCost,
+        flightCost: party.flightCost,
+        activityCost: party.activityCost,
         taxes: calc.taxes,
         markup: calc.markup,
         total: calc.total,
         profitMargin: calc.profitMargin,
+        party: {
+          adults: party.adults,
+          children: party.children,
+          travelers: party.travelers,
+          rooms: party.rooms,
+          mattresses: party.mattresses,
+          cabCount: party.cabCount,
+          cabSeats: party.cabSeats,
+          perPersonRate: party.perPersonRate,
+        },
       },
     }));
   }, [
     selectedUnoCab,
-    selectedPkgDetail?.startingPrice,
+    selectedPkgDetail,
+    selectedLead,
     state.selectedFlightIds,
     state.selectedActivityIds,
     flights,
@@ -505,8 +548,14 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         packageId: isMongoPackageId(state.packageId) ? state.packageId : null,
         status,
         pricing: state.pricing,
-        selectedHotels: buildSelectedHotelsSnapshot(dayWiseHotels),
-        selectedCabs: buildSelectedCabSnapshot(selectedUnoCab),
+        selectedHotels: buildSelectedHotelsSnapshot(dayWiseHotels, {
+          rooms: state.pricing?.party?.rooms || 1,
+          mattresses: state.pricing?.party?.mattresses || 0,
+        }),
+        selectedCabs: buildSelectedCabSnapshot(selectedUnoCab, {
+          vehicleCount: state.pricing?.party?.cabCount || 1,
+          travelers: state.pricing?.party?.travelers,
+        }),
         selectedFlights: flights.filter((f) => state.selectedFlightIds.includes(f._id)),
         selectedActivities: activities.filter((a) => state.selectedActivityIds.includes(a._id)),
         package: buildPackageSnapshot(activePkg),
@@ -560,8 +609,14 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     lead: selectedLead,
     package: buildPackageSnapshot(activePkg),
     pricing: state.pricing,
-    selectedHotels: buildSelectedHotelsSnapshot(dayWiseHotels),
-    selectedCabs: buildSelectedCabSnapshot(selectedUnoCab),
+    selectedHotels: buildSelectedHotelsSnapshot(dayWiseHotels, {
+      rooms: state.pricing?.party?.rooms || 1,
+      mattresses: state.pricing?.party?.mattresses || 0,
+    }),
+    selectedCabs: buildSelectedCabSnapshot(selectedUnoCab, {
+      vehicleCount: state.pricing?.party?.cabCount || 1,
+      travelers: state.pricing?.party?.travelers,
+    }),
   } : null;
 
   const inBuilder = step >= 3 && Boolean(activePkg);

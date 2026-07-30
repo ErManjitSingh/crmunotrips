@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { calculatePricing, formatINR, getDisplayedCostBreakdown } from './quotationUtils';
+import { perPersonFromTotal, resolvePartyOccupancy } from './partyCosting';
 import ActionTile from '../ui/ActionTile';
 import { cn } from '../../lib/utils';
 
@@ -32,6 +33,9 @@ export default function PackageBuilderPriceSidebar({
 }) {
   const breakdown = useMemo(() => getDisplayedCostBreakdown(pricing || {}), [pricing]);
   const youSave = Number(breakdown.youSave ?? pricing?.discount ?? 0) || 0;
+  const party = pricing?.party || resolvePartyOccupancy(lead || {});
+  const adults = Math.max(1, Number(party.adults) || 1);
+  const perPerson = perPersonFromTotal(breakdown.finalTotal, adults);
 
   const applyPricing = (partial) => {
     const next = { ...pricing, ...partial };
@@ -68,6 +72,14 @@ export default function PackageBuilderPriceSidebar({
     { icon: Printer, label: 'Print', description: 'Print / PDF', onClick: onPrint, tone: 'amber' },
   ];
 
+  const occupancyBits = [
+    `${adults} Adult${adults === 1 ? '' : 's'}`,
+    party.children ? `${party.children} Child${party.children === 1 ? '' : 'ren'}` : null,
+    `${party.rooms || 1} Room${(party.rooms || 1) === 1 ? '' : 's'}`,
+    party.mattresses ? `${party.mattresses} Mattress` : null,
+    `${party.cabCount || 1} Cab${(party.cabCount || 1) === 1 ? '' : 's'}`,
+  ].filter(Boolean);
+
   return (
     <aside className={cn('xl:sticky xl:top-4 space-y-3', className)}>
       <div className="rounded-2xl border border-violet-200 bg-gradient-to-b from-violet-50 via-white to-fuchsia-50 shadow-[0_8px_30px_rgba(109,40,217,0.12)] overflow-hidden">
@@ -94,18 +106,39 @@ export default function PackageBuilderPriceSidebar({
               {formatINR(subtotalBeforeDiscount)}
             </p>
           )}
+          <div className="mt-3 rounded-xl border border-white/15 bg-white/10 px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-100/80">
+                Per person
+              </span>
+              <span className="text-lg font-bold metric-tabular text-white">{formatINR(perPerson)}</span>
+            </div>
+            <p className="mt-1 text-[10px] text-violet-100/75">
+              Total for {adults} adult{adults === 1 ? '' : 's'}: {formatINR(breakdown.finalTotal)}
+            </p>
+          </div>
           <p className="text-[11px] text-violet-100 mt-2">
             {nights != null ? `${nights} Nights` : '—'} / {daysCount || '—'} Days
             {pkg?.destination ? ` · ${pkg.destination}` : ''}
           </p>
           {lead && (
             <p className="text-[11px] text-violet-100/80 mt-0.5 truncate">
-              For {lead.name} · {lead.adults || 0}A/{lead.children || 0}C
+              For {lead.name} · {occupancyBits.join(' · ')}
             </p>
           )}
         </div>
 
         <div className="px-5 py-4 space-y-2.5 bg-white/60">
+          <div className="rounded-lg border border-violet-100 bg-violet-50/70 px-2.5 py-2 text-[10px] text-slate-600">
+            <p className="font-semibold text-violet-800">Party costing</p>
+            <p className="mt-0.5">
+              Package @ {formatINR(party.perPersonRate || 0)}/adult · {party.rooms || 1} room
+              {party.mattresses ? ` + ${party.mattresses} mattress` : ''} ·{' '}
+              {party.cabCount || 1} cab
+              {party.cabSeats ? ` (${party.cabSeats}-seater)` : ''}
+            </p>
+          </div>
+
           {rows.map(({ key, label }) => {
             const amount = breakdown[key] || 0;
             return (
@@ -121,7 +154,6 @@ export default function PackageBuilderPriceSidebar({
             );
           })}
 
-          {/* Single markup row: enter % + show amount */}
           <div className="rounded-lg border border-green-100 bg-green-50/70 px-2 py-2 space-y-1.5">
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-semibold text-green-800">Markup %</span>
@@ -153,11 +185,10 @@ export default function PackageBuilderPriceSidebar({
               min={0}
               value={pricing?.discount || ''}
               onChange={(e) => updateNumber('discount', e.target.value)}
-              className="w-[108px] h-8 rounded-lg border border-emerald-200 bg-white px-2 text-right text-sm font-semibold metric-tabular text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="w-[108px] h-8 rounded-lg border border-emerald-200 bg-white px-2 text-right text-sm font-semibold metric-tabular text-emerald-700 focus:ring-2 focus:ring-emerald-500/20"
             />
           </div>
 
-          {/* GST last — on full package cost */}
           <div className="rounded-lg border border-violet-100 bg-violet-50/80 px-2 py-2 space-y-1.5">
             <label className="flex items-center justify-between gap-3 cursor-pointer">
               <div>
@@ -186,13 +217,15 @@ export default function PackageBuilderPriceSidebar({
         <div className="px-5 pb-4">
           <div className="rounded-xl bg-violet-50 border border-violet-200 px-3 py-2.5 flex items-center justify-between gap-2">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">You Save</p>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">Per Person</p>
               <p className="text-sm font-bold text-emerald-700 metric-tabular">
-                {formatINR(youSave, { zeroLabel: 'Not included' })}
+                {formatINR(perPerson)}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500">Final Total Package Cost</p>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500">
+                Final Total ({adults} pax)
+              </p>
               <p className="text-sm font-bold text-violet-800 metric-tabular">{formatINR(breakdown.finalTotal)}</p>
             </div>
           </div>

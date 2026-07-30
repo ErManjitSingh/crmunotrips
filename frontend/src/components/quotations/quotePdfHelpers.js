@@ -71,36 +71,51 @@ export function perPersonAmount(pricing, travelers = 2) {
   return Math.round(total / pax);
 }
 
-export function buildSelectedHotelsSnapshot(dayWiseHotels) {
+export function buildSelectedHotelsSnapshot(dayWiseHotels, { rooms = 1, mattresses = 0 } = {}) {
   const list = Array.isArray(dayWiseHotels)
     ? dayWiseHotels
     : dayWiseHotels?.hotel
       ? [{ day: 1, ...dayWiseHotels }]
       : [];
 
+  const roomCount = Math.max(1, Number(rooms) || 1);
+  const matCount = Math.max(0, Number(mattresses) || 0);
+
   return list
     .filter((entry) => entry?.hotel)
-    .map((entry) => ({
-      day: entry.day,
-      _id: entry.hotel.id,
-      name: entry.hotel.name,
-      location: entry.hotel.location,
-      city: entry.hotel.city,
-      rating: entry.hotel.rating,
-      starCategory: entry.hotel.starCategory,
-      reviewCount: entry.hotel.reviewCount,
-      thumbnailUrl: entry.hotel.thumbnailUrl,
-      images: entry.hotel.images,
-      room: entry.room,
-      mealPlan: entry.mealPlan,
-      meals: entry.mealPlan?.label || entry.mealPlan?.key || '',
-      nights: entry.nights || 1,
-      price: entry.perNight,
-      total: entry.totalCost ?? entry.perNight,
-      absolutePerNight: entry.absolutePerNight,
-      priceDelta: entry.perNight,
-      externalSource: entry.hotel.externalSource || 'uno_hotels',
-    }));
+    .map((entry) => {
+      const nights = entry.nights || 1;
+      const unitPerNight = Number(entry.perNight || 0);
+      const unitTotal = Number(entry.totalCost ?? entry.perNight ?? 0);
+      const absolute = Number(entry.absolutePerNight || 0);
+      const matNight =
+        Number(entry.extraBedPerNight || entry.room?.extraBedRate || 0) ||
+        (absolute > 0 ? absolute * 0.35 : 0);
+      const total = Math.round((unitTotal * roomCount + matNight * nights * matCount) * 100) / 100;
+      return {
+        day: entry.day,
+        _id: entry.hotel.id,
+        name: entry.hotel.name,
+        location: entry.hotel.location,
+        city: entry.hotel.city,
+        rating: entry.hotel.rating,
+        starCategory: entry.hotel.starCategory,
+        reviewCount: entry.hotel.reviewCount,
+        thumbnailUrl: entry.hotel.thumbnailUrl,
+        images: entry.hotel.images,
+        room: entry.room,
+        mealPlan: entry.mealPlan,
+        meals: entry.mealPlan?.label || entry.mealPlan?.key || '',
+        nights,
+        rooms: roomCount,
+        mattresses: matCount,
+        price: Math.round(unitPerNight * roomCount * 100) / 100,
+        total,
+        absolutePerNight: absolute,
+        priceDelta: unitPerNight,
+        externalSource: entry.hotel.externalSource || 'uno_hotels',
+      };
+    });
 }
 
 export function collectHotelImageUrls(hotel = {}) {

@@ -613,6 +613,7 @@ function mapUnoPackage(pkg, { includeItinerary = false, includeDetail = false } 
     startingPrice: Number(pkg.discounted_price ?? pkg.base_price ?? 0),
     basePrice: Number(pkg.base_price ?? 0),
     discountedPrice: pkg.discounted_price != null ? Number(pkg.discounted_price) : null,
+    pricePer: pkg.price_per || pkg.pricePer || 'per_couple',
     packageType: pkg.tour_type || 'domestic',
     currency: pkg.currency || 'INR',
     coverImage: sanitizeImageUrl(pkg.featured_image),

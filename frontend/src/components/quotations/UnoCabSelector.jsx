@@ -410,8 +410,11 @@ export default function UnoCabSelector({
   );
 }
 
-export function buildSelectedCabSnapshot(cab) {
+export function buildSelectedCabSnapshot(cab, { vehicleCount = 1, travelers } = {}) {
   if (!cab) return [];
+  const count = Math.max(1, Number(vehicleCount) || 1);
+  const unit = Number(cab.totalAmount || cab.cost || 0) || 0;
+  const total = Math.round(unit * count * 100) / 100;
   return [{
     _id: cab.id || cab.slug || cab.packageCabId,
     id: cab.id || cab.packageCabId,
@@ -429,11 +432,14 @@ export function buildSelectedCabSnapshot(cab) {
     tripType: cab.tripType || 'full_day',
     travelDate: cab.travelDate || '',
     seatingCapacity: cab.seatingCapacity,
+    vehicleCount: count,
+    travelers: travelers != null ? Number(travelers) : undefined,
     isAc: cab.isAc,
     isPackageCab: Boolean(cab.isPackageCab),
     isDefault: Boolean(cab.isDefault),
-    cost: cab.cost || cab.totalAmount || 0,
-    totalAmount: cab.totalAmount || cab.cost || 0,
+    unitCost: unit,
+    cost: total,
+    totalAmount: total,
     priceDelta: cab.priceDelta,
     fare: cab.fare || {},
     externalSource: cab.externalSource || (cab.isPackageCab ? 'uno_package' : 'uno_cabs'),
