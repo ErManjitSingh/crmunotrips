@@ -1,4 +1,4 @@
-import { ArrowLeft, Phone, Info, UserPlus, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Phone, Info, UserPlus, MoreVertical } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
 import { getInitials, formatWhatsAppPhone, resolveWhatsAppDisplayName } from './whatsappUtils';
@@ -17,7 +17,6 @@ export default function WhatsAppConversationHeader({
   const dialDigits = String(contact?.waId || contact?.phone || lead?.phone || '')
     .replace(/\D/g, '')
     .slice(-10);
-  const destination = lead?.destination && lead.destination !== 'Not specified' ? lead.destination : 'Not specified';
 
   if (!lead && !contact) return null;
 
@@ -32,7 +31,7 @@ export default function WhatsAppConversationHeader({
         <ArrowLeft className="w-5 h-5" />
       </button>
 
-      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-semibold text-sm shrink-0 shadow-sm">
+      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shrink-0 shadow-sm">
         {getInitials(name)}
       </div>
 
@@ -42,16 +41,12 @@ export default function WhatsAppConversationHeader({
           {lead ? (
             <LeadStatusBadge status={lead.status} size="sm" />
           ) : (
-            <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
               New chat
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5 mt-0.5 text-[12px] text-slate-400 min-w-0">
-          <span className="truncate tabular-nums">{phone}</span>
-          <span className="text-slate-300">·</span>
-          <span className="truncate">{destination}</span>
-        </div>
+        <p className="mt-0.5 text-[12px] text-slate-400 truncate tabular-nums">{phone}</p>
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
@@ -60,19 +55,10 @@ export default function WhatsAppConversationHeader({
             type="button"
             onClick={onCreateLead}
             disabled={creatingLead}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-500 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 disabled:opacity-60 shadow-sm"
           >
             <UserPlus className="w-3.5 h-3.5" />
             {creatingLead ? 'Creating…' : 'Create Lead'}
-          </button>
-        )}
-        {lead?.assignedTo?.name && (
-          <button
-            type="button"
-            className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-600"
-          >
-            {lead.assignedTo.name}
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
         )}
         {dialDigits && (
@@ -88,12 +74,20 @@ export default function WhatsAppConversationHeader({
           <button
             type="button"
             onClick={onToggleInfo}
-            className={cn('xl:hidden p-2 rounded-full hover:bg-slate-50 text-slate-500 transition-colors')}
+            className="xl:hidden p-2 rounded-full hover:bg-slate-50 text-slate-500 transition-colors"
             aria-label="Lead info"
           >
             <Info className="w-5 h-5" />
           </button>
         )}
+        <button
+          type="button"
+          onClick={onToggleInfo}
+          className={cn('hidden xl:inline-flex p-2 rounded-full hover:bg-slate-50 text-slate-500 transition-colors')}
+          aria-label="More options"
+        >
+          <MoreVertical className="w-5 h-5" />
+        </button>
       </div>
     </div>
   );

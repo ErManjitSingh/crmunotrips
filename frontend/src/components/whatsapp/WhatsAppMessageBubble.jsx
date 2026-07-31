@@ -38,7 +38,7 @@ function WhatsAppMessageBubble({ message }) {
         className={cn(
           'relative max-w-[75%] sm:max-w-[65%] px-3 py-2 rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.06)]',
           isOutgoing
-            ? 'bg-[#dcf8c6] text-slate-900 rounded-tr-md'
+            ? 'bg-[#d9fdd3] text-slate-900 rounded-tr-md'
             : 'bg-white text-slate-900 rounded-tl-md border border-white/80'
         )}
       >

@@ -52,8 +52,8 @@ export default function WhatsAppMessageInput({ onSend, disabled }) {
               onClick={() => handleAttach(type)}
               className="flex flex-col items-center gap-1.5 group"
             >
-              <div className="w-11 h-11 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center group-hover:bg-emerald-50 group-hover:border-emerald-200 transition-colors">
-                <Icon className="w-5 h-5 text-slate-500 group-hover:text-emerald-600" />
+              <div className="w-11 h-11 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center group-hover:bg-violet-50 group-hover:border-violet-200 transition-colors">
+                <Icon className="w-5 h-5 text-slate-500 group-hover:text-violet-600" />
               </div>
               <span className="text-[10px] text-slate-400">{label}</span>
             </button>
@@ -75,7 +75,7 @@ export default function WhatsAppMessageInput({ onSend, disabled }) {
           onClick={() => setShowAttach((s) => !s)}
           className={cn(
             'p-2 rounded-full hover:bg-slate-50 shrink-0 transition-colors',
-            showAttach ? 'text-emerald-600' : 'text-slate-400'
+            showAttach ? 'text-violet-600' : 'text-slate-400'
           )}
           aria-label="Attach"
         >
@@ -90,7 +90,7 @@ export default function WhatsAppMessageInput({ onSend, disabled }) {
             onKeyDown={handleKeyDown}
             disabled={disabled}
             placeholder="Type a message..."
-            className="w-full rounded-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300"
+            className="w-full rounded-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-300"
           />
         </div>
 
@@ -98,7 +98,7 @@ export default function WhatsAppMessageInput({ onSend, disabled }) {
           type="button"
           onClick={handleSend}
           disabled={!text.trim() || disabled}
-          className="shrink-0 w-11 h-11 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/25 disabled:opacity-40 transition-colors"
+          className="shrink-0 w-11 h-11 rounded-full bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center shadow-lg shadow-violet-600/30 disabled:opacity-40 transition-colors"
           aria-label="Send"
         >
           <Send className="w-4 h-4 ml-0.5" />

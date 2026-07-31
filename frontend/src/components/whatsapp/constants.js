@@ -3,7 +3,6 @@ export const STATUS_FILTERS = [
   { key: 'new', label: 'New' },
   { key: 'working_progress', label: 'Working Progress' },
   { key: 'follow_up', label: 'Follow Up' },
-  { key: 'converted', label: 'Converted' },
 ];
 
 export const LEAD_STATUSES = [

@@ -5,9 +5,9 @@ import LeadStatusBadge from '../leads/LeadStatusBadge';
 import { formatMessageTime, formatWhatsAppPhone, resolveWhatsAppDisplayName } from './whatsappUtils';
 
 const AVATAR_TONES = [
-  'from-emerald-400 to-teal-500',
+  'from-violet-500 to-purple-600',
+  'from-fuchsia-400 to-pink-500',
   'from-sky-400 to-blue-500',
-  'from-violet-400 to-purple-500',
   'from-rose-400 to-pink-500',
   'from-amber-400 to-orange-500',
   'from-cyan-400 to-teal-500',
@@ -42,8 +42,10 @@ function WhatsAppLeadListItem({ conversation, active, onClick }) {
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full flex items-start gap-3 px-4 py-3 text-left border-b border-slate-100 transition-colors',
-        active ? 'bg-emerald-50/80' : 'hover:bg-slate-50/80'
+        'w-full flex items-start gap-3 px-3 py-3 text-left rounded-xl transition-all border',
+        active
+          ? 'bg-violet-50 border-violet-200 shadow-sm'
+          : 'bg-transparent border-transparent hover:bg-slate-50'
       )}
     >
       <div className="relative shrink-0 mt-0.5">

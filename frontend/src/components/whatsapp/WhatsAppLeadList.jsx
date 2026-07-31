@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { STATUS_FILTERS } from './constants';
 import WhatsAppLeadListItem from './WhatsAppLeadListItem';
@@ -27,10 +27,19 @@ function WhatsAppLeadList({
     <div className="flex flex-col h-full bg-white border-r border-slate-200/80">
       <div className="shrink-0 p-4 space-y-3 border-b border-slate-100">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-[17px] font-semibold text-slate-900 tracking-tight">WhatsApp Leads</h2>
-          <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full whitespace-nowrap">
-            {activeCount} chats active
-          </span>
+          <div className="min-w-0">
+            <h2 className="text-[17px] font-semibold text-slate-900 tracking-tight">WhatsApp Leads</h2>
+            <p className="text-[11px] font-medium text-emerald-600 mt-0.5">
+              {activeCount} chats active
+            </p>
+          </div>
+          <button
+            type="button"
+            className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
+            aria-label="Filters"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
         </div>
 
         <div className="relative">
@@ -55,7 +64,7 @@ function WhatsAppLeadList({
                 className={cn(
                   'shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all border',
                   active
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                    ? 'bg-violet-600 text-white border-violet-600 shadow-sm shadow-violet-600/25'
                     : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
                 )}
               >
@@ -66,11 +75,11 @@ function WhatsAppLeadList({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overscroll-contain">
+      <div className="flex-1 overflow-y-auto overscroll-contain px-2 py-2 space-y-1">
         {loading ? (
-          <div className="p-4 space-y-3">
+          <div className="p-2 space-y-2">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex gap-3 animate-pulse">
+              <div key={i} className="flex gap-3 animate-pulse rounded-xl p-3">
                 <div className="w-11 h-11 rounded-full bg-slate-100" />
                 <div className="flex-1 space-y-2 py-1">
                   <div className="h-3 bg-slate-100 rounded w-2/3" />
