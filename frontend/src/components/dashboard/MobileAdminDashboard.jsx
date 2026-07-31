@@ -33,12 +33,12 @@ import { toast } from '../../context/ToastContext';
 import { useTimeGreeting } from '../../lib/greeting';
 
 const KPI_CONFIG = [
-  { key: 'totalLeads', reportKey: 'totalLeads', label: 'Total Leads', icon: Users, tone: 'from-indigo-500 to-violet-600', color: '#7c3aed' },
-  { key: 'totalBudget', label: 'Total Value', icon: IndianRupee, tone: 'from-emerald-400 to-teal-600', color: '#10b981', currency: true },
-  { key: 'convertedLeads', reportKey: 'conversions', label: 'Converted Leads', icon: UserRoundCheck, tone: 'from-orange-400 to-orange-600', color: '#f97316' },
-  { key: 'conversionRate', reportKey: 'conversionRate', label: 'Conversion Rate', icon: TrendingUp, tone: 'from-violet-400 to-purple-600', color: '#8b5cf6', suffix: '%' },
-  { key: 'pendingFollowups', reportKey: 'followUpPending', label: 'Follow-ups', icon: Bell, tone: 'from-blue-400 to-blue-600', color: '#3b82f6' },
-  { key: 'revenue', reportKey: 'revenue', label: 'Revenue', icon: IndianRupee, tone: 'from-pink-500 to-rose-600', color: '#ec4899', currency: true },
+  { key: 'totalLeads', reportKey: 'totalLeads', label: 'Total Leads', icon: Users, tone: 'from-indigo-500 to-violet-600', color: '#7c3aed', path: '/leads' },
+  { key: 'totalBudget', label: 'Total Value', icon: IndianRupee, tone: 'from-emerald-400 to-teal-600', color: '#10b981', currency: true, path: '/reports' },
+  { key: 'convertedLeads', reportKey: 'conversions', label: 'Converted Leads', icon: UserRoundCheck, tone: 'from-orange-400 to-orange-600', color: '#f97316', path: '/leads/converted' },
+  { key: 'conversionRate', reportKey: 'conversionRate', label: 'Conversion Rate', icon: TrendingUp, tone: 'from-violet-400 to-purple-600', color: '#8b5cf6', suffix: '%', path: '/reports' },
+  { key: 'pendingFollowups', reportKey: 'followUpPending', label: 'Follow-ups', icon: Bell, tone: 'from-blue-400 to-blue-600', color: '#3b82f6', path: '/followups' },
+  { key: 'revenue', reportKey: 'revenue', label: 'Revenue', icon: IndianRupee, tone: 'from-pink-500 to-rose-600', color: '#ec4899', currency: true, path: '/payments' },
 ];
 
 const STATUS_STYLES = {
@@ -287,8 +287,12 @@ export default function MobileAdminDashboard({
               : card.key === 'pendingFollowups'
                 ? 'followUps'
                 : card.key;
+            const Wrapper = card.path ? Link : 'div';
+            const wrapperProps = card.path
+              ? { to: card.path, className: 'min-w-0 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm transition active:scale-[0.98]' }
+              : { className: 'min-w-0 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm' };
             return (
-              <div key={card.key} className="min-w-0 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm">
+              <Wrapper key={card.key} {...wrapperProps}>
                 <div className="flex items-start gap-1.5">
                   <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white ${card.tone}`}>
                     <Icon className="h-3.5 w-3.5" />
@@ -307,7 +311,7 @@ export default function MobileAdminDashboard({
                 <div className="mt-1">
                   <KpiSparkline values={stats?.kpiSparklines?.[sparkKey] || []} color={card.color} />
                 </div>
-              </div>
+              </Wrapper>
             );
           })}
         </div>

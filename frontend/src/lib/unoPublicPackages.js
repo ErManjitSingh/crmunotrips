@@ -78,11 +78,21 @@ export function mapUnoPackage(raw = {}, { includeDetail = false } = {}) {
     duration: raw.duration || duration,
     durationNights: raw.durationNights || durationNights,
     durationLabel: raw.duration_label || raw.durationLabel || `${duration}D / ${durationNights}N`,
-    startingPrice: toNumber(raw.discounted_price ?? raw.base_price ?? raw.startingPrice, 0),
-    basePrice: toNumber(raw.base_price ?? raw.basePrice, 0),
+    startingPrice: toNumber(
+      raw.startingPrice ?? raw.discounted_price ?? raw.discountedPrice ?? raw.base_price ?? raw.basePrice,
+      0
+    ),
+    baseStartingPrice: toNumber(
+      raw.baseStartingPrice ?? raw.discounted_price ?? raw.discountedPrice ?? raw.base_price ?? raw.basePrice ?? raw.startingPrice,
+      0
+    ),
+    basePrice: toNumber(raw.basePrice ?? raw.base_price, 0),
     discountedPrice: raw.discounted_price == null && raw.discountedPrice == null
       ? null
-      : toNumber(raw.discounted_price ?? raw.discountedPrice, 0),
+      : toNumber(raw.discountedPrice ?? raw.discounted_price, 0),
+    destinationMarginPercent: toNumber(raw.destinationMarginPercent, 0),
+    destinationMarginApplied: Boolean(raw.destinationMarginApplied),
+    destinationMarginName: raw.destinationMarginName || '',
     packageType: raw.tour_type || raw.packageType || 'domestic',
     currency: raw.currency || 'INR',
     coverImage: raw.featured_image || raw.coverImage || '',

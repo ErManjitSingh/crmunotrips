@@ -40,6 +40,7 @@ import {
   WhatsAppTemplatesPage,
   EmailTemplatesPage,
   AnnouncementsPage,
+  MarginControlPage,
   EmailActivityPage,
   ReactivatedLeadsPage,
   SalesManagerLayout,
@@ -158,6 +159,7 @@ function App() {
               <Route path="assignment" element={<LeadAssignmentPage />} />
               <Route path="destination-assignment" element={<DestinationAssignmentPage />} />
               <Route path="skill-assignment" element={<SkillAssignmentPage />} />
+              <Route path="margin-control" element={<MarginControlPage />} />
               <Route path="teams" element={<TeamManagementPage />} />
               <Route path="teams/:id" element={<TeamDetailPage />} />
               <Route path="follow-ups" element={<FollowUpMonitoringPage />} />
@@ -320,6 +322,7 @@ function App() {
               <Route path="customers" element={<PermissionRoute module="customers"><ComingSoon title="Customers" description="Repeat customers and relationship management" /></PermissionRoute>} />
               <Route path="quotations/*" element={<PermissionRoute module="quotations"><Quotations /></PermissionRoute>} />
               <Route path="packages" element={<PermissionRoute module="packages"><Packages /></PermissionRoute>} />
+              <Route path="margin-control" element={<RoleRoute roles={['admin', 'sales_manager']}><MarginControlPage /></RoleRoute>} />
               <Route path="team/attendance" element={<RoleRoute roles={['admin']}><AdminAttendancePage /></RoleRoute>} />
               <Route path="team/sales-teams" element={<RoleRoute roles={['admin']}><TeamManagementPage /></RoleRoute>} />
               <Route path="team/sales-teams/:id" element={<RoleRoute roles={['admin']}><TeamDetailPage /></RoleRoute>} />

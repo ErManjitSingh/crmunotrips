@@ -5,6 +5,10 @@ const Flight = require('../models/Flight');
 const ApiError = require('../utils/apiError');
 const asyncHandler = require('../utils/asyncHandler');
 const { getUnoPackageById } = require('../services/unoHotelsPackageService');
+const {
+  applyMarginToPackage,
+  applyMarginToPackages,
+} = require('../services/destinationMarginService');
 
 function mapItineraryForDb(days = []) {
   return days.map((day) => ({
@@ -53,13 +57,13 @@ const listPackages = asyncHandler(async (req, res) => {
 
   let packages = await Package.find(filter).sort({ createdAt: -1 }).lean();
   packages = applySearch(packages, search);
-  res.json(packages);
+  res.json(await applyMarginToPackages(packages));
 });
 
 const getPackage = asyncHandler(async (req, res) => {
   const pkg = await Package.findById(req.params.id).lean();
   if (!pkg) throw new ApiError(404, 'Package not found');
-  res.json(pkg);
+  res.json(await applyMarginToPackage(pkg));
 });
 
 const createPackage = asyncHandler(async (req, res) => {

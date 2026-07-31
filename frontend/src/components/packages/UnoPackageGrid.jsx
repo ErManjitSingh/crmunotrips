@@ -84,6 +84,11 @@ export default function UnoPackageGrid({ packages, onView }) {
               <div>
                 <p className="text-[10px] uppercase tracking-wide text-content-muted">Starting from</p>
                 <p className="text-lg font-bold text-content-primary tabular-nums">{formatINR(pkg.startingPrice)}</p>
+                {pkg.destinationMarginApplied && Number(pkg.destinationMarginPercent) > 0 && (
+                  <p className="text-[10px] font-semibold text-teal-700 dark:text-teal-300">
+                    Incl. +{pkg.destinationMarginPercent}% destination margin
+                  </p>
+                )}
               </div>
               {pkg.avgRating > 0 && (
                 <span className="inline-flex items-center gap-1 text-xs text-amber-700 font-semibold">

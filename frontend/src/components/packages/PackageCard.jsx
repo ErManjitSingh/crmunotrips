@@ -26,6 +26,11 @@ export default function PackageCard({ pkg, index, onEdit, onDelete, onDuplicate 
           <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {pkg.destination}</span>
           <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {pkg.duration}D/{pkg.duration - 1}N</span>
           <span className="flex items-center gap-1 font-bold text-content-primary"><IndianRupee className="w-3 h-3" /> {formatINR(pkg.startingPrice).replace('₹', '')}</span>
+          {pkg.destinationMarginApplied && Number(pkg.destinationMarginPercent) > 0 && (
+            <span className="rounded-full bg-teal-500/15 px-1.5 py-0.5 text-[9px] font-bold text-teal-700 dark:text-teal-300">
+              +{pkg.destinationMarginPercent}% margin
+            </span>
+          )}
         </div>
         <p className="text-xs text-content-muted mt-2">{pkg.itinerary?.length || 0} day itinerary</p>
       </div>

@@ -22,6 +22,7 @@ import {
   Award,
   Mail,
   Undo2,
+  Percent,
 } from 'lucide-react';
 
 export const salesManagerNavItems = [
@@ -44,6 +45,7 @@ export const salesManagerNavItems = [
   { path: '/sales-manager/assignment', label: 'Lead Assignment', icon: UserPlus, badgeKey: 'assignment' },
   { path: '/sales-manager/destination-assignment', label: 'Destination Assignment', icon: MapPin },
   { path: '/sales-manager/skill-assignment', label: 'Skill Assignment', icon: Award },
+  { path: '/sales-manager/margin-control', label: 'Margin Control', icon: Percent },
   { path: '/sales-manager/teams', label: 'Team Management', icon: UsersRound },
   { path: '/sales-manager/follow-ups', label: 'Follow-up Monitoring', icon: CalendarClock, badgeKey: 'followups.due' },
   { path: '/sales-manager/team', label: 'Sales Targets', icon: Trophy },

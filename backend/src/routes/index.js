@@ -37,6 +37,7 @@ const branchRoutes = require('./branchRoutes');
 const destinationAssignmentRoutes = require('./destinationAssignmentRoutes');
 const skillAssignmentRoutes = require('./skillAssignmentRoutes');
 const assignmentConfigRoutes = require('./assignmentConfigRoutes');
+const destinationMarginRoutes = require('./destinationMarginRoutes');
 const reminderRoutes = require('./reminderRoutes');
 const whatsappTemplateRoutes = require('./whatsappTemplateRoutes');
 const emailTemplateRoutes = require('./emailTemplateRoutes');
@@ -85,6 +86,7 @@ router.use('/branches', branchRoutes);
 router.use('/destination-assignment', destinationAssignmentRoutes);
 router.use('/skill-assignment', skillAssignmentRoutes);
 router.use('/assignment', assignmentConfigRoutes);
+router.use('/margin-control', destinationMarginRoutes);
 
 const publicLeadRoutes = require('./publicLeadRoutes');
 const facebookWebhookRoutes = require('./facebookWebhookRoutes');

@@ -109,14 +109,17 @@ export default function Leads() {
   }, [queryClient]);
 
   useEffect(() => {
-    setFilters((f) => ({ ...f, status: config.status || '' }));
-    setAppliedFilters((f) => ({ ...f, status: config.status || '' }));
+    const params = new URLSearchParams(location.search);
+    const statusFromQuery = params.get('status') || '';
+    const nextStatus = config.status || statusFromQuery || '';
+    setFilters((f) => ({ ...f, status: nextStatus }));
+    setAppliedFilters((f) => ({ ...f, status: nextStatus }));
     setPagination({
       pageIndex: 0,
       pageSize: isAllLeadsPage ? ALL_LEADS_PAGE_SIZE : LEADS_PAGE_SIZE,
     });
     setPageCursors({});
-  }, [config.status, config.assignee, isAllLeadsPage, location.pathname]);
+  }, [config.status, config.assignee, isAllLeadsPage, location.pathname, location.search]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);

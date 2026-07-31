@@ -21,6 +21,7 @@ import {
   Receipt,
   RotateCcw,
   Target,
+  Percent,
 } from 'lucide-react';
 import { operationsAdminMenuChildren } from '../operations-manager/operations-nav-config';
 import { leadManagementSections } from './lead-management-config';
@@ -142,6 +143,12 @@ export const mainNavItems = [
     icon: Globe2,
     countKey: 'packages',
     permission: { module: 'packages', action: 'view' },
+  },
+  {
+    path: '/margin-control',
+    label: 'Margin Control',
+    icon: Percent,
+    roles: ['admin', 'sales_manager'],
   },
   {
     path: '/operations-manager/bookings/pending',
