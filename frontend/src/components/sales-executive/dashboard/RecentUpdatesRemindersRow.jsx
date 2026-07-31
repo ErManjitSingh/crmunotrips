@@ -3,12 +3,10 @@ import { motion } from 'framer-motion';
 import {
   ArrowRight,
   CalendarClock,
-  Flame,
   PartyPopper,
   Settings2,
   GraduationCap,
   Bell,
-  UserRoundX,
 } from 'lucide-react';
 import { formatFollowUpDate } from '../executiveUtils';
 
@@ -38,12 +36,20 @@ const FALLBACK_UPDATES = [
   { id: 'u3', title: 'New Training Session', type: 'training', at: Date.now() - 48 * 3600000 },
 ];
 
+const DEFAULT_STATUS = [
+  { stage: 'New', count: 0, color: '#0EA5E9' },
+  { stage: 'Contacted', count: 0, color: '#8B5CF6' },
+  { stage: 'Follow-up', count: 0, color: '#F59E0B' },
+  { stage: 'Quotation', count: 0, color: '#6366F1' },
+  { stage: 'Converted', count: 0, color: '#10B981' },
+];
+
 /**
- * Bottom row: Recent Updates | Key Reminders (50/50).
+ * Row: Recent Updates | Lead Status / Followups (merged).
  */
 export default function RecentUpdatesRemindersRow({
   announcements = [],
-  kpis = {},
+  conversionProgress = [],
   upcomingFollowups = [],
 }) {
   const updates = (announcements.length
@@ -56,32 +62,8 @@ export default function RecentUpdatesRemindersRow({
     : FALLBACK_UPDATES
   ).slice(0, 4);
 
-  const reminders = [
-    {
-      id: 'followups',
-      title: 'Follow-ups Pending',
-      detail: `${kpis.todayFollowups ?? 0} due today`,
-      to: '/sales-executive/follow-ups',
-      icon: CalendarClock,
-      tone: 'bg-amber-50 text-amber-600',
-    },
-    {
-      id: 'unassigned',
-      title: 'Upcoming Follow-ups',
-      detail: `${upcomingFollowups.length || 0} scheduled`,
-      to: '/sales-executive/calendar',
-      icon: UserRoundX,
-      tone: 'bg-sky-50 text-sky-600',
-    },
-    {
-      id: 'hot',
-      title: 'Hot Leads',
-      detail: `${kpis.hotLeads ?? 0} need attention`,
-      to: '/sales-executive/leads/hot',
-      icon: Flame,
-      tone: 'bg-orange-50 text-orange-600',
-    },
-  ];
+  const stages = (conversionProgress?.length ? conversionProgress : DEFAULT_STATUS).slice(0, 5);
+  const followups = (upcomingFollowups || []).slice(0, 3);
 
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-stretch">
@@ -125,36 +107,76 @@ export default function RecentUpdatesRemindersRow({
         transition={{ delay: 0.05 }}
         className="flex h-full flex-col rounded-2xl border border-subtle bg-white p-4 shadow-sm dark:bg-slate-900/80"
       >
-        <h3 className="text-sm font-bold text-content-primary">Key Reminders</h3>
-        <p className="mt-0.5 text-[11px] text-content-muted">Things that need your attention</p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-content-primary">Lead Status / Followups</h3>
+            <p className="mt-0.5 text-[11px] text-content-muted">Pipeline status and upcoming follow-ups</p>
+          </div>
+          <Link
+            to="/sales-executive/follow-ups"
+            className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold text-violet-600 hover:text-violet-500"
+          >
+            View all <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
 
-        <div className="mt-4 flex-1 space-y-2">
-          {reminders.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.id}
-                to={item.to}
-                className="flex items-center gap-3 rounded-xl border border-slate-100 px-3 py-2.5 transition hover:border-violet-200 hover:bg-violet-50/50"
-              >
-                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.tone}`}>
-                  <Icon className="h-4 w-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12px] font-semibold text-content-primary">{item.title}</p>
-                  <p className="truncate text-[10px] text-content-muted">{item.detail}</p>
+        <div className="mt-3 space-y-1.5">
+          <p className="text-[9px] font-bold uppercase tracking-wide text-content-muted">Lead Status</p>
+          {stages.map((stage) => (
+            <div key={stage.stage} className="flex items-center gap-2">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: stage.color || '#8b5cf6' }}
+              />
+              <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-content-secondary">
+                {stage.stage}
+              </span>
+              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 sm:w-24">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.max(8, Math.min(100, Number(stage.count) ? 20 + Number(stage.count) * 8 : 8))}%`,
+                    backgroundColor: stage.color || '#8b5cf6',
+                  }}
+                />
+              </div>
+              <span className="w-6 text-right text-[11px] font-bold tabular-nums text-content-primary">
+                {stage.count ?? 0}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 border-t border-subtle pt-3">
+          <p className="mb-2 text-[9px] font-bold uppercase tracking-wide text-content-muted">Followups</p>
+          {followups.length === 0 ? (
+            <p className="py-2 text-center text-[11px] text-content-muted">No upcoming followups</p>
+          ) : (
+            <div className="space-y-2">
+              {followups.map((item) => (
+                <div key={item._id} className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                    <CalendarClock className="h-3.5 w-3.5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12px] font-semibold text-content-primary">
+                      {item.customer || 'Customer'}
+                    </p>
+                    <p className="truncate text-[10px] text-content-muted">
+                      {item.destination || 'General'} · {formatFollowUpDate(item.scheduledAt)}
+                    </p>
+                  </div>
                 </div>
-                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
-              </Link>
-            );
-          })}
+              ))}
+            </div>
+          )}
         </div>
 
         <Link
           to="/sales-executive/follow-ups"
           className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-violet-600 hover:text-violet-500"
         >
-          Go to Reminders <ArrowRight className="h-3 w-3" />
+          Open Followups <ArrowRight className="h-3 w-3" />
         </Link>
       </motion.div>
     </div>

@@ -217,7 +217,7 @@ export default function MobileExecutiveDashboard({
           />
           <RecentUpdatesRemindersRow
             announcements={hero ? [hero] : []}
-            kpis={kpis}
+            conversionProgress={data?.conversionProgress || []}
             upcomingFollowups={data?.upcomingFollowups || []}
           />
         </div>

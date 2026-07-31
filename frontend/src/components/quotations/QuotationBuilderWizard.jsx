@@ -292,17 +292,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       return undefined;
     }
 
-    const tourDays = Number(selectedLead?.tourDays) || 0;
-    const matchesTourDays = (pkg) => {
-      if (!tourDays) return true;
-      const duration = Number(pkg.duration) || 0;
-      if (duration === tourDays) return true;
-      // Also match "XD / YN" labels when duration field is missing/off-by-one nights
-      const label = String(pkg.durationLabel || '');
-      const dayMatch = label.match(/(\d+)\s*D/i);
-      return dayMatch ? Number(dayMatch[1]) === tourDays : false;
-    };
-
     let cancelled = false;
     setLoadingPackages(true);
     Promise.all([
@@ -316,16 +305,19 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     ])
       .then(([unoResult, localRes]) => {
         if (cancelled) return;
+        const matchDest = (p) => {
+          const hasDest = String(p.destination || p.destinationName || '').trim();
+          return Boolean(hasDest) && matchesResourceDestination(p, destination);
+        };
         const uno = (unoResult.items || [])
-          .filter(matchesTourDays)
+          .filter(matchDest)
           .map((p) => ({
             ...p,
             _id: p._id || p.id,
             catalogSource: 'uno',
           }));
         const customs = unwrapList(localRes.data)
-          .filter((p) => p.sourceType === 'uno_clone' && matchesResourceDestination(p, destination))
-          .filter(matchesTourDays)
+          .filter((p) => p.sourceType === 'uno_clone' && matchDest(p))
           .map((p) => ({ ...p, catalogSource: 'custom' }));
         setPackages([...customs, ...uno]);
       })
@@ -340,7 +332,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     return () => {
       cancelled = true;
     };
-  }, [step, debouncedPackageSearch, selectedLead?.destination, selectedLead?.tourDays]);
+  }, [step, debouncedPackageSearch, selectedLead?.destination]);
 
   const buildPackageSnapshot = (pkg) => ({
     ...pkg,
@@ -812,11 +804,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
               <div className="space-y-3">
                 <h2 className="text-base font-bold sm:text-lg">Select Package</h2>
                 <p className="text-xs text-content-muted">
-                  Packages matching lead destination
-                  {Number(selectedLead?.tourDays) > 0 ? (
-                    <> and <span className="font-medium text-content-primary">{selectedLead.tourDays}-day</span> duration</>
-                  ) : null}
-                  {' '}from Uno Hotels catalog
+                  Packages matching lead destination from Uno Hotels catalog
                   {selectedLead?.destination ? (
                     <> — <span className="font-medium text-content-primary">{selectedLead.destination}</span></>
                   ) : null}
@@ -836,11 +824,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                 ) : (
                 <div className="max-h-[min(50dvh,420px)] space-y-2 overflow-y-auto">
                   {packages.length === 0 ? (
-                    <p className="py-8 text-center text-sm text-content-muted">
-                      {Number(selectedLead?.tourDays) > 0
-                        ? `No ${selectedLead.tourDays}-day packages found for this destination.`
-                        : 'No packages found for this lead destination.'}
-                    </p>
+                    <p className="py-8 text-center text-sm text-content-muted">No packages found for this lead destination.</p>
                   ) : packages.map((p) => (
                     <button
                       key={`${p.catalogSource || 'pkg'}-${p._id}`}

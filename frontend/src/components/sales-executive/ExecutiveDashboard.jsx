@@ -210,7 +210,7 @@ export default function ExecutiveDashboard() {
             ...(announcementFeed?.hero ? [announcementFeed.hero] : []),
             ...(announcementFeed?.carousel || []),
           ]}
-          kpis={data?.kpis || {}}
+          conversionProgress={data?.conversionProgress || []}
           upcomingFollowups={data?.upcomingFollowups || []}
         />
 
