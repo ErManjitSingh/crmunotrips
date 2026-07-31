@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, ExternalLink, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, ExternalLink, Search } from 'lucide-react';
 import API from '../../api/axios';
 import { Button } from '../ui/button';
 import Avatar from '../ui/Avatar';
@@ -31,6 +31,7 @@ import {
   invalidateLeadLists,
   invalidateNavCounts,
 } from '../../lib/queryInvalidation';
+import { PACKAGES_PAGE_SIZE } from '../ui/TablePagination';
 
 const ADMIN_CONFIG = {
   leadsPath: '/leads',
@@ -143,6 +144,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const [openingPackageMeta, setOpeningPackageMeta] = useState({ name: '', destination: '' });
   const [loadingPackages, setLoadingPackages] = useState(false);
   const [packageSearch, setPackageSearch] = useState('');
+  const [packagePage, setPackagePage] = useState(0);
   const debouncedPackageSearch = useDebouncedValue(packageSearch, 350);
   const [saving, setSaving] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(isEditMode);
@@ -331,6 +333,15 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     matchesResourceDestination(activity, hotelDestination)
   );
 
+  const packagePageCount = Math.max(1, Math.ceil(packages.length / PACKAGES_PAGE_SIZE));
+  const safePackagePage = Math.min(packagePage, packagePageCount - 1);
+  const pagedPackages = useMemo(() => {
+    const start = safePackagePage * PACKAGES_PAGE_SIZE;
+    return packages.slice(start, start + PACKAGES_PAGE_SIZE);
+  }, [packages, safePackagePage]);
+  const packageShowingFrom = packages.length === 0 ? 0 : safePackagePage * PACKAGES_PAGE_SIZE + 1;
+  const packageShowingTo = Math.min((safePackagePage + 1) * PACKAGES_PAGE_SIZE, packages.length);
+
   const skipActivities = () => {
     setState((s) => ({ ...s, selectedActivityIds: [], activitiesSkipped: true }));
     setStep(7);
@@ -364,6 +375,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
 
     let cancelled = false;
     setLoadingPackages(true);
+    setPackagePage(0);
     Promise.all([
       fetchUnoPublicPackages({
         limit: 50,
@@ -932,10 +944,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                 {loadingPackages ? (
                   <p className="py-8 text-center text-sm text-content-muted">Loading packages...</p>
                 ) : (
+                <>
                 <div className="max-h-[min(50dvh,420px)] space-y-2 overflow-y-auto">
                   {packages.length === 0 ? (
                     <p className="py-8 text-center text-sm text-content-muted">No packages found for this lead destination.</p>
-                  ) : packages.map((p) => (
+                  ) : pagedPackages.map((p) => (
                     <button
                       key={`${p.catalogSource || 'pkg'}-${p._id}`}
                       type="button"
@@ -966,6 +979,37 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                     </button>
                   ))}
                 </div>
+                {packages.length > PACKAGES_PAGE_SIZE && (
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <p className="text-xs text-content-muted">
+                      Showing {packageShowingFrom}–{packageShowingTo} of {packages.length}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={safePackagePage <= 0}
+                        onClick={() => setPackagePage((p) => Math.max(0, p - 1))}
+                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-subtle bg-white px-2.5 text-xs font-medium disabled:opacity-40 dark:bg-slate-950"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                        Prev
+                      </button>
+                      <span className="px-2 text-xs font-semibold tabular-nums text-content-secondary">
+                        {safePackagePage + 1}/{packagePageCount}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={safePackagePage >= packagePageCount - 1}
+                        onClick={() => setPackagePage((p) => Math.min(packagePageCount - 1, p + 1))}
+                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-subtle bg-white px-2.5 text-xs font-medium disabled:opacity-40 dark:bg-slate-950"
+                      >
+                        Next
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                </>
                 )}
               </div>
             )}

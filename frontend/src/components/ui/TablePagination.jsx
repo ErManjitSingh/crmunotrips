@@ -158,3 +158,4 @@ export default function TablePagination({
 export const DEFAULT_PAGE_SIZE = 50;
 export const LEADS_PAGE_SIZE = 50;
 export const ALL_LEADS_PAGE_SIZE = 15;
+export const PACKAGES_PAGE_SIZE = 10;

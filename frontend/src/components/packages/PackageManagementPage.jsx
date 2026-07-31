@@ -5,7 +5,7 @@ import API from '../../api/axios';
 import { fetchUnoPublicPackages, fetchUnoPublicPackageDetail } from '../../lib/unoPublicPackages';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
-import TablePagination, { DEFAULT_PAGE_SIZE } from '../ui/TablePagination';
+import TablePagination, { PACKAGES_PAGE_SIZE } from '../ui/TablePagination';
 import UnoPackageListTable from './UnoPackageListTable';
 import PackageDetailModal from './PackageDetailModal';
 import PackageFormModal from './PackageFormModal';
@@ -22,7 +22,7 @@ export default function PackageManagementPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PACKAGES_PAGE_SIZE });
   const [meta, setMeta] = useState({ total: 0, totalPages: 1 });
   const [selectedPkg, setSelectedPkg] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -212,6 +212,8 @@ export default function PackageManagementPage() {
           onPageChange={(pageIndex) => setPagination((p) => ({ ...p, pageIndex }))}
           onPageSizeChange={(pageSize) => setPagination({ pageIndex: 0, pageSize })}
           totalLabel="packages"
+          showPageNumbers
+          accent="violet"
           className="rounded-2xl border border-amber-500/15 bg-gradient-to-r from-amber-500/[0.03] to-orange-500/[0.03] mb-8"
         />
       )}

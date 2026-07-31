@@ -20,7 +20,7 @@ import {
   DropdownMenuLabel,
 } from '../ui/dropdown-menu';
 import { Button } from '../ui/button';
-import TablePagination, { DEFAULT_PAGE_SIZE } from '../ui/TablePagination';
+import TablePagination, { PACKAGES_PAGE_SIZE } from '../ui/TablePagination';
 import { compactTable, compactTh, compactTd } from '../ui/compactTable';
 
 function formatDate(d) {
@@ -52,7 +52,7 @@ function TypeBadge({ type }) {
 }
 
 export default function PackageDataTable({ packages, onEdit, onDelete, onDuplicate }) {
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PACKAGES_PAGE_SIZE });
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
