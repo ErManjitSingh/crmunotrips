@@ -344,16 +344,25 @@ async function createLeadFromConversation(conversationId, extras = {}, actor = n
     .join('\n');
 
   const answers = conversation.botAnswers || {};
+  const adults = answers.adults || answers.travelers || extras.travelers || extras.adults;
   const lead = await ingestPublicLead({
     name: extras.name || conversation.profileName || `WhatsApp ${conversation.phone.slice(-4)}`,
     phone: conversation.phone,
     email: extras.email || '',
-    destination: extras.destination || getConfig().defaultDestination,
+    destination:
+      extras.destination ||
+      answers.destination ||
+      getConfig().defaultDestination,
     city: extras.city || '',
     message: extras.message || '',
     transcript,
     travelDate: answers.travelDate || extras.travelDate || undefined,
-    travelers: answers.travelers || extras.travelers || undefined,
+    travelers: adults || undefined,
+    adults: adults || undefined,
+    preferredCallTime: answers.bestTimeToCall || extras.preferredCallTime || '',
+    notes: answers.bestTimeToCall
+      ? `Best time to call: ${answers.bestTimeToCall}`
+      : '',
     channel: 'whatsapp',
     source: 'WhatsApp',
     sourceLabel: 'WhatsApp',

@@ -15,23 +15,51 @@ const {
 } = require('./whatsappBotSafety');
 
 /**
- * Keep copy short + helpful. Long marketing blasts hurt Meta quality rating.
- * First message mentions STOP so users (and Meta) see clear opt-out.
+ * Short welcome questionnaire — destination, travel date, adults, best call time.
+ * Starts on any new inbound message when chat is idle (not only Hi).
  */
 const QUESTIONS = {
+  welcome:
+    'Namaste! 👋 *Uno Trips* mein aapka swagat hai.\n\n' +
+    'Apni trip plan karne ke liye 4 chhoti details share karein:\n\n' +
+    '1️⃣ *Destination* kahan jaana hai?\n' +
+    '(jaise: Manali, Goa, Dubai)\n\n' +
+    '_Auto band karne ke liye STOP likhein._',
   travelDate:
-    'Namaste! Uno Trips 👋\n\nKab travel karna hai?\n(jaise: 15/08/2026)\n\n_Auto band karne ke liye STOP likhein._',
-  travelers: 'Great — kitne travelers hain?\n(sirf number, jaise: 4)',
-  done: 'Shukriya! Details save ho gayi hain.\nHamari team jaldi contact karegi.',
+    'Bahut badhiya! ✈️\n\n' +
+    '2️⃣ *Travel date* kab hai?\n' +
+    '(jaise: 15/08/2026 ya 15 August)',
+  adults:
+    'Perfect!\n\n' +
+    '3️⃣ Kitne *adults* travel karenge?\n' +
+    '(sirf number, jaise: 2)',
+  bestTime:
+    'Shukriya!\n\n' +
+    '4️⃣ Call karne ka *best time* kab hai?\n' +
+    '(jaise: subah 10-12, dopahar, shaam 5-7)',
+  done:
+    'Shukriya! ✅ Aapki details save ho gayi hain.\n\n' +
+    'Hamari team jaldi aapse baat karegi.\n' +
+    'Koi aur sawaal ho to yahan likhein.',
+  reaskDestination: 'Destination ka naam likhein (jaise: Manali ya Goa).',
   reaskTravelDate: 'Date dobara bhejein (jaise: 15/08/2026).',
-  reaskTravelers: 'Sirf number likhein (jaise: 2 ya 4).',
+  reaskAdults: 'Sirf adults ka number likhein (jaise: 2 ya 4).',
+  reaskBestTime: 'Call ka best time likhein (jaise: subah 11 baje).',
 };
+
+const ACTIVE_STEPS = [
+  'await_destination',
+  'await_travel_date',
+  'await_adults',
+  'await_best_time',
+  'await_travelers', // legacy
+];
 
 function isMediaPlaceholder(text = '') {
   return /^\[(Image|Document|Audio|Video|Sticker)\]$/i.test(String(text).trim());
 }
 
-/** Auto Q&A starts only on greeting messages */
+/** Used for restart hints / ignore during flow */
 function isGreeting(text = '') {
   const t = String(text || '')
     .trim()
@@ -87,12 +115,31 @@ function parseTravelDate(raw = '') {
   return null;
 }
 
-function parseTravelers(raw = '') {
+function parseAdults(raw = '') {
   const match = String(raw || '').match(/(\d{1,3})/);
   if (!match) return null;
   const n = Number(match[1]);
   if (!Number.isFinite(n) || n < 1 || n > 200) return null;
   return n;
+}
+
+function parseDestination(raw = '') {
+  const text = String(raw || '')
+    .trim()
+    .replace(/\s+/g, ' ');
+  if (!text || isMediaPlaceholder(text)) return null;
+  if (text.length < 2 || text.length > 80) return null;
+  if (/^(hi+|hello+|hey+|namaste|ok+|okay|haan|yes|no|stop)$/i.test(text)) return null;
+  return text;
+}
+
+function parseBestTime(raw = '') {
+  const text = String(raw || '')
+    .trim()
+    .replace(/\s+/g, ' ');
+  if (!text || isMediaPlaceholder(text)) return null;
+  if (text.length < 2 || text.length > 120) return null;
+  return text;
 }
 
 async function sendAndStoreBotReply(conversation, text) {
@@ -110,7 +157,6 @@ async function sendAndStoreBotReply(conversation, text) {
     waMessageId = data?.messages?.[0]?.id;
   } catch (err) {
     const msg = String(err.message || '');
-    // Meta spam / quality / rate errors → hard pause this chat
     if (/spam|restrict|quality|rate|too many|131047|131026|130429/i.test(msg)) {
       await WhatsAppConversation.updateOne(
         { _id: conversation._id },
@@ -139,7 +185,6 @@ async function sendAndStoreBotReply(conversation, text) {
       text,
       status: 'sent',
       timestamp: now,
-      // no sentBy → counts as bot message for safety limits
     }),
     WhatsAppConversation.updateOne(
       { _id: conversation._id },
@@ -163,41 +208,44 @@ async function syncBotAnswersToLead(conversation) {
   const answers = conversation.botAnswers || {};
   const update = {};
 
+  if (answers.destination && answers.destination !== 'Not specified') {
+    update.destination = answers.destination;
+  }
   if (answers.travelDate) update.travelDate = answers.travelDate;
-  if (answers.travelers) {
-    update.travelers = answers.travelers;
-    update.adults = answers.travelers;
+  const adults = answers.adults || answers.travelers;
+  if (adults) {
+    update.travelers = adults;
+    update.adults = adults;
+  }
+  if (answers.bestTimeToCall) {
+    update.preferredCallTime = answers.bestTimeToCall;
   }
 
   if (!Object.keys(update).length) return null;
   return Lead.updateOne({ _id: conversation.lead }, { $set: update });
 }
 
-async function askTravelDate(conversation) {
-  const claimed = await WhatsAppConversation.findOneAndUpdate(
-    {
-      _id: conversation._id,
-      botEnabled: { $ne: false },
-      botOptOut: { $ne: true },
-      botStep: { $in: [null, undefined, 'idle'] },
-    },
-    {
-      $set: {
-        botStep: 'await_travel_date',
-        botSessionStartedAt: new Date(),
-        botReaskCount: 0,
-      },
-    },
-    { new: true }
-  );
-  if (!claimed) return;
-  await sendAndStoreBotReply(claimed, QUESTIONS.travelDate);
+async function ensureLeadFromBot(conversation) {
+  if (conversation?.lead) {
+    await syncBotAnswersToLead(conversation);
+    return;
+  }
+  try {
+    const { createLeadFromConversation } = require('./whatsappCloudService');
+    await createLeadFromConversation(conversation._id, {
+      destination: conversation.botAnswers?.destination || undefined,
+      travelDate: conversation.botAnswers?.travelDate || undefined,
+      travelers: conversation.botAnswers?.adults || conversation.botAnswers?.travelers || undefined,
+      name: conversation.profileName || undefined,
+    });
+  } catch (err) {
+    console.error('[whatsappBot] auto-create lead failed', err.message);
+  }
 }
 
-async function maybeReask(conversation, step, replyText) {
+async function maybeReask(conversation, replyText) {
   const count = Number(conversation.botReaskCount || 0);
   if (count >= MAX_REASKS) {
-    // Stop looping — hand off to human quietly
     await WhatsAppConversation.updateOne(
       { _id: conversation._id },
       { $set: { botStep: 'paused', botEnabled: false, botReaskCount: 0 } }
@@ -217,13 +265,65 @@ async function maybeReask(conversation, step, replyText) {
   return true;
 }
 
-async function handleTravelDateAnswer(conversation, text) {
-  const travelDate = parseTravelDate(text);
-  if (!text || isMediaPlaceholder(text)) {
-    await maybeReask(conversation, 'await_travel_date', QUESTIONS.reaskTravelDate);
+async function startWelcomeFlow(conversation) {
+  const claimed = await WhatsAppConversation.findOneAndUpdate(
+    {
+      _id: conversation._id,
+      botEnabled: { $ne: false },
+      botOptOut: { $ne: true },
+      botStep: { $in: [null, undefined, 'idle'] },
+    },
+    {
+      $set: {
+        botStep: 'await_destination',
+        botSessionStartedAt: new Date(),
+        botReaskCount: 0,
+      },
+    },
+    { new: true }
+  );
+  if (!claimed) return;
+  await sendAndStoreBotReply(claimed, QUESTIONS.welcome);
+}
+
+async function handleDestinationAnswer(conversation, text) {
+  const destination = parseDestination(text);
+  if (!destination) {
+    await maybeReask(conversation, QUESTIONS.reaskDestination);
     return;
   }
 
+  const claimed = await WhatsAppConversation.findOneAndUpdate(
+    {
+      _id: conversation._id,
+      botEnabled: { $ne: false },
+      botOptOut: { $ne: true },
+      botStep: 'await_destination',
+    },
+    {
+      $set: {
+        botStep: 'await_travel_date',
+        botReaskCount: 0,
+        'botAnswers.destinationRaw': text,
+        'botAnswers.destination': destination,
+      },
+    },
+    { new: true }
+  );
+  if (!claimed) return;
+
+  await syncBotAnswersToLead(claimed);
+  await sendAndStoreBotReply(claimed, QUESTIONS.travelDate);
+}
+
+async function handleTravelDateAnswer(conversation, text) {
+  if (!text || isMediaPlaceholder(text)) {
+    await maybeReask(conversation, QUESTIONS.reaskTravelDate);
+    return;
+  }
+
+  const travelDate = parseTravelDate(text);
+  // Accept free-text dates even if not parseable (store raw); prefer parsed when available
   const claimed = await WhatsAppConversation.findOneAndUpdate(
     {
       _id: conversation._id,
@@ -233,7 +333,7 @@ async function handleTravelDateAnswer(conversation, text) {
     },
     {
       $set: {
-        botStep: 'await_travelers',
+        botStep: 'await_adults',
         botReaskCount: 0,
         'botAnswers.travelDateRaw': text,
         ...(travelDate ? { 'botAnswers.travelDate': travelDate } : {}),
@@ -244,13 +344,13 @@ async function handleTravelDateAnswer(conversation, text) {
   if (!claimed) return;
 
   await syncBotAnswersToLead(claimed);
-  await sendAndStoreBotReply(claimed, QUESTIONS.travelers);
+  await sendAndStoreBotReply(claimed, QUESTIONS.adults);
 }
 
-async function handleTravelersAnswer(conversation, text) {
-  const travelers = parseTravelers(text);
-  if (!travelers) {
-    await maybeReask(conversation, 'await_travelers', QUESTIONS.reaskTravelers);
+async function handleAdultsAnswer(conversation, text) {
+  const adults = parseAdults(text);
+  if (!adults) {
+    await maybeReask(conversation, QUESTIONS.reaskAdults);
     return;
   }
 
@@ -259,16 +359,16 @@ async function handleTravelersAnswer(conversation, text) {
       _id: conversation._id,
       botEnabled: { $ne: false },
       botOptOut: { $ne: true },
-      botStep: 'await_travelers',
+      botStep: { $in: ['await_adults', 'await_travelers'] },
     },
     {
       $set: {
-        botStep: 'completed',
+        botStep: 'await_best_time',
         botReaskCount: 0,
-        botCompletedAt: new Date(),
+        'botAnswers.adultsRaw': text,
+        'botAnswers.adults': adults,
         'botAnswers.travelersRaw': text,
-        'botAnswers.travelers': travelers,
-        'botAnswers.completedAt': new Date(),
+        'botAnswers.travelers': adults,
       },
     },
     { new: true }
@@ -276,12 +376,43 @@ async function handleTravelersAnswer(conversation, text) {
   if (!claimed) return;
 
   await syncBotAnswersToLead(claimed);
+  await sendAndStoreBotReply(claimed, QUESTIONS.bestTime);
+}
+
+async function handleBestTimeAnswer(conversation, text) {
+  const bestTime = parseBestTime(text);
+  if (!bestTime) {
+    await maybeReask(conversation, QUESTIONS.reaskBestTime);
+    return;
+  }
+
+  const claimed = await WhatsAppConversation.findOneAndUpdate(
+    {
+      _id: conversation._id,
+      botEnabled: { $ne: false },
+      botOptOut: { $ne: true },
+      botStep: 'await_best_time',
+    },
+    {
+      $set: {
+        botStep: 'completed',
+        botReaskCount: 0,
+        botCompletedAt: new Date(),
+        'botAnswers.bestTimeRaw': text,
+        'botAnswers.bestTimeToCall': bestTime,
+        'botAnswers.completedAt': new Date(),
+      },
+    },
+    { new: true }
+  );
+  if (!claimed) return;
+
+  await ensureLeadFromBot(claimed);
   await sendAndStoreBotReply(claimed, QUESTIONS.done);
 }
 
 /**
  * Run after a newly stored inbound WhatsApp message.
- * Non-blocking caller should catch errors.
  */
 async function runWhatsAppQuestionnaireBot({ conversationId, inboundText }) {
   if (!conversationId) return { skipped: true, reason: 'no_conversation' };
@@ -291,11 +422,9 @@ async function runWhatsAppQuestionnaireBot({ conversationId, inboundText }) {
 
   const text = String(inboundText || '').trim();
 
-  // Always honor STOP / START first (compliance + quality)
   if (isOptOutRequest(text)) {
     await applyOptOut(conversation._id);
     const fresh = await WhatsAppConversation.findById(conversationId);
-    // allow one confirmation even if opted out — temporary override
     if (fresh) {
       fresh.botOptOut = false;
       fresh.botEnabled = true;
@@ -317,10 +446,10 @@ async function runWhatsAppQuestionnaireBot({ conversationId, inboundText }) {
     return { skipped: true, reason: 'paused_or_opted_out' };
   }
 
-  // Start only on greeting; completed chats have 48h cooldown (anti-abuse)
+  // Any new message on idle (or completed after cooldown) starts welcome flow
   if (step === 'idle' || step === 'completed') {
-    if (!isGreeting(text)) {
-      return { skipped: true, reason: step === 'idle' ? 'waiting_for_greeting' : 'completed' };
+    if (!text || isMediaPlaceholder(text)) {
+      return { skipped: true, reason: 'empty_inbound' };
     }
     if (step === 'completed' && !canRestartCompleted(conversation)) {
       return { skipped: true, reason: 'restart_cooldown' };
@@ -339,31 +468,40 @@ async function runWhatsAppQuestionnaireBot({ conversationId, inboundText }) {
       conversation.botStep = 'idle';
       conversation.botAnswers = {};
     }
-    await askTravelDate(conversation);
-    return { ok: true, step: 'await_travel_date' };
+    await startWelcomeFlow(conversation);
+    return { ok: true, step: 'await_destination' };
   }
 
-  // Extra Hi during flow → do NOT re-send (spam signal). Silently ignore.
-  if (isGreeting(text) && (step === 'await_travel_date' || step === 'await_travelers')) {
+  if (isGreeting(text) && ACTIVE_STEPS.includes(step)) {
     return { skipped: true, reason: 'greeting_ignored_during_flow' };
   }
 
   if (!text || isMediaPlaceholder(text)) {
-    if (step === 'await_travel_date') {
-      await maybeReask(conversation, step, QUESTIONS.reaskTravelDate);
-    } else if (step === 'await_travelers') {
-      await maybeReask(conversation, step, QUESTIONS.reaskTravelers);
-    }
+    if (step === 'await_destination') await maybeReask(conversation, QUESTIONS.reaskDestination);
+    else if (step === 'await_travel_date') await maybeReask(conversation, QUESTIONS.reaskTravelDate);
+    else if (step === 'await_adults' || step === 'await_travelers') {
+      await maybeReask(conversation, QUESTIONS.reaskAdults);
+    } else if (step === 'await_best_time') await maybeReask(conversation, QUESTIONS.reaskBestTime);
     return { ok: true, reasked: true };
+  }
+
+  if (step === 'await_destination') {
+    await handleDestinationAnswer(conversation, text);
+    return { ok: true, step: 'await_travel_date' };
   }
 
   if (step === 'await_travel_date') {
     await handleTravelDateAnswer(conversation, text);
-    return { ok: true, step: 'await_travelers' };
+    return { ok: true, step: 'await_adults' };
   }
 
-  if (step === 'await_travelers') {
-    await handleTravelersAnswer(conversation, text);
+  if (step === 'await_adults' || step === 'await_travelers') {
+    await handleAdultsAnswer(conversation, text);
+    return { ok: true, step: 'await_best_time' };
+  }
+
+  if (step === 'await_best_time') {
+    await handleBestTimeAnswer(conversation, text);
     return { ok: true, step: 'completed' };
   }
 
@@ -383,7 +521,10 @@ module.exports = {
   syncBotAnswersToLead,
   pauseWhatsAppBot,
   parseTravelDate,
-  parseTravelers,
+  parseTravelers: parseAdults,
+  parseAdults,
+  parseDestination,
+  parseBestTime,
   isGreeting,
   QUESTIONS,
 };

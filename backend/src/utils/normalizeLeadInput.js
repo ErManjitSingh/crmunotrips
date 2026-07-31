@@ -79,6 +79,7 @@ function normalizeLeadInput(body = {}, { isUpdate = false } = {}) {
     adults: Number(body.adults) || 1,
     children: Number(body.children) || 0,
     infants: Number(body.infants) || 0,
+    preferredCallTime: body.preferredCallTime?.trim?.() || body.preferredCallTime || undefined,
     source,
     sourceLabel: body.sourceLabel || body.leadSource || source,
     leadSource: body.leadSource || source,

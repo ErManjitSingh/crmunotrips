@@ -103,6 +103,8 @@ const leadSchema = new mongoose.Schema(
     adults: { type: Number, default: 1 },
     children: { type: Number, default: 0 },
     infants: { type: Number, default: 0 },
+    /** Preferred window to call (from WhatsApp bot / intake) */
+    preferredCallTime: { type: String, trim: true, default: '' },
     status: { type: String, enum: LEAD_STATUSES, default: 'new', index: true },
     statusReason: { type: String, trim: true, default: '' },
     statusReasonUpdatedAt: { type: Date },

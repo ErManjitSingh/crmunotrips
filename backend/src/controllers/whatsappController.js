@@ -21,7 +21,7 @@ const {
 
 /** Slim fields for inbox list — avoid shipping full Lead docs */
 const INBOX_LEAD_SELECT =
-  'name phone whatsapp email city destination status budget travelDate travelers adults source sourceLabel assignedTo leadId updatedAt channel';
+  'name phone whatsapp email city destination status budget travelDate travelers adults preferredCallTime source sourceLabel assignedTo leadId updatedAt channel';
 
 const MESSAGE_SELECT = 'direction type text attachment status timestamp waMessageId conversation lead';
 const MESSAGE_LIMIT = 150;

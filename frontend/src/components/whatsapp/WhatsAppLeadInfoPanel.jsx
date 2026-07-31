@@ -68,14 +68,24 @@ function Section({ title, children }) {
 
 function BotAnswersBlock({ botAnswers }) {
   if (!botAnswers) return null;
+  const hasDest = Boolean(botAnswers.destination || botAnswers.destinationRaw);
   const hasDate = botAnswers.travelDate || botAnswers.travelDateRaw;
-  const hasTravelers = botAnswers.travelers != null && botAnswers.travelers !== '';
-  if (!hasDate && !hasTravelers) return null;
+  const adults = botAnswers.adults ?? botAnswers.travelers;
+  const hasAdults = adults != null && adults !== '';
+  const hasBestTime = Boolean(botAnswers.bestTimeToCall || botAnswers.bestTimeRaw);
+  if (!hasDest && !hasDate && !hasAdults && !hasBestTime) return null;
   return (
     <Section title="Auto collected">
+      {hasDest && (
+        <InfoRow
+          icon={Globe}
+          label="Destination"
+          value={botAnswers.destination || botAnswers.destinationRaw}
+        />
+      )}
       <InfoRow
         icon={Calendar}
-        label="Kab jana hai"
+        label="Travel Date"
         value={
           botAnswers.travelDate
             ? formatTravelDate(botAnswers.travelDate)
@@ -84,9 +94,16 @@ function BotAnswersBlock({ botAnswers }) {
       />
       <InfoRow
         icon={Users}
-        label="Travelers"
-        value={hasTravelers ? String(botAnswers.travelers) : '—'}
+        label="Adults"
+        value={hasAdults ? String(adults) : '—'}
       />
+      {hasBestTime && (
+        <InfoRow
+          icon={Phone}
+          label="Best time to call"
+          value={botAnswers.bestTimeToCall || botAnswers.bestTimeRaw}
+        />
+      )}
     </Section>
   );
 }
@@ -122,8 +139,14 @@ export default function WhatsAppLeadInfoPanel({
   const travelDateLabel = travelDate
     ? formatTravelDate(travelDate)
     : botAnswers?.travelDateRaw || null;
-  const travelers = lead?.travelers || lead?.adults || botAnswers?.travelers || null;
+  const travelers = lead?.travelers || lead?.adults || botAnswers?.adults || botAnswers?.travelers || null;
+  const preferredCallTime =
+    lead?.preferredCallTime || botAnswers?.bestTimeToCall || botAnswers?.bestTimeRaw || null;
   const sourceLabel = lead?.sourceLabel || lead?.source || 'WhatsApp';
+  const destinationLabel =
+    (lead?.destination && lead.destination !== 'Not specified' ? lead.destination : null) ||
+    botAnswers?.destination ||
+    null;
 
   if (!lead && !contact) {
     return (
@@ -295,9 +318,10 @@ export default function WhatsAppLeadInfoPanel({
         {tab === 'travel' && (
           <div className="space-y-4">
             <Section title="Travel Details">
-              <InfoRow icon={Globe} label="Destination" value={lead?.destination} />
+              <InfoRow icon={Globe} label="Destination" value={destinationLabel || lead?.destination} />
               <InfoRow icon={Calendar} label="Travel Date" value={travelDateLabel} />
-              <InfoRow icon={Users} label="Travelers" value={travelers != null ? String(travelers) : null} />
+              <InfoRow icon={Users} label="Adults" value={travelers != null ? String(travelers) : null} />
+              <InfoRow icon={Phone} label="Best time to call" value={preferredCallTime} />
               <InfoRow icon={Wallet} label="Budget" value={lead ? formatBudget(lead.budget) : null} />
             </Section>
             <BotAnswersBlock botAnswers={botAnswers} />

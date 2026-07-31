@@ -181,6 +181,7 @@ async function ingestPublicLead(raw = {}) {
     travelDate: raw.travelDate || raw.travel_date || undefined,
     travelers: Number(raw.travelers || raw.travellers) || 1,
     adults: Number(raw.adults || raw.travelers || raw.travellers) || 1,
+    preferredCallTime: String(raw.preferredCallTime || raw.bestTimeToCall || '').trim() || undefined,
     budget: Number(raw.budget) || 0,
     source,
     leadSource: source,
@@ -205,6 +206,7 @@ async function ingestPublicLead(raw = {}) {
   data.channel = channel;
   data.status = 'new';
   data.notes = body.notes;
+  if (body.preferredCallTime) data.preferredCallTime = body.preferredCallTime;
   if (raw.externalLeadId) {
     data.externalLeadId = String(raw.externalLeadId).trim();
     data.externalLeadSource = String(raw.externalLeadSource || 'facebook_leadgen').trim();

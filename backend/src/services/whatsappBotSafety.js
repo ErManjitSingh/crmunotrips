@@ -9,9 +9,9 @@ const WhatsAppMessage = require('../models/WhatsAppMessage');
 /** Min gap between two bot replies to same chat (ms) */
 const MIN_BOT_GAP_MS = 2800;
 /** Max bot outbound messages per chat in rolling 24h */
-const MAX_BOT_PER_CHAT_24H = 6;
+const MAX_BOT_PER_CHAT_24H = 10;
 /** Max bot outbound messages in one questionnaire session */
-const MAX_BOT_PER_SESSION = 4;
+const MAX_BOT_PER_SESSION = 8;
 /** Max re-asks for a single question */
 const MAX_REASKS = 1;
 /** Don't restart completed flow sooner than this (ms) */
@@ -26,7 +26,7 @@ const STOP_REPLY =
   'Theek hai — auto messages band kar diye hain.\nAap kabhi bhi START likh kar wapas shuru kar sakte ho.\nTeam sirf zarurat par contact karegi.';
 
 const START_REPLY =
-  'Shukriya! Auto help on hai.\nHi / Hello likhein to travel details poochhenge.';
+  'Shukriya! Auto help on hai.\nKoi bhi message bhejein — welcome details poochhenge.';
 
 function normalizeText(text = '') {
   return String(text || '')
