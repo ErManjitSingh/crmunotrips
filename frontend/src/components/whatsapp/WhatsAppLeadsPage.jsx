@@ -155,15 +155,24 @@ function WhatsAppLeadsPage() {
   const handleSend = useCallback(async (payload) => {
     if (!selected || sending) return;
     const text = payload?.text?.trim();
-    if (!text && !payload?.attachment) return;
+    const hasMedia = Boolean(payload?.mediaBase64 || payload?.attachment?.dataUrl);
+    if (!text && !hasMedia && !payload?.attachment) return;
 
     const tempId = `temp-${Date.now()}`;
+    const optimisticType = payload.type || (hasMedia ? 'image' : 'text');
     const optimistic = {
       _id: tempId,
       direction: 'outgoing',
-      type: payload.type || 'text',
-      text: text || '',
-      attachment: payload.attachment || null,
+      type: optimisticType,
+      text: text || (optimisticType === 'image' ? '📷 Photo' : 'File'),
+      attachment: payload.mediaBase64
+        ? {
+            url: payload.mediaBase64,
+            name: payload.mediaFileName,
+            mimeType: payload.mediaMimeType,
+            previewUrl: payload.attachment?.previewUrl,
+          }
+        : payload.attachment || null,
       status: 'sent',
       timestamp: new Date().toISOString(),
     };
@@ -183,7 +192,12 @@ function WhatsAppLeadsPage() {
         {
           leadId: selected.leadId || undefined,
           conversationId: selected.conversationId || undefined,
-          ...payload,
+          text: text || '',
+          type: payload.type || 'text',
+          mediaBase64: payload.mediaBase64 || undefined,
+          mediaMimeType: payload.mediaMimeType || undefined,
+          mediaFileName: payload.mediaFileName || undefined,
+          attachment: payload.attachment || undefined,
         },
         { skipDataRefresh: true }
       );
@@ -191,6 +205,10 @@ function WhatsAppLeadsPage() {
         ...(old || {}),
         messages: (old?.messages || []).map((m) => (m._id === tempId ? res.data : m)),
       }));
+      const preview =
+        res.data?.text ||
+        text ||
+        (optimisticType === 'image' ? '📷 Photo' : 'File');
       queryClient.setQueriesData({ queryKey: ['whatsapp', 'conversations'] }, (old) => {
         if (!Array.isArray(old)) return old;
         const key = selected.conversationId || selected._id;
@@ -199,7 +217,7 @@ function WhatsAppLeadsPage() {
             ? {
                 ...c,
                 lastMessage: {
-                  text,
+                  text: preview,
                   direction: 'outgoing',
                   timestamp: new Date().toISOString(),
                 },

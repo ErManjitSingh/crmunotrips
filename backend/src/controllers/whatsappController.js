@@ -82,7 +82,8 @@ async function loadRecentMessages(filter) {
     .limit(MESSAGE_LIMIT)
     .lean();
   rows.reverse();
-  return rows;
+  const { hydrateMessageAttachments } = require('../services/whatsappMediaService');
+  return hydrateMessageAttachments(rows);
 }
 
 const listConversations = asyncHandler(async (req, res) => {
@@ -331,8 +332,21 @@ const listExecutives = asyncHandler(async (req, res) => {
 });
 
 const postMessage = asyncHandler(async (req, res) => {
-  const { leadId, conversationId, text, type = 'text', attachment } = req.body;
-  if (!text?.trim() && !attachment) throw new ApiError(400, 'Message text is required');
+  const {
+    leadId,
+    conversationId,
+    text,
+    type = 'text',
+    attachment,
+    mediaBase64,
+    mediaMimeType,
+    mediaFileName,
+  } = req.body;
+
+  const hasMediaPayload = Boolean(mediaBase64 || attachment?.dataUrl || attachment?.base64);
+  if (!text?.trim() && !hasMediaPayload && !attachment?.url) {
+    throw new ApiError(400, 'Message text or media is required');
+  }
 
   let conversation = null;
   let lead = null;
@@ -367,8 +381,72 @@ const postMessage = asyncHandler(async (req, res) => {
   const toPhone = conversation?.phone || lead?.phone || lead?.whatsapp;
   let waMessageId = null;
   let status = 'sent';
+  let messageType = type || 'text';
+  let storedAttachment = attachment || null;
+  let previewText = text?.trim() || '';
 
-  if (isConfigured() && toPhone && text?.trim()) {
+  const {
+    decodeDataUrlOrBase64,
+    uploadBufferToWhatsApp,
+    sendWhatsAppMediaMessage,
+  } = require('../services/whatsappMediaService');
+
+  if (hasMediaPayload && isConfigured() && toPhone) {
+    try {
+      const raw =
+        mediaBase64 ||
+        attachment?.dataUrl ||
+        attachment?.base64 ||
+        '';
+      const mimeHint = mediaMimeType || attachment?.mimeType || attachment?.mime_type || '';
+      const { buffer, mimeType } = decodeDataUrlOrBase64(raw, mimeHint);
+      const resolvedMime = mimeType || mimeHint || 'application/octet-stream';
+      const fileName = mediaFileName || attachment?.name || attachment?.filename || 'file';
+
+      if (resolvedMime.startsWith('image/')) messageType = 'image';
+      else if (resolvedMime.startsWith('video/')) messageType = 'video';
+      else if (resolvedMime.startsWith('audio/')) messageType = 'audio';
+      else messageType = 'document';
+
+      const uploaded = await uploadBufferToWhatsApp({
+        buffer,
+        mimeType: resolvedMime,
+        filename: fileName,
+      });
+      const sent = await sendWhatsAppMediaMessage({
+        toPhone,
+        type: messageType,
+        mediaId: uploaded.mediaId,
+        caption: text?.trim() || undefined,
+        filename: fileName,
+      });
+      waMessageId = sent?.messages?.[0]?.id || null;
+      storedAttachment = {
+        id: uploaded.mediaId,
+        url: uploaded.localUrl,
+        mimeType: resolvedMime,
+        mime_type: resolvedMime,
+        name: fileName,
+        filename: fileName,
+        size: uploaded.size,
+        fileSize: uploaded.fileSize,
+        caption: text?.trim() || '',
+      };
+      if (!previewText) {
+        previewText =
+          messageType === 'image'
+            ? '📷 Photo'
+            : messageType === 'video'
+              ? '🎥 Video'
+              : messageType === 'audio'
+                ? '🎵 Audio'
+                : `📄 ${fileName}`;
+      }
+    } catch (err) {
+      status = 'failed';
+      throw new ApiError(502, err.message || 'WhatsApp media send failed');
+    }
+  } else if (isConfigured() && toPhone && text?.trim()) {
     try {
       const sent = await sendWhatsAppText({ toPhone, text: text.trim() });
       waMessageId = sent?.messages?.[0]?.id || null;
@@ -386,9 +464,9 @@ const postMessage = asyncHandler(async (req, res) => {
       waMessageId,
       fromPhone: toPhone || '',
       direction: 'outgoing',
-      type,
-      text: text || '',
-      attachment: attachment || null,
+      type: messageType,
+      text: previewText,
+      attachment: storedAttachment,
       status,
       timestamp: now,
       sentBy: req.user._id,
@@ -398,7 +476,7 @@ const postMessage = asyncHandler(async (req, res) => {
           { _id: conversation._id },
           {
             $set: {
-              lastMessageText: text || conversation.lastMessageText,
+              lastMessageText: previewText || conversation.lastMessageText,
               lastMessageAt: now,
               lastDirection: 'outgoing',
               botStep: conversation.botStep === 'completed' ? 'completed' : 'paused',

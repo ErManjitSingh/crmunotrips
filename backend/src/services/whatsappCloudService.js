@@ -184,17 +184,20 @@ async function storeIncomingMessage({ conversation, leadId, message, contactPhon
   }
 
   const text = extractMessageText(message);
+  const { resolveInboundAttachment } = require('./whatsappMediaService');
+  const { type, attachment } = await resolveInboundAttachment(message);
+
   return WhatsAppMessage.create({
     conversation: conversation._id,
     lead: leadId || conversation.lead || undefined,
     waMessageId,
     fromPhone: contactPhone,
     direction: 'incoming',
-    type: mapMessageType(message.type),
+    type,
     text,
     status: 'received',
     timestamp: timestamp || new Date(),
-    attachment: message.image || message.document || message.audio || message.video || null,
+    attachment,
   });
 }
 

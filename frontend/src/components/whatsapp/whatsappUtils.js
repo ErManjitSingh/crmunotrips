@@ -90,3 +90,30 @@ export function getInitials(name) {
     .slice(0, 2)
     .toUpperCase();
 }
+
+/** Resolve /uploads/... against API host (same origin on production). */
+export function resolveWhatsAppMediaUrl(url) {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url) || url.startsWith('blob:') || url.startsWith('data:')) return url;
+  const api = String(import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const origin = api.replace(/\/api$/i, '');
+  if (origin) return `${origin}${url.startsWith('/') ? url : `/${url}`}`;
+  return url.startsWith('/') ? url : `/${url}`;
+}
+
+export function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+export function detectWhatsAppMediaType(file) {
+  const mime = String(file?.type || '').toLowerCase();
+  if (mime.startsWith('image/')) return 'image';
+  if (mime.startsWith('video/')) return 'video';
+  if (mime.startsWith('audio/')) return 'audio';
+  return 'document';
+}

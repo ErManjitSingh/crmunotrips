@@ -40,7 +40,7 @@ app.use(
 
 app.use(
   express.json({
-    limit: '10mb',
+    limit: '16mb',
     verify: (req, _res, buf) => {
       const url = String(req.originalUrl || req.url || '');
       if (
