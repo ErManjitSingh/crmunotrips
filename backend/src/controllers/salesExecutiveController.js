@@ -446,6 +446,18 @@ const listQuotations = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+const getQuotation = asyncHandler(async (req, res) => {
+  const leadIds = await getExecutiveLeadIds(req.user._id, req.branchId);
+  const quotation = await Quotation.findOne({
+    _id: req.params.id,
+    ...buildExecutiveQuotationFilter(req.user._id, req.branchId, leadIds),
+  })
+    .populate(QUOTATION_POPULATE)
+    .lean();
+  if (!quotation) throw new ApiError(404, 'Quotation not found');
+  res.json(quotation);
+});
+
 const createQuotation = asyncHandler(async (req, res) => {
   const lead = await Lead.findOne({
     _id: req.body.leadId,
@@ -498,6 +510,7 @@ const createQuotation = asyncHandler(async (req, res) => {
     selectedHotels: req.body.selectedHotels || [],
     selectedCabs: req.body.selectedCabs || [],
     selectedFlights: req.body.selectedFlights || [],
+    selectedActivities: req.body.selectedActivities || [],
     customizations: req.body.customizations,
     createdByExecutive: req.user._id,
     branchId: req.branchId || req.user.branchId || null,
@@ -670,8 +683,58 @@ const updateQuotation = asyncHandler(async (req, res) => {
       });
     }
   } else if (action === 'edit') {
-    Object.assign(quotation, data || {});
-    quotation.status = 'draft';
+    const payload = data && typeof data === 'object' ? data : req.body;
+    const prevStatus = quotation.status;
+
+    if (payload.packageId !== undefined) {
+      quotation.package = resolvePackageReference(payload.packageId);
+    }
+    if (payload.package !== undefined) quotation.packageSnapshot = payload.package;
+    if (payload.pricing !== undefined) quotation.pricing = payload.pricing;
+    if (payload.selectedHotels !== undefined) quotation.selectedHotels = payload.selectedHotels || [];
+    if (payload.selectedCabs !== undefined) quotation.selectedCabs = payload.selectedCabs || [];
+    if (payload.selectedFlights !== undefined) quotation.selectedFlights = payload.selectedFlights || [];
+    if (payload.selectedActivities !== undefined) {
+      quotation.selectedActivities = payload.selectedActivities || [];
+    }
+    if (payload.customizations !== undefined) quotation.customizations = payload.customizations;
+
+    const {
+      snapshotCosting1,
+      buildQuotePackageSummary,
+    } = require('../services/quotationApprovalCostingService');
+    quotation.costing1 = snapshotCosting1(quotation);
+    quotation.packageSummary = buildQuotePackageSummary(quotation);
+
+    const wantSubmit = payload.status && payload.status !== 'draft';
+    if (wantSubmit) {
+      const { assertQualifiedForQuotation } = require('../services/salesSopService');
+      const leadDoc = await Lead.findById(quotation.lead);
+      if (leadDoc) assertQualifiedForQuotation(leadDoc);
+      const nextStatus = await resolveExecutiveQuotationStatus(
+        quotation.lead,
+        'pending_approval',
+        quotation._id
+      );
+      quotation.status = nextStatus;
+      quotation.timeline.push({
+        type: nextStatus === 'approved' ? 'approved' : 'pending_approval',
+        date: now,
+        user: req.user.name,
+        notes:
+          nextStatus === 'approved'
+            ? 'Updated quotation — auto-approved'
+            : `Updated and re-submitted for approval (was ${prevStatus})`,
+      });
+    } else {
+      quotation.status = 'draft';
+      quotation.timeline.push({
+        type: 'updated',
+        date: now,
+        user: req.user.name,
+        notes: remarks || `Quotation edited (was ${prevStatus}) — saved as draft`,
+      });
+    }
   } else {
     Object.assign(quotation, req.body);
   }
@@ -837,6 +900,7 @@ module.exports = {
   createFollowUp,
   updateFollowUp,
   listQuotations,
+  getQuotation,
   createQuotation,
   updateQuotation,
   listCustomers,

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Send,
@@ -9,6 +9,7 @@ import {
   Calendar,
   MoreHorizontal,
   Phone,
+  Pencil,
 } from 'lucide-react';
 import API from '../../api/axios';
 import { unwrapList } from '../../utils/apiHelpers';
@@ -72,6 +73,7 @@ function startOfMonth() {
 
 export default function ExecutiveQuotationsPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [quotes, setQuotes] = useState([]);
   const [kpiCounts, setKpiCounts] = useState({
     total: 0,
@@ -369,6 +371,16 @@ export default function ExecutiveQuotationsPage() {
                       </td>
                       <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-lg h-8 gap-1 text-[11px]"
+                            onClick={() => navigate(`/sales-executive/quotations/${q._id}/edit`)}
+                            title="Edit quotation"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            Edit
+                          </Button>
                           {q.status === 'draft' && (
                             <Button
                               size="sm"
@@ -459,7 +471,7 @@ export default function ExecutiveQuotationsPage() {
         open={!!selected && !showPdf}
         onClose={() => { setSelected(null); setShowPdf(false); }}
         onDownloadPdf={() => setShowPdf(true)}
-        onEdit={() => setShowPdf(true)}
+        editHref={selected?._id ? `/sales-executive/quotations/${selected._id}/edit` : undefined}
         onFollowUp={(q) => {
           const leadId = q?.lead?._id || q?.lead;
           if (leadId) window.location.assign(`/sales-executive/follow-ups?leadId=${leadId}`);
@@ -470,15 +482,27 @@ export default function ExecutiveQuotationsPage() {
           if (leadId) window.location.assign(`/sales-executive/leads/${leadId}/view`);
         }}
         actions={
-          selected?.status === 'draft' ? (
-            <Button size="sm" variant="outline" className="flex-1" onClick={() => { handleSubmit(selected._id); setSelected(null); }}>
-              Submit for Approval
-            </Button>
-          ) : selected?.status === 'approved' ? (
-            <Button size="sm" variant="outline" className="flex-1" onClick={() => { handleSend(selected._id); setSelected(null); }}>
-              <Send className="w-3 h-3 mr-1" /> Send to Customer
-            </Button>
-          ) : null
+          <>
+            {selected?._id && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 gap-1"
+                onClick={() => navigate(`/sales-executive/quotations/${selected._id}/edit`)}
+              >
+                <Pencil className="w-3.5 h-3.5" /> Edit Quotation
+              </Button>
+            )}
+            {selected?.status === 'draft' ? (
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => { handleSubmit(selected._id); setSelected(null); }}>
+                Submit for Approval
+              </Button>
+            ) : selected?.status === 'approved' ? (
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => { handleSend(selected._id); setSelected(null); }}>
+                <Send className="w-3 h-3 mr-1" /> Send to Customer
+              </Button>
+            ) : null}
+          </>
         }
       />
 

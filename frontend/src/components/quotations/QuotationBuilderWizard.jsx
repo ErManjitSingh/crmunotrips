@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, ExternalLink, Search } from 'lucide-react';
@@ -21,6 +21,7 @@ import { WIZARD_STEPS } from './constants';
 import { calculatePricing, defaultItineraryDay, defaultWizardState, formatINR, matchesResourceDestination } from './quotationUtils';
 import { applyPartyCosting } from './partyCosting';
 import { buildSelectedHotelsSnapshot } from './quotePdfHelpers';
+import { hydrateWizardFromQuote } from './quotationHydrate';
 import { unwrapList } from '../../utils/apiHelpers';
 import PackageBuilderWorkspace from './PackageBuilderWorkspace';
 import PackageBuilderOpeningOverlay from './PackageBuilderOpeningOverlay';
@@ -35,6 +36,8 @@ const ADMIN_CONFIG = {
   leadsPath: '/leads',
   leadViewPath: (id) => `/leads/${id}`,
   savePath: '/quotations',
+  getPath: (id) => `/quotations/${id}`,
+  editPath: (id) => `/quotations/${id}`,
   backPath: '/quotations',
   successPath: '/quotations',
   title: 'Package Builder',
@@ -50,6 +53,8 @@ const EXECUTIVE_CONFIG = {
   leadsPath: '/sales-executive/leads/all',
   leadViewPath: (id) => `/sales-executive/leads/${id}/view`,
   savePath: '/sales-executive/quotations',
+  getPath: (id) => `/sales-executive/quotations/${id}`,
+  editPath: (id) => `/sales-executive/quotations/${id}`,
   backPath: '/sales-executive/quotations',
   successPath: '/sales-executive/quotations',
   title: 'Package Builder',
@@ -66,6 +71,8 @@ const TEAM_LEADER_CONFIG = {
   leadViewPath: (id) => `/team-leader/leads/${id}/view`,
   leadsParams: { filter: 'all', page: 1, limit: 50 },
   savePath: '/team-leader/quotations',
+  getPath: (id) => `/team-leader/quotations/${id}`,
+  editPath: (id) => `/team-leader/quotations/${id}`,
   backPath: '/team-leader/quotations/pending',
   successPath: '/team-leader/quotations/approved',
   title: 'Package Builder',
@@ -82,6 +89,8 @@ const MANAGER_CONFIG = {
   leadViewPath: (id) => `/sales-manager/leads/${id}/view`,
   leadsParams: { filter: 'all', page: 1, limit: 50 },
   savePath: '/sales-manager/quotations',
+  getPath: (id) => `/sales-manager/quotations/${id}`,
+  editPath: (id) => `/sales-manager/quotations/${id}`,
   backPath: '/sales-manager/quotations/pending',
   successPath: '/sales-manager/quotations/approved',
   title: 'Package Builder',
@@ -109,8 +118,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const config = CONFIG_BY_MODE[mode] || EXECUTIVE_CONFIG;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { id: routeQuoteId } = useParams();
   const [searchParams] = useSearchParams();
   const initialLeadId = searchParams.get('leadId');
+  const editQuoteId = routeQuoteId || searchParams.get('edit') || null;
+  const isEditMode = Boolean(editQuoteId);
   const [step, setStep] = useState(1);
   const [leads, setLeads] = useState([]);
   const [leadSearch, setLeadSearch] = useState('');
@@ -133,6 +145,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const [packageSearch, setPackageSearch] = useState('');
   const debouncedPackageSearch = useDebouncedValue(packageSearch, 350);
   const [saving, setSaving] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(isEditMode);
+  const [editMeta, setEditMeta] = useState({ quoteNumber: '', status: '' });
+  const hydratedEditRef = useRef(false);
 
   const isMongoPackageId = (id) => id && /^[a-fA-F0-9]{24}$/.test(String(id));
 
@@ -205,14 +220,69 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   }, [step, debouncedLeadSearch, initialLeadId, fetchLeads]);
 
   useEffect(() => {
-    if (initialLeadId) {
+    if (initialLeadId && !isEditMode) {
       setState((s) => ({ ...s, leadId: initialLeadId }));
       setStep(2);
     }
-  }, [initialLeadId]);
+  }, [initialLeadId, isEditMode]);
 
   useEffect(() => {
-    if (!initialLeadId) return undefined;
+    if (!editQuoteId || !config.getPath || hydratedEditRef.current) return undefined;
+    let cancelled = false;
+    setLoadingEdit(true);
+    (async () => {
+      try {
+        const { data: quote } = await API.get(config.getPath(editQuoteId), { skipErrorToast: true });
+        if (cancelled || !quote) return;
+        const hydrated = hydrateWizardFromQuote(quote);
+        if (!hydrated) return;
+
+        hydratedEditRef.current = true;
+        setEditMeta({ quoteNumber: hydrated.quoteNumber, status: hydrated.status });
+        if (hydrated.lead) {
+          setLeads((prev) => {
+            const id = String(hydrated.lead._id);
+            if (prev.some((l) => String(l._id) === id)) return prev;
+            return [hydrated.lead, ...prev];
+          });
+        }
+        setState((s) => ({
+          ...s,
+          leadId: hydrated.leadId,
+          packageId: hydrated.packageId,
+          customizations: hydrated.customizations,
+          selectedFlightIds: hydrated.selectedFlightIds,
+          selectedActivityIds: hydrated.selectedActivityIds,
+          pricing: {
+            ...s.pricing,
+            ...hydrated.pricing,
+            ...calculatePricing({ ...s.pricing, ...hydrated.pricing }),
+          },
+        }));
+        setSelectedPkgDetail(hydrated.packageDetail);
+        setCustomItinerary(hydrated.customItinerary);
+        setCustomInclusions(hydrated.customInclusions);
+        setCustomExclusions(hydrated.customExclusions);
+        setDayWiseHotels(hydrated.dayWiseHotels);
+        setSelectedUnoCab(hydrated.selectedUnoCab);
+        setOpeningPackageMeta({
+          name: hydrated.packageDetail?.name || 'Package',
+          destination: hydrated.packageDetail?.destination || hydrated.lead?.destination || '',
+        });
+        setStep(3);
+      } catch {
+        if (!cancelled) navigate(config.backPath, { replace: true });
+      } finally {
+        if (!cancelled) setLoadingEdit(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [editQuoteId, config, navigate, isEditMode]);
+
+  useEffect(() => {
+    if (!initialLeadId || isEditMode) return undefined;
     let cancelled = false;
     (async () => {
       try {
@@ -252,8 +322,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     };
   }, [initialLeadId, fetchLeads, config.leadsPath]);
 
-  const selectedLead = leads.find((l) => l._id === state.leadId);
-  const selectedPkg = packages.find((p) => p._id === state.packageId);
+  const selectedLead = leads.find((l) => String(l._id) === String(state.leadId));
+  const selectedPkg = packages.find((p) => String(p._id) === String(state.packageId));
   const activePkg = selectedPkgDetail || selectedPkg;
   const packageNights = parsePackageNights(activePkg);
   const hotelDestination = selectedLead?.destination || activePkg?.destination || '';
@@ -549,7 +619,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setSaving(true);
     try {
       const payload = {
-        quoteNumber: `Q-${Date.now().toString().slice(-6)}`,
+        quoteNumber: isEditMode && editMeta.quoteNumber
+          ? editMeta.quoteNumber
+          : `Q-${Date.now().toString().slice(-6)}`,
         leadId: state.leadId,
         packageId: isMongoPackageId(state.packageId) ? state.packageId : null,
         status,
@@ -559,7 +631,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           mattresses: state.pricing?.party?.mattresses || 0,
         }),
         selectedCabs: buildSelectedCabSnapshot(selectedUnoCab, {
-          vehicleCount: state.pricing?.party?.cabCount || 1,
+          vehicleCount: state.pricing?.party?.cabCount || selectedUnoCab?._vehicleCount || 1,
           travelers: state.pricing?.party?.travelers,
         }),
         selectedFlights: flights.filter((f) => state.selectedFlightIds.includes(f._id)),
@@ -567,11 +639,34 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         package: buildPackageSnapshot(activePkg),
         customizations: state.customizations,
       };
-      const res = await API.post(config.savePath, payload);
+
+      let res;
+      if (isEditMode && editQuoteId && config.editPath) {
+        if (mode === 'executive') {
+          res = await API.put(config.editPath(editQuoteId), {
+            action: 'edit',
+            data: payload,
+          });
+        } else {
+          res = await API.put(config.editPath(editQuoteId), payload);
+        }
+      } else {
+        res = await API.post(config.savePath, payload);
+      }
+
       const savedStatus = res.data?.status;
       const leadId = state.leadId || res.data?.lead?._id || res.data?.lead;
-      const message =
-        savedStatus === 'approved'
+      const message = isEditMode
+        ? savedStatus === 'draft'
+          ? 'Quotation updated and saved as draft.'
+          : savedStatus === 'pending_approval'
+            ? 'Quotation updated and submitted for approval.'
+            : savedStatus === 'approved'
+              ? 'Quotation updated and approved.'
+              : savedStatus === 'sent'
+                ? 'Quotation updated and sent.'
+                : 'Quotation updated.'
+        : savedStatus === 'approved'
           ? 'First quotation created and approved. You can send it to the customer.'
           : savedStatus === 'pending_approval'
             ? 'Quotation submitted for approval. It is now on the lead activity timeline.'
@@ -599,7 +694,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         state: {
           message,
           focusTimeline: Boolean(leadId),
-          quotationId: res.data?._id,
+          quotationId: res.data?._id || editQuoteId,
         },
       });
     } catch (err) {
@@ -610,7 +705,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   };
 
   const draftQuote = selectedLead && activePkg ? {
-    quoteNumber: 'PREVIEW',
+    quoteNumber: isEditMode && editMeta.quoteNumber ? editMeta.quoteNumber : 'PREVIEW',
     createdAt: new Date().toISOString(),
     lead: selectedLead,
     package: buildPackageSnapshot(activePkg),
@@ -626,6 +721,15 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   } : null;
 
   const inBuilder = step >= 3 && Boolean(activePkg);
+
+  if (loadingEdit) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+        <p className="text-sm text-content-muted">Loading quotation for edit…</p>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(
@@ -645,9 +749,15 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
               <ArrowLeft className="h-4 w-4" />
             </Link>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold text-content-primary sm:text-2xl">{config.title}</h1>
-              <p className="mt-0.5 text-xs text-content-muted sm:text-sm line-clamp-2">{config.subtitle}</p>
-              {config.approvalNote && (
+              <h1 className="text-xl font-bold text-content-primary sm:text-2xl">
+                {isEditMode ? 'Edit Quotation' : config.title}
+              </h1>
+              <p className="mt-0.5 text-xs text-content-muted sm:text-sm line-clamp-2">
+                {isEditMode && editMeta.quoteNumber
+                  ? `Updating ${editMeta.quoteNumber} — change package, hotels, pricing and resave`
+                  : config.subtitle}
+              </p>
+              {config.approvalNote && !isEditMode && (
                 <p className="mt-2 max-w-xl rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 sm:text-xs">
                   {config.approvalNote}
                 </p>
@@ -727,8 +837,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           onSaveDraft={() => handleSave('draft')}
           onSubmit={() => handleSave('submit')}
           saving={saving}
-          draftLabel={config.draftLabel}
-          submitLabel={config.submitLabel}
+          draftLabel={isEditMode ? 'Update Draft' : config.draftLabel}
+          submitLabel={isEditMode ? 'Update & Submit' : config.submitLabel}
           emailEndpoint={emailEndpointForMode(mode)}
         />
       ) : (

@@ -19,6 +19,7 @@ const {
   createFollowUp,
   updateFollowUp,
   listQuotations,
+  getQuotation,
   createQuotation,
   updateQuotation,
   listCustomers,
@@ -50,6 +51,7 @@ router.put('/followups/:id', updateFollowUp);
 
 router.get('/quotations', listQuotations);
 router.post('/quotations', createQuotation);
+router.get('/quotations/:id', getQuotation);
 router.put('/quotations/:id', updateQuotation);
 
 router.get('/leads', listLeads);

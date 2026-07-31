@@ -192,6 +192,7 @@ function App() {
               <Route path="follow-ups" element={<ExecutiveFollowUpsPage />} />
               <Route path="email-activity" element={<EmailActivityPage />} />
               <Route path="quotations/new" element={<ExecutiveQuotationBuilder />} />
+              <Route path="quotations/:id/edit" element={<ExecutiveQuotationBuilder />} />
               <Route path="quotations" element={<ExecutiveQuotationsPage />} />
               <Route path="customers" element={<ExecutiveCustomersPage />} />
               <Route path="calendar" element={<ExecutiveCalendarPage />} />

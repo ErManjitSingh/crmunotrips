@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Download, Mail, MapPin, Phone, User, Users, Calendar, Send, Package } from 'lucide-react';
 import AppDrawer from '../ui/AppDrawer';
 import Avatar from '../ui/Avatar';
@@ -288,6 +289,18 @@ export default function QuotationDetailDrawer({
             )}
 
             <div className="flex flex-wrap gap-2 pt-1">
+              {editHref && (
+                <Link to={editHref} className="flex-1">
+                  <Button variant="outline" className="w-full rounded-xl gap-2">
+                    Edit Quotation
+                  </Button>
+                </Link>
+              )}
+              {!editHref && onEdit && (
+                <Button onClick={() => onEdit(quote)} variant="outline" className="rounded-xl gap-2 flex-1">
+                  Edit Quotation
+                </Button>
+              )}
               {onDownloadPdf && (
                 <Button onClick={onDownloadPdf} variant="sky" className="rounded-xl gap-2 flex-1">
                   <Download className="w-4 h-4" /> View PDF
