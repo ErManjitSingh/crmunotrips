@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Phone } from 'lucide-react';
+import { Phone, UserRound } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
 import { formatMessageTime, formatWhatsAppPhone, resolveWhatsAppDisplayName } from './whatsappUtils';
@@ -36,6 +36,8 @@ function WhatsAppLeadListItem({ conversation, active, onClick }) {
     .join('')
     .slice(0, 2)
     .toUpperCase();
+  const assigneeName = lead?.assignedTo?.name?.trim() || '';
+  const assigneeLabel = assigneeName || 'Not assigned yet';
 
   return (
     <button
@@ -88,7 +90,19 @@ function WhatsAppLeadListItem({ conversation, active, onClick }) {
           {preview || 'No messages yet'}
         </p>
 
-        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+        <p
+          className={cn(
+            'mt-1 inline-flex items-center gap-1 max-w-full text-[10px] font-semibold truncate',
+            assigneeName ? 'text-violet-600' : 'text-slate-400'
+          )}
+        >
+          <UserRound className="w-3 h-3 shrink-0" />
+          <span className="truncate">
+            {assigneeName ? `Assigned to ${assigneeName}` : assigneeLabel}
+          </span>
+        </p>
+
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
           <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 tabular-nums">
             <Phone className="w-3 h-3" />
             {phoneLabel}
