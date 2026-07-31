@@ -37,7 +37,6 @@ function WhatsAppLeadListItem({ conversation, active, onClick }) {
     .slice(0, 2)
     .toUpperCase();
   const assigneeName = lead?.assignedTo?.name?.trim() || '';
-  const assigneeLabel = assigneeName || 'Not assigned yet';
 
   return (
     <button
@@ -90,19 +89,28 @@ function WhatsAppLeadListItem({ conversation, active, onClick }) {
           {preview || 'No messages yet'}
         </p>
 
-        <p
+        <div
           className={cn(
-            'mt-1 inline-flex items-center gap-1 max-w-full text-[10px] font-semibold truncate',
-            assigneeName ? 'text-violet-600' : 'text-slate-400'
+            'mt-1.5 inline-flex items-center gap-1.5 max-w-full rounded-full px-2 py-0.5 border',
+            assigneeName
+              ? 'bg-violet-50 border-violet-100 text-violet-700'
+              : 'bg-slate-50 border-slate-100 text-slate-500'
           )}
         >
-          <UserRound className="w-3 h-3 shrink-0" />
-          <span className="truncate">
-            {assigneeName ? `Assigned to ${assigneeName}` : assigneeLabel}
+          <UserRound className="w-3 h-3 shrink-0 opacity-80" />
+          <span className="text-[10px] font-medium truncate">
+            {assigneeName ? (
+              <>
+                <span className="text-violet-500/80">Assigned to </span>
+                <span className="font-semibold">{assigneeName}</span>
+              </>
+            ) : (
+              'Not assigned yet'
+            )}
           </span>
-        </p>
+        </div>
 
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 tabular-nums">
             <Phone className="w-3 h-3" />
             {phoneLabel}
