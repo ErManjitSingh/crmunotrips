@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Download, Send } from 'lucide-react';
+import { Eye, Pencil, Send } from 'lucide-react';
 import { ACTIVITY_CONFIG, findQuotationForActivity } from './leadDetailData';
 import QuotationPdfOverlay from '../quotations/QuotationPdfOverlay';
 import SendQuotationModal from './SendQuotationModal';
@@ -14,6 +15,21 @@ function formatActivityDate(iso) {
     date: d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
     time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
   };
+}
+
+function resolveQuoteEditHref(quoteId, contactEndpoint = '') {
+  if (!quoteId) return null;
+  const base = String(contactEndpoint || '');
+  if (base.includes('sales-executive')) {
+    return `/sales-executive/quotations/${quoteId}/edit`;
+  }
+  if (base.includes('sales-manager')) {
+    return `/sales-manager/quotations/new?edit=${quoteId}`;
+  }
+  if (base.includes('team-leader')) {
+    return `/team-leader/quotations/new?edit=${quoteId}`;
+  }
+  return `/quotations/new?edit=${quoteId}`;
 }
 
 function QuoteMetaChips({ item, quote }) {
@@ -91,9 +107,11 @@ export default function LeadActivityTimeline({
                   const { date, time } = formatActivityDate(item.date);
                   const isQuote = item.type?.startsWith('quotation_');
                   const quote = isQuote ? findQuotationForActivity(item, quotations) : null;
-                  const canDownload = Boolean(quote?._id && (quote.pricing || quote.packageSnapshot));
+                  const quoteId = quote?._id || item.meta?.quotationId || null;
+                  const editHref = isQuote ? resolveQuoteEditHref(quoteId, contactEndpoint) : null;
+                  const canView = Boolean(quote?._id && (quote.pricing || quote.packageSnapshot));
                   const canSend =
-                    canDownload &&
+                    canView &&
                     lead &&
                     leadId &&
                     !['draft', 'pending_approval', 'rejected'].includes(quote?.status);
@@ -119,24 +137,34 @@ export default function LeadActivityTimeline({
                       </div>
                       <div className="flex-1 min-w-0 pb-1 border-b border-slate-50 dark:border-slate-800 last:border-0">
                         <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
+                          <div className="min-w-0">
                             <p className="text-sm font-semibold text-slate-900 dark:text-white">{item.title || cfg.label}</p>
                             <p className="text-xs text-slate-500 mt-0.5">
                               <span className="font-medium text-slate-600 dark:text-slate-300">{item.user}</span>
                               {' · '}{date} at {time}
                             </p>
                           </div>
-                          {canDownload && (
+                          {isQuote && (editHref || canView || canSend) && (
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPdfQuote(quote)}
-                                className="rounded-lg h-7 gap-1 text-[11px] text-violet-700 border-violet-200 bg-violet-50 hover:bg-violet-100"
-                              >
-                                <Download className="w-3 h-3" /> PDF
-                              </Button>
+                              {editHref && (
+                                <Link
+                                  to={editHref}
+                                  className="inline-flex h-7 items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2.5 text-[11px] font-semibold text-violet-700 hover:bg-violet-100"
+                                >
+                                  <Pencil className="w-3 h-3" /> Edit
+                                </Link>
+                              )}
+                              {canView && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setPdfQuote(quote)}
+                                  className="rounded-lg h-7 gap-1 text-[11px] text-sky-700 border-sky-200 bg-sky-50 hover:bg-sky-100"
+                                >
+                                  <Eye className="w-3 h-3" /> View
+                                </Button>
+                              )}
                               {canSend && (
                                 <Button
                                   type="button"
@@ -144,7 +172,7 @@ export default function LeadActivityTimeline({
                                   onClick={() => setSendQuote(quote)}
                                   className="rounded-lg h-7 gap-1 text-[11px] bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0"
                                 >
-                                  <Send className="w-3 h-3" /> Send
+                                  <Send className="w-3 h-3" /> Send to customer
                                 </Button>
                               )}
                             </div>

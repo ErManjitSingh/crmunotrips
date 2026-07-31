@@ -15,7 +15,9 @@ function SalesExecutiveShell() {
   const { user } = useAuth();
   const { pathname } = useLocation();
   const isDashboard = pathname === '/sales-executive/dashboard';
-  const isQuotationBuilder = pathname === '/sales-executive/quotations/new';
+  const isQuotationBuilder =
+    pathname === '/sales-executive/quotations/new' ||
+    /^\/sales-executive\/quotations\/[^/]+\/edit$/.test(pathname);
   const isQuotationsList = pathname === '/sales-executive/quotations';
   const isLeadsList = pathname.startsWith('/sales-executive/leads')
     && !pathname.includes('/add')
