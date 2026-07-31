@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Info, CheckCircle2 } from 'lucide-react';
 import API from '../../api/axios';
 import { toast } from '../../context/ToastContext';
+import Switch from '../ui/switch';
 import { cn } from '../../lib/utils';
 
 /**
@@ -57,25 +58,14 @@ export function AutoAssignMasterToggle({ enabled, onChange, canToggle = true }) 
             Auto lead assignment is {isOn ? 'ON' : 'OFF'}
           </p>
           {canToggle && (
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isOn}
-              disabled={saving}
-              onClick={handleToggle}
-              className={cn(
-                'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-                isOn ? 'bg-emerald-600 focus-visible:ring-emerald-500' : 'bg-slate-300 focus-visible:ring-amber-500',
-                saving && 'opacity-60 cursor-wait'
-              )}
-            >
-              <span
-                className={cn(
-                  'inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform',
-                  isOn ? 'translate-x-6' : 'translate-x-1'
-                )}
-              />
-            </button>
+            <Switch
+              checked={isOn}
+              loading={saving}
+              size="lg"
+              tone="amber"
+              aria-label={isOn ? 'Turn off auto lead assignment' : 'Turn on auto lead assignment'}
+              onCheckedChange={() => handleToggle()}
+            />
           )}
         </div>
         <p

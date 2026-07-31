@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import API from '../api/axios';
 import { Button } from '../components/ui/button';
+import Switch from '../components/ui/switch';
 import { toast } from '../context/ToastContext';
 import { useDataRefresh } from '../hooks/useDataRefresh';
 import { cn } from '../lib/utils';
@@ -771,35 +772,29 @@ export default function MarginControlPage() {
                         </div>
                       </td>
                       <td className="px-3 py-3">
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={draft.active !== false}
-                          onClick={() => updateDraft(id, { active: !(draft.active !== false) })}
-                          className="inline-flex items-center gap-2"
-                        >
-                          <span
-                            className={cn(
-                              'relative h-6 w-11 rounded-full transition-colors',
-                              draft.active !== false ? 'bg-violet-600' : 'bg-slate-300 dark:bg-slate-700'
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
-                                draft.active !== false ? 'translate-x-5' : 'translate-x-0.5'
-                              )}
-                            />
-                          </span>
+                        <div className="inline-flex items-center gap-2">
+                          <Switch
+                            checked={draft.active !== false}
+                            size="md"
+                            tone="violet"
+                            aria-label={
+                              draft.active !== false
+                                ? `Deactivate ${row.destinationName} margin`
+                                : `Activate ${row.destinationName} margin`
+                            }
+                            onCheckedChange={(next) => updateDraft(id, { active: next })}
+                          />
                           <span
                             className={cn(
                               'text-xs font-semibold',
-                              draft.active !== false ? 'text-violet-700 dark:text-violet-300' : 'text-content-muted'
+                              draft.active !== false
+                                ? 'text-violet-700 dark:text-violet-300'
+                                : 'text-content-muted'
                             )}
                           >
                             {draft.active !== false ? 'Active' : 'Off'}
                           </span>
-                        </button>
+                        </div>
                       </td>
                       <td className="px-3 py-3 text-right">
                         {!isDirty ? (

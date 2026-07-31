@@ -1,26 +1,19 @@
 import { Check, X } from 'lucide-react';
+import Switch from '../ui/switch';
 import { PERMISSION_MODULES } from './constants';
 
 const ALL_ACTIONS = ['view', 'create', 'edit', 'delete', 'approve', 'export'];
 
 function Toggle({ checked, onChange, disabled }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
+    <Switch
+      checked={checked}
       disabled={disabled}
-      onClick={() => onChange?.(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 ${
-        disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
-      } ${checked ? 'bg-gradient-to-r from-brand-600 to-indigo-600' : 'bg-content-muted/25'}`}
-    >
-      <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
-          checked ? 'translate-x-6' : 'translate-x-1'
-        }`}
-      />
-    </button>
+      size="md"
+      tone="brand"
+      aria-label={checked ? 'Disable permission' : 'Enable permission'}
+      onCheckedChange={(next) => onChange?.(next)}
+    />
   );
 }
 

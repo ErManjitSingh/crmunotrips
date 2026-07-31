@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { MessageCircle, Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { MessageCircle, Plus, Pencil, Trash2 } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import { Button } from '../../components/ui/button';
+import Switch from '../../components/ui/switch';
 import AppModal from '../../components/ui/AppModal';
 import {
   fetchWhatsAppTemplates,
@@ -126,10 +127,14 @@ export default function WhatsAppTemplatesPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={() => toggleEnabled(template)}>
-                    {template.enabled ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                  </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Switch
+                    checked={Boolean(template.enabled)}
+                    size="sm"
+                    tone="emerald"
+                    aria-label={template.enabled ? 'Disable template' : 'Enable template'}
+                    onCheckedChange={() => toggleEnabled(template)}
+                  />
                   <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={() => openEdit(template)}>
                     <Pencil className="w-4 h-4" />
                   </Button>
