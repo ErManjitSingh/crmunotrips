@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { calculatePricing, formatINR, getDisplayedCostBreakdown } from './quotationUtils';
-import { perPersonFromTotal, resolvePartyOccupancy } from './partyCosting';
+import { resolvePartyOccupancy } from './partyCosting';
 import ActionTile from '../ui/ActionTile';
 import { cn } from '../../lib/utils';
 
@@ -35,7 +35,6 @@ export default function PackageBuilderPriceSidebar({
   const youSave = Number(breakdown.youSave ?? pricing?.discount ?? 0) || 0;
   const party = pricing?.party || resolvePartyOccupancy(lead || {});
   const adults = Math.max(1, Number(party.adults) || 1);
-  const perPerson = perPersonFromTotal(breakdown.finalTotal, adults);
 
   const applyPricing = (partial) => {
     const next = { ...pricing, ...partial };
@@ -106,17 +105,6 @@ export default function PackageBuilderPriceSidebar({
               {formatINR(subtotalBeforeDiscount)}
             </p>
           )}
-          <div className="mt-3 rounded-xl border border-white/15 bg-white/10 px-3 py-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-100/80">
-                Per person
-              </span>
-              <span className="text-lg font-bold metric-tabular text-white">{formatINR(perPerson)}</span>
-            </div>
-            <p className="mt-1 text-[10px] text-violet-100/75">
-              Total for {adults} adult{adults === 1 ? '' : 's'}: {formatINR(breakdown.finalTotal)}
-            </p>
-          </div>
           <p className="text-[11px] text-violet-100 mt-2">
             {nights != null ? `${nights} Nights` : '—'} / {daysCount || '—'} Days
             {pkg?.destination ? ` · ${pkg.destination}` : ''}
@@ -132,7 +120,7 @@ export default function PackageBuilderPriceSidebar({
           <div className="rounded-lg border border-violet-100 bg-violet-50/70 px-2.5 py-2 text-[10px] text-slate-600">
             <p className="font-semibold text-violet-800">Party costing</p>
             <p className="mt-0.5">
-              Package @ {formatINR(party.perPersonRate || 0)}/adult · {party.rooms || 1} room
+              {party.rooms || 1} room
               {party.mattresses ? ` + ${party.mattresses} mattress` : ''} ·{' '}
               {party.cabCount || 1} cab
               {party.cabSeats ? ` (${party.cabSeats}-seater)` : ''}
@@ -215,19 +203,11 @@ export default function PackageBuilderPriceSidebar({
         </div>
 
         <div className="px-5 pb-4">
-          <div className="rounded-xl bg-violet-50 border border-violet-200 px-3 py-2.5 flex items-center justify-between gap-2">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">Per Person</p>
-              <p className="text-sm font-bold text-emerald-700 metric-tabular">
-                {formatINR(perPerson)}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500">
-                Final Total ({adults} pax)
-              </p>
-              <p className="text-sm font-bold text-violet-800 metric-tabular">{formatINR(breakdown.finalTotal)}</p>
-            </div>
+          <div className="rounded-xl bg-violet-50 border border-violet-200 px-3 py-2.5 text-right">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500">
+              Final Total ({adults} pax)
+            </p>
+            <p className="text-sm font-bold text-violet-800 metric-tabular">{formatINR(breakdown.finalTotal)}</p>
           </div>
         </div>
 

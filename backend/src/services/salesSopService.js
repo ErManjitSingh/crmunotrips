@@ -132,12 +132,6 @@ function getMissingQualificationFields(lead) {
       continue;
     }
 
-    if (field.key === 'specialRequirements') {
-      const raw = String(value || '').trim();
-      if (!raw) missing.push(field.label);
-      continue;
-    }
-
     if (isBlank(value)) missing.push(field.label);
   }
   return [...new Set(missing)];

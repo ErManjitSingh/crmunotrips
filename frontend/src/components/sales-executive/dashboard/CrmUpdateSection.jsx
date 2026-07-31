@@ -4,10 +4,13 @@ import {
   ArrowRight,
   CalendarDays,
   Gift,
+  IndianRupee,
+  Package,
   PartyPopper,
   Rocket,
   Sparkles,
   Target,
+  TrendingUp,
   Users,
 } from 'lucide-react';
 import { formatCurrency } from '../executiveUtils';
@@ -37,6 +40,24 @@ function monthEndLabel(date = new Date()) {
   return end.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+function TargetChip({ icon: Icon, label, value, tone = 'violet' }) {
+  const tones = {
+    violet: 'border-violet-100 bg-violet-50/80 text-violet-800',
+    amber: 'border-amber-100 bg-amber-50/80 text-amber-800',
+    emerald: 'border-emerald-100 bg-emerald-50/80 text-emerald-800',
+    rose: 'border-rose-100 bg-rose-50/80 text-rose-800',
+  };
+  return (
+    <div className={`rounded-xl border px-2.5 py-2 ${tones[tone] || tones.violet}`}>
+      <div className="flex items-center gap-1.5">
+        <Icon className="h-3 w-3 shrink-0 opacity-80" />
+        <span className="truncate text-[9px] font-bold uppercase tracking-wide opacity-80">{label}</span>
+      </div>
+      <p className="mt-1 truncate text-sm font-bold tabular-nums tracking-tight">{formatCurrency(value)}</p>
+    </div>
+  );
+}
+
 /**
  * Full-width CRM Update block — Important Announcement (target) + What's New.
  */
@@ -47,9 +68,14 @@ export default function CrmUpdateSection({
   viewAllTo = '/sales-executive/follow-ups',
 }) {
   const progress = Math.min(100, Number(target?.progress || 0));
-  const monthlyTarget = Number(target?.monthlyTarget || 0);
+  const monthlyTarget = Number(target?.monthlyTarget || target?.totalSalesTarget || target?.revenueTarget || 0);
   const revenueAchieved = Number(target?.revenueAchieved || 0);
+  const revenueTarget = Number(target?.revenueTarget || monthlyTarget || 0);
+  const packageTarget = Number(target?.packageTarget || 0);
+  const totalSalesTarget = Number(target?.totalSalesTarget || monthlyTarget || 0);
+  const profitTarget = Number(target?.profitTarget || 0);
   const month = monthLabel(now);
+  const setBy = target?.setByName ? `Set by ${target.setByName}` : 'Assigned by your manager';
 
   const whatsNew = (announcements.length ? announcements : FALLBACK_WHATS_NEW)
     .slice(0, 4)
@@ -70,12 +96,12 @@ export default function CrmUpdateSection({
       <div className="flex flex-col gap-3 bg-gradient-to-r from-[#4c1d95] via-[#6d28d9] to-[#7c3aed] px-4 py-3.5 text-white sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15">
               <Sparkles className="h-4 w-4 text-amber-200" />
             </span>
-            <h2 className="text-base font-bold tracking-wide sm:text-lg">CRM UPDATE</h2>
+            <h2 className="truncate text-base font-bold tracking-wide sm:text-lg">CRM UPDATE</h2>
           </div>
-          <p className="mt-1 text-xs text-violet-100/90 sm:text-[13px]">
+          <p className="mt-1 truncate text-xs text-violet-100/90 sm:text-[13px]">
             Stay informed. Stay ahead. Achieve more. 🚀
           </p>
         </div>
@@ -91,66 +117,58 @@ export default function CrmUpdateSection({
       {/* Body */}
       <div className="grid gap-3 bg-[#f6f3ff] p-3 sm:p-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(260px,1fr)]">
         {/* Important announcement */}
-        <div className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm">
+        <div className="min-w-0 rounded-2xl border border-violet-100 bg-white p-4 shadow-sm">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-600">
             Important Announcement
           </p>
           <h3 className="mt-1.5 text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
-            {month} Sales Target is Live! 🎯
+            {month} Sales Targets are Live! 🎯
           </h3>
-          <p className="mt-1 text-xs text-slate-500">
-            Hit your monthly goal and unlock executive incentives.
+          <p className="mt-1 truncate text-xs text-slate-500">
+            Hit your goals and unlock executive incentives. · {setBy}
           </p>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-3.5">
-              <div className="flex items-center gap-2 text-violet-700">
-                <Target className="h-4 w-4" />
-                <span className="text-[10px] font-bold uppercase tracking-wide">Monthly Target</span>
-              </div>
-              <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-                {formatCurrency(monthlyTarget)}
-              </p>
-              <p className="mt-1 flex items-center gap-1 text-[11px] text-slate-500">
-                <CalendarDays className="h-3 w-3" />
-                Ends on {monthEndLabel(now)}
-              </p>
-            </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <TargetChip icon={IndianRupee} label="Revenue" value={revenueTarget} tone="violet" />
+            <TargetChip icon={Package} label="Package" value={packageTarget} tone="amber" />
+            <TargetChip icon={TrendingUp} label="Total Sales" value={totalSalesTarget} tone="emerald" />
+            <TargetChip icon={Target} label="Profit" value={profitTarget} tone="rose" />
+          </div>
 
-            <div className="flex items-center gap-3 rounded-xl border border-violet-100 bg-gradient-to-br from-white to-fuchsia-50/60 p-3.5">
-              <div
-                className="relative flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full"
-                style={{
-                  background: `conic-gradient(#7c3aed ${progress * 3.6}deg, #ede9fe 0deg)`,
-                }}
-              >
-                <div className="flex h-[54px] w-[54px] flex-col items-center justify-center rounded-full bg-white shadow-inner">
-                  <span className="text-base font-bold leading-none text-violet-700">{progress}%</span>
-                </div>
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-violet-100 bg-gradient-to-br from-white to-fuchsia-50/60 p-3">
+            <div
+              className="relative flex h-[64px] w-[64px] shrink-0 items-center justify-center rounded-full"
+              style={{
+                background: `conic-gradient(#7c3aed ${progress * 3.6}deg, #ede9fe 0deg)`,
+              }}
+            >
+              <div className="flex h-[48px] w-[48px] flex-col items-center justify-center rounded-full bg-white shadow-inner">
+                <span className="text-sm font-bold leading-none text-violet-700">{progress}%</span>
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                  Target Progress
-                </p>
-                <p className="mt-1 text-sm font-bold text-slate-900">
-                  {formatCurrency(revenueAchieved)}
-                  <span className="font-medium text-slate-400"> / {formatCurrency(monthlyTarget)}</span>
-                </p>
-                <p className="mt-0.5 text-[11px] text-slate-500">
-                  {target?.leadsConverted || 0} leads converted
-                </p>
-              </div>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                Target Progress
+              </p>
+              <p className="mt-1 truncate text-sm font-bold tabular-nums text-slate-900">
+                {formatCurrency(revenueAchieved)}
+                <span className="font-medium text-slate-400"> / {formatCurrency(monthlyTarget)}</span>
+              </p>
+              <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-slate-500">
+                <CalendarDays className="h-3 w-3 shrink-0" />
+                Ends {monthEndLabel(now)} · {target?.leadsConverted || 0} converted
+              </p>
             </div>
           </div>
         </div>
 
         {/* What's new */}
-        <div className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm">
+        <div className="min-w-0 rounded-2xl border border-violet-100 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-2">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
               What&apos;s New
             </p>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-200">
+            <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-200">
               New
             </span>
           </div>
@@ -159,12 +177,12 @@ export default function CrmUpdateSection({
             {whatsNew.map((item) => {
               const Icon = item.icon;
               return (
-                <li key={item.id}>
-                  <div className="flex items-center gap-2.5 rounded-xl px-2 py-2 transition hover:bg-violet-50/80">
+                <li key={item.id} className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-2.5 rounded-xl px-2 py-2 transition hover:bg-violet-50/80">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
                       <Icon className="h-3.5 w-3.5" />
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-800">
+                    <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[12px] font-semibold text-slate-800">
                       {item.title}
                     </span>
                     <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />

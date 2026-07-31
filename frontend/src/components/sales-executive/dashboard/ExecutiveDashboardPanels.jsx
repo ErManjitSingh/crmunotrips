@@ -77,13 +77,13 @@ function ActivityList({ items = [] }) {
   );
 }
 
-function ReminderList({ items = [] }) {
+function ReminderList({ items = [], limit = 4 }) {
   if (!items.length) {
-    return <p className="py-8 text-center text-xs text-content-muted">No upcoming reminders</p>;
+    return <p className="py-3 text-center text-xs text-content-muted">No upcoming followups</p>;
   }
   return (
     <div className="space-y-2">
-      {items.slice(0, 4).map((item) => (
+      {items.slice(0, limit).map((item) => (
         <div key={item._id} className="flex gap-2.5">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
             <CalendarClock className="h-3.5 w-3.5" />
@@ -102,15 +102,15 @@ function ReminderList({ items = [] }) {
   );
 }
 
-function PipelineFunnel({ stages = [] }) {
+function PipelineFunnel({ stages = [], compact = false }) {
   const max = Math.max(...stages.map((item) => item.count), 1);
   return (
-    <div className="flex h-[190px] items-center gap-4">
+    <div className={`flex items-center gap-3 ${compact ? 'h-[140px]' : 'h-[190px]'}`}>
       <div className="flex w-[48%] flex-col items-center gap-1">
         {stages.map((stage, index) => (
           <div
             key={stage.stage}
-            className="flex h-7 items-center justify-center text-[9px] font-bold text-white shadow-sm"
+            className={`flex items-center justify-center text-[9px] font-bold text-white shadow-sm ${compact ? 'h-5' : 'h-7'}`}
             style={{
               width: `${Math.max(38, (stage.count / max) * 100 - index * 3)}%`,
               backgroundColor: stage.color,
@@ -121,7 +121,7 @@ function PipelineFunnel({ stages = [] }) {
           </div>
         ))}
       </div>
-      <div className="min-w-0 flex-1 space-y-2">
+      <div className="min-w-0 flex-1 space-y-1.5">
         {stages.map((stage) => (
           <div key={stage.stage} className="flex items-center gap-2 text-[10px]">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: stage.color }} />
@@ -160,7 +160,7 @@ export default function ExecutiveDashboardPanels({ data, announcements = [] }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,.85fr)_240px]">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.95fr)]">
         <Panel title="Lead Overview" delay={0.1}>
           <div className="h-[205px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -177,27 +177,76 @@ export default function ExecutiveDashboardPanels({ data, announcements = [] }) {
           </div>
         </Panel>
 
-        <Panel title="Lead Pipeline" delay={0.15}>
-          <PipelineFunnel stages={data.conversionProgress || []} />
+        <Panel title="Lead Status / Followups" link="/sales-executive/follow-ups" delay={0.15}>
+          <div className="space-y-3">
+            <div>
+              <p className="mb-2 text-[9px] font-bold uppercase tracking-wide text-content-muted">Lead Status</p>
+              <PipelineFunnel stages={data.conversionProgress || []} compact />
+            </div>
+            <div className="border-t border-subtle pt-3">
+              <p className="mb-2 text-[9px] font-bold uppercase tracking-wide text-content-muted">Followups</p>
+              <ReminderList items={data.upcomingFollowups} limit={3} />
+            </div>
+          </div>
         </Panel>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
-          <Panel title="Today's Activities" link="/sales-executive/leads/all" delay={0.2}>
-            <ActivityList items={data.todayActivities} />
-          </Panel>
-          <Panel title="Upcoming Reminders" link="/sales-executive/calendar" delay={0.25}>
-            <ReminderList items={data.upcomingFollowups} />
-          </Panel>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,.85fr)_240px]">
-        <Panel title="Important Announcements" delay={0.3}>
+        <Panel title="Today's Activities" link="/sales-executive/leads/all" delay={0.2}>
+          <ActivityList items={data.todayActivities} />
+        </Panel>
+
+        <Panel title="Important Announcements" delay={0.25}>
           <Announcements items={announcements} />
         </Panel>
 
+        <Panel title="Monthly Target" delay={0.3}>
+          <div className="flex items-center gap-3">
+            <div
+              className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
+              style={{ background: `conic-gradient(#8b5cf6 ${progress * 3.6}deg, #ede9fe 0deg)` }}
+            >
+              <div className="flex h-14 w-14 flex-col items-center justify-center rounded-full bg-white">
+                <span className="text-lg font-bold text-content-primary">{progress}%</span>
+                <span className="text-[8px] text-content-muted">Achieved</span>
+              </div>
+            </div>
+            <div className="min-w-0 space-y-1 text-[9px] text-content-muted">
+              <div>
+                <p>Revenue</p>
+                <p className="truncate text-xs font-bold text-content-primary">
+                  {formatCurrency(data.target?.revenueTarget || data.target?.monthlyTarget)}
+                </p>
+              </div>
+              <div>
+                <p>Total Sales</p>
+                <p className="truncate text-xs font-bold text-content-primary">
+                  {formatCurrency(data.target?.totalSalesTarget || data.target?.monthlyTarget)}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-1.5 text-[9px]">
+            <div className="rounded-lg bg-amber-50 px-2 py-1.5">
+              <p className="text-amber-700/80">Package</p>
+              <p className="font-bold text-amber-800">{formatCurrency(data.target?.packageTarget)}</p>
+            </div>
+            <div className="rounded-lg bg-rose-50 px-2 py-1.5">
+              <p className="text-rose-700/80">Profit</p>
+              <p className="font-bold text-rose-800">{formatCurrency(data.target?.profitTarget)}</p>
+            </div>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-violet-50 px-2 py-1.5 text-[9px] font-medium text-violet-700">
+            <Target className="h-3 w-3" />
+            {data.target?.leadsConverted || 0} leads converted
+            {data.target?.setByName ? ` · ${data.target.setByName}` : ''}
+          </div>
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-1">
         <Panel title="Top Performing Leads" link="/sales-executive/leads/all" delay={0.35}>
-          <div className="space-y-2">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {(data.topLeads || []).map((lead, index) => (
               <Link
                 key={lead._id}
@@ -215,30 +264,6 @@ export default function ExecutiveDashboardPanels({ data, announcements = [] }) {
                 {lead.isHot ? <Flame className="h-3 w-3 text-orange-500" /> : null}
               </Link>
             ))}
-          </div>
-        </Panel>
-
-        <Panel title="Monthly Target" delay={0.4}>
-          <div className="flex items-center gap-3">
-            <div
-              className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
-              style={{ background: `conic-gradient(#8b5cf6 ${progress * 3.6}deg, #ede9fe 0deg)` }}
-            >
-              <div className="flex h-14 w-14 flex-col items-center justify-center rounded-full bg-white">
-                <span className="text-lg font-bold text-content-primary">{progress}%</span>
-                <span className="text-[8px] text-content-muted">Achieved</span>
-              </div>
-            </div>
-            <div className="min-w-0 text-[9px] text-content-muted">
-              <p>Target Amount</p>
-              <p className="text-xs font-bold text-content-primary">{formatCurrency(data.target?.monthlyTarget)}</p>
-              <p className="mt-2">Achieved</p>
-              <p className="text-xs font-bold text-content-primary">{formatCurrency(data.target?.revenueAchieved)}</p>
-            </div>
-          </div>
-          <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-violet-50 px-2 py-1.5 text-[9px] font-medium text-violet-700">
-            <Target className="h-3 w-3" />
-            {data.target?.leadsConverted || 0} leads converted this period
           </div>
         </Panel>
       </div>

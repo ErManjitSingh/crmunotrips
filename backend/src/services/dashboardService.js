@@ -15,7 +15,7 @@ const {
 const { getExecutiveIdsForLeader } = require('./teamScopeService');
 const { getEnterpriseKpis, getSourceAnalytics, getExecutivePerformance } = require('./leadAnalyticsService');
 const { getEmailDashboardStats } = require('./emailStatsService');
-const { getMonthlyTarget, buildTargetProgress } = require('./salesTargetService');
+const { getMonthlyTargets, buildTargetProgress } = require('./salesTargetService');
 const { withBranch } = require('../utils/branchScope');
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -970,8 +970,12 @@ async function buildExecutiveDashboard(userId, options = {}) {
   const totalLeadValue = totalLeadValueAgg[0]?.total || 0;
   const lastMonthRevenue = lastMonthRevenueAgg[0]?.total || 0;
   const totalAssigned = Object.values(statusCounts).reduce((s, n) => s + n, 0);
-  const monthlyTarget = await getMonthlyTarget(execId);
-  const targetStats = buildTargetProgress(monthlyRevenue, monthlyTarget);
+  const monthlyTargets = await getMonthlyTargets(execId);
+  const primaryTarget =
+    Number(monthlyTargets.totalSalesTarget) > 0
+      ? Number(monthlyTargets.totalSalesTarget)
+      : Number(monthlyTargets.revenueTarget) || 0;
+  const targetStats = buildTargetProgress(monthlyRevenue, primaryTarget);
 
   const pipelineOverview = [
     { name: 'New Leads', value: statusCounts.new || 0, color: '#3B82F6' },
@@ -1088,6 +1092,14 @@ async function buildExecutiveDashboard(userId, options = {}) {
     ],
     target: {
       ...targetStats,
+      revenueTarget: Number(monthlyTargets.revenueTarget) || 0,
+      packageTarget: Number(monthlyTargets.packageTarget) || 0,
+      totalSalesTarget: Number(monthlyTargets.totalSalesTarget) || 0,
+      profitTarget: Number(monthlyTargets.profitTarget) || 0,
+      periodType: monthlyTargets.periodType || 'monthly',
+      workingDays: monthlyTargets.workingDays || 26,
+      setByName: monthlyTargets.setByName || '',
+      isDefault: Boolean(monthlyTargets.isDefault),
       leadsConverted: convertedCount,
       conversionRate: totalAssigned
         ? Math.round((convertedCount / totalAssigned) * 1000) / 10

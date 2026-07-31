@@ -1,5 +1,5 @@
 import { calculatePricing, formatINR, getDisplayedCostBreakdown } from './quotationUtils';
-import { perPersonFromTotal, resolvePartyOccupancy } from './partyCosting';
+import { resolvePartyOccupancy } from './partyCosting';
 
 const COST_FIELDS = [
   { key: 'hotelCost', label: 'Hotel Cost', color: 'border-amber-400/30 bg-amber-500/5' },
@@ -12,7 +12,6 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false,
   const breakdown = getDisplayedCostBreakdown(pricing || {});
   const party = pricing?.party || resolvePartyOccupancy(lead || {});
   const adults = Math.max(1, Number(party.adults) || 1);
-  const perPerson = perPersonFromTotal(breakdown.finalTotal, adults);
 
   const apply = (partial) => {
     const next = { ...pricing, ...partial };
@@ -36,7 +35,6 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false,
             {party.children ? ` · ${party.children} child` : ''}
             {' · '}{party.rooms || 1} room{party.mattresses ? ` + ${party.mattresses} mattress` : ''}
             {' · '}{party.cabCount || 1} cab
-            {party.perPersonRate != null ? ` · package ${formatINR(party.perPersonRate)}/adult` : ''}
           </p>
         </div>
       )}
@@ -116,14 +114,7 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false,
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/15 to-teal-500/10">
-          <p className="text-xs font-semibold uppercase text-emerald-600">Per Person</p>
-          <p className="text-3xl font-black text-emerald-700 dark:text-emerald-300 metric-tabular mt-1">
-            {formatINR(perPerson)}
-          </p>
-          <p className="mt-1 text-[11px] text-emerald-700/80">Across {adults} adult{adults === 1 ? '' : 's'}</p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="p-5 rounded-2xl border border-brand-400/30 bg-gradient-to-br from-brand-500/15 to-indigo-500/10">
           <p className="text-xs font-semibold uppercase text-brand-600">Final Total Package Cost</p>
           <p className="text-3xl font-black text-brand-700 dark:text-brand-300 metric-tabular mt-1">

@@ -28,17 +28,15 @@ const LOST_REASONS = [
 
 const LOST_REASON_VALUES = LOST_REASONS.map((r) => r.value);
 
-/** Fields required before any quotation (SOP §3) */
+/** Fields required before any quotation (SOP §3) — budget & special requirements optional */
 const QUOTE_QUALIFICATION_FIELDS = [
   { key: 'destination', label: 'Destination' },
   { key: 'travelDate', label: 'Travel Dates' },
   { key: 'adults', label: 'Number of Adults', min: 1 },
   { key: 'children', label: 'Number of Children', allowZero: true },
   { key: 'hotelCategory', label: 'Hotel Category' },
-  { key: 'budget', label: 'Budget', min: 1 },
   { key: 'transportRequirement', label: 'Transportation', altKeys: ['cabType'] },
   { key: 'pickupPoint', label: 'Pickup City / State' },
-  { key: 'specialRequirements', label: 'Special Requirements' },
 ];
 
 module.exports = {
