@@ -1,5 +1,8 @@
 const ApiError = require('../utils/apiError');
-const { inferCityFromDestination, matchesDestination } = require('../utils/destinationMatch');
+const {
+  preferredDestinationSearch,
+  matchesDestination,
+} = require('../utils/destinationMatch');
 const cacheService = require('./cacheService');
 const {
   unwrapPayload,
@@ -676,7 +679,7 @@ function buildListCacheKey(query = {}) {
 
 async function fetchUnoPackages(query = {}) {
   const limit = Math.min(Number(query.limit) || UNO_API_MAX_LIMIT, UNO_API_MAX_LIMIT);
-  const rawSearch = query.search || inferCityFromDestination(query.destination) || '';
+  const rawSearch = query.search || preferredDestinationSearch(query.destination) || '';
   const search = String(rawSearch).trim().toLowerCase();
   const page = Math.max(1, Number(query.page) || 1);
   const payload = await unoFetch('/v1/packages', {

@@ -20,7 +20,7 @@ export default function ExecutiveCustomersPage() {
   return (
     <ExecutivePageShell
       title="Customers"
-      description="Converted clients and repeat travelers in your portfolio"
+      description="Converted clients, repeat travelers, and leads who already received a package"
     >
       {loading ? (
         <div className="flex justify-center py-20">
@@ -41,11 +41,16 @@ export default function ExecutiveCustomersPage() {
               <div className="flex items-start gap-4 mb-4">
                 <Avatar name={c.name} size="md" className="ring-2 ring-violet-500/20" />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-bold text-content-primary truncate">{c.name}</h3>
                     {c.trips > 1 && (
                       <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
                         <Repeat className="w-3 h-3" /> Repeat
+                      </span>
+                    )}
+                    {c.packageShared && !c.converted && (
+                      <span className="inline-flex items-center text-[10px] font-bold text-amber-700 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
+                        Package shared
                       </span>
                     )}
                   </div>

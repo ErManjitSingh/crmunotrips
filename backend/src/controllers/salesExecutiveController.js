@@ -57,7 +57,7 @@ const {
   findScopedQuotationsPaginated,
 } = require('../repositories/roleScopedRepository');
 
-const LEAD_FILTER_KEYS = ['new', 'contacted', 'follow-up', 'hot', 'converted', 'lost', 'reactivated', 'all'];
+const LEAD_FILTER_KEYS = ['new', 'contacted', 'follow-up', 'hot', 'converted', 'lost', 'reactivated', 'all', 'package-shared'];
 
 async function resolveExecutiveQuotationStatus(leadId, requestedStatus, excludeQuotationId = null) {
   if (requestedStatus === 'draft') return 'draft';
@@ -799,12 +799,21 @@ const updateQuotation = asyncHandler(async (req, res) => {
 });
 
 const listCustomers = asyncHandler(async (req, res) => {
+  const { findPackageSharedLeadIds } = require('../utils/packageSharedLeads');
+  const sharedIds = await findPackageSharedLeadIds({ branchId: req.branchId });
+
   const leads = await Lead.find({
     assignedTo: req.user._id,
     ...(req.branchId ? { branchId: req.branchId } : {}),
-    $or: [{ status: 'converted' }, { isRepeatCustomer: true }],
+    $or: [
+      { status: 'converted' },
+      { isRepeatCustomer: true },
+      { status: 'quotation_sent' },
+      ...(sharedIds.length ? [{ _id: { $in: sharedIds } }] : []),
+    ],
   })
-    .select('name email phone destination budget isRepeatCustomer')
+    .select('name email phone destination budget isRepeatCustomer status')
+    .sort({ updatedAt: -1 })
     .lean();
 
   res.json(
@@ -816,6 +825,8 @@ const listCustomers = asyncHandler(async (req, res) => {
       destination: l.destination,
       trips: l.isRepeatCustomer ? 2 : 1,
       totalSpent: l.budget,
+      packageShared: l.status === 'quotation_sent' || sharedIds.some((id) => String(id) === String(l._id)),
+      converted: l.status === 'converted',
     }))
   );
 });

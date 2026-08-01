@@ -23,6 +23,10 @@ const {
 } = require('../utils/pagination');
 const { withBranch } = require('../utils/branchScope');
 const { applyQuotationQueryFilters } = require('./quotationRepository');
+const {
+  findPackageSharedLeadIds,
+  wantsPackageSharedLeads,
+} = require('../utils/packageSharedLeads');
 
 const LIST_PAGINATION = { defaultLimit: 20, maxLimit: 200 };
 
@@ -100,6 +104,12 @@ async function findManagerLeadsPaginated(query = {}, options = {}) {
   const { page, limit, skip } = parsePagination(query);
   const sort = parseSort(query, { createdAt: -1 });
   const filter = withActiveLead(withBranch(buildManagerLeadFilter(query), options.branchId));
+
+  if (wantsPackageSharedLeads(query)) {
+    const ids = await findPackageSharedLeadIds({ branchId: options.branchId });
+    filter._id = { $in: ids.length ? ids : [] };
+  }
+
   const needsTotal = page <= DEEP_PAGE_THRESHOLD;
 
   const [rows, total] = await Promise.all([
@@ -204,11 +214,16 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
     owned.status = { $nin: ['converted', 'lost', 'booked_from_another_company'] };
   }
 
-  if (filterKey === 'all' || !filterKey) {
+  if (filterKey === 'all' || !filterKey || filterKey === 'package-shared' || filterKey === 'package_shared') {
     if (query.status) owned.status = query.status;
     if (query.destination) owned.destination = query.destination;
     if (query.priority === 'hot') owned.isHot = true;
     else if (query.priority) owned.priority = query.priority;
+  }
+
+  if (wantsPackageSharedLeads(query)) {
+    const sharedIds = await findPackageSharedLeadIds({ branchId: options.branchId });
+    owned._id = { $in: sharedIds.length ? sharedIds : [] };
   }
 
   const filter = owned;
@@ -261,7 +276,7 @@ async function findTeamLeaderLeadsPaginated(squadFilter, query = {}, options = {
     extra.$or = [{ isHot: true }, { leadScore: 'hot' }];
     extra.status = { $nin: ['converted', 'lost', 'booked_from_another_company'] };
   }
-  if (!query.filter || query.filter === 'all') {
+  if (!query.filter || query.filter === 'all' || query.filter === 'package-shared' || query.filter === 'package_shared') {
     if (query.status) extra.status = query.status;
     if (query.destination) extra.destination = query.destination;
     if (query.priority === 'hot') extra.isHot = true;
@@ -270,6 +285,12 @@ async function findTeamLeaderLeadsPaginated(squadFilter, query = {}, options = {
   const filter = withActiveLead(
     withBranch({ ...squadFilter, ...extra, ...buildLeadSearchFilter(query.search) }, options.branchId)
   );
+
+  if (wantsPackageSharedLeads(query)) {
+    const sharedIds = await findPackageSharedLeadIds({ branchId: options.branchId });
+    filter._id = { $in: sharedIds.length ? sharedIds : [] };
+  }
+
   const needsTotal = page <= DEEP_PAGE_THRESHOLD;
 
   const [rows, total] = await Promise.all([

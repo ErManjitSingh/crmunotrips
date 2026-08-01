@@ -185,7 +185,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     };
   }, []);
 
-  const fetchLeads = useCallback(async (searchTerm) => {
+  const fetchLeads = useCallback(async (searchTerm, { packageShared = false } = {}) => {
     setLoadingLeads(true);
     try {
       const baseParams = config.leadsParams || { page: 1, limit: 50 };
@@ -194,7 +194,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         limit: 50,
         filters: {
           ...baseParams,
-          filter: baseParams.filter,
+          filter: packageShared ? 'package-shared' : baseParams.filter,
+          packageShared: packageShared ? '1' : undefined,
           search: searchTerm?.trim() || undefined,
         },
       });
@@ -219,7 +220,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     if (debouncedLeadSearch.trim().length >= 2) {
       fetchLeads(debouncedLeadSearch);
     } else if (!initialLeadId) {
-      setLeads([]);
+      // Default: leads that already had packages/quotations shared
+      fetchLeads('', { packageShared: true });
     }
   }, [step, debouncedLeadSearch, initialLeadId, fetchLeads]);
 
@@ -924,6 +926,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                     </Link>
                   )}
                 </div>
+                <p className="text-xs text-content-muted">
+                  {debouncedLeadSearch.trim().length >= 2
+                    ? 'Search results'
+                    : 'Leads that already received a package / quotation — search to find others'}
+                </p>
                 {selectedLead && (
                   <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 px-3.5 py-3 text-sm sm:px-4">
                     <p className="font-semibold text-content-primary">{selectedLead.name}</p>
@@ -944,7 +951,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                   <p className="py-8 text-center text-sm text-content-muted">Searching leads…</p>
                 ) : leads.length === 0 ? (
                   <p className="py-8 text-center text-sm text-content-muted">
-                    {debouncedLeadSearch.trim().length >= 2 || initialLeadId ? 'No leads found' : 'Type at least 2 characters to search leads'}
+                    {debouncedLeadSearch.trim().length >= 2
+                      ? 'No leads found'
+                      : 'No package-shared leads yet — type at least 2 characters to search all leads'}
                   </p>
                 ) : (
                 <VirtualizedList
@@ -978,7 +987,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
               <div className="space-y-3">
                 <h2 className="text-base font-bold sm:text-lg">Select Package</h2>
                 <p className="text-xs text-content-muted">
-                  Packages matching lead destination from Uno Hotels catalog
+                  Packages related to lead destination (state and its cities)
                   {selectedLead?.destination ? (
                     <> — <span className="font-medium text-content-primary">{selectedLead.destination}</span></>
                   ) : null}

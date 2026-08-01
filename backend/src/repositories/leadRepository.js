@@ -10,6 +10,10 @@ const {
   DEEP_PAGE_THRESHOLD,
 } = require('../utils/pagination');
 const { withBranch } = require('../utils/branchScope');
+const {
+  findPackageSharedLeadIds,
+  wantsPackageSharedLeads,
+} = require('../utils/packageSharedLeads');
 
 function parseLocalDayStart(dateStr) {
   const parts = String(dateStr || '').split('-').map(Number);
@@ -125,6 +129,11 @@ async function findLeadsPaginated(query = {}, { branchId } = {}) {
   if (query.filter === 'duplicates') {
     const { findDuplicateLeadIds } = require('../services/leadListKpiService');
     const ids = await findDuplicateLeadIds(branchId);
+    filter._id = { $in: ids.length ? ids : [] };
+  }
+
+  if (wantsPackageSharedLeads(query)) {
+    const ids = await findPackageSharedLeadIds({ branchId });
     filter._id = { $in: ids.length ? ids : [] };
   }
 

@@ -1,6 +1,7 @@
 import API from '../api/axios';
 import { resolvePackageCabs } from './packageCabMapper';
 import { buildMergedItinerary, resolvePackageItinerary } from './packageItineraryMapper';
+import { expandDestinationMatchTerms, preferredDestinationSearch } from './destinationFamilies';
 
 /** Source of truth for UNO package catalog (proxied via CRM /api/uno-packages). */
 export const UNO_PACKAGES_API_URL = 'https://api.unohotelsandresorts.com/v1/packages';
@@ -38,15 +39,12 @@ export function matchesDestination(pkg = {}, destination = '') {
   const pkgDestination = String(
     pkg.destination || pkg.destinationName || pkg.destination_name || pkg.destination_city || ''
   ).trim();
-  if (!pkgDestination) return true;
+  const pkgState = String(pkg.state || '').trim();
+  if (!pkgDestination && !pkgState) return true;
 
-  const terms = text
-    .split(/[,|/]/)
-    .map((part) => normalize(part.replace(/\s+india$/i, '')))
-    .filter((part) => part.length >= 3);
-
+  const terms = expandDestinationMatchTerms(text);
   const haystack = normalize(
-    [pkgDestination, pkg.name, pkg.destinationName].filter(Boolean).join(' ')
+    [pkgDestination, pkgState, pkg.name, pkg.destinationName].filter(Boolean).join(' ')
   );
   return terms.some((term) => {
     if (haystack.includes(term) || term.includes(haystack)) return true;
@@ -138,21 +136,6 @@ export function mapUnoPackage(raw = {}, { includeDetail = false } = {}) {
   return mapped;
 }
 
-function inferCityFromDestination(destination = '') {
-  const text = String(destination || '').trim();
-  if (!text) return '';
-
-  const firstPart = text.split(',')[0]?.trim() || text;
-  return (
-    firstPart
-      .replace(
-        /\s+(India|Himachal Pradesh|Uttarakhand|Rajasthan|Kerala|Goa|Punjab|Delhi)$/i,
-        ''
-      )
-      .trim() || firstPart
-  );
-}
-
 /** UNO API max page size (higher values return HTTP 422). */
 export const UNO_PACKAGES_MAX_LIMIT = 50;
 
@@ -162,7 +145,9 @@ export const UNO_PACKAGES_MAX_LIMIT = 50;
  */
 export async function fetchUnoPublicPackages({ page = 1, limit = 50, search = '', destination = '' } = {}) {
   const safeLimit = Math.min(Number(limit) || UNO_PACKAGES_MAX_LIMIT, UNO_PACKAGES_MAX_LIMIT);
-  const effectiveSearch = (search || (destination ? inferCityFromDestination(destination) : ''))
+  const effectiveSearch = (
+    search || (destination ? preferredDestinationSearch(destination) : '')
+  )
     .trim()
     .toLowerCase();
 
@@ -177,10 +162,13 @@ export async function fetchUnoPublicPackages({ page = 1, limit = 50, search = ''
   });
 
   const items = Array.isArray(data?.items) ? data.items.map((item) => mapUnoPackage(item)) : [];
-
+  // Client-side family match (state ↔ cities) in case API search was narrow
+  const filtered = destination
+    ? items.filter((pkg) => matchesDestination(pkg, destination))
+    : items;
   return {
-    items,
-    total: toNumber(data?.total, items.length),
+    items: filtered,
+    total: toNumber(data?.total, filtered.length),
     page: toNumber(data?.page, page),
     totalPages: toNumber(data?.totalPages, 1),
     source: data?.source || 'uno_hotels_public',

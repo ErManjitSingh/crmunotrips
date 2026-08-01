@@ -1,3 +1,5 @@
+import { expandDestinationMatchTerms } from '../../lib/destinationFamilies';
+
 export function calculatePricing({
   baseCost = 0,
   hotelCost = 0,
@@ -182,7 +184,8 @@ export function matchesResourceDestination(resource = {}, destination = '') {
   const resourceDestination = String(
     resource.destination || resource.destinationName || resource.destination_name || resource.destination_city || ''
   ).trim();
-  if (!resourceDestination) return true;
+  const resourceState = String(resource.state || resource.destination_state || '').trim();
+  if (!resourceDestination && !resourceState) return true;
 
   const normalize = (value) =>
     String(value)
@@ -191,12 +194,12 @@ export function matchesResourceDestination(resource = {}, destination = '') {
       .replace(/\s+/g, ' ')
       .trim();
 
-  const terms = text
-    .split(/[,|/]/)
-    .map((part) => normalize(part.replace(/\s+india$/i, '')))
-    .filter((part) => part.length >= 3);
-
-  const haystack = normalize(resourceDestination);
+  const terms = expandDestinationMatchTerms(text);
+  const haystack = normalize(
+    [resourceDestination, resourceState, resource.name, resource.destinationName]
+      .filter(Boolean)
+      .join(' ')
+  );
   if (!haystack) return false;
 
   return terms.some((term) => {
