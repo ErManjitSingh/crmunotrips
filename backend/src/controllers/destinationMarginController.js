@@ -21,6 +21,7 @@ const upsertMargin = asyncHandler(async (req, res) => {
     marginPercent: req.body.marginPercent,
     notes: req.body.notes,
     active: req.body.active,
+    packageIds: req.body.packageIds,
   });
   res.json(row);
 });
