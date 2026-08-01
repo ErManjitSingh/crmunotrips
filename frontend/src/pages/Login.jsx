@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, Navigate, useLocation } from 'react-router-dom';
+import { useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plane,
@@ -12,22 +12,12 @@ import {
   EyeOff,
   Globe,
   ChevronDown,
-  ShieldCheck,
-  UserRound,
-  Home,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { LOGIN_PRESETS } from '../auth';
 import { AuthError } from '../auth/authService';
 import { cn } from '../lib/utils';
 import { APP_BRAND_NAME } from '../config/branding';
-
-const FEATURES = [
-  { icon: ShieldCheck, title: 'Secure Login', subtitle: '256-bit Encryption' },
-  { icon: UserRound, title: 'Role Based Access', subtitle: 'Multi-level Security' },
-  { icon: Home, title: 'Always Protected', subtitle: 'Daily Data Backup' },
-];
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -35,7 +25,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('crm_remember') === '1');
   const [langOpen, setLangOpen] = useState(false);
-  const [activePreset, setActivePreset] = useState(null);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,14 +37,6 @@ export default function Login() {
     const dest = user.dashboardPath || getDashboardPath(user.role);
     return <Navigate to={dest} replace />;
   }
-
-  const fillPreset = (preset) => {
-    setEmail(preset.email);
-    setPassword(preset.password);
-    setActivePreset(preset.email);
-    setError('');
-    setInfo('');
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -90,10 +71,8 @@ export default function Login() {
           "url('https://img.magnific.com/free-photo/particle-lines-futuristic-gradient-background_53876-104053.jpg?semt=ais_hybrid&w=740&q=80')",
       }}
     >
-      {/* Soft light overlay so the form stays readable */}
       <div className="pointer-events-none absolute inset-0 bg-white/20" />
 
-      {/* Top-right controls */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2.5 sm:top-5 sm:right-6">
         <button
           type="button"
@@ -155,8 +134,7 @@ export default function Login() {
         className="relative z-10 w-full max-w-[440px]"
       >
         <div className="overflow-hidden rounded-[28px] border border-white bg-white shadow-[0_25px_60px_-20px_rgba(109,40,217,0.28)]">
-          <div className="px-7 pt-9 pb-7 sm:px-10 sm:pt-10 sm:pb-8">
-            {/* Header */}
+          <div className="px-7 pt-9 pb-8 sm:px-10 sm:pt-10 sm:pb-9">
             <div className="mb-7 text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#8B5CF6] to-[#4F46E5] text-white shadow-lg shadow-violet-500/35">
                 <Plane className="h-7 w-7" strokeWidth={2.2} />
@@ -196,7 +174,7 @@ export default function Login() {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); setActivePreset(null); }}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                     autoComplete="email"
                     className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10"
@@ -267,55 +245,9 @@ export default function Login() {
               </button>
             </form>
           </div>
-
-          {/* Feature strip */}
-          <div className="grid grid-cols-3 gap-2 border-t border-slate-100 bg-[#F8F7FC] px-4 py-4 sm:gap-3 sm:px-6">
-            {FEATURES.map(({ icon: Icon, title, subtitle }) => (
-              <div key={title} className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left sm:gap-2">
-                <div className="mb-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 sm:mb-0">
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold leading-tight text-[#1A1D2E] sm:text-xs">{title}</p>
-                  <p className="mt-0.5 text-[10px] leading-tight text-slate-500 sm:text-[11px]">{subtitle}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Demo accounts */}
-        <div className="mt-4 rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm">
-          <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Quick demo login
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {LOGIN_PRESETS.map((preset) => (
-              <button
-                key={preset.email}
-                type="button"
-                onClick={() => fillPreset(preset)}
-                className={cn(
-                  'rounded-xl border px-3 py-2.5 text-left text-sm transition',
-                  activePreset === preset.email
-                    ? 'border-violet-400 bg-violet-50 ring-2 ring-violet-400/20'
-                    : 'border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/50',
-                )}
-              >
-                <span className="block truncate text-xs font-semibold text-slate-800">{preset.roleName}</span>
-                <span className="block truncate text-[11px] text-slate-500">{preset.email}</span>
-              </button>
-            ))}
-          </div>
-          <p className="mt-3 text-center text-[11px] text-slate-400">
-            Password: <span className="font-mono font-semibold text-slate-600">123456</span>
-            {' · '}
-            <Link to="/hr/login" className="text-violet-600 hover:underline">HR Portal</Link>
-          </p>
         </div>
       </motion.div>
 
-      {/* Page footer */}
       <div className="relative z-10 mt-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-slate-500">
         <a href="#" className="hover:text-violet-600" onClick={(e) => e.preventDefault()}>Privacy Policy</a>
         <span className="text-slate-300">•</span>
