@@ -36,6 +36,15 @@ function WhatsAppLeadsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [mobileView, setMobileView] = useState('list');
+  const [infoPanelOpen, setInfoPanelOpen] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('wa-info-panel-open');
+      if (saved === null) return true;
+      return saved === '1';
+    } catch {
+      return true;
+    }
+  });
   const [modals, setModals] = useState({ note: false, status: false, assign: false, followup: false });
   const [creatingLead, setCreatingLead] = useState(false);
   const [sending, setSending] = useState(false);
@@ -346,6 +355,18 @@ function WhatsAppLeadsPage() {
     }
   }, [selected?.lead, isExecutive, navigate]);
 
+  const toggleInfoPanel = useCallback(() => {
+    setInfoPanelOpen((open) => {
+      const next = !open;
+      try {
+        sessionStorage.setItem('wa-info-panel-open', next ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
   const selectedKey = selected?.conversationId || selected?.leadId;
   const contact = useMemo(() => contactFromSelected(selected), [selected]);
   const canCreateLead = !isExecutive && !selected?.lead && selected?.conversationId;
@@ -354,6 +375,7 @@ function WhatsAppLeadsPage() {
     <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-2 mb-0">
       <WhatsAppInboxLayout
         mobileView={mobileView}
+        infoPanelOpen={infoPanelOpen}
         className="h-[calc(100dvh-5.5rem)] lg:h-[calc(100dvh-6rem)]"
         listPanel={
           <WhatsAppLeadList
@@ -386,6 +408,8 @@ function WhatsAppLeadsPage() {
             }}
             onToggleInfo={() => setMobileView('info')}
             showInfoToggle={Boolean(selected?.lead || selected?.botAnswers)}
+            infoPanelOpen={infoPanelOpen}
+            onToggleInfoPanel={toggleInfoPanel}
             onCreateLead={canCreateLead ? handleCreateLead : undefined}
             creatingLead={creatingLead}
           />
@@ -396,6 +420,7 @@ function WhatsAppLeadsPage() {
             notes={notes}
             followups={followups}
             onClose={() => setMobileView('chat')}
+            onHidePanel={toggleInfoPanel}
             onAction={handleAction}
             onCreateLead={canCreateLead ? handleCreateLead : undefined}
             creatingLead={creatingLead}

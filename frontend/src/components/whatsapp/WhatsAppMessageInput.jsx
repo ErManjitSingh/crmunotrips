@@ -10,7 +10,7 @@ import {
   Music,
   LayoutTemplate,
   Search,
-  Check,
+  Eye,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { detectWhatsAppMediaType, fileToDataUrl } from './whatsappUtils';
@@ -26,6 +26,12 @@ const ATTACH_OPTIONS = [
 
 const MAX_BYTES = 12 * 1024 * 1024;
 
+function autoResize(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+}
+
 export default function WhatsAppMessageInput({ onSend, disabled, lead, user }) {
   const [text, setText] = useState('');
   const [showAttach, setShowAttach] = useState(false);
@@ -33,14 +39,17 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user }) {
   const [templates, setTemplates] = useState([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templateSearch, setTemplateSearch] = useState('');
+  /** Full preview of selected template before send */
+  const [templateDraft, setTemplateDraft] = useState(null);
   const [pendingFile, setPendingFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef(null);
+  const previewRef = useRef(null);
   const fileRef = useRef(null);
   const acceptRef = useRef('image/*');
 
   useEffect(() => {
-    if (!showTemplates) return;
+    if (!showTemplates || templateDraft) return;
     let cancelled = false;
     setTemplatesLoading(true);
     fetchWhatsAppTemplates()
@@ -57,7 +66,20 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user }) {
     return () => {
       cancelled = true;
     };
-  }, [showTemplates]);
+  }, [showTemplates, templateDraft]);
+
+  useEffect(() => {
+    if (templateDraft) {
+      requestAnimationFrame(() => {
+        autoResize(previewRef.current);
+        previewRef.current?.focus();
+      });
+    }
+  }, [templateDraft?.name]);
+
+  useEffect(() => {
+    autoResize(inputRef.current);
+  }, [text]);
 
   const filteredTemplates = useMemo(() => {
     const q = templateSearch.trim().toLowerCase();
@@ -95,12 +117,28 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user }) {
     setPendingFile({ file, type, previewUrl });
   };
 
-  const applyTemplate = (template) => {
+  const openTemplatePreview = (template) => {
     const rendered = renderWhatsAppTemplate(template.body, lead || {}, user || {});
-    setText(rendered);
-    setShowTemplates(false);
+    setTemplateDraft({
+      id: template._id,
+      name: template.name,
+      text: rendered,
+    });
     setTemplateSearch('');
-    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const closeTemplateFlow = () => {
+    setShowTemplates(false);
+    setTemplateDraft(null);
+    setTemplateSearch('');
+  };
+
+  const sendTemplateDraft = async () => {
+    const trimmed = String(templateDraft?.text || '').trim();
+    if (!trimmed || disabled || uploading) return;
+    await onSend({ text: trimmed, type: 'text' });
+    setText('');
+    closeTemplateFlow();
   };
 
   const handleSend = async () => {
@@ -146,14 +184,21 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user }) {
   };
 
   const canSend = Boolean(text.trim() || pendingFile) && !disabled && !uploading;
+  const canSendTemplate = Boolean(String(templateDraft?.text || '').trim()) && !disabled && !uploading;
 
   const toggleTemplates = () => {
     setShowAttach(false);
-    setShowTemplates((s) => !s);
+    if (showTemplates) {
+      closeTemplateFlow();
+      return;
+    }
+    setTemplateDraft(null);
+    setShowTemplates(true);
   };
 
   const toggleAttach = () => {
     setShowTemplates(false);
+    setTemplateDraft(null);
     setShowAttach((s) => !s);
   };
 
@@ -167,7 +212,68 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user }) {
         onChange={onFilePicked}
       />
 
-      {showTemplates && (
+      {showTemplates && templateDraft && (
+        <div className="mb-3 overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-md">
+          <div className="flex items-center justify-between gap-2 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-white px-3 py-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#25D366]/15 text-[#128C7E]">
+                <Eye className="h-3.5 w-3.5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-slate-800">Preview before send</p>
+                <p className="text-[10px] text-slate-500 truncate">{templateDraft.name}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTemplateDraft(null)}
+              className="rounded-full p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+              aria-label="Back to templates"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="bg-[#e5ddd5] px-3 py-3">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              Customer will receive
+            </p>
+            <div className="ml-auto max-w-[92%] rounded-2xl rounded-tr-md bg-[#dcf8c6] px-3 py-2.5 shadow-sm">
+              <textarea
+                ref={previewRef}
+                value={templateDraft.text}
+                onChange={(e) => {
+                  setTemplateDraft((d) => ({ ...d, text: e.target.value }));
+                  autoResize(e.target);
+                }}
+                rows={6}
+                className="w-full resize-none bg-transparent text-[13px] leading-relaxed text-slate-800 outline-none whitespace-pre-wrap"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-3 py-2.5">
+            <button
+              type="button"
+              onClick={() => setTemplateDraft(null)}
+              className="rounded-xl px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={sendTemplateDraft}
+              disabled={!canSendTemplate}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#1ebe5d] disabled:opacity-40"
+            >
+              <Send className="h-3.5 w-3.5" />
+              Send message
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showTemplates && !templateDraft && (
         <div className="mb-3 overflow-hidden rounded-2xl border border-emerald-200/80 bg-gradient-to-b from-emerald-50/80 to-white shadow-sm">
           <div className="flex items-center justify-between gap-2 border-b border-emerald-100 px-3 py-2.5">
             <div className="flex items-center gap-2 min-w-0">
@@ -177,16 +283,13 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user }) {
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-slate-800">Select template</p>
                 <p className="text-[10px] text-slate-500 truncate">
-                  Fills name & destination automatically
+                  Preview full message before sending
                 </p>
               </div>
             </div>
             <button
               type="button"
-              onClick={() => {
-                setShowTemplates(false);
-                setTemplateSearch('');
-              }}
+              onClick={closeTemplateFlow}
               className="rounded-full p-1.5 text-slate-400 hover:bg-white hover:text-slate-600"
               aria-label="Close templates"
             >
@@ -220,14 +323,14 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user }) {
                   <button
                     key={template._id}
                     type="button"
-                    onClick={() => applyTemplate(template)}
+                    onClick={() => openTemplatePreview(template)}
                     className="group mb-1.5 flex w-full flex-col gap-1 rounded-xl border border-transparent bg-white px-3 py-2.5 text-left shadow-sm ring-1 ring-slate-100 transition hover:border-emerald-200 hover:ring-emerald-200/60"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-semibold text-slate-800">{template.name}</span>
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 opacity-0 transition group-hover:opacity-100">
-                        <Check className="h-3 w-3" />
-                        Use
+                        <Eye className="h-3 w-3" />
+                        Preview
                       </span>
                     </div>
                     <p className="line-clamp-2 text-[11px] leading-relaxed text-slate-500 whitespace-pre-line">
@@ -286,72 +389,80 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user }) {
         </div>
       )}
 
-      <div className="flex items-center gap-1.5 sm:gap-2">
-        <button
-          type="button"
-          className="p-2 rounded-full hover:bg-slate-50 text-slate-400 shrink-0"
-          aria-label="Emoji"
-        >
-          <Smile className="w-5 h-5" />
-        </button>
+      {!templateDraft && (
+        <>
+          <div className="flex items-end gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              className="mb-0.5 p-2 rounded-full hover:bg-slate-50 text-slate-400 shrink-0"
+              aria-label="Emoji"
+            >
+              <Smile className="w-5 h-5" />
+            </button>
 
-        <button
-          type="button"
-          onClick={toggleTemplates}
-          className={cn(
-            'p-2 rounded-full hover:bg-emerald-50 shrink-0 transition-colors',
-            showTemplates ? 'text-[#128C7E] bg-emerald-50' : 'text-slate-400'
+            <button
+              type="button"
+              onClick={toggleTemplates}
+              className={cn(
+                'mb-0.5 p-2 rounded-full hover:bg-emerald-50 shrink-0 transition-colors',
+                showTemplates ? 'text-[#128C7E] bg-emerald-50' : 'text-slate-400'
+              )}
+              aria-label="Select template"
+              title="Select template"
+            >
+              <LayoutTemplate className="w-5 h-5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleAttach}
+              className={cn(
+                'mb-0.5 p-2 rounded-full hover:bg-slate-50 shrink-0 transition-colors',
+                showAttach ? 'text-violet-600' : 'text-slate-400'
+              )}
+              aria-label="Attach"
+            >
+              {showAttach ? <X className="w-5 h-5" /> : <Paperclip className="w-5 h-5" />}
+            </button>
+
+            <div className="flex-1 min-w-0">
+              <textarea
+                ref={inputRef}
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  autoResize(e.target);
+                }}
+                onKeyDown={handleKeyDown}
+                disabled={disabled || uploading}
+                rows={1}
+                placeholder={pendingFile ? 'Add a caption...' : 'Type a message...'}
+                className="w-full max-h-40 resize-none rounded-2xl px-4 py-2.5 bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-300"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={!canSend}
+              className="shrink-0 w-11 h-11 rounded-full bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center shadow-lg shadow-violet-600/30 disabled:opacity-40 transition-colors"
+              aria-label="Send"
+            >
+              <Send className="w-4 h-4 ml-0.5" />
+            </button>
+          </div>
+
+          {!showTemplates && (
+            <button
+              type="button"
+              onClick={toggleTemplates}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/80 px-3 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+            >
+              <LayoutTemplate className="h-3.5 w-3.5" />
+              Select template
+            </button>
           )}
-          aria-label="Select template"
-          title="Select template"
-        >
-          <LayoutTemplate className="w-5 h-5" />
-        </button>
-
-        <button
-          type="button"
-          onClick={toggleAttach}
-          className={cn(
-            'p-2 rounded-full hover:bg-slate-50 shrink-0 transition-colors',
-            showAttach ? 'text-violet-600' : 'text-slate-400'
-          )}
-          aria-label="Attach"
-        >
-          {showAttach ? <X className="w-5 h-5" /> : <Paperclip className="w-5 h-5" />}
-        </button>
-
-        <div className="flex-1 min-w-0">
-          <input
-            ref={inputRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={disabled || uploading}
-            placeholder={pendingFile ? 'Add a caption...' : 'Type a message...'}
-            className="w-full rounded-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-300"
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={!canSend}
-          className="shrink-0 w-11 h-11 rounded-full bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center shadow-lg shadow-violet-600/30 disabled:opacity-40 transition-colors"
-          aria-label="Send"
-        >
-          <Send className="w-4 h-4 ml-0.5" />
-        </button>
-      </div>
-
-      {!showTemplates && (
-        <button
-          type="button"
-          onClick={toggleTemplates}
-          className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/80 px-3 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
-        >
-          <LayoutTemplate className="h-3.5 w-3.5" />
-          Select template
-        </button>
+        </>
       )}
     </div>
   );

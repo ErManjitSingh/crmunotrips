@@ -122,6 +122,7 @@ export default function WhatsAppLeadInfoPanel({
   notes,
   followups,
   onClose,
+  onHidePanel,
   onAction,
   onCreateLead,
   creatingLead,
@@ -181,6 +182,18 @@ export default function WhatsAppLeadInfoPanel({
               type="button"
               onClick={onClose}
               className="xl:hidden p-1.5 rounded-lg hover:bg-slate-50 text-slate-400"
+              aria-label="Close lead info"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+          {onHidePanel && (
+            <button
+              type="button"
+              onClick={onHidePanel}
+              className="hidden xl:inline-flex p-1.5 rounded-lg hover:bg-slate-50 text-slate-400"
+              aria-label="Hide lead info"
+              title="Hide lead info"
             >
               <X className="w-4 h-4" />
             </button>

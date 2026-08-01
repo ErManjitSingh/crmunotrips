@@ -5,6 +5,7 @@ export default function WhatsAppInboxLayout({
   chatPanel,
   infoPanel,
   mobileView,
+  infoPanelOpen = true,
   className,
 }) {
   return (
@@ -34,12 +35,18 @@ export default function WhatsAppInboxLayout({
         {chatPanel}
       </div>
 
+      {/* Mobile overlay when viewing info */}
+      {mobileView === 'info' && (
+        <div className="flex fixed inset-0 z-30 lg:hidden flex-col bg-white">
+          {infoPanel}
+        </div>
+      )}
+
+      {/* Desktop right panel — can be hidden */}
       <div
         className={cn(
-          'w-full lg:w-[300px] xl:w-[340px] shrink-0 flex flex-col bg-white',
-          mobileView === 'info' ? 'flex fixed inset-0 z-30 lg:relative lg:inset-auto' : 'hidden xl:flex',
-          mobileView === 'list' && 'hidden xl:flex',
-          mobileView === 'chat' && 'hidden xl:flex'
+          'w-[300px] xl:w-[340px] shrink-0 flex-col bg-white border-l border-slate-200/80',
+          infoPanelOpen ? 'hidden xl:flex' : 'hidden'
         )}
       >
         {infoPanel}

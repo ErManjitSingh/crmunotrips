@@ -1,4 +1,4 @@
-import { ArrowLeft, Phone, Info, UserPlus, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Phone, Info, UserPlus, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
 import { getInitials, formatWhatsAppPhone, resolveWhatsAppDisplayName } from './whatsappUtils';
@@ -9,6 +9,8 @@ export default function WhatsAppConversationHeader({
   onBack,
   onToggleInfo,
   showInfoToggle,
+  infoPanelOpen,
+  onToggleInfoPanel,
   onCreateLead,
   creatingLead,
 }) {
@@ -80,14 +82,27 @@ export default function WhatsAppConversationHeader({
             <Info className="w-5 h-5" />
           </button>
         )}
-        <button
-          type="button"
-          onClick={onToggleInfo}
-          className={cn('hidden xl:inline-flex p-2 rounded-full hover:bg-slate-50 text-slate-500 transition-colors')}
-          aria-label="More options"
-        >
-          <MoreVertical className="w-5 h-5" />
-        </button>
+        {onToggleInfoPanel && (
+          <button
+            type="button"
+            onClick={onToggleInfoPanel}
+            className={cn(
+              'hidden xl:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold transition-colors',
+              infoPanelOpen
+                ? 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                : 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'
+            )}
+            aria-label={infoPanelOpen ? 'Hide lead info' : 'Show lead info'}
+            title={infoPanelOpen ? 'Hide lead info' : 'Show lead info'}
+          >
+            {infoPanelOpen ? (
+              <PanelRightClose className="w-4 h-4" />
+            ) : (
+              <PanelRightOpen className="w-4 h-4" />
+            )}
+            <span>{infoPanelOpen ? 'Hide info' : 'Show info'}</span>
+          </button>
+        )}
       </div>
     </div>
   );

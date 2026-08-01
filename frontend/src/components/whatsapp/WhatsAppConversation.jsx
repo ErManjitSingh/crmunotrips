@@ -14,6 +14,8 @@ function WhatsAppConversation({
   onBack,
   onToggleInfo,
   showInfoToggle,
+  infoPanelOpen,
+  onToggleInfoPanel,
   onCreateLead,
   creatingLead,
   user,
@@ -62,6 +64,8 @@ function WhatsAppConversation({
         onBack={onBack}
         onToggleInfo={onToggleInfo}
         showInfoToggle={showInfoToggle}
+        infoPanelOpen={infoPanelOpen}
+        onToggleInfoPanel={onToggleInfoPanel}
         onCreateLead={onCreateLead}
         creatingLead={creatingLead}
       />
