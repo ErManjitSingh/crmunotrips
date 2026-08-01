@@ -5,18 +5,23 @@ import DashboardPanel from './DashboardPanel';
 const COLORS = ['#3B82F6', '#EC4899', '#64748B', '#22C55E', '#8B5CF6', '#F59E0B', '#06B6D4', '#F97316'];
 
 const SOURCE_LABELS = {
-  website: 'DPW',
-  whatsapp: 'WhatsApp',
+  dpw: 'DPW',
+  dpw_wa: 'DPW WA',
+  dpw2: 'DPW2',
+  dpw2_wa: 'DPW2 WA',
   referral: 'Referral',
-  walk_in: 'Walk-in',
-  walkin: 'Walk-in',
-  phone: 'Phone',
-  email: 'Email',
-  social: 'Social Media',
-  google_ads: 'Google Ads',
-  facebook_ads: 'DPW2',
+  call_lead: 'Call Lead',
   organic: 'Organic',
-  other: 'Other',
+  website: 'DPW',
+  whatsapp: 'DPW WA',
+  walk_in: 'Call Lead',
+  walkin: 'Call Lead',
+  phone: 'Call Lead',
+  email: 'Organic',
+  social: 'DPW2',
+  google_ads: 'DPW',
+  facebook_ads: 'DPW2',
+  other: 'Organic',
 };
 
 function formatSourceName(name) {

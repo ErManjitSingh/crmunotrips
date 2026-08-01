@@ -8,18 +8,17 @@ export const WIZARD_STEPS = [
 ];
 
 export const LEAD_SOURCES = [
-  { value: 'google_ads', label: 'Website (Google Ads)' },
-  { value: 'facebook_ads', label: 'DPW2' },
-  { value: 'website', label: 'DPW' },
-  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'dpw', label: 'DPW' },
+  { value: 'dpw_wa', label: 'DPW WA' },
+  { value: 'dpw2', label: 'DPW2' },
+  { value: 'dpw2_wa', label: 'DPW2 WA' },
   { value: 'referral', label: 'Referral' },
+  { value: 'call_lead', label: 'Call Lead' },
   { value: 'organic', label: 'Organic' },
-  { value: 'phone', label: 'Phone' },
-  { value: 'social', label: 'Social' },
 ];
 
 /** Hidden for sales executive when creating / picking a source */
-export const SE_HIDDEN_LEAD_SOURCES = new Set(['website', 'google_ads', 'organic']);
+export const SE_HIDDEN_LEAD_SOURCES = new Set(['dpw', 'organic']);
 
 export function getLeadSourcesForRole(role) {
   if (role === 'sales_executive') {
@@ -29,8 +28,8 @@ export function getLeadSourcesForRole(role) {
 }
 
 export function defaultLeadSourceForRole(role) {
-  if (role === 'sales_executive') return 'phone';
-  return 'website';
+  if (role === 'sales_executive') return 'call_lead';
+  return 'dpw';
 }
 
 export const PRIORITIES = [
@@ -206,7 +205,7 @@ export const defaultWizardValues = {
   budgetRange: '',
   customBudget: '',
   budget: '',
-  leadSource: 'website',
+  leadSource: 'dpw',
   priority: 'medium',
   branchId: '',
   leadType: 'fit',

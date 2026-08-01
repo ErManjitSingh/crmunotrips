@@ -111,8 +111,15 @@ const leadSchema = new mongoose.Schema(
     source: {
       type: String,
       enum: [
-        'website',
+        'dpw',
+        'dpw_wa',
+        'dpw2',
+        'dpw2_wa',
         'referral',
+        'call_lead',
+        'organic',
+        // legacy (pre-migration)
+        'website',
         'social',
         'walk-in',
         'phone',
@@ -120,9 +127,8 @@ const leadSchema = new mongoose.Schema(
         'other',
         'google_ads',
         'facebook_ads',
-        'organic',
       ],
-      default: 'website',
+      default: 'dpw',
     },
     leadSource: { type: String },
     sourceLabel: { type: String },

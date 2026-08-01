@@ -13,14 +13,12 @@ export const LEAD_STATUSES = [
 
 /** Stored source keys — display uses short labels via getLeadSourceShortLabel */
 export const LEAD_SOURCES = [
-  'google_ads',
-  'facebook_ads',
-  'website',
-  'whatsapp',
+  'dpw',
+  'dpw_wa',
+  'dpw2',
+  'dpw2_wa',
   'referral',
-  'walk-in',
-  'phone',
-  'social',
+  'call_lead',
   'organic',
 ];
 

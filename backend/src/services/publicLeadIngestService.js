@@ -73,9 +73,10 @@ async function resolvePublicBranchId(explicitBranchId) {
 }
 
 /**
- * Website / Meta landers → DPW.
- * Facebook Lead Ads → DPW2.
- * WhatsApp chats → WhatsApp.
+ * DPW — Google / website form leads.
+ * DPW WA — Google Ads WhatsApp or landing-page WhatsApp.
+ * DPW2 — Facebook / Instagram Lead Ads forms.
+ * DPW2 WA — Facebook/Instagram Click-to-WhatsApp ads.
  */
 function resolvePublicLeadSource(raw = {}) {
   const hint = [
@@ -85,19 +86,26 @@ function resolvePublicLeadSource(raw = {}) {
     raw.sourceLabel,
     raw.channel,
     raw.captureType,
+    raw.waAdSource,
+    raw.inboundAdSource,
   ]
     .map((v) => String(v || '').toLowerCase().trim())
     .join(' ');
 
-  const isFacebook =
-    /\bfacebook\b/.test(hint) ||
-    /\bfb[_ ]?lead\b/.test(hint) ||
-    hint.includes('facebook_ads') ||
-    String(raw.channel || '').toLowerCase() === 'facebook';
+  const isFacebookForm =
+    (/\bfacebook\b/.test(hint) ||
+      /\bfb[_ ]?lead\b/.test(hint) ||
+      hint.includes('facebook_ads') ||
+      hint.includes('dpw2') ||
+      String(raw.channel || '').toLowerCase() === 'facebook' ||
+      String(raw.externalLeadSource || '').toLowerCase() === 'facebook_leadgen') &&
+    !/\bwhatsapp\b/.test(hint) &&
+    !hint.includes('dpw2_wa') &&
+    !hint.includes('ctwa');
 
-  if (isFacebook) {
+  if (isFacebookForm) {
     return {
-      source: 'facebook_ads',
+      source: 'dpw2',
       sourceLabel: 'DPW2',
       channel: 'facebook',
     };
@@ -105,18 +113,39 @@ function resolvePublicLeadSource(raw = {}) {
 
   const isWhatsApp =
     /\bwhatsapp\b/.test(hint) ||
+    hint.includes('dpw_wa') ||
+    hint.includes('dpw2_wa') ||
+    hint.includes('ctwa') ||
     String(raw.channel || '').toLowerCase() === 'whatsapp';
 
   if (isWhatsApp) {
+    const isFbWa =
+      hint.includes('dpw2_wa') ||
+      hint.includes('ctwa') ||
+      hint.includes('facebook_whatsapp') ||
+      hint.includes('fb_wa') ||
+      hint.includes('meta_whatsapp') ||
+      String(raw.waAdSource || raw.inboundAdSource || '').toLowerCase() === 'facebook_ad' ||
+      ((/\bfacebook\b|\bmeta\b|\binstagram\b|\bfb\b/.test(hint) &&
+        /\bwhatsapp\b|\bwa\b|\bctwa\b/.test(hint)));
+
+    if (isFbWa) {
+      return {
+        source: 'dpw2_wa',
+        sourceLabel: 'DPW2 WA',
+        channel: 'whatsapp',
+      };
+    }
+
     return {
-      source: 'whatsapp',
-      sourceLabel: 'WhatsApp',
+      source: 'dpw_wa',
+      sourceLabel: 'DPW WA',
       channel: 'whatsapp',
     };
   }
 
   return {
-    source: 'website',
+    source: 'dpw',
     sourceLabel: 'DPW',
     channel: 'website',
   };
@@ -152,7 +181,7 @@ async function ingestPublicLead(raw = {}) {
   const rawSourceText = String(raw.landingPage || raw.page || raw.landing || raw.sourceLabel || raw.source || '').trim();
   const landingPage =
     rawSourceText &&
-    !['dpw', 'dpw2', 'website', 'facebook', 'facebook lead', 'facebook_ads', 'fb lead', 'meta', 'whatsapp'].includes(
+    !['dpw', 'dpw wa', 'dpw2', 'dpw2 wa', 'website', 'facebook', 'facebook lead', 'facebook_ads', 'fb lead', 'meta', 'whatsapp', 'dpw_wa', 'dpw2_wa'].includes(
       rawSourceText.toLowerCase()
     )
       ? rawSourceText

@@ -1,20 +1,7 @@
 const mongoose = require('mongoose');
+const { resolveLeadSourceKey, leadSourceLabel, LEAD_SOURCE_KEYS } = require('../constants/leadSources');
 
-const LEAD_SOURCES = ['website', 'referral', 'social', 'walk-in', 'phone', 'whatsapp', 'other', 'google_ads', 'facebook_ads', 'organic'];
-
-/** Map wizard / marketing source labels to stored `source` field */
-const SOURCE_ALIASES = {
-  google_ads: 'google_ads',
-  facebook_ads: 'facebook_ads',
-  organic: 'organic',
-  website: 'website',
-  whatsapp: 'whatsapp',
-  referral: 'referral',
-  social: 'social',
-  phone: 'phone',
-  'walk-in': 'walk-in',
-  other: 'other',
-};
+const LEAD_SOURCES = LEAD_SOURCE_KEYS;
 
 function toObjectId(value) {
   if (value == null || value === '') return undefined;
@@ -25,8 +12,8 @@ function toObjectId(value) {
 }
 
 function normalizeSource(body) {
-  const raw = body.leadSource || body.source || 'website';
-  return SOURCE_ALIASES[raw] || (LEAD_SOURCES.includes(raw) ? raw : 'other');
+  const raw = body.leadSource || body.source || 'dpw';
+  return resolveLeadSourceKey(raw, 'dpw');
 }
 
 function parseBudgetRange(body, budget) {
@@ -81,7 +68,7 @@ function normalizeLeadInput(body = {}, { isUpdate = false } = {}) {
     infants: Number(body.infants) || 0,
     preferredCallTime: body.preferredCallTime?.trim?.() || body.preferredCallTime || undefined,
     source,
-    sourceLabel: body.sourceLabel || body.leadSource || source,
+    sourceLabel: body.sourceLabel ? String(body.sourceLabel).trim() : leadSourceLabel(source),
     leadSource: body.leadSource || source,
     priority: body.priority || 'medium',
     notes: body.notes || body.specialRequirements || '',

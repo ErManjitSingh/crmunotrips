@@ -82,15 +82,20 @@ function formatCreatedOn(value) {
 function formatSource(lead = {}) {
   if (lead.sourceLabel) return lead.sourceLabel;
   const map = {
-    website: 'Website',
-    google_ads: 'Website',
-    facebook_ads: 'Facebook Lead',
-    facebook: 'Facebook Lead',
-    whatsapp: 'WhatsApp',
+    dpw: 'DPW',
+    dpw_wa: 'DPW WA',
+    dpw2: 'DPW2',
+    dpw2_wa: 'DPW2 WA',
+    call_lead: 'Call Lead',
+    website: 'DPW',
+    google_ads: 'DPW',
+    facebook_ads: 'DPW2',
+    facebook: 'DPW2',
+    whatsapp: 'DPW WA',
     referral: 'Referral',
-    phone: 'Phone',
+    phone: 'Call Lead',
     organic: 'Organic',
-    'walk-in': 'Walk-in',
+    'walk-in': 'Call Lead',
   };
   const key = String(lead.source || '').toLowerCase();
   return map[key] || (key ? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : '—');

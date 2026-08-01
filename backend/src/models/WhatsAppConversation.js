@@ -50,6 +50,15 @@ const whatsAppConversationSchema = new mongoose.Schema(
     botReaskCount: { type: Number, default: 0 },
     botCompletedAt: { type: Date },
     botBlockedUntil: { type: Date },
+    /** Click-to-WhatsApp / ad entry: facebook_ad | google | landing | '' */
+    inboundAdSource: { type: String, trim: true, default: '', index: true },
+    inboundAdMeta: {
+      sourceType: { type: String, default: '' },
+      sourceId: { type: String, default: '' },
+      sourceUrl: { type: String, default: '' },
+      headline: { type: String, default: '' },
+      body: { type: String, default: '' },
+    },
   },
   { timestamps: true }
 );

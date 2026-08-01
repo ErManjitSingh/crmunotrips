@@ -210,17 +210,22 @@ function changeMeta(current, previous) {
 }
 
 const SOURCE_LABELS = {
-  website: 'DPW',
-  whatsapp: 'WhatsApp',
+  dpw: 'DPW',
+  dpw_wa: 'DPW WA',
+  dpw2: 'DPW2',
+  dpw2_wa: 'DPW2 WA',
   referral: 'Referral',
-  'walk-in': 'Walk-in',
-  social: 'Facebook Ads',
-  phone: 'Phone',
-  other: 'Organic',
-  google_ads: 'Google Ads',
-  facebook_ads: 'DPW2',
+  call_lead: 'Call Lead',
   organic: 'Organic',
-  instagram: 'Instagram',
+  website: 'DPW',
+  whatsapp: 'DPW WA',
+  'walk-in': 'Call Lead',
+  social: 'DPW2',
+  phone: 'Call Lead',
+  other: 'Organic',
+  google_ads: 'DPW',
+  facebook_ads: 'DPW2',
+  instagram: 'DPW2',
 };
 
 const SOURCE_COLORS = ['#3B82F6', '#22C55E', '#8B5CF6', '#F59E0B', '#64748B', '#EC4899', '#06B6D4'];
@@ -1211,15 +1216,19 @@ async function buildSalesManagerDashboard(options = {}) {
   );
 
   const colorsBySource = {
+    dpw: '#7C3AED',
+    dpw_wa: '#14B8A6',
+    dpw2: '#3B82F6',
+    dpw2_wa: '#0EA5E9',
+    referral: '#8B5CF6',
+    call_lead: '#10B981',
+    organic: '#64748B',
     whatsapp: '#14B8A6',
     social: '#3B82F6',
     facebook_ads: '#3B82F6',
     phone: '#10B981',
     website: '#7C3AED',
-    instagram: '#EC4899',
-    google_ads: '#F59E0B',
-    referral: '#8B5CF6',
-    organic: '#64748B',
+    google_ads: '#7C3AED',
     other: '#94A3B8',
   };
   const palette = ['#7C3AED', '#3B82F6', '#10B981', '#14B8A6', '#F59E0B', '#EC4899'];

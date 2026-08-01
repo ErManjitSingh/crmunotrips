@@ -1,10 +1,15 @@
 import { Globe, MessageCircle, Users, MapPin, MoreHorizontal } from 'lucide-react';
 
 const SOURCE_ICONS = {
+  DPW: Globe,
+  'DPW WA': MessageCircle,
+  DPW2: Users,
+  'DPW2 WA': MessageCircle,
+  Referral: Users,
+  'Call Lead': MapPin,
+  Organic: Globe,
   Website: Globe,
   WhatsApp: MessageCircle,
-  Referral: Users,
-  'Walk-in': MapPin,
 };
 
 function SourceIcon({ name }) {

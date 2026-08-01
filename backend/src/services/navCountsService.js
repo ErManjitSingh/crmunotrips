@@ -71,7 +71,10 @@ async function aggregateAdminLeadCounts(branchId) {
         assigned: [{ $match: { assignedTo: { $ne: null } } }, { $count: 'n' }],
         converted: [{ $match: { status: 'converted' } }, { $count: 'n' }],
         lost: [{ $match: { status: { $in: ['lost', 'booked_from_another_company'] } } }, { $count: 'n' }],
-        whatsapp: [{ $match: { source: 'whatsapp' } }, { $count: 'n' }],
+        whatsapp: [
+          { $match: { source: { $in: ['whatsapp', 'dpw_wa', 'dpw2_wa'] } } },
+          { $count: 'n' },
+        ],
         statusNew: [{ $match: { status: 'new' } }, { $count: 'n' }],
         hot: [
           {

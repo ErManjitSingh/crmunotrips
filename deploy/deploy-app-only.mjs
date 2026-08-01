@@ -112,6 +112,8 @@ echo "TESTING_DISABLED"
 ` : 'echo "==> Skipping testing disable (pass --disable-testing to shut it down)"'}
 
 sleep 2
+echo "==> Backfill lead sources..."
+cd "$APP" && node deploy/backfill-lead-sources.mjs || echo "LEAD_SOURCE_BACKFILL_SKIPPED"
 curl -sS https://app.unotrips.com/api/health
 echo
 echo APP_ONLY_DEPLOY_OK

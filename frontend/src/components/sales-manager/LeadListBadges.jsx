@@ -8,6 +8,10 @@ import LeadCallStats from '../leads/LeadCallStats';
 import { LEAD_ACCEPT_MINUTES } from '../../constants/salesSop';
 
 const SOURCE_STYLES = {
+  dpw: 'bg-gradient-to-r from-sky-500/20 to-blue-500/15 text-sky-700 dark:text-sky-300 ring-sky-400/40',
+  dpw_wa: 'bg-gradient-to-r from-green-500/20 to-emerald-500/15 text-green-700 dark:text-green-300 ring-green-400/40',
+  dpw2: 'bg-gradient-to-r from-indigo-500/20 to-blue-500/15 text-indigo-700 dark:text-indigo-300 ring-indigo-400/40',
+  dpw2_wa: 'bg-gradient-to-r from-teal-500/20 to-cyan-500/15 text-teal-700 dark:text-teal-300 ring-teal-400/40',
   website: 'bg-gradient-to-r from-sky-500/20 to-blue-500/15 text-sky-700 dark:text-sky-300 ring-sky-400/40',
   google_ads: 'bg-gradient-to-r from-sky-500/20 to-blue-500/15 text-sky-700 dark:text-sky-300 ring-sky-400/40',
   referral: 'bg-gradient-to-r from-emerald-500/20 to-teal-500/15 text-emerald-700 dark:text-emerald-300 ring-emerald-400/40',
@@ -15,6 +19,7 @@ const SOURCE_STYLES = {
   facebook_ads: 'bg-gradient-to-r from-indigo-500/20 to-blue-500/15 text-indigo-700 dark:text-indigo-300 ring-indigo-400/40',
   'fb-lead': 'bg-gradient-to-r from-indigo-500/20 to-blue-500/15 text-indigo-700 dark:text-indigo-300 ring-indigo-400/40',
   phone: 'bg-gradient-to-r from-amber-500/20 to-orange-500/15 text-amber-700 dark:text-amber-300 ring-amber-400/40',
+  call_lead: 'bg-gradient-to-r from-amber-500/20 to-orange-500/15 text-amber-700 dark:text-amber-300 ring-amber-400/40',
   'walk-in': 'bg-gradient-to-r from-rose-500/20 to-pink-500/15 text-rose-700 dark:text-rose-300 ring-rose-400/40',
   whatsapp: 'bg-gradient-to-r from-green-500/20 to-emerald-500/15 text-green-700 dark:text-green-300 ring-green-400/40',
   wa: 'bg-gradient-to-r from-green-500/20 to-emerald-500/15 text-green-700 dark:text-green-300 ring-green-400/40',
@@ -65,7 +70,13 @@ export function LeadIdPill({ id }) {
 export function SourceBadge({ source, label, sourceShort }) {
   const display = sourceShort || label || getLeadSourceShortLabel(source, label);
   const styleKey = (source || display || '').toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
-  const isWa = styleKey.includes('whatsapp') || display === 'WA';
+  const isWa =
+    styleKey.includes('whatsapp') ||
+    styleKey.includes('dpw_wa') ||
+    styleKey.includes('dpw2_wa') ||
+    display === 'WA' ||
+    display === 'DPW WA' ||
+    display === 'DPW2 WA';
   return (
     <span className={cn(
       'text-sm font-medium whitespace-nowrap',

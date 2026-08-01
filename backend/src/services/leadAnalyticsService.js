@@ -4,16 +4,21 @@ const User = require('../models/User');
 const { withBranch } = require('../utils/branchScope');
 
 const SOURCE_LABELS = {
-  google_ads: 'Google Ads',
+  dpw: 'DPW',
+  dpw_wa: 'DPW WA',
+  dpw2: 'DPW2',
+  dpw2_wa: 'DPW2 WA',
+  referral: 'Referral',
+  call_lead: 'Call Lead',
+  organic: 'Organic',
+  google_ads: 'DPW',
   facebook_ads: 'DPW2',
   website: 'DPW',
-  whatsapp: 'WhatsApp',
-  referral: 'Referral',
-  'walk-in': 'Walk-in',
-  phone: 'Phone',
-  social: 'Social',
-  organic: 'Organic',
-  other: 'Other',
+  whatsapp: 'DPW WA',
+  'walk-in': 'Call Lead',
+  phone: 'Call Lead',
+  social: 'DPW2',
+  other: 'Organic',
 };
 
 const AGING_LABELS = {

@@ -124,7 +124,7 @@ async function resolveWhatsAppBranchId(lead) {
   }
 }
 
-async function upsertConversation({ phone, waId, profileName, text, direction, timestamp }) {
+async function upsertConversation({ phone, waId, profileName, text, direction, timestamp, referral }) {
   const phone10 = normalizePhone(phone);
   if (!phone10) return null;
 
@@ -149,6 +149,24 @@ async function upsertConversation({ phone, waId, profileName, text, direction, t
   }
   const branchId = await resolveWhatsAppBranchId(lead);
 
+  const adFromReferral = (() => {
+    if (!referral || typeof referral !== 'object') return null;
+    const sourceType = String(referral.source_type || referral.sourceType || '').toLowerCase();
+    const sourceId = String(referral.source_id || referral.sourceId || '').trim();
+    const sourceUrl = String(referral.source_url || referral.sourceUrl || '').trim();
+    const headline = String(referral.headline || '').trim();
+    const body = String(referral.body || '').trim();
+    if (!sourceType && !sourceId && !sourceUrl) return null;
+    const isFbAd =
+      sourceType === 'ad' ||
+      Boolean(sourceId) ||
+      /facebook|fb\.com|instagram|meta\.com/i.test(sourceUrl);
+    return {
+      inboundAdSource: isFbAd ? 'facebook_ad' : 'ad',
+      inboundAdMeta: { sourceType, sourceId, sourceUrl, headline, body },
+    };
+  })();
+
   if (!conversation) {
     conversation = await WhatsAppConversation.create({
       phone: phone10,
@@ -160,6 +178,7 @@ async function upsertConversation({ phone, waId, profileName, text, direction, t
       unreadCount: direction === 'incoming' ? 1 : 0,
       lead: lead?._id || null,
       branchId: branchId || undefined,
+      ...(adFromReferral || {}),
     });
   } else {
     conversation.profileName = profileName || conversation.profileName;
@@ -170,6 +189,10 @@ async function upsertConversation({ phone, waId, profileName, text, direction, t
     if (direction === 'incoming') conversation.unreadCount = (conversation.unreadCount || 0) + 1;
     if (!conversation.lead && lead?._id) conversation.lead = lead._id;
     if (!conversation.branchId && branchId) conversation.branchId = branchId;
+    if (adFromReferral && !conversation.inboundAdSource) {
+      conversation.inboundAdSource = adFromReferral.inboundAdSource;
+      conversation.inboundAdMeta = adFromReferral.inboundAdMeta;
+    }
     await conversation.save();
   }
 
@@ -231,6 +254,7 @@ async function processWhatsAppWebhook(body = {}) {
             text,
             direction: 'incoming',
             timestamp: ts,
+            referral: message.referral || null,
           });
           if (!conversation) continue;
 
@@ -348,6 +372,7 @@ async function createLeadFromConversation(conversationId, extras = {}, actor = n
 
   const answers = conversation.botAnswers || {};
   const adults = answers.adults || answers.travelers || extras.travelers || extras.adults;
+  const isFbWa = String(conversation.inboundAdSource || '').toLowerCase() === 'facebook_ad';
   const lead = await ingestPublicLead({
     name: extras.name || conversation.profileName || `WhatsApp ${conversation.phone.slice(-4)}`,
     phone: conversation.phone,
@@ -367,10 +392,12 @@ async function createLeadFromConversation(conversationId, extras = {}, actor = n
       ? `Best time to call: ${answers.bestTimeToCall}`
       : '',
     channel: 'whatsapp',
-    source: 'WhatsApp',
-    sourceLabel: 'WhatsApp',
-    sourceKey: 'whatsapp',
-    captureType: 'whatsapp_chat',
+    source: isFbWa ? 'dpw2_wa' : 'dpw_wa',
+    sourceLabel: isFbWa ? 'DPW2 WA' : 'DPW WA',
+    sourceKey: isFbWa ? 'dpw2_wa' : 'dpw_wa',
+    inboundAdSource: conversation.inboundAdSource || '',
+    waAdSource: conversation.inboundAdSource || '',
+    captureType: isFbWa ? 'whatsapp_ctwa' : 'whatsapp_chat',
   });
 
   conversation.lead = lead._id;

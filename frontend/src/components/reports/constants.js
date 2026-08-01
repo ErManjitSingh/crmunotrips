@@ -32,6 +32,6 @@ export const FILTER_DEFAULTS = {
   package: '',
 };
 
-export const SOURCE_OPTIONS = ['Google Ads', 'Facebook Ads', 'Website', 'WhatsApp', 'Referral', 'Organic'];
+export const SOURCE_OPTIONS = ['DPW', 'DPW WA', 'DPW2', 'DPW2 WA', 'Referral', 'Call Lead', 'Organic'];
 export const DESTINATION_OPTIONS = ['Shimla', 'Manali', 'Kashmir', 'Goa', 'Kerala', 'Leh Ladakh'];
 export const EXECUTIVE_OPTIONS = ['Priya Patel', 'Amit Kumar', 'Vikram Singh', 'Sneha Reddy'];

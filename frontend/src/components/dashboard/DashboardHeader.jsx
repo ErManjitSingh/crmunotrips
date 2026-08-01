@@ -13,14 +13,12 @@ import { cn } from '../../lib/utils';
 
 const SOURCE_OPTIONS = [
   { value: '', label: 'All Sources' },
-  { value: 'google_ads', label: 'Google Ads' },
-  { value: 'facebook_ads', label: 'DPW2' },
-  { value: 'website', label: 'DPW' },
-  { value: 'whatsapp', label: 'WhatsApp' },
-  { value: 'instagram', label: 'Instagram' },
+  { value: 'dpw', label: 'DPW' },
+  { value: 'dpw_wa', label: 'DPW WA' },
+  { value: 'dpw2', label: 'DPW2' },
+  { value: 'dpw2_wa', label: 'DPW2 WA' },
   { value: 'referral', label: 'Referral' },
-  { value: 'phone', label: 'Phone' },
-  { value: 'walk-in', label: 'Walk-in' },
+  { value: 'call_lead', label: 'Call Lead' },
   { value: 'organic', label: 'Organic' },
 ];
 

@@ -57,7 +57,7 @@ export function leadToWizardValues(lead) {
     adults,
     children,
     infants,
-    leadSource: lead.leadSource || lead.source || 'website',
+    leadSource: lead.leadSource || lead.source || 'dpw',
     priority: lead.priority || 'medium',
     branchId: lead.branchId || '',
     leadType: lead.leadType || 'fit',

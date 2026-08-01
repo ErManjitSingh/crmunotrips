@@ -1,47 +1,52 @@
-/** Short display labels for lead source (tables, badges) */
-const SOURCE_SHORT = {
-  google_ads: 'Website',
-  facebook_ads: 'DPW2',
-  facebook: 'DPW2',
-  website: 'DPW',
-  whatsapp: 'WA',
-  referral: 'Referral',
-  social: 'Social',
-  phone: 'Phone',
-  'walk-in': 'Walk-in',
-  organic: 'Organic',
-  other: 'Other',
-};
+const {
+  LEAD_SOURCE_KEYS,
+  LEAD_SOURCE_LABELS,
+  LEAD_SOURCE_ALIASES,
+  resolveLeadSourceKey,
+  leadSourceLabel,
+  normalizeLeadSourceKey,
+} = require('../constants/leadSources');
 
-function normalizeSourceKey(raw) {
-  if (!raw) return '';
-  return String(raw)
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_')
-    .replace(/-/g, '_');
-}
+/** Short display labels for lead source (tables, badges) */
+const SOURCE_SHORT = { ...LEAD_SOURCE_LABELS };
 
 function getLeadSourceShortLabel(source, sourceLabel) {
   const explicit = String(sourceLabel || '').trim();
   if (explicit) {
+    const resolvedFromLabel = resolveLeadSourceKey(explicit, '');
+    if (resolvedFromLabel && LEAD_SOURCE_KEYS.includes(resolvedFromLabel)) {
+      return LEAD_SOURCE_LABELS[resolvedFromLabel];
+    }
     const lower = explicit.toLowerCase();
-    if (lower === 'dpw') return 'DPW';
+    if (lower === 'dpw wa' || lower === 'dpw_wa') return 'DPW WA';
+    if (lower === 'dpw2 wa' || lower === 'dpw2_wa') return 'DPW2 WA';
     if (lower === 'dpw2') return 'DPW2';
+    if (lower === 'dpw') return 'DPW';
+    if (lower === 'call lead' || lower === 'call_lead') return 'Call Lead';
   }
 
-  const key = normalizeSourceKey(source);
-  if (SOURCE_SHORT[key]) return SOURCE_SHORT[key];
+  const key = resolveLeadSourceKey(source || '', '');
+  if (key && SOURCE_SHORT[key]) return SOURCE_SHORT[key];
 
   const label = explicit.toLowerCase();
-  if (label.includes('facebook') || label.includes('fb ')) return 'DPW2';
-  if (label.includes('google')) return 'Website';
-  if (label.includes('whatsapp') || label.includes('wa ')) return 'WA';
-  if (label.includes('instagram') || label.includes('social')) return 'Social';
-  if (label === 'dpw2' || label.includes('dpw2')) return 'DPW2';
+  if (label.includes('dpw2') && (label.includes('wa') || label.includes('whatsapp'))) return 'DPW2 WA';
+  if (label.includes('dpw') && (label.includes('wa') || label.includes('whatsapp'))) return 'DPW WA';
+  if (label.includes('facebook') || label.includes('instagram') || label.includes('fb ')) return 'DPW2';
+  if (label.includes('google') && !label.includes('whatsapp')) return 'DPW';
+  if (label.includes('call')) return 'Call Lead';
+  if (label.includes('referral')) return 'Referral';
+  if (label.includes('organic')) return 'Organic';
+  if (label.includes('whatsapp') || label.includes('wa ')) return 'DPW WA';
+  if (label.includes('dpw2')) return 'DPW2';
   if (label.includes('dpw')) return 'DPW';
 
-  return SOURCE_SHORT.other;
+  return SOURCE_SHORT.organic;
 }
 
-module.exports = { SOURCE_SHORT, getLeadSourceShortLabel, normalizeSourceKey };
+module.exports = {
+  SOURCE_SHORT,
+  getLeadSourceShortLabel,
+  normalizeSourceKey: normalizeLeadSourceKey,
+  LEAD_SOURCE_ALIASES,
+  leadSourceLabel,
+};
