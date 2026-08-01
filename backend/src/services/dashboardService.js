@@ -17,6 +17,7 @@ const { getEnterpriseKpis, getSourceAnalytics, getExecutivePerformance } = requi
 const { getEmailDashboardStats } = require('./emailStatsService');
 const { getMonthlyTargets, buildTargetProgress } = require('./salesTargetService');
 const { withBranch } = require('../utils/branchScope');
+const { rollupCityStatsIntoStates } = require('../utils/destinationHierarchy');
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DASHBOARD_NEW_LEADS_LIMIT = 5;
@@ -99,16 +100,24 @@ async function buildDestinationWiseStats(leadScope, period = 'all') {
       },
     },
     { $sort: { total: -1 } },
-    { $limit: 25 },
   ]);
 
-  return rows.map((row) => ({
+  const mapped = rows.map((row) => ({
     destination: row.destination,
     total: row.total,
     converted: row.converted,
     active: row.active,
     conversionRate: row.total ? Math.round((row.converted / row.total) * 1000) / 10 : 0,
   }));
+
+  // State rows include conversions/leads from their cities (Manali → Himachal Pradesh)
+  return rollupCityStatsIntoStates(mapped, {
+    nameField: 'destination',
+    metricFields: ['total', 'converted', 'active'],
+    rateConfig: { field: 'conversionRate', numerator: 'converted', denominator: 'total' },
+    sortField: 'total',
+    limit: 25,
+  });
 }
 
 function resolveReportPeriod(dateFrom, dateTo) {
@@ -504,7 +513,6 @@ async function buildAdminDashboard(options = {}) {
         },
       },
       { $sort: { queries: -1, name: 1 } },
-      { $limit: 7 },
     ]),
   ]);
 
@@ -578,14 +586,23 @@ async function buildAdminDashboard(options = {}) {
     revenue: paymentMap[b.key] || 0,
   }));
 
-  const topDestinations = topDestinationAgg.map((row) => ({
-    name: row.name,
-    queries: row.queries || 0,
-    conversions: row.conversions || 0,
-    conversionRate: row.queries
-      ? Math.round(((row.conversions || 0) / row.queries) * 1000) / 10
-      : 0,
-  }));
+  const topDestinations = await rollupCityStatsIntoStates(
+    topDestinationAgg.map((row) => ({
+      name: row.name,
+      queries: row.queries || 0,
+      conversions: row.conversions || 0,
+      conversionRate: row.queries
+        ? Math.round(((row.conversions || 0) / row.queries) * 1000) / 10
+        : 0,
+    })),
+    {
+      nameField: 'name',
+      metricFields: ['queries', 'conversions'],
+      rateConfig: { field: 'conversionRate', numerator: 'conversions', denominator: 'queries' },
+      sortField: 'queries',
+      limit: 7,
+    }
+  );
 
   const periodSourceTotal = periodSourceAgg.reduce((s, r) => s + r.count, 0) || 1;
   const leadsBySourcePeriod = periodSourceAgg
@@ -1498,7 +1515,6 @@ async function buildReportsAnalytics(options = {}) {
         },
       },
       { $sort: { leads: -1 } },
-      { $limit: 8 },
     ]),
     Lead.aggregate([{ $match: withBranch({}, branchId) }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
     User.find(withBranch({ role: 'sales_executive', status: 'active' }, branchId)).select('name email').lean(),
@@ -1587,6 +1603,21 @@ async function buildReportsAnalytics(options = {}) {
   );
   const reactivationWidget = await buildReactivationWidget(branchId);
 
+  const destinations = await rollupCityStatsIntoStates(
+    destAgg.map((d) => ({
+      destination: d._id,
+      leads: d.leads,
+      conversions: d.conversions,
+      revenue: d.revenue,
+    })),
+    {
+      nameField: 'destination',
+      metricFields: ['leads', 'conversions', 'revenue'],
+      sortField: 'leads',
+      limit: 8,
+    }
+  );
+
   return {
     summary: {
       totalLeads,
@@ -1613,12 +1644,7 @@ async function buildReportsAnalytics(options = {}) {
       roi: s.leads && s.conversions ? Math.round((s.conversions / s.leads) * 100) : 0,
     })),
     executives: execStats,
-    destinations: destAgg.map((d) => ({
-      destination: d._id,
-      leads: d.leads,
-      conversions: d.conversions,
-      revenue: d.revenue,
-    })),
+    destinations,
     packages: packages.map((p) => ({
       name: p.name,
       views: 0,
