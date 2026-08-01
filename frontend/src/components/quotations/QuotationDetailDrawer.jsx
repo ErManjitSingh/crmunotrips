@@ -176,6 +176,15 @@ export default function QuotationDetailDrawer({
               viewingPrevious={viewingPreviousQuotation}
             />
 
+            {quote.resubmissionReason && !quote.isRevisionSubmission ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                  Executive reason for re-submission
+                </p>
+                <p className="mt-1 text-sm text-slate-800 whitespace-pre-wrap">{quote.resubmissionReason}</p>
+              </div>
+            ) : null}
+
             <section className="space-y-3">
               <h4 className="text-xs font-medium uppercase tracking-wider text-content-muted">Customer (sent to)</h4>
               <div className="rounded-xl border border-subtle bg-surface-elevated/40 p-4 space-y-3">

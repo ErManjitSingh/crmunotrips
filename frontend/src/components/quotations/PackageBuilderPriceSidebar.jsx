@@ -30,6 +30,10 @@ export default function PackageBuilderPriceSidebar({
   submitLabel = 'Review & Continue',
   hideActions = false,
   className = '',
+  needsResubmissionReason = false,
+  resubmissionReason = '',
+  onResubmissionReasonChange,
+  disableSubmit = false,
 }) {
   const breakdown = useMemo(() => getDisplayedCostBreakdown(pricing || {}), [pricing]);
   const youSave = Number(breakdown.youSave ?? pricing?.discount ?? 0) || 0;
@@ -213,14 +217,35 @@ export default function PackageBuilderPriceSidebar({
 
         {!hideActions ? (
           <div className="px-5 pb-5 space-y-2">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={onSubmit}
-              className="w-full h-11 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold shadow-md shadow-violet-600/25 transition-colors disabled:opacity-60"
-            >
-              {saving ? 'Saving…' : submitLabel || 'Review & Continue'}
-            </button>
+            {needsResubmissionReason && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-3 space-y-2">
+                <p className="text-xs font-semibold text-amber-900">
+                  Why are you submitting this quotation again?
+                </p>
+                <p className="text-[11px] text-amber-800/80">
+                  A quotation was already created for this lead. Share the reason for Team Leader /
+                  Manager review. Submit will unlock after you write it.
+                </p>
+                <textarea
+                  value={resubmissionReason}
+                  onChange={(e) => onResubmissionReasonChange?.(e.target.value)}
+                  rows={3}
+                  maxLength={1000}
+                  placeholder="e.g. Customer requested hotel upgrade / revised dates / lower budget…"
+                  className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                />
+              </div>
+            )}
+            {(!needsResubmissionReason || Boolean(String(resubmissionReason || '').trim())) && (
+              <button
+                type="button"
+                disabled={saving || disableSubmit}
+                onClick={onSubmit}
+                className="w-full h-11 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold shadow-md shadow-violet-600/25 transition-colors disabled:opacity-60"
+              >
+                {saving ? 'Saving…' : submitLabel || 'Review & Continue'}
+              </button>
+            )}
             <button
               type="button"
               disabled={saving}

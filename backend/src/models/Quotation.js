@@ -64,6 +64,8 @@ const quotationSchema = new mongoose.Schema(
     selectedFlights: [{ type: mongoose.Schema.Types.Mixed }],
     selectedActivities: [{ type: mongoose.Schema.Types.Mixed }],
     customizations: { type: String, default: '' },
+    /** Required when executive re-submits a 2nd+ quotation for TL/Manager approval */
+    resubmissionReason: { type: String, trim: true, maxlength: 1000, default: '' },
     createdByExecutive: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     teamLeader: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

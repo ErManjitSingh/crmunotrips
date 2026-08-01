@@ -71,6 +71,22 @@ async function resolveExecutiveQuotationStatus(leadId, requestedStatus, excludeQ
   return priorCount === 0 ? 'approved' : 'pending_approval';
 }
 
+function normalizeResubmissionReason(raw) {
+  return String(raw || '').trim().slice(0, 1000);
+}
+
+function assertResubmissionReasonIfNeeded(status, reason) {
+  if (status !== 'pending_approval') return '';
+  const cleaned = normalizeResubmissionReason(reason);
+  if (!cleaned) {
+    throw new ApiError(
+      400,
+      'Please provide a reason for submitting this quotation again for approval'
+    );
+  }
+  return cleaned;
+}
+
 function buildExecutiveLeadFilter(filter) {
   if (filter === 'new') return { status: 'new' };
   if (filter === 'contacted') return { status: 'contacted' };
@@ -489,6 +505,10 @@ const createQuotation = asyncHandler(async (req, res) => {
   const teamLeader = await getTeamLeaderForExecutive(req.user._id);
   const requestedStatus = req.body.status === 'draft' ? 'draft' : 'pending_approval';
   const status = await resolveExecutiveQuotationStatus(lead._id, requestedStatus);
+  const resubmissionReason = assertResubmissionReasonIfNeeded(
+    status,
+    req.body.resubmissionReason || req.body.submissionReason
+  );
   const now = new Date();
 
   const timeline = [
@@ -512,7 +532,7 @@ const createQuotation = asyncHandler(async (req, res) => {
       type: 'pending_approval',
       date: now,
       user: req.user.name,
-      notes: `Submitted to ${teamLeader.name} (Team Leader) for approval`,
+      notes: `Submitted to ${teamLeader.name} (Team Leader) for approval. Reason: ${resubmissionReason}`,
     });
   }
 
@@ -528,6 +548,7 @@ const createQuotation = asyncHandler(async (req, res) => {
     selectedFlights: req.body.selectedFlights || [],
     selectedActivities: req.body.selectedActivities || [],
     customizations: req.body.customizations,
+    resubmissionReason: resubmissionReason || '',
     createdByExecutive: req.user._id,
     branchId: req.branchId || req.user.branchId || null,
     teamLeader: teamLeader?._id,
@@ -606,13 +627,16 @@ const createQuotation = asyncHandler(async (req, res) => {
       branchId: lead.branchId,
       type: 'quotation_submitted',
       title: 'Quotation Submitted',
-      description: `${quotation.quoteNumber} submitted for Team Leader approval · ${pkgName} · ${priceLabel}`,
+      description: `${quotation.quoteNumber} submitted for Team Leader approval · ${pkgName} · ${priceLabel}${
+        resubmissionReason ? ` · Reason: ${resubmissionReason}` : ''
+      }`,
       actor: req.user,
       meta: {
         quotationId: quotation._id,
         quoteNumber: quotation.quoteNumber,
         status,
         amount: quoteTotal,
+        resubmissionReason: resubmissionReason || null,
       },
     });
   } else if (status === 'approved') {
@@ -680,7 +704,12 @@ const updateQuotation = asyncHandler(async (req, res) => {
   } else if (action === 'submit') {
     const teamLeader = quotation.teamLeader || (await getTeamLeaderForExecutive(req.user._id));
     const status = await resolveExecutiveQuotationStatus(quotation.lead, 'pending_approval', quotation._id);
+    const resubmissionReason = assertResubmissionReasonIfNeeded(
+      status,
+      req.body.resubmissionReason || req.body.submissionReason || remarks
+    );
     quotation.status = status;
+    if (resubmissionReason) quotation.resubmissionReason = resubmissionReason;
     if (status === 'approved') {
       quotation.timeline.push({
         type: 'approved',
@@ -694,8 +723,8 @@ const updateQuotation = asyncHandler(async (req, res) => {
         date: now,
         user: req.user.name,
         notes: teamLeader
-          ? `Submitted to ${teamLeader.name || 'Team Leader'} for approval`
-          : 'Submitted for approval',
+          ? `Submitted to ${teamLeader.name || 'Team Leader'} for approval. Reason: ${resubmissionReason}`
+          : `Submitted for approval. Reason: ${resubmissionReason}`,
       });
     }
   } else if (action === 'edit') {
@@ -732,7 +761,12 @@ const updateQuotation = asyncHandler(async (req, res) => {
         'pending_approval',
         quotation._id
       );
+      const resubmissionReason = assertResubmissionReasonIfNeeded(
+        nextStatus,
+        payload.resubmissionReason || payload.submissionReason || remarks
+      );
       quotation.status = nextStatus;
+      if (resubmissionReason) quotation.resubmissionReason = resubmissionReason;
       quotation.timeline.push({
         type: nextStatus === 'approved' ? 'approved' : 'pending_approval',
         date: now,
@@ -740,7 +774,7 @@ const updateQuotation = asyncHandler(async (req, res) => {
         notes:
           nextStatus === 'approved'
             ? 'Updated quotation — auto-approved'
-            : `Updated and re-submitted for approval (was ${prevStatus})`,
+            : `Updated and re-submitted for approval (was ${prevStatus}). Reason: ${resubmissionReason}`,
       });
     } else {
       quotation.status = 'draft';

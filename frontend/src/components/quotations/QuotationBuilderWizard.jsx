@@ -64,7 +64,7 @@ const EXECUTIVE_CONFIG = {
   submitStatus: 'pending_approval',
   draftLabel: 'Save Draft',
   submitLabel: 'Submit Quotation',
-  approvalNote: 'The first quotation for a lead is approved automatically. From the second quote onward, Team Leader approval is required before sending to the customer.',
+  approvalNote: 'The first quotation for a lead is approved automatically. From the second quote onward, Team Leader approval is required — you must share a reason before you can submit.',
 };
 
 const TEAM_LEADER_CONFIG = {
@@ -149,6 +149,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const [saving, setSaving] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(isEditMode);
   const [editMeta, setEditMeta] = useState({ quoteNumber: '', status: '' });
+  const [resubmissionReason, setResubmissionReason] = useState('');
+  const [needsResubmissionReason, setNeedsResubmissionReason] = useState(false);
   const hydratedEditRef = useRef(false);
 
   const isMongoPackageId = (id) => id && /^[a-fA-F0-9]{24}$/.test(String(id));
@@ -325,6 +327,39 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   }, [initialLeadId, fetchLeads, config.leadsPath]);
 
   const selectedLead = leads.find((l) => String(l._id) === String(state.leadId));
+
+  useEffect(() => {
+    if (mode !== 'executive' || !state.leadId) {
+      setNeedsResubmissionReason(false);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await API.get(`/sales-executive/leads/${state.leadId}/quotations`, {
+          skipErrorToast: true,
+          skipSuccessToast: true,
+        });
+        const rows = Array.isArray(data)
+          ? data
+          : data?.quotations || data?.data || [];
+        const prior = rows.filter((q) => {
+          if (!q || q.status === 'draft') return false;
+          if (editQuoteId && String(q._id) === String(editQuoteId)) return false;
+          return true;
+        });
+        if (!cancelled) {
+          setNeedsResubmissionReason(prior.length > 0);
+          if (prior.length === 0) setResubmissionReason('');
+        }
+      } catch {
+        if (!cancelled) setNeedsResubmissionReason(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, state.leadId, editQuoteId]);
   const selectedPkg = packages.find((p) => String(p._id) === String(state.packageId));
   const activePkg = selectedPkgDetail || selectedPkg;
   const packageNights = parsePackageNights(activePkg);
@@ -628,6 +663,14 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const handleSave = async (saveAs) => {
     if (!state.leadId || !state.packageId) return;
     const status = saveAs === 'draft' ? config.draftStatus : config.submitStatus;
+    if (
+      mode === 'executive' &&
+      saveAs === 'submit' &&
+      needsResubmissionReason &&
+      !resubmissionReason.trim()
+    ) {
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -650,6 +693,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         selectedActivities: activities.filter((a) => state.selectedActivityIds.includes(a._id)),
         package: buildPackageSnapshot(activePkg),
         customizations: state.customizations,
+        ...(mode === 'executive' && saveAs === 'submit' && needsResubmissionReason
+          ? { resubmissionReason: resubmissionReason.trim() }
+          : {}),
       };
 
       let res;
@@ -852,6 +898,12 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           draftLabel={isEditMode ? 'Update Draft' : config.draftLabel}
           submitLabel={isEditMode ? 'Update & Submit' : config.submitLabel}
           emailEndpoint={emailEndpointForMode(mode)}
+          needsResubmissionReason={mode === 'executive' && needsResubmissionReason}
+          resubmissionReason={resubmissionReason}
+          onResubmissionReasonChange={setResubmissionReason}
+          disableSubmit={
+            mode === 'executive' && needsResubmissionReason && !resubmissionReason.trim()
+          }
         />
       ) : (
       <div className="min-h-[360px] rounded-2xl border border-subtle bg-surface p-4 shadow-lg sm:min-h-[400px] sm:p-8">

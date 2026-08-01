@@ -43,6 +43,7 @@ function buildDiscountSummary(quote) {
     discount,
     discountPercent,
     profitMargin: toNum(pricing.profitMargin ?? quote.costing1?.profitMargin),
+    resubmissionReason: quote.resubmissionReason || '',
   };
 }
 

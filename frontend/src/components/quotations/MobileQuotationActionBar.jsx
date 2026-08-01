@@ -15,8 +15,13 @@ export default function MobileQuotationActionBar({
   onSaveDraft,
   onSubmit,
   disableSubmit = false,
+  needsResubmissionReason = false,
+  resubmissionReason = '',
+  onResubmissionReasonChange,
   className,
 }) {
+  const canSubmit = !disableSubmit && (!needsResubmissionReason || Boolean(String(resubmissionReason || '').trim()));
+
   return (
     <div
       className={cn(
@@ -26,6 +31,22 @@ export default function MobileQuotationActionBar({
         className,
       )}
     >
+      {needsResubmissionReason && (
+        <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-amber-800 mb-1">
+            Reason for re-submission
+          </p>
+          <textarea
+            value={resubmissionReason}
+            onChange={(e) => onResubmissionReasonChange?.(e.target.value)}
+            rows={2}
+            maxLength={1000}
+            placeholder="Why sending again for approval?"
+            className="w-full rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-amber-400"
+          />
+        </div>
+      )}
+
       {onOpenPricing ? (
         <button
           type="button"
@@ -59,14 +80,20 @@ export default function MobileQuotationActionBar({
             </span>
           </button>
         ) : null}
-        <button
-          type="button"
-          disabled={saving || disableSubmit}
-          onClick={onSubmit}
-          className="flex h-11 flex-1 items-center justify-center rounded-xl bg-violet-600 text-sm font-semibold text-white shadow-md shadow-violet-600/30 disabled:opacity-60"
-        >
-          {saving ? 'Saving…' : submitLabel}
-        </button>
+        {canSubmit ? (
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onSubmit}
+            className="flex h-11 flex-1 items-center justify-center rounded-xl bg-violet-600 text-sm font-semibold text-white shadow-md shadow-violet-600/30 disabled:opacity-60"
+          >
+            {saving ? 'Saving…' : submitLabel}
+          </button>
+        ) : (
+          <div className="flex h-11 flex-1 items-center justify-center rounded-xl border border-dashed border-amber-300 bg-amber-50 px-3 text-center text-[11px] font-semibold text-amber-800">
+            Enter reason to unlock submit
+          </div>
+        )}
       </div>
     </div>
   );

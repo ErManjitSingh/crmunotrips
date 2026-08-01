@@ -29,6 +29,15 @@ export default function QuotationRevisionCompareBanner({
         </p>
       </div>
 
+      {quote.resubmissionReason ? (
+        <div className="rounded-xl border border-amber-200/80 bg-white p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">
+            Executive reason for re-submission
+          </p>
+          <p className="mt-1 text-sm text-slate-800 whitespace-pre-wrap">{quote.resubmissionReason}</p>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <div className="rounded-xl border border-amber-200/80 bg-white p-3">
           <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">This file (now)</p>

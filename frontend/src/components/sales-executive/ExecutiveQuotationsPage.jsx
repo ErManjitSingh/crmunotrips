@@ -91,6 +91,13 @@ export default function ExecutiveQuotationsPage() {
   const [showPdf, setShowPdf] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [submitGate, setSubmitGate] = useState({
+    open: false,
+    quote: null,
+    reason: '',
+    needsReason: false,
+    submitting: false,
+  });
   const pdfRef = useRef(null);
 
   const debouncedSearch = useDebouncedValue(appliedFilters.search, 350);
@@ -166,12 +173,67 @@ export default function ExecutiveQuotationsPage() {
     }
   };
 
-  const handleSubmit = async (id) => {
+  const submitQuotation = async (id, reason = '') => {
+    await API.put(`/sales-executive/quotations/${id}`, {
+      action: 'submit',
+      ...(reason ? { resubmissionReason: reason } : {}),
+    });
+    refreshAll();
+  };
+
+  const handleSubmit = async (quoteOrId) => {
+    const quote =
+      typeof quoteOrId === 'object' && quoteOrId
+        ? quoteOrId
+        : quotes.find((q) => String(q._id) === String(quoteOrId));
+    const id = quote?._id || quoteOrId;
+    if (!id) return;
+
+    const leadId = quote?.lead?._id || quote?.lead;
+    if (!leadId) {
+      try {
+        await submitQuotation(id);
+      } catch {
+        /* toast via axios */
+      }
+      return;
+    }
+
     try {
-      await API.put(`/sales-executive/quotations/${id}`, { action: 'submit' });
-      refreshAll();
+      const { data } = await API.get(`/sales-executive/leads/${leadId}/quotations`, {
+        skipErrorToast: true,
+        skipSuccessToast: true,
+      });
+      const rows = Array.isArray(data)
+        ? data
+        : data?.quotations || data?.data || [];
+      const prior = rows.filter((q) => q && q.status !== 'draft' && String(q._id) !== String(id));
+      if (prior.length > 0) {
+        setSubmitGate({
+          open: true,
+          quote: quote || { _id: id, lead: leadId },
+          reason: '',
+          needsReason: true,
+          submitting: false,
+        });
+        return;
+      }
+      await submitQuotation(id);
     } catch {
       /* toast via axios */
+    }
+  };
+
+  const confirmSubmitGate = async () => {
+    if (!submitGate.quote?._id) return;
+    if (submitGate.needsReason && !submitGate.reason.trim()) return;
+    setSubmitGate((s) => ({ ...s, submitting: true }));
+    try {
+      await submitQuotation(submitGate.quote._id, submitGate.reason.trim());
+      setSubmitGate({ open: false, quote: null, reason: '', needsReason: false, submitting: false });
+      setSelected(null);
+    } catch {
+      setSubmitGate((s) => ({ ...s, submitting: false }));
     }
   };
 
@@ -386,7 +448,7 @@ export default function ExecutiveQuotationsPage() {
                               size="sm"
                               variant="outline"
                               className="rounded-lg h-8 text-[11px]"
-                              onClick={() => handleSubmit(q._id)}
+                              onClick={() => handleSubmit(q)}
                             >
                               Submit
                             </Button>
@@ -494,7 +556,7 @@ export default function ExecutiveQuotationsPage() {
               </Button>
             )}
             {selected?.status === 'draft' ? (
-              <Button size="sm" variant="outline" className="flex-1" onClick={() => { handleSubmit(selected._id); setSelected(null); }}>
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => handleSubmit(selected)}>
                 Submit for Approval
               </Button>
             ) : selected?.status === 'approved' ? (
@@ -512,6 +574,55 @@ export default function ExecutiveQuotationsPage() {
         onClose={() => setShowPdf(false)}
         pdfRef={pdfRef}
       />
+
+      {submitGate.open && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-900/45"
+            aria-label="Close"
+            onClick={() =>
+              !submitGate.submitting &&
+              setSubmitGate({ open: false, quote: null, reason: '', needsReason: false, submitting: false })
+            }
+          />
+          <div className="relative w-full max-w-md rounded-2xl border border-subtle bg-white p-5 shadow-xl">
+            <h3 className="text-base font-bold text-content-primary">Reason for re-submission</h3>
+            <p className="mt-1 text-sm text-content-secondary">
+              This lead already has a quotation on file. Please explain why you are submitting again
+              for Team Leader / Manager approval.
+            </p>
+            <textarea
+              value={submitGate.reason}
+              onChange={(e) => setSubmitGate((s) => ({ ...s, reason: e.target.value }))}
+              rows={4}
+              maxLength={1000}
+              placeholder="e.g. Customer requested hotel upgrade / revised travel dates…"
+              className="mt-3 w-full rounded-xl border border-subtle bg-surface-elevated p-3 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={submitGate.submitting}
+                onClick={() =>
+                  setSubmitGate({ open: false, quote: null, reason: '', needsReason: false, submitting: false })
+                }
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={submitGate.submitting || !submitGate.reason.trim()}
+                onClick={confirmSubmitGate}
+                className="bg-violet-600 hover:bg-violet-500 text-white"
+              >
+                {submitGate.submitting ? 'Submitting…' : 'Submit for Approval'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

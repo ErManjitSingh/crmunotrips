@@ -248,6 +248,10 @@ export default function PackageBuilderWorkspace({
   draftLabel,
   submitLabel,
   emailEndpoint = '/leads',
+  needsResubmissionReason = false,
+  resubmissionReason = '',
+  onResubmissionReasonChange,
+  disableSubmit = false,
 }) {
   const [destinations, setDestinations] = useState(() => parseDestinationStops(pkg, lead));
   const [showPreview, setShowPreview] = useState(false);
@@ -789,6 +793,10 @@ export default function PackageBuilderWorkspace({
             saving={saving}
             draftLabel={draftLabel}
             submitLabel={submitLabel}
+            needsResubmissionReason={needsResubmissionReason}
+            resubmissionReason={resubmissionReason}
+            onResubmissionReasonChange={onResubmissionReasonChange}
+            disableSubmit={disableSubmit}
           />
         </div>
       </div>
@@ -801,6 +809,10 @@ export default function PackageBuilderWorkspace({
         onOpenPricing={() => setMobilePricingOpen(true)}
         onSaveDraft={onSaveDraft}
         onSubmit={onSubmit}
+        needsResubmissionReason={needsResubmissionReason}
+        resubmissionReason={resubmissionReason}
+        onResubmissionReasonChange={onResubmissionReasonChange}
+        disableSubmit={disableSubmit}
       />
 
       {mobilePricingOpen ? (
@@ -846,6 +858,10 @@ export default function PackageBuilderWorkspace({
                 saving={saving}
                 draftLabel={draftLabel}
                 submitLabel={submitLabel}
+                needsResubmissionReason={needsResubmissionReason}
+                resubmissionReason={resubmissionReason}
+                onResubmissionReasonChange={onResubmissionReasonChange}
+                disableSubmit={disableSubmit}
                 hideActions
                 className="!static"
               />
