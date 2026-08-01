@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   RefreshCw,
   Calendar,
   Filter,
   ChevronDown,
-  SlidersHorizontal,
   BarChart3,
   X,
 } from 'lucide-react';
@@ -87,6 +86,10 @@ const PRESETS = [
   { key: '6m', label: 'Last 6 Months' },
 ];
 
+const VISIBLE_PRESET_COUNT = 5;
+const PRIMARY_PRESETS = PRESETS.slice(0, VISIBLE_PRESET_COUNT);
+const MORE_PRESETS = PRESETS.slice(VISIBLE_PRESET_COUNT);
+
 export default function DashboardHeader({
   filters,
   onFiltersChange,
@@ -97,7 +100,9 @@ export default function DashboardHeader({
   const currentPreset = activePreset(filters);
   const hasCustomRange = Boolean(filters.dateFrom || filters.dateTo) && !currentPreset;
   const hasSource = Boolean(filters.source);
-  const [showMore, setShowMore] = useState(hasCustomRange);
+  const morePresetActive = MORE_PRESETS.some((p) => p.key === currentPreset);
+  const [showMore, setShowMore] = useState(hasCustomRange || morePresetActive);
+  const morePanelRef = useRef(null);
   const sourceLabel =
     SOURCE_OPTIONS.find((o) => o.value === filters.source)?.label || 'All Sources';
   const activePresetLabel =
@@ -107,6 +112,18 @@ export default function DashboardHeader({
   const clearCustom = () => {
     onFiltersChange({ ...filters, dateFrom: '', dateTo: '', source: '' });
     setShowMore(false);
+  };
+
+  const openMoreFilters = () => {
+    setShowMore((v) => {
+      const next = !v;
+      if (next) {
+        requestAnimationFrame(() => {
+          morePanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      }
+      return next;
+    });
   };
 
   return (
@@ -183,8 +200,8 @@ export default function DashboardHeader({
 
         <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
           <div className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/80 p-1 scrollbar-thin">
-            {PRESETS.map((preset) => {
-              const active = currentPreset === preset.key && !showMore;
+            {PRIMARY_PRESETS.map((preset) => {
+              const active = currentPreset === preset.key && !hasCustomRange;
               return (
                 <button
                   key={preset.key}
@@ -206,16 +223,17 @@ export default function DashboardHeader({
             })}
             <button
               type="button"
-              onClick={() => setShowMore((v) => !v)}
+              onClick={openMoreFilters}
+              aria-expanded={showMore}
+              aria-label="More filters"
               className={cn(
                 'inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all',
-                showMore || hasCustomRange
+                showMore || hasCustomRange || morePresetActive
                   ? 'bg-white text-sky-700 shadow-sm ring-1 ring-sky-200'
                   : 'text-slate-500 hover:bg-white/70 hover:text-slate-700'
               )}
             >
-              <SlidersHorizontal className="h-3 w-3" />
-              Custom
+              <Filter className="h-3.5 w-3.5" />
               <ChevronDown className={cn('h-3 w-3 transition-transform', showMore && 'rotate-180')} />
             </button>
           </div>
@@ -240,35 +258,66 @@ export default function DashboardHeader({
         <AnimatePresence initial={false}>
           {showMore && (
             <motion.div
+              ref={morePanelRef}
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="grid grid-cols-1 gap-2.5 rounded-xl border border-sky-100 bg-sky-50/50 p-3 sm:grid-cols-2">
-                <label className="flex min-w-0 flex-col gap-1">
-                  <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                    <Calendar className="h-3 w-3" /> From
-                  </span>
-                  <input
-                    type="date"
-                    value={filters.dateFrom}
-                    onChange={(e) => onFiltersChange({ ...filters, dateFrom: e.target.value })}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-                  />
-                </label>
-                <label className="flex min-w-0 flex-col gap-1">
-                  <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                    <Calendar className="h-3 w-3" /> To
-                  </span>
-                  <input
-                    type="date"
-                    value={filters.dateTo}
-                    onChange={(e) => onFiltersChange({ ...filters, dateTo: e.target.value })}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-                  />
-                </label>
+              <div className="space-y-2.5 rounded-xl border border-sky-100 bg-sky-50/50 p-3">
+                {MORE_PRESETS.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {MORE_PRESETS.map((preset) => {
+                      const active = currentPreset === preset.key && !hasCustomRange;
+                      return (
+                        <button
+                          key={preset.key}
+                          type="button"
+                          onClick={() => {
+                            onFiltersChange({
+                              ...filters,
+                              ...applyPreset(preset.key),
+                              source: filters.source,
+                            });
+                          }}
+                          className={cn(
+                            'rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all',
+                            active
+                              ? 'bg-white text-sky-700 shadow-sm ring-1 ring-sky-200'
+                              : 'bg-white/70 text-slate-500 ring-1 ring-slate-200 hover:text-slate-700'
+                          )}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <label className="flex min-w-0 flex-col gap-1">
+                    <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                      <Calendar className="h-3 w-3" /> From
+                    </span>
+                    <input
+                      type="date"
+                      value={filters.dateFrom}
+                      onChange={(e) => onFiltersChange({ ...filters, dateFrom: e.target.value })}
+                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                    />
+                  </label>
+                  <label className="flex min-w-0 flex-col gap-1">
+                    <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                      <Calendar className="h-3 w-3" /> To
+                    </span>
+                    <input
+                      type="date"
+                      value={filters.dateTo}
+                      onChange={(e) => onFiltersChange({ ...filters, dateTo: e.target.value })}
+                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                    />
+                  </label>
+                </div>
               </div>
             </motion.div>
           )}
