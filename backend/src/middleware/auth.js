@@ -51,18 +51,18 @@ const protect = asyncHandler(async (req, res, next) => {
   const branchIdFromQuery = typeof req.query?.branchId === 'string' ? req.query.branchId.trim() : '';
   const requestedBranchId = branchIdFromQuery || branchIdFromHeader || null;
   const userBranchId = user.branchId?.toString?.();
-  // HR portal is company-wide — do not block on branch header/query mismatch
-  const skipBranchGuard = user.role === 'admin' || user.role === 'hr_admin';
-  if (!skipBranchGuard && requestedBranchId && requestedBranchId !== userBranchId) {
+  // Org-wide roles — do not block on branch header/query mismatch
+  const isOrgWideRole =
+    user.role === 'admin' || user.role === 'hr_admin' || user.role === 'lead_provider';
+  if (!isOrgWideRole && requestedBranchId && requestedBranchId !== userBranchId) {
     throw new ApiError(403, 'Access denied for selected branch');
   }
 
   req.user = user;
   req.permissions = await resolveUserPermissions(user);
-  req.branchId =
-    user.role === 'admin' || user.role === 'hr_admin'
-      ? requestedBranchId || userBranchId || null
-      : userBranchId || null;
+  req.branchId = isOrgWideRole
+    ? requestedBranchId || userBranchId || null
+    : userBranchId || null;
   if (req.branchId) {
     res.setHeader('x-branch-id', req.branchId.toString());
   }
@@ -72,6 +72,7 @@ const protect = asyncHandler(async (req, res, next) => {
 function formatUserResponse(user, permissions) {
   const obj = user.toObject ? user.toObject() : user;
   const perms = permissions || getPermissionsForRole(obj.role);
+  const orgWide = obj.role === 'admin' || obj.role === 'lead_provider';
   return {
     _id: obj._id,
     id: obj._id,
@@ -84,7 +85,7 @@ function formatUserResponse(user, permissions) {
     department: obj.department,
     status: obj.status,
     branchId: obj.branchId || null,
-    allowedBranchIds: obj.role === 'admin' ? [] : (obj.branchId ? [obj.branchId] : []),
+    allowedBranchIds: orgWide ? [] : (obj.branchId ? [obj.branchId] : []),
     teamId: obj.teamId,
     permissions: perms,
     dashboardPath: ROLE_DASHBOARD_PATHS[obj.role] || '/',

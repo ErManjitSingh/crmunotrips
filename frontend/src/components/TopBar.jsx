@@ -89,11 +89,13 @@ export default function TopBar({ onMenuClick }) {
   const accent = getTopBarAccent(location.pathname);
   const profilePath = getProfilePath(location.pathname);
   const isAdmin = user?.role === 'admin';
-  const canAddLead = isAdmin || hasPermission?.('leads', 'create');
+  const isLeadProvider = user?.role === 'lead_provider';
+  const canSwitchBranches = isAdmin || isLeadProvider;
+  const canAddLead = isAdmin || isLeadProvider || hasPermission?.('leads', 'create');
   const selectedBranch = availableBranches.find((b) => b._id === selectedBranchId);
   const selectedBranchLabel = formatBranchLabel(selectedBranch?.name);
-  const adminRoleLine = isAdmin
-    ? `${user?.roleName || 'Admin'}${selectedBranchLabel ? ` - ${selectedBranchLabel}` : ''}`
+  const adminRoleLine = canSwitchBranches
+    ? `${user?.roleName || user?.role}${selectedBranchLabel ? ` - ${selectedBranchLabel}` : ''}`
     : (user?.roleName || user?.role);
   const [isBranchSwitching, setIsBranchSwitching] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -106,7 +108,7 @@ export default function TopBar({ onMenuClick }) {
   }, [dispatch]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!canSwitchBranches) return;
     API.get('/branches', { skipSuccessToast: true, skipErrorToast: true })
       .then((r) => {
         const list = Array.isArray(r.data) ? r.data : [];
@@ -135,7 +137,7 @@ export default function TopBar({ onMenuClick }) {
       .catch(() => {
         dispatch(setAvailableBranches([]));
       });
-  }, [dispatch, isAdmin, selectedBranchId, user?.branchId]);
+  }, [dispatch, canSwitchBranches, selectedBranchId, user?.branchId]);
 
   const handleBranchChange = (branchId) => {
     if (!branchId || branchId === selectedBranchId) return;
@@ -245,7 +247,7 @@ export default function TopBar({ onMenuClick }) {
               <span className="hidden md:inline">Refresh</span>
             </button>
           )}
-          {isAdmin && availableBranches.length > 0 && (
+          {canSwitchBranches && availableBranches.length > 0 && (
             <div className="hidden md:inline-flex items-center h-10 rounded-xl border border-subtle bg-surface/95 p-1">
               {availableBranches.slice(0, 2).map((branch) => {
                 const isActive = branch._id === selectedBranchId;
