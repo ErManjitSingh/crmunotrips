@@ -14,7 +14,10 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { detectWhatsAppMediaType, fileToDataUrl } from './whatsappUtils';
-import { fetchWhatsAppTemplates } from '../../services/whatsappTemplatesApi';
+import {
+  fetchWhatsAppTemplates,
+  fetchMetaWhatsAppTemplates,
+} from '../../services/whatsappTemplatesApi';
 import { renderWhatsAppTemplate } from '../../lib/whatsappContact';
 
 const ATTACH_OPTIONS = [
@@ -32,14 +35,23 @@ function autoResize(el) {
   el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
 }
 
+function fillMetaBody(bodyText, params = []) {
+  let out = String(bodyText || '');
+  params.forEach((val, i) => {
+    out = out.replace(new RegExp(`\\{\\{${i + 1}\\}\\}`, 'g'), val || `{{${i + 1}}}`);
+  });
+  return out;
+}
+
 export default function WhatsAppMessageInput({ onSend, disabled, lead, user, sessionClosed = false }) {
   const [text, setText] = useState('');
   const [showAttach, setShowAttach] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  /** 'meta' = Cloud templates (new leads); 'crm' = saved quick replies */
+  const [templateMode, setTemplateMode] = useState(sessionClosed ? 'meta' : 'crm');
   const [templates, setTemplates] = useState([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templateSearch, setTemplateSearch] = useState('');
-  /** Full preview of selected template before send */
   const [templateDraft, setTemplateDraft] = useState(null);
   const [pendingFile, setPendingFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -49,13 +61,23 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
   const acceptRef = useRef('image/*');
 
   useEffect(() => {
+    setTemplateMode(sessionClosed ? 'meta' : 'crm');
+  }, [sessionClosed]);
+
+  useEffect(() => {
     if (!showTemplates || templateDraft) return;
     let cancelled = false;
     setTemplatesLoading(true);
-    fetchWhatsAppTemplates()
+    const loader =
+      templateMode === 'meta' ? fetchMetaWhatsAppTemplates() : fetchWhatsAppTemplates();
+    loader
       .then((rows) => {
         if (cancelled) return;
-        setTemplates((rows || []).filter((t) => t.enabled !== false));
+        if (templateMode === 'meta') {
+          setTemplates(rows || []);
+        } else {
+          setTemplates((rows || []).filter((t) => t.enabled !== false));
+        }
       })
       .catch(() => {
         if (!cancelled) setTemplates([]);
@@ -66,16 +88,16 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
     return () => {
       cancelled = true;
     };
-  }, [showTemplates, templateDraft]);
+  }, [showTemplates, templateDraft, templateMode]);
 
   useEffect(() => {
-    if (templateDraft) {
+    if (templateDraft && templateDraft.source !== 'meta') {
       requestAnimationFrame(() => {
         autoResize(previewRef.current);
         previewRef.current?.focus();
       });
     }
-  }, [templateDraft?.name]);
+  }, [templateDraft?.name, templateDraft?.source]);
 
   useEffect(() => {
     autoResize(inputRef.current);
@@ -85,7 +107,7 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
     const q = templateSearch.trim().toLowerCase();
     if (!q) return templates;
     return templates.filter((t) => {
-      const hay = `${t.name || ''} ${t.body || ''}`.toLowerCase();
+      const hay = `${t.name || ''} ${t.body || ''} ${t.bodyText || ''}`.toLowerCase();
       return hay.includes(q);
     });
   }, [templates, templateSearch]);
@@ -117,14 +139,48 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
     setPendingFile({ file, type, previewUrl });
   };
 
-  const openTemplatePreview = (template) => {
+  const openCrmTemplatePreview = (template) => {
     const rendered = renderWhatsAppTemplate(template.body, lead || {}, user || {});
     setTemplateDraft({
+      source: 'crm',
       id: template._id,
       name: template.name,
       text: rendered,
     });
     setTemplateSearch('');
+  };
+
+  const openMetaTemplatePreview = (template) => {
+    const count = Number(template.bodyParamCount) || 0;
+    const bodyParams = Array.from({ length: count }, () => '');
+    const body = fillMetaBody(template.bodyText, bodyParams);
+    const header = template.headerText ? `${template.headerText}\n\n` : '';
+    setTemplateDraft({
+      source: 'meta',
+      name: template.name,
+      language: template.language || 'en_US',
+      bodyText: template.bodyText || '',
+      headerText: template.headerText || '',
+      bodyParamCount: count,
+      bodyParams,
+      text: `${header}${body}`.trim(),
+    });
+    setTemplateSearch('');
+  };
+
+  const updateMetaParam = (index, value) => {
+    setTemplateDraft((d) => {
+      if (!d || d.source !== 'meta') return d;
+      const bodyParams = [...(d.bodyParams || [])];
+      bodyParams[index] = value;
+      const body = fillMetaBody(d.bodyText, bodyParams);
+      const header = d.headerText ? `${d.headerText}\n\n` : '';
+      return {
+        ...d,
+        bodyParams,
+        text: `${header}${body}`.trim(),
+      };
+    });
   };
 
   const closeTemplateFlow = () => {
@@ -134,8 +190,36 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
   };
 
   const sendTemplateDraft = async () => {
-    const trimmed = String(templateDraft?.text || '').trim();
-    if (!trimmed || disabled || uploading) return;
+    if (disabled || uploading || !templateDraft) return;
+
+    if (templateDraft.source === 'meta') {
+      const missing = (templateDraft.bodyParams || []).some((p) => !String(p || '').trim());
+      if (templateDraft.bodyParamCount > 0 && missing) {
+        window.alert('Please fill all template variables before sending.');
+        return;
+      }
+      await onSend({
+        text: templateDraft.text,
+        type: 'text',
+        templateName: templateDraft.name,
+        templateLanguage: templateDraft.language,
+        templateBodyParams: templateDraft.bodyParams || [],
+      });
+      setText('');
+      closeTemplateFlow();
+      return;
+    }
+
+    const trimmed = String(templateDraft.text || '').trim();
+    if (!trimmed) return;
+    if (sessionClosed) {
+      window.alert(
+        'Session is closed. Free-text quick replies will not deliver. Switch to Meta templates to message this lead.'
+      );
+      setTemplateMode('meta');
+      setTemplateDraft(null);
+      return;
+    }
     await onSend({ text: trimmed, type: 'text' });
     setText('');
     closeTemplateFlow();
@@ -146,10 +230,24 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
     if (disabled || uploading) return;
     if (!pendingFile && !trimmed) return;
 
+    if (sessionClosed && !pendingFile) {
+      setShowTemplates(true);
+      setTemplateMode('meta');
+      window.alert(
+        'Customer has not messaged in 24h. Use a Meta template (template icon) to start the chat.'
+      );
+      return;
+    }
+
     if (!pendingFile) {
       onSend({ text: trimmed, type: 'text' });
       setText('');
       inputRef.current?.focus();
+      return;
+    }
+
+    if (sessionClosed) {
+      window.alert('Media cannot be sent until the customer replies, or use a Meta template first.');
       return;
     }
 
@@ -184,7 +282,12 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
   };
 
   const canSend = Boolean(text.trim() || pendingFile) && !disabled && !uploading;
-  const canSendTemplate = Boolean(String(templateDraft?.text || '').trim()) && !disabled && !uploading;
+  const canSendTemplate =
+    !disabled &&
+    !uploading &&
+    (templateDraft?.source === 'meta'
+      ? Boolean(templateDraft.name)
+      : Boolean(String(templateDraft?.text || '').trim()));
 
   const toggleTemplates = () => {
     setShowAttach(false);
@@ -193,6 +296,7 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
       return;
     }
     setTemplateDraft(null);
+    setTemplateMode(sessionClosed ? 'meta' : templateMode);
     setShowTemplates(true);
   };
 
@@ -206,7 +310,8 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
     <div className="shrink-0 px-3 sm:px-4 py-3 bg-white border-t border-slate-200/80">
       {sessionClosed && (
         <p className="mb-2 text-[11px] text-amber-800/90">
-          Session closed — typing still works in CRM, but Meta will reject delivery until the customer replies.
+          Session closed — free text will not deliver. Tap{' '}
+          <span className="font-semibold">Meta template</span> to message this lead first.
         </p>
       )}
       <input
@@ -225,8 +330,13 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
                 <Eye className="h-3.5 w-3.5" />
               </span>
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-800">Preview before send</p>
-                <p className="text-[10px] text-slate-500 truncate">{templateDraft.name}</p>
+                <p className="text-xs font-semibold text-slate-800">
+                  {templateDraft.source === 'meta' ? 'Meta template' : 'Preview before send'}
+                </p>
+                <p className="text-[10px] text-slate-500 truncate">
+                  {templateDraft.name}
+                  {templateDraft.language ? ` · ${templateDraft.language}` : ''}
+                </p>
               </div>
             </div>
             <button
@@ -239,21 +349,45 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
             </button>
           </div>
 
+          {templateDraft.source === 'meta' && templateDraft.bodyParamCount > 0 && (
+            <div className="space-y-2 border-b border-slate-100 px-3 py-2.5">
+              {templateDraft.bodyParams.map((val, i) => (
+                <label key={i} className="block">
+                  <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    Variable {`{{${i + 1}}}`}
+                  </span>
+                  <input
+                    value={val}
+                    onChange={(e) => updateMetaParam(i, e.target.value)}
+                    className="h-9 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
+                    placeholder={`Value for {{${i + 1}}}`}
+                  />
+                </label>
+              ))}
+            </div>
+          )}
+
           <div className="bg-[#e5ddd5] px-3 py-3">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
               Customer will receive
             </p>
             <div className="ml-auto max-w-[92%] rounded-2xl rounded-tr-md bg-[#dcf8c6] px-3 py-2.5 shadow-sm">
-              <textarea
-                ref={previewRef}
-                value={templateDraft.text}
-                onChange={(e) => {
-                  setTemplateDraft((d) => ({ ...d, text: e.target.value }));
-                  autoResize(e.target);
-                }}
-                rows={6}
-                className="w-full resize-none bg-transparent text-[13px] leading-relaxed text-slate-800 outline-none whitespace-pre-wrap"
-              />
+              {templateDraft.source === 'meta' ? (
+                <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-slate-800">
+                  {templateDraft.text}
+                </p>
+              ) : (
+                <textarea
+                  ref={previewRef}
+                  value={templateDraft.text}
+                  onChange={(e) => {
+                    setTemplateDraft((d) => ({ ...d, text: e.target.value }));
+                    autoResize(e.target);
+                  }}
+                  rows={6}
+                  className="w-full resize-none bg-transparent text-[13px] leading-relaxed text-slate-800 outline-none whitespace-pre-wrap"
+                />
+              )}
             </div>
           </div>
 
@@ -272,7 +406,7 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
               className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#1ebe5d] disabled:opacity-40"
             >
               <Send className="h-3.5 w-3.5" />
-              Send message
+              {templateDraft.source === 'meta' ? 'Send Meta template' : 'Send message'}
             </button>
           </div>
         </div>
@@ -288,7 +422,9 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-slate-800">Select template</p>
                 <p className="text-[10px] text-slate-500 truncate">
-                  Preview full message before sending
+                  {templateMode === 'meta'
+                    ? 'Meta approved — works for new leads'
+                    : 'CRM quick replies — only inside 24h session'}
                 </p>
               </div>
             </div>
@@ -299,6 +435,39 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
               aria-label="Close templates"
             >
               <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex gap-1 px-3 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setTemplateMode('meta');
+                setTemplates([]);
+              }}
+              className={cn(
+                'rounded-full px-3 py-1 text-[11px] font-semibold transition-colors',
+                templateMode === 'meta'
+                  ? 'bg-[#25D366] text-white'
+                  : 'bg-white text-slate-600 ring-1 ring-slate-200'
+              )}
+            >
+              Meta (new leads)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTemplateMode('crm');
+                setTemplates([]);
+              }}
+              className={cn(
+                'rounded-full px-3 py-1 text-[11px] font-semibold transition-colors',
+                templateMode === 'crm'
+                  ? 'bg-[#25D366] text-white'
+                  : 'bg-white text-slate-600 ring-1 ring-slate-200'
+              )}
+            >
+              CRM quick replies
             </button>
           </div>
 
@@ -318,17 +487,40 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
             )}
             {!templatesLoading && filteredTemplates.length === 0 && (
               <p className="px-2 py-6 text-center text-xs text-slate-400">
-                No templates found. Add some in Settings → WhatsApp Templates.
+                {templateMode === 'meta'
+                  ? 'No approved Meta templates. Create one in Meta Business Manager → WhatsApp → Message templates.'
+                  : 'No CRM templates. Add some in Settings → WhatsApp Templates.'}
               </p>
             )}
             {!templatesLoading &&
               filteredTemplates.map((template) => {
+                if (templateMode === 'meta') {
+                  return (
+                    <button
+                      key={`${template.name}:${template.language}`}
+                      type="button"
+                      onClick={() => openMetaTemplatePreview(template)}
+                      className="group mb-1.5 flex w-full flex-col gap-1 rounded-xl border border-transparent bg-white px-3 py-2.5 text-left shadow-sm ring-1 ring-slate-100 transition hover:border-emerald-200 hover:ring-emerald-200/60"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-slate-800">{template.name}</span>
+                        <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+                          {template.language || 'en'}
+                        </span>
+                      </div>
+                      <p className="line-clamp-2 text-[11px] leading-relaxed text-slate-500 whitespace-pre-line">
+                        {template.headerText ? `${template.headerText} — ` : ''}
+                        {template.bodyText}
+                      </p>
+                    </button>
+                  );
+                }
                 const preview = renderWhatsAppTemplate(template.body, lead || {}, user || {});
                 return (
                   <button
                     key={template._id}
                     type="button"
-                    onClick={() => openTemplatePreview(template)}
+                    onClick={() => openCrmTemplatePreview(template)}
                     className="group mb-1.5 flex w-full flex-col gap-1 rounded-xl border border-transparent bg-white px-3 py-2.5 text-left shadow-sm ring-1 ring-slate-100 transition hover:border-emerald-200 hover:ring-emerald-200/60"
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -410,7 +602,7 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
               onClick={toggleTemplates}
               className={cn(
                 'mb-0.5 p-2 rounded-full hover:bg-emerald-50 shrink-0 transition-colors',
-                showTemplates ? 'text-[#128C7E] bg-emerald-50' : 'text-slate-400'
+                showTemplates || sessionClosed ? 'text-[#128C7E] bg-emerald-50' : 'text-slate-400'
               )}
               aria-label="Select template"
               title="Select template"
@@ -421,9 +613,11 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
             <button
               type="button"
               onClick={toggleAttach}
+              disabled={sessionClosed}
               className={cn(
                 'mb-0.5 p-2 rounded-full hover:bg-slate-50 shrink-0 transition-colors',
-                showAttach ? 'text-violet-600' : 'text-slate-400'
+                showAttach ? 'text-violet-600' : 'text-slate-400',
+                sessionClosed && 'opacity-40'
               )}
               aria-label="Attach"
             >
@@ -441,7 +635,13 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
                 onKeyDown={handleKeyDown}
                 disabled={disabled || uploading}
                 rows={1}
-                placeholder={pendingFile ? 'Add a caption...' : 'Type a message...'}
+                placeholder={
+                  sessionClosed
+                    ? 'Use Meta template to message new leads…'
+                    : pendingFile
+                      ? 'Add a caption...'
+                      : 'Type a message...'
+                }
                 className="w-full max-h-40 resize-none rounded-2xl px-4 py-2.5 bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-300"
               />
             </div>
@@ -464,7 +664,7 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
               className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/80 px-3 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
             >
               <LayoutTemplate className="h-3.5 w-3.5" />
-              Select template
+              {sessionClosed ? 'Send Meta template' : 'Select template'}
             </button>
           )}
         </>

@@ -14,6 +14,7 @@ const {
   markRead,
   createLeadFromChat,
   cloudStatus,
+  listMetaTemplates,
   openChatForLead,
 } = require('../controllers/whatsappController');
 const { protect } = require('../middleware/auth');
@@ -21,6 +22,7 @@ const { protect } = require('../middleware/auth');
 router.use(protect);
 
 router.get('/status', cloudStatus);
+router.get('/meta-templates', listMetaTemplates);
 router.get('/conversations', listConversations);
 router.get('/thread', getThread);
 router.get('/messages/conversation/:conversationId', getMessagesByConversation);

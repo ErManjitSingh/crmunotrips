@@ -95,7 +95,7 @@ function WhatsAppConversation({
       {!sessionOpen && (
         <div className="shrink-0 border-t border-amber-200 bg-amber-50 px-3 sm:px-4 py-2.5 text-[12px] leading-snug text-amber-950">
           Customer has not messaged <span className="font-semibold">+91 78765 05119</span> in the last 24 hours.
-          Free text / photos will not deliver — wait for their reply, or ask them to message that number first.
+          Free text will not deliver — use a <span className="font-semibold">Meta template</span> to start the chat.
         </div>
       )}
 

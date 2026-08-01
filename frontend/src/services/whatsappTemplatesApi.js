@@ -5,6 +5,12 @@ export async function fetchWhatsAppTemplates() {
   return data;
 }
 
+/** Approved Meta Cloud templates (outside 24h window). */
+export async function fetchMetaWhatsAppTemplates() {
+  const { data } = await API.get('/whatsapp/meta-templates', { skipSuccessToast: true });
+  return Array.isArray(data) ? data : [];
+}
+
 export async function createWhatsAppTemplate(payload) {
   const { data } = await API.post('/whatsapp-templates', payload);
   return data;

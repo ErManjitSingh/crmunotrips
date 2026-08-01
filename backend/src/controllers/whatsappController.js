@@ -15,6 +15,7 @@ const { parsePagination, paginatedResponse } = require('../utils/pagination');
 const {
   sendWhatsAppText,
   sendWhatsAppTemplate,
+  listMetaMessageTemplates,
   hasOpenCustomerSession,
   createLeadFromConversation,
   isConfigured,
@@ -351,6 +352,7 @@ const postMessage = asyncHandler(async (req, res) => {
     templateName,
     templateLanguage,
     templateComponents,
+    templateBodyParams,
   } = req.body;
 
   const wantsTemplate = Boolean(String(templateName || '').trim());
@@ -418,11 +420,23 @@ const postMessage = asyncHandler(async (req, res) => {
 
   if (wantsTemplate && isConfigured() && toPhone) {
     try {
+      let components = Array.isArray(templateComponents) ? templateComponents : [];
+      if (!components.length && Array.isArray(templateBodyParams) && templateBodyParams.length) {
+        components = [
+          {
+            type: 'body',
+            parameters: templateBodyParams.map((p) => ({
+              type: 'text',
+              text: String(p ?? ''),
+            })),
+          },
+        ];
+      }
       const sent = await sendWhatsAppTemplate({
         toPhone,
         templateName: String(templateName).trim(),
         languageCode: templateLanguage || 'en',
-        components: templateComponents || [],
+        components,
       });
       waMessageId = sent?.messages?.[0]?.id || null;
       previewText = previewText || `Template: ${String(templateName).trim()}`;
@@ -659,6 +673,15 @@ const cloudStatus = asyncHandler(async (_req, res) => {
   });
 });
 
+/** Approved Meta templates — use these to message leads outside the 24h window. */
+const listMetaTemplates = asyncHandler(async (_req, res) => {
+  if (!isConfigured()) {
+    throw new ApiError(503, 'WhatsApp Cloud API is not configured');
+  }
+  const templates = await listMetaMessageTemplates();
+  res.json(templates);
+});
+
 /**
  * Open (or create) CRM WhatsApp conversation for a lead — same business number for all SEs.
  */
@@ -729,5 +752,6 @@ module.exports = {
   markRead,
   createLeadFromChat,
   cloudStatus,
+  listMetaTemplates,
   openChatForLead,
 };

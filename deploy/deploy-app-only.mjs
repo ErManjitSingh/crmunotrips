@@ -69,6 +69,9 @@ if [ -f "$APP/backend/.env" ]; then
   else
     echo 'FACEBOOK_WEBHOOK_DEBUG=true' >> "$APP/backend/.env"
   fi
+  if ! grep -q '^WHATSAPP_BUSINESS_ACCOUNT_ID=' "$APP/backend/.env" 2>/dev/null; then
+    echo 'WHATSAPP_BUSINESS_ACCOUNT_ID=1316299840281529' >> "$APP/backend/.env"
+  fi
 fi
 if [ -f "$APP/frontend/.env" ]; then
   sed -i 's|^VITE_API_URL=.*|VITE_API_URL=https://app.unotrips.com/api|' "$APP/frontend/.env" || true

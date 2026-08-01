@@ -234,7 +234,8 @@ function WhatsAppLeadsPage() {
     if (!selected || sending) return;
     const text = payload?.text?.trim();
     const hasMedia = Boolean(payload?.mediaBase64 || payload?.attachment?.dataUrl);
-    if (!text && !hasMedia && !payload?.attachment) return;
+    const isMetaTemplate = Boolean(payload?.templateName);
+    if (!text && !hasMedia && !payload?.attachment && !isMetaTemplate) return;
 
     const tempId = `temp-${Date.now()}`;
     const optimisticType = payload.type || (hasMedia ? 'image' : 'text');
@@ -261,6 +262,7 @@ function WhatsAppLeadsPage() {
       followups: old?.followups || [],
       botAnswers: old?.botAnswers,
       botStep: old?.botStep,
+      sessionOpen: old?.sessionOpen,
     }));
 
     setSending(true);
@@ -276,12 +278,16 @@ function WhatsAppLeadsPage() {
           mediaMimeType: payload.mediaMimeType || undefined,
           mediaFileName: payload.mediaFileName || undefined,
           attachment: payload.attachment || undefined,
+          templateName: payload.templateName || undefined,
+          templateLanguage: payload.templateLanguage || undefined,
+          templateBodyParams: payload.templateBodyParams || undefined,
         },
         { skipDataRefresh: true }
       );
       queryClient.setQueryData(['whatsapp', 'thread', detailsKey], (old) => ({
         ...(old || {}),
         messages: (old?.messages || []).map((m) => (m._id === tempId ? res.data : m)),
+        sessionOpen: res.data?.sessionOpen ?? old?.sessionOpen,
       }));
       const preview =
         res.data?.text ||
@@ -306,6 +312,9 @@ function WhatsAppLeadsPage() {
         updated.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
         return updated;
       });
+      if (isMetaTemplate) {
+        queryClient.invalidateQueries({ queryKey: ['whatsapp', 'thread', detailsKey] });
+      }
     } catch (err) {
       queryClient.setQueryData(['whatsapp', 'thread', detailsKey], (old) => ({
         ...(old || {}),

@@ -16,6 +16,10 @@ function getConfig() {
     accessToken: process.env.WHATSAPP_ACCESS_TOKEN || process.env.WHATSAPP_TOKEN || '',
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
     appSecret: process.env.WHATSAPP_APP_SECRET || process.env.FACEBOOK_APP_SECRET || '',
+    wabaId:
+      process.env.WHATSAPP_BUSINESS_ACCOUNT_ID ||
+      process.env.WHATSAPP_WABA_ID ||
+      '',
     defaultDestination: process.env.WHATSAPP_DEFAULT_DESTINATION || 'Not specified',
     /** Current ads = Facebook → dpw2_wa. Set WHATSAPP_DEFAULT_LEAD_SOURCE=dpw_wa when Google WA is primary. */
     defaultLeadSource: process.env.WHATSAPP_DEFAULT_LEAD_SOURCE || 'dpw2_wa',
@@ -373,6 +377,73 @@ async function sendWhatsAppText({ toPhone, text }) {
   return data;
 }
 
+/** Resolve WABA id from env or token scopes (cached briefly). */
+let _wabaCache = { id: '', at: 0 };
+async function resolveWabaId() {
+  const { accessToken, wabaId } = getConfig();
+  if (wabaId) return wabaId;
+  if (!accessToken) return '';
+  if (_wabaCache.id && Date.now() - _wabaCache.at < 10 * 60 * 1000) return _wabaCache.id;
+
+  const url = new URL(`https://graph.facebook.com/${GRAPH_VERSION}/debug_token`);
+  url.searchParams.set('input_token', accessToken);
+  url.searchParams.set('access_token', accessToken);
+  const res = await fetch(url);
+  const data = await res.json().catch(() => ({}));
+  const scopes = data?.data?.granular_scopes || [];
+  const hit =
+    scopes.find((s) => s.scope === 'whatsapp_business_management') ||
+    scopes.find((s) => s.scope === 'whatsapp_business_messaging');
+  const id = String(hit?.target_ids?.[0] || '');
+  if (id) _wabaCache = { id, at: Date.now() };
+  return id;
+}
+
+/** Approved Meta Cloud templates (can open a conversation outside the 24h window). */
+async function listMetaMessageTemplates() {
+  const { accessToken } = getConfig();
+  if (!accessToken) throw new ApiError(503, 'WhatsApp Cloud API is not configured');
+  const wabaId = await resolveWabaId();
+  if (!wabaId) {
+    throw new ApiError(
+      503,
+      'WhatsApp Business Account ID missing. Set WHATSAPP_BUSINESS_ACCOUNT_ID in backend .env'
+    );
+  }
+
+  const url = new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${wabaId}/message_templates`);
+  url.searchParams.set('fields', 'name,status,language,category,components');
+  url.searchParams.set('limit', '80');
+  url.searchParams.set('access_token', accessToken);
+
+  const res = await fetch(url);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new ApiError(502, data?.error?.message || 'Failed to load Meta templates');
+  }
+
+  return (data.data || [])
+    .filter((t) => String(t.status || '').toUpperCase() === 'APPROVED')
+    .map((t) => {
+      const components = Array.isArray(t.components) ? t.components : [];
+      const body = components.find((c) => String(c.type).toUpperCase() === 'BODY');
+      const header = components.find((c) => String(c.type).toUpperCase() === 'HEADER');
+      const bodyText = String(body?.text || '');
+      const paramMatches = bodyText.match(/\{\{\d+\}\}/g) || [];
+      return {
+        name: t.name,
+        language: t.language || 'en',
+        status: t.status,
+        category: t.category || '',
+        bodyText,
+        headerText: header?.format === 'TEXT' ? String(header.text || '') : '',
+        bodyParamCount: paramMatches.length,
+        source: 'meta',
+      };
+    })
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+}
+
 /** Meta Cloud template (outside 24h session window). */
 async function sendWhatsAppTemplate({ toPhone, templateName, languageCode = 'en', components = [] }) {
   const { accessToken, phoneNumberId } = getConfig();
@@ -520,6 +591,8 @@ module.exports = {
   processWhatsAppWebhook,
   sendWhatsAppText,
   sendWhatsAppTemplate,
+  listMetaMessageTemplates,
+  resolveWabaId,
   hasOpenCustomerSession,
   createLeadFromConversation,
   normalizePhone,
