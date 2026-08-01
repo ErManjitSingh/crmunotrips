@@ -218,14 +218,13 @@ const SOURCE_LABELS = {
   call_lead: 'Call Lead',
   organic: 'Organic',
   website: 'DPW',
-  whatsapp: 'DPW WA',
-  'walk-in': 'Call Lead',
-  social: 'DPW2',
-  phone: 'Call Lead',
-  other: 'Organic',
-  google_ads: 'DPW',
-  facebook_ads: 'DPW2',
-  instagram: 'DPW2',
+    whatsapp: 'DPW2 WA',
+    social: 'DPW2',
+    phone: 'Call Lead',
+    other: 'Organic',
+    google_ads: 'DPW',
+    facebook_ads: 'DPW2',
+    instagram: 'DPW2',
 };
 
 const SOURCE_COLORS = ['#3B82F6', '#22C55E', '#8B5CF6', '#F59E0B', '#64748B', '#EC4899', '#06B6D4'];

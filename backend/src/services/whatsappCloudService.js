@@ -17,6 +17,8 @@ function getConfig() {
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
     appSecret: process.env.WHATSAPP_APP_SECRET || process.env.FACEBOOK_APP_SECRET || '',
     defaultDestination: process.env.WHATSAPP_DEFAULT_DESTINATION || 'Not specified',
+    /** Current ads = Facebook → dpw2_wa. Set WHATSAPP_DEFAULT_LEAD_SOURCE=dpw_wa when Google WA is primary. */
+    defaultLeadSource: process.env.WHATSAPP_DEFAULT_LEAD_SOURCE || 'dpw2_wa',
   };
 }
 
@@ -372,7 +374,16 @@ async function createLeadFromConversation(conversationId, extras = {}, actor = n
 
   const answers = conversation.botAnswers || {};
   const adults = answers.adults || answers.travelers || extras.travelers || extras.adults;
-  const isFbWa = String(conversation.inboundAdSource || '').toLowerCase() === 'facebook_ad';
+  const inbound = String(conversation.inboundAdSource || extras.inboundAdSource || '').toLowerCase();
+  const isFbWa = inbound === 'facebook_ad' || inbound === 'ad';
+  const isGoogleWa = inbound === 'google' || inbound === 'google_ad';
+  // Current traffic is Facebook CTWA; Google Ads WA only when explicitly marked
+  let sourceKey = 'dpw2_wa';
+  if (isGoogleWa && !isFbWa) sourceKey = 'dpw_wa';
+  else if (isFbWa) sourceKey = 'dpw2_wa';
+  else if (String(process.env.WHATSAPP_DEFAULT_LEAD_SOURCE || '').toLowerCase() === 'dpw_wa') {
+    sourceKey = 'dpw_wa';
+  }
   const lead = await ingestPublicLead({
     name: extras.name || conversation.profileName || `WhatsApp ${conversation.phone.slice(-4)}`,
     phone: conversation.phone,
@@ -392,12 +403,12 @@ async function createLeadFromConversation(conversationId, extras = {}, actor = n
       ? `Best time to call: ${answers.bestTimeToCall}`
       : '',
     channel: 'whatsapp',
-    source: isFbWa ? 'dpw2_wa' : 'dpw_wa',
-    sourceLabel: isFbWa ? 'DPW2 WA' : 'DPW WA',
-    sourceKey: isFbWa ? 'dpw2_wa' : 'dpw_wa',
+    source: sourceKey,
+    sourceLabel: sourceKey === 'dpw_wa' ? 'DPW WA' : 'DPW2 WA',
+    sourceKey,
     inboundAdSource: conversation.inboundAdSource || '',
     waAdSource: conversation.inboundAdSource || '',
-    captureType: isFbWa ? 'whatsapp_ctwa' : 'whatsapp_chat',
+    captureType: isFbWa ? 'whatsapp_ctwa' : isGoogleWa ? 'whatsapp_google' : 'whatsapp_chat',
   });
 
   conversation.lead = lead._id;

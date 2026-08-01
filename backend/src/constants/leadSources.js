@@ -37,7 +37,7 @@ const LEAD_SOURCE_LABELS = {
   website: 'DPW',
   google_ads: 'DPW',
   facebook_ads: 'DPW2',
-  whatsapp: 'DPW WA',
+  whatsapp: 'DPW2 WA',
   social: 'DPW2',
   phone: 'Call Lead',
   'walk-in': 'Call Lead',
@@ -54,8 +54,6 @@ const LEAD_SOURCE_ALIASES = {
 
   dpw_wa: 'dpw_wa',
   'dpw wa': 'dpw_wa',
-  whatsapp: 'dpw_wa',
-  wa: 'dpw_wa',
   google_whatsapp: 'dpw_wa',
   landing_whatsapp: 'dpw_wa',
 
@@ -69,6 +67,8 @@ const LEAD_SOURCE_ALIASES = {
 
   dpw2_wa: 'dpw2_wa',
   'dpw2 wa': 'dpw2_wa',
+  whatsapp: 'dpw2_wa',
+  wa: 'dpw2_wa',
   facebook_whatsapp: 'dpw2_wa',
   fb_wa: 'dpw2_wa',
   fb_whatsapp: 'dpw2_wa',

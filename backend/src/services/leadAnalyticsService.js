@@ -14,7 +14,7 @@ const SOURCE_LABELS = {
   google_ads: 'DPW',
   facebook_ads: 'DPW2',
   website: 'DPW',
-  whatsapp: 'DPW WA',
+  whatsapp: 'DPW2 WA',
   'walk-in': 'Call Lead',
   phone: 'Call Lead',
   social: 'DPW2',
