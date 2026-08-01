@@ -112,7 +112,7 @@ const QUICK_ACTIONS = [
   { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, tone: 'text-emerald-600 bg-emerald-50' },
   { key: 'call', label: 'Call', icon: Phone, tone: 'text-sky-600 bg-sky-50' },
   { key: 'note', label: 'Note', icon: StickyNote, tone: 'text-amber-600 bg-amber-50' },
-  { key: 'followup', label: 'Follow Up', icon: CalendarClock, tone: 'text-violet-600 bg-violet-50' },
+  { key: 'followup', label: 'Lead follow up', icon: CalendarClock, tone: 'text-violet-600 bg-violet-50' },
   { key: 'more', label: 'More', icon: MoreHorizontal, tone: 'text-slate-600 bg-slate-50' },
 ];
 

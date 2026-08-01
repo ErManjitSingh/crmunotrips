@@ -7,6 +7,7 @@ import {
   FOLLOWUP_CATEGORY_OPTIONS,
   FOLLOWUP_TYPES,
   CALL_NOT_PICKED_REASONS,
+  CALL_PICKED_OUTCOMES,
 } from './constants';
 import { COLD_LEAD_REASONS } from '../lead-wizard/constants';
 
@@ -20,6 +21,7 @@ const emptyForm = {
   remarks: '',
   coldReason: '',
   notPickedReason: '',
+  pickedOutcome: '',
 };
 
 function plusFourHoursLocal() {
@@ -58,7 +60,8 @@ export default function AddFollowUpModal({
         priority: editData.priority || 'medium',
         remarks: editData.notes || '',
         coldReason: editData.coldReason || '',
-        notPickedReason: editData.notPickedReason || editData.outcome || '',
+        notPickedReason: editData.notPickedReason || (editData.category === 'call_not_picked' ? editData.outcome : '') || '',
+        pickedOutcome: editData.pickedOutcome || (editData.category === 'call_picked' ? editData.outcome : '') || '',
       });
     } else {
       const today = new Date().toISOString().split('T')[0];
@@ -76,6 +79,7 @@ export default function AddFollowUpModal({
         date: slot.date,
         time: slot.time,
         notPickedReason: '',
+        pickedOutcome: '',
       }));
       return;
     }
@@ -84,6 +88,7 @@ export default function AddFollowUpModal({
       category: nextCategory,
       coldReason: nextCategory === 'cold' ? prev.coldReason : '',
       notPickedReason: nextCategory === 'call_not_picked' ? prev.notPickedReason : '',
+      pickedOutcome: nextCategory === 'call_picked' ? prev.pickedOutcome : '',
     }));
   };
 
@@ -106,7 +111,11 @@ export default function AddFollowUpModal({
       setError('Please select why the call was not picked');
       return;
     }
-    if (!form.remarks?.trim() && form.category !== 'cold' && form.category !== 'call_not_picked') {
+    if (form.category === 'call_picked' && !form.pickedOutcome) {
+      setError('Please select a call picked outcome');
+      return;
+    }
+    if (!form.remarks?.trim() && form.category !== 'cold' && form.category !== 'call_not_picked' && form.category !== 'call_picked') {
       setError('Please enter remarks');
       return;
     }
@@ -115,6 +124,7 @@ export default function AddFollowUpModal({
     try {
       const coldLabel = COLD_LEAD_REASONS.find((r) => r.value === form.coldReason)?.label;
       const notPickedLabel = CALL_NOT_PICKED_REASONS.find((r) => r.value === form.notPickedReason)?.label;
+      const pickedLabel = CALL_PICKED_OUTCOMES.find((r) => r.value === form.pickedOutcome)?.label;
 
       let remarks = form.remarks?.trim() || '';
       if (form.category === 'cold') {
@@ -125,6 +135,10 @@ export default function AddFollowUpModal({
         remarks = [remarks, notPickedLabel ? `Call not picked: ${notPickedLabel}` : '']
           .filter(Boolean)
           .join(' — ') || `Call not picked — ${notPickedLabel}`;
+      } else if (form.category === 'call_picked') {
+        remarks = [remarks, pickedLabel ? `Call picked: ${pickedLabel}` : '']
+          .filter(Boolean)
+          .join(' — ') || `Call picked — ${pickedLabel}`;
       }
 
       await onSubmit({
@@ -134,7 +148,12 @@ export default function AddFollowUpModal({
         notes: remarks,
         coldReason: form.category === 'cold' ? form.coldReason : undefined,
         notPickedReason: form.category === 'call_not_picked' ? form.notPickedReason : undefined,
-        outcome: form.category === 'call_not_picked' ? form.notPickedReason : undefined,
+        pickedOutcome: form.category === 'call_picked' ? form.pickedOutcome : undefined,
+        outcome: form.category === 'call_not_picked'
+          ? form.notPickedReason
+          : form.category === 'call_picked'
+            ? form.pickedOutcome
+            : undefined,
       });
       if (!editData) {
         const today = new Date().toISOString().split('T')[0];
@@ -148,13 +167,13 @@ export default function AddFollowUpModal({
     }
   };
 
-  const remarksOptional = form.category === 'cold' || form.category === 'call_not_picked';
+  const remarksOptional = form.category === 'cold' || form.category === 'call_not_picked' || form.category === 'call_picked';
 
   return (
     <AppModal open={open} onClose={onClose} size="lg" className="p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h3 className="text-lg font-bold text-content-primary">{editData ? 'Update Follow-up' : 'Add Follow-up'}</h3>
+          <h3 className="text-lg font-bold text-content-primary">{editData ? 'Update Follow-up' : 'Lead follow up'}</h3>
           <p className="text-xs text-content-muted">
             {fixedLeadName || 'Select category, date & save'}
           </p>
@@ -197,6 +216,30 @@ export default function AddFollowUpModal({
             ))}
           </select>
         </div>
+
+        {form.category === 'call_picked' && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 space-y-3">
+            <p className="text-xs font-semibold text-emerald-800">
+              Call picked — select the outcome
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {CALL_PICKED_OUTCOMES.map((outcome) => (
+                <button
+                  key={outcome.value}
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, pickedOutcome: outcome.value }))}
+                  className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+                    form.pickedOutcome === outcome.value
+                      ? 'border-emerald-500 bg-emerald-100 text-emerald-900'
+                      : 'border-subtle bg-white text-content-secondary hover:border-emerald-300'
+                  }`}
+                >
+                  {outcome.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {form.category === 'call_not_picked' && (
           <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 space-y-3">
@@ -294,7 +337,9 @@ export default function AddFollowUpModal({
                 ? 'Add notes about this cold lead…'
                 : form.category === 'call_not_picked'
                   ? 'Optional notes…'
-                  : 'What to discuss on this follow-up...'
+                  : form.category === 'call_picked'
+                    ? 'Optional notes about the call…'
+                    : 'What to discuss on this follow-up...'
             }
           />
         </div>

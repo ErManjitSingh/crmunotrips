@@ -121,7 +121,6 @@ export default function LeadDetailLayout({
             onLogCallNote={onLogCallNote}
             onAssign={onAssign}
             onChangeStatus={onChangeStatus}
-            canCreateFollowUp={canCreateFollowUp}
             canEditLead={canEditLead}
             canChangeStatus={canChangeStatus}
             editHref={editHref}

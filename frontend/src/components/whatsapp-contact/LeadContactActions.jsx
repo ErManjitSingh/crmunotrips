@@ -118,7 +118,7 @@ export default function LeadContactActions({
         {onScheduleFollowUp ? (
           <ActionTile
             icon={CalendarPlus}
-            label="Schedule Follow-up"
+            label="Lead follow up"
             description="Set a reminder"
             tone="amber"
             onClick={onScheduleFollowUp}

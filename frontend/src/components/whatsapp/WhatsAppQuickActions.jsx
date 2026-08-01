@@ -10,7 +10,7 @@ import { Button } from '../ui/button';
 
 const actions = [
   { key: 'call', label: 'Call Customer', icon: Phone, variant: 'outline' },
-  { key: 'followup', label: 'Create Follow Up', icon: CalendarClock, variant: 'outline' },
+  { key: 'followup', label: 'Lead follow up', icon: CalendarClock, variant: 'outline' },
   { key: 'note', label: 'Add Note', icon: StickyNote, variant: 'outline' },
   { key: 'quotation', label: 'Create Quotation', icon: FileText, variant: 'emerald' },
   { key: 'status', label: 'Lead status', icon: RefreshCw, variant: 'outline' },

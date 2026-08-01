@@ -4,6 +4,7 @@ import { Button } from '../../ui/button';
 import {
   FOLLOWUP_CATEGORY_OPTIONS,
   CALL_NOT_PICKED_REASONS,
+  CALL_PICKED_OUTCOMES,
 } from '../../followups/constants';
 import { COLD_LEAD_REASONS } from '../../lead-wizard/constants';
 
@@ -13,6 +14,7 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
   const [category, setCategory] = useState('call_picked');
   const [coldReason, setColdReason] = useState('');
   const [notPickedReason, setNotPickedReason] = useState('');
+  const [pickedOutcome, setPickedOutcome] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -25,6 +27,7 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
       setCategory('call_picked');
       setColdReason('');
       setNotPickedReason('');
+      setPickedOutcome('');
     }
   }, [open]);
 
@@ -42,6 +45,10 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
       setError('Please select why the call was not picked');
       return;
     }
+    if (category === 'call_picked' && !pickedOutcome) {
+      setError('Please select a call picked outcome');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -53,7 +60,12 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
         category,
         coldReason: category === 'cold' ? coldReason : undefined,
         notPickedReason: category === 'call_not_picked' ? notPickedReason : undefined,
-        outcome: category === 'call_not_picked' ? notPickedReason : undefined,
+        pickedOutcome: category === 'call_picked' ? pickedOutcome : undefined,
+        outcome: category === 'call_not_picked'
+          ? notPickedReason
+          : category === 'call_picked'
+            ? pickedOutcome
+            : undefined,
       });
       onClose();
     } catch (err) {
@@ -67,7 +79,7 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
     <AppModal open={open} onClose={onClose} size="md">
       <form onSubmit={handleSubmit} className="p-6 space-y-4">
         <div>
-          <h3 className="text-lg font-semibold text-content-primary">Add Follow-up</h3>
+          <h3 className="text-lg font-semibold text-content-primary">Lead follow up</h3>
           <p className="text-sm text-content-secondary mt-1">{leadName}</p>
         </div>
 
@@ -81,6 +93,7 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
               setCategory(e.target.value);
               setColdReason('');
               setNotPickedReason('');
+              setPickedOutcome('');
             }}
             className="w-full rounded-lg border border-strong bg-surface px-3 py-2.5 text-sm font-medium"
           >
@@ -89,6 +102,28 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
             ))}
           </select>
         </div>
+
+        {category === 'call_picked' && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 space-y-2">
+            <p className="text-xs font-semibold text-emerald-800">Call picked — outcome *</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {CALL_PICKED_OUTCOMES.map((outcome) => (
+                <button
+                  key={outcome.value}
+                  type="button"
+                  onClick={() => setPickedOutcome(outcome.value)}
+                  className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold ${
+                    pickedOutcome === outcome.value
+                      ? 'border-emerald-500 bg-emerald-100 text-emerald-900'
+                      : 'border-subtle bg-white text-content-secondary'
+                  }`}
+                >
+                  {outcome.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {category === 'call_not_picked' && (
           <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 space-y-2">
@@ -157,13 +192,15 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
         </div>
 
         <div>
-          <label className="text-xs font-medium text-content-secondary mb-1 block">Remarks *</label>
+          <label className="text-xs font-medium text-content-secondary mb-1 block">
+            Remarks {category === 'call_picked' || category === 'cold' || category === 'call_not_picked' ? '(optional)' : '*'}
+          </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Follow-up agenda..."
             rows={3}
-            required={category !== 'cold' && category !== 'call_not_picked'}
+            required={category !== 'cold' && category !== 'call_not_picked' && category !== 'call_picked'}
             className="w-full rounded-xl border border-strong bg-surface px-4 py-3 text-sm resize-none"
           />
         </div>

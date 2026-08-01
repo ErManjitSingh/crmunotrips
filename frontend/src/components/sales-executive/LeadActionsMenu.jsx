@@ -79,7 +79,7 @@ export default function LeadActionsMenu({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onScheduleFollowUp?.(lead)} className="flex items-center gap-2 cursor-pointer">
-              <CalendarClock className="w-4 h-4" /> Schedule Follow-up
+              <CalendarClock className="w-4 h-4" /> Lead follow up
             </DropdownMenuItem>
             {canChangeStatus && onChangeStatus && (
               <DropdownMenuItem onClick={() => onChangeStatus(lead)} className="flex items-center gap-2 cursor-pointer">

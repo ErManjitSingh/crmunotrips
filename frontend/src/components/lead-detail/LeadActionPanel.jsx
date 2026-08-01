@@ -14,7 +14,6 @@ export default function LeadActionPanel({
   onLogCallNote,
   onAssign,
   onChangeStatus,
-  canCreateFollowUp = true,
   canEditLead = true,
   canChangeStatus = true,
   editHref,

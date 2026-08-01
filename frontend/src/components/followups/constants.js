@@ -20,16 +20,19 @@ export const FOLLOWUP_PRIORITIES = [
   { value: 'urgent', label: 'Urgent', color: 'text-red-800 bg-gradient-to-r from-red-400/30 to-orange-400/15 border-red-400/50 shadow-sm shadow-red-500/15 animate-pulse' },
 ];
 
-export const FOLLOWUP_OUTCOMES = [
-  'Interested — needs quotation',
-  'Not reachable',
-  'Requested callback later',
-  'Price negotiation ongoing',
-  'Ready to book',
-  'Not interested',
-  'Converted to customer',
-  'Rescheduled per customer request',
+/** Outcomes shown when category = Call picked */
+export const CALL_PICKED_OUTCOMES = [
+  { value: 'interested_quotation', label: 'Interested — needs quotation' },
+  { value: 'requested_callback', label: 'Requested callback later' },
+  { value: 'price_negotiation', label: 'Price negotiation ongoing' },
+  { value: 'ready_to_book', label: 'Ready to book' },
+  { value: 'not_interested', label: 'Not interested' },
+  { value: 'converted', label: 'Converted to customer' },
+  { value: 'rescheduled', label: 'Rescheduled per customer request' },
 ];
+
+/** @deprecated Use CALL_PICKED_OUTCOMES */
+export const FOLLOWUP_OUTCOMES = CALL_PICKED_OUTCOMES.map((o) => o.label);
 
 export const FOLLOWUP_TYPES = [
   { value: 'call', label: 'Call' },
