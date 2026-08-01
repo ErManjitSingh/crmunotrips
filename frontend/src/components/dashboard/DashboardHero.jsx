@@ -35,7 +35,7 @@ const KPI_ITEMS = [
     iconBg: 'bg-emerald-500',
     card: 'border-emerald-100 bg-emerald-50/70',
     value: 'text-emerald-700',
-    path: '/leads/inbox/new',
+    path: '/leads/new-leads',
   },
   {
     key: 'followUpPending',

@@ -319,9 +319,13 @@ async function buildAdminDashboard(options = {}) {
   const monthBuckets = buildLastNMonthBuckets(6, periodEnd);
   const trendStart = monthBuckets[0].start;
 
+  const yesterdayStart = startOfDay(new Date(todayStart.getTime() - 24 * 60 * 60 * 1000));
+  const yesterdayEnd = endOfDay(new Date(todayStart.getTime() - 1));
+
   const [
     totalLeads,
     todayLeads,
+    yesterdayLeads,
     convertedLeads,
     lostLeads,
     pendingFollowups,
@@ -358,6 +362,9 @@ async function buildAdminDashboard(options = {}) {
   ] = await Promise.all([
     Lead.countDocuments(activeLeadScope({}, branchId)),
     Lead.countDocuments(activeLeadScope({ createdAt: { $gte: todayStart, $lte: todayEnd } }, branchId)),
+    Lead.countDocuments(
+      activeLeadScope({ createdAt: { $gte: yesterdayStart, $lte: yesterdayEnd } }, branchId)
+    ),
     Lead.countDocuments(activeLeadScope({ status: 'converted' }, branchId)),
     Lead.countDocuments(activeLeadScope({ status: { $in: LOST_STATUSES } }, branchId)),
     FollowUp.countDocuments(withBranch({ status: 'pending' }, branchId)),
@@ -615,12 +622,10 @@ async function buildAdminDashboard(options = {}) {
     }))
     .sort((a, b) => b.value - a.value);
 
-  const valueBuckets = {
-    ...periodBuckets,
-    followUpPending: isAllTime
-      ? Math.max(periodBuckets.followUpPending, pendingFollowups)
-      : periodBuckets.followUpPending,
-  };
+  // Status distribution = current lead pipeline statuses only (never mix FollowUp docs).
+  // All-time: live statusCounts. Filtered period: statuses of leads created in range.
+  const distributionBuckets = isAllTime ? mapStatusBucket(statusCounts) : periodBuckets;
+  const valueBuckets = { ...distributionBuckets };
   const changeBuckets = isAllTime ? momBuckets : periodBuckets;
   const changeTotal = isAllTime ? momTotalLeads : periodTotalLeads;
   const changeRevenue = isAllTime ? momRevenue : periodRevenue;
@@ -633,11 +638,11 @@ async function buildAdminDashboard(options = {}) {
     valueBuckets.negotiation +
     valueBuckets.lost;
   const statusDistribution = [
-    { name: 'Fresh Leads', key: 'fresh', value: valueBuckets.fresh, color: '#22C55E' },
-    { name: 'Follow Up Pending', key: 'followUp', value: valueBuckets.followUpPending, color: '#F59E0B' },
+    { name: 'New', key: 'fresh', value: valueBuckets.fresh, color: '#22C55E' },
+    { name: 'Follow Up', key: 'followUp', value: valueBuckets.followUpPending, color: '#F59E0B' },
     { name: 'Interested', key: 'interested', value: valueBuckets.interested, color: '#8B5CF6' },
     { name: 'Negotiation', key: 'negotiation', value: valueBuckets.negotiation, color: '#F97316' },
-    { name: 'Lost Leads', key: 'lost', value: valueBuckets.lost, color: '#EF4444' },
+    { name: 'Lost', key: 'lost', value: valueBuckets.lost, color: '#EF4444' },
   ].map((item) => ({
     ...item,
     pct: statusDistributionTotal ? Math.round((item.value / statusDistributionTotal) * 1000) / 10 : 0,
@@ -650,7 +655,8 @@ async function buildAdminDashboard(options = {}) {
     : `${prevStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – ${prevEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
   const reportKpis = {
     totalLeads: withValue(changeMeta(changeTotal, prevTotalLeads), periodTotalLeads),
-    freshLeads: withValue(changeMeta(changeBuckets.fresh, prevBuckets.fresh), valueBuckets.fresh),
+    // Fresh = leads created today (vs yesterday)
+    freshLeads: withValue(changeMeta(todayLeads, yesterdayLeads), todayLeads),
     followUpPending: withValue(
       changeMeta(changeBuckets.followUpPending, prevBuckets.followUpPending),
       valueBuckets.followUpPending
