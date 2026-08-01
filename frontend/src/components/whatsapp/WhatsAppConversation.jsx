@@ -3,7 +3,7 @@ import { MessageCircle } from 'lucide-react';
 import WhatsAppConversationHeader from './WhatsAppConversationHeader';
 import WhatsAppMessageBubble from './WhatsAppMessageBubble';
 import WhatsAppMessageInput from './WhatsAppMessageInput';
-import { groupMessagesByDate, formatDateDivider } from './whatsappUtils';
+import { groupMessagesByDate, formatDateDivider, resolveWhatsAppDisplayName } from './whatsappUtils';
 
 function WhatsAppConversation({
   lead,
@@ -16,11 +16,22 @@ function WhatsAppConversation({
   showInfoToggle,
   onCreateLead,
   creatingLead,
+  user,
 }) {
   const bottomRef = useRef(null);
   const groups = useMemo(() => groupMessagesByDate(messages), [messages]);
   const hasThread = Boolean(lead || contact);
   const lastId = messages.length ? messages[messages.length - 1]?._id : null;
+
+  const templateLead = useMemo(() => {
+    if (lead) return lead;
+    const name = resolveWhatsAppDisplayName(contact || {}, null);
+    const looksLikePhone = /^\+?\d/.test(String(name || ''));
+    return {
+      name: name && !looksLikePhone && name !== 'WhatsApp' ? name : 'Customer',
+      destination: contact?.botAnswers?.destination || '',
+    };
+  }, [lead, contact]);
 
   useEffect(() => {
     if (!lastId) return;
@@ -76,7 +87,7 @@ function WhatsAppConversation({
         <div ref={bottomRef} />
       </div>
 
-      <WhatsAppMessageInput onSend={onSend} />
+      <WhatsAppMessageInput onSend={onSend} lead={templateLead} user={user} />
     </div>
   );
 }

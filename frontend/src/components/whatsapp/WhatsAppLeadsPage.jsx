@@ -379,6 +379,7 @@ function WhatsAppLeadsPage() {
             messages={messages}
             loading={messagesLoading}
             onSend={handleSend}
+            user={user}
             onBack={() => {
               setMobileView('list');
               setSelected(null);

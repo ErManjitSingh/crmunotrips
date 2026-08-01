@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MessageCircle, Plus, Pencil, Trash2 } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import { Button } from '../../components/ui/button';
@@ -10,12 +10,22 @@ import {
   updateWhatsAppTemplate,
   deleteWhatsAppTemplate,
 } from '../../services/whatsappTemplatesApi';
+import { renderWhatsAppTemplate } from '../../lib/whatsappContact';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useAuth } from '../../context/AuthContext';
 
 const EMPTY_FORM = { name: '', body: '', enabled: true, sortOrder: 0 };
 
+const VARIABLE_CHIPS = [
+  { key: '{{customerName}}', label: 'Customer name' },
+  { key: '{{destination}}', label: 'Destination' },
+  { key: '{{executiveName}}', label: 'Your name' },
+  { key: '{{quoteNumber}}', label: 'Quote no.' },
+];
+
 export default function WhatsAppTemplatesPage() {
   const { can } = usePermissions();
+  const { user } = useAuth();
   const canManage = can('whatsapp', 'manage');
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +46,16 @@ export default function WhatsAppTemplatesPage() {
     if (canManage) load();
   }, [canManage, load]);
 
+  const preview = useMemo(
+    () =>
+      renderWhatsAppTemplate(form.body, {
+        name: 'Rahul Sharma',
+        destination: 'Manali',
+        quoteNumber: 'QT-1024',
+      }, user),
+    [form.body, user]
+  );
+
   const openCreate = () => {
     setEditing(null);
     setForm(EMPTY_FORM);
@@ -51,6 +71,10 @@ export default function WhatsAppTemplatesPage() {
       sortOrder: template.sortOrder || 0,
     });
     setModalOpen(true);
+  };
+
+  const insertVariable = (token) => {
+    setForm((f) => ({ ...f, body: `${f.body || ''}${token}` }));
   };
 
   const handleSave = async () => {
@@ -93,12 +117,16 @@ export default function WhatsAppTemplatesPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageHeader
           title="WhatsApp Templates"
-          description="Predefined messages for quick customer contact — no chat sync or message storage"
+          description="Professional message templates for inbox chat and quick customer contact. Variables auto-fill customer name, destination, and your name."
           breadcrumbs={['Settings', 'WhatsApp Templates']}
         />
         <Button onClick={openCreate} className="rounded-xl gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0">
           <Plus className="w-4 h-4" /> New Template
         </Button>
+      </div>
+
+      <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-950">
+        In WhatsApp Inbox, open a chat and tap <span className="font-semibold">Select template</span> below the message box to insert a ready message.
       </div>
 
       <div className="rounded-2xl border border-subtle bg-surface overflow-hidden">
@@ -123,7 +151,7 @@ export default function WhatsAppTemplatesPage() {
                     </div>
                     <p className="text-sm text-content-secondary mt-2 whitespace-pre-line">{template.body}</p>
                     <p className="text-[11px] text-content-muted mt-2">
-                      Variables: {'{{customerName}}'}, {'{{destination}}'}, {'{{executiveName}}'}
+                      Variables: {'{{customerName}}'}, {'{{destination}}'}, {'{{executiveName}}'}, {'{{quoteNumber}}'}
                     </p>
                   </div>
                 </div>
@@ -149,23 +177,48 @@ export default function WhatsAppTemplatesPage() {
       </div>
 
       <AppModal open={modalOpen} onClose={() => !saving && setModalOpen(false)} size="lg" className="p-6">
-        <h3 className="text-lg font-bold text-content-primary mb-4">
+        <h3 className="text-lg font-bold text-content-primary mb-1">
           {editing ? 'Edit Template' : 'Create Template'}
         </h3>
+        <p className="text-xs text-content-muted mb-4">
+          Write a professional message. Use variables so names fill automatically in chat.
+        </p>
         <div className="space-y-4">
           <input
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="Template name"
+            placeholder="Template name (e.g. Quotation Ready)"
             className="w-full rounded-xl border border-subtle bg-surface-elevated p-3 text-sm"
           />
-          <textarea
-            value={form.body}
-            onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
-            rows={8}
-            placeholder="Message body with {{customerName}}, {{destination}}…"
-            className="w-full rounded-xl border border-subtle bg-surface-elevated p-3 text-sm"
-          />
+          <div>
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {VARIABLE_CHIPS.map((chip) => (
+                <button
+                  key={chip.key}
+                  type="button"
+                  onClick={() => insertVariable(chip.key)}
+                  className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={form.body}
+              onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
+              rows={9}
+              placeholder="Dear {{customerName}}, …"
+              className="w-full rounded-xl border border-subtle bg-surface-elevated p-3 text-sm"
+            />
+          </div>
+          {form.body.trim() && (
+            <div className="rounded-xl border border-subtle bg-slate-50 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-content-muted mb-1.5">
+                Preview
+              </p>
+              <p className="text-sm text-content-secondary whitespace-pre-line">{preview}</p>
+            </div>
+          )}
           <label className="flex items-center gap-2 text-sm text-content-secondary">
             <input
               type="checkbox"
