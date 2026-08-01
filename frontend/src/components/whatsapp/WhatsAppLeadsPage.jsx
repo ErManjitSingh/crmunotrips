@@ -15,6 +15,7 @@ import ChangeStatusModal from './modals/ChangeStatusModal';
 import AssignLeadModal from './modals/AssignLeadModal';
 import CreateFollowUpModal from './modals/CreateFollowUpModal';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/followupApi';
+import { canAssignLeads } from '../../lib/canAssignLeads';
 
 function contactFromSelected(selected) {
   if (!selected) return null;
@@ -31,6 +32,7 @@ function WhatsAppLeadsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isExecutive = user?.role === 'sales_executive';
+  const canAssign = canAssignLeads(user?.role);
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState('');
@@ -74,7 +76,7 @@ function WhatsAppLeadsPage() {
       const res = await API.get('/whatsapp/executives', { skipSuccessToast: true });
       return res.data || [];
     },
-    enabled: modals.assign && !isExecutive,
+    enabled: modals.assign && canAssign,
     staleTime: 10 * 60_000,
   });
 
@@ -347,13 +349,13 @@ function WhatsAppLeadsPage() {
         setModals((m) => ({ ...m, status: true }));
         break;
       case 'assign':
-        if (isExecutive) break;
+        if (!canAssign) break;
         setModals((m) => ({ ...m, assign: true }));
         break;
       default:
         break;
     }
-  }, [selected?.lead, isExecutive, navigate]);
+  }, [selected?.lead, isExecutive, canAssign, navigate]);
 
   const toggleInfoPanel = useCallback(() => {
     setInfoPanelOpen((open) => {
@@ -424,7 +426,7 @@ function WhatsAppLeadsPage() {
             onAction={handleAction}
             onCreateLead={canCreateLead ? handleCreateLead : undefined}
             creatingLead={creatingLead}
-            canAssign={!isExecutive}
+            canAssign={canAssign}
             contact={contact}
           />
         }

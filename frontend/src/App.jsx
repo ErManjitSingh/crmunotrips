@@ -324,10 +324,10 @@ function App() {
               <Route path="quotations/*" element={<PermissionRoute module="quotations"><Quotations /></PermissionRoute>} />
               <Route path="packages" element={<PermissionRoute module="packages"><Packages /></PermissionRoute>} />
               <Route path="margin-control" element={<RoleRoute roles={['admin', 'sales_manager']}><MarginControlPage /></RoleRoute>} />
-              <Route path="team/attendance" element={<RoleRoute roles={['admin']}><AdminAttendancePage /></RoleRoute>} />
-              <Route path="team/sales-teams" element={<RoleRoute roles={['admin']}><TeamManagementPage /></RoleRoute>} />
-              <Route path="team/sales-teams/:id" element={<RoleRoute roles={['admin']}><TeamDetailPage /></RoleRoute>} />
-              <Route path="team/sales-targets" element={<RoleRoute roles={['admin']}><TeamPerformancePage /></RoleRoute>} />
+              <Route path="team/attendance" element={<RoleRoute roles={['admin', 'lead_provider']}><AdminAttendancePage /></RoleRoute>} />
+              <Route path="team/sales-teams" element={<RoleRoute roles={['admin', 'lead_provider']}><TeamManagementPage /></RoleRoute>} />
+              <Route path="team/sales-teams/:id" element={<RoleRoute roles={['admin', 'lead_provider']}><TeamDetailPage /></RoleRoute>} />
+              <Route path="team/sales-targets" element={<RoleRoute roles={['admin', 'lead_provider']}><TeamPerformancePage /></RoleRoute>} />
               <Route path="team/destination-assignment" element={<RoleRoute roles={['admin', 'sales_manager', 'lead_provider']}><DestinationAssignmentPage /></RoleRoute>} />
               <Route path="team/skill-assignment" element={<RoleRoute roles={['admin', 'sales_manager', 'lead_provider']}><SkillAssignmentPage /></RoleRoute>} />
               <Route path="team" element={<PermissionRoute module="users"><Team /></PermissionRoute>} />

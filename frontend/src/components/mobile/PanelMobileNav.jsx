@@ -9,6 +9,7 @@ import {
   FileText,
   LayoutDashboard,
   MapPin,
+  MessageCircle,
   MoreHorizontal,
   Phone,
   Plus,
@@ -106,8 +107,8 @@ const PANEL_CONFIG = {
     tabs: [
       { path: '/leads', label: 'Leads', icon: Users },
       { path: '/leads/new', label: 'Add', icon: Plus, primary: true },
-      { path: '/team/destination-assignment', label: 'Assign', icon: MapPin },
-      { path: '/team/skill-assignment', label: 'Skills', icon: Award },
+      { path: '/whatsapp', label: 'WhatsApp', icon: MessageCircle },
+      { path: '/team/sales-teams', label: 'Teams', icon: UsersRound },
       { path: '/profile', label: 'Profile', icon: User },
     ],
   },

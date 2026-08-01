@@ -24,12 +24,16 @@ export default function LeadBulkActionsBar({ count, onClear, onAssign, onDelete,
                 <RefreshCw className="w-3.5 h-3.5" /> Update Status
               </Button>
             )}
-            <Button variant="outline" size="sm" className="rounded-lg h-8 gap-1.5 text-xs" onClick={onExport}>
-              <Download className="w-3.5 h-3.5" /> Export
-            </Button>
-            <Button variant="outline" size="sm" className="rounded-lg h-8 gap-1.5 text-xs text-red-600 hover:text-red-600 hover:bg-red-500/10" onClick={onDelete}>
-              <Trash2 className="w-3.5 h-3.5" /> Delete
-            </Button>
+            {onExport && (
+              <Button variant="outline" size="sm" className="rounded-lg h-8 gap-1.5 text-xs" onClick={onExport}>
+                <Download className="w-3.5 h-3.5" /> Export
+              </Button>
+            )}
+            {onDelete && (
+              <Button variant="outline" size="sm" className="rounded-lg h-8 gap-1.5 text-xs text-red-600 hover:text-red-600 hover:bg-red-500/10" onClick={onDelete}>
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </Button>
+            )}
           </div>
           <button onClick={onClear} className="p-1.5 rounded-lg hover:bg-surface-elevated text-content-muted">
             <X className="w-4 h-4" />

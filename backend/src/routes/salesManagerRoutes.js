@@ -32,30 +32,36 @@ const {
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
 
-router.use(protect, authorize('sales_manager', 'admin'));
+router.use(protect);
 
-router.get('/dashboard', getDashboard);
-router.get('/leads', listLeads);
-router.get('/leads/:id/quotations', getLeadQuotationsList);
-router.get('/leads/:id/notes-list', getLeadNotesList);
-router.get('/leads/:id', getLeadDetail);
-router.post('/assign', assignLeads);
-router.get('/executives', listExecutives);
-router.get('/followups', listFollowUps);
-router.get('/quotations/:segment?', listQuotations);
-router.post('/quotations', createQuotation);
-router.put('/quotations/:id', updateQuotation);
-router.get('/notifications', listNotifications);
-router.get('/reports', getReports);
-router.get('/calendar', getCalendar);
+const managerOnly = authorize('sales_manager', 'admin');
+const teamAccess = authorize('sales_manager', 'admin', 'lead_provider');
 
-router.get('/teams/leaders', listTeamLeaders);
-router.get('/teams/available-executives', listAvailableExecutives);
-router.post('/teams/:id/members', addMember);
-router.delete('/teams/:id/members/:memberId', removeMember);
-router.put('/teams/:id/transfer', transferMember);
-router.put('/teams/:id/leader', updateTeamLeader);
-router.route('/teams').get(listTeams).post(createTeam);
-router.route('/teams/:id').get(getTeam).put(updateTeam).delete(deleteTeam);
+router.get('/dashboard', managerOnly, getDashboard);
+router.get('/leads', managerOnly, listLeads);
+router.get('/leads/:id/quotations', managerOnly, getLeadQuotationsList);
+router.get('/leads/:id/notes-list', managerOnly, getLeadNotesList);
+router.get('/leads/:id', managerOnly, getLeadDetail);
+router.post('/assign', managerOnly, assignLeads);
+router.get('/executives', teamAccess, listExecutives);
+router.get('/followups', managerOnly, listFollowUps);
+router.get('/quotations/:segment?', managerOnly, listQuotations);
+router.post('/quotations', managerOnly, createQuotation);
+router.put('/quotations/:id', managerOnly, updateQuotation);
+router.get('/notifications', managerOnly, listNotifications);
+router.get('/reports', managerOnly, getReports);
+router.get('/calendar', managerOnly, getCalendar);
+
+router.get('/teams/leaders', teamAccess, listTeamLeaders);
+router.get('/teams/available-executives', teamAccess, listAvailableExecutives);
+router.post('/teams/:id/members', teamAccess, addMember);
+router.delete('/teams/:id/members/:memberId', teamAccess, removeMember);
+router.put('/teams/:id/transfer', teamAccess, transferMember);
+router.put('/teams/:id/leader', teamAccess, updateTeamLeader);
+router.get('/teams', teamAccess, listTeams);
+router.post('/teams', managerOnly, createTeam);
+router.get('/teams/:id', teamAccess, getTeam);
+router.put('/teams/:id', teamAccess, updateTeam);
+router.delete('/teams/:id', teamAccess, deleteTeam);
 
 module.exports = router;

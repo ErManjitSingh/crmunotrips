@@ -99,6 +99,8 @@ const ROLE_PERMISSIONS = {
   lead_provider: {
     ...noPerms(),
     leads: { view: true, create: true, edit: true, delete: false },
+    users: { view: true, create: false, edit: false, delete: false },
+    whatsapp: { use: true, manage: false },
   },
 };
 

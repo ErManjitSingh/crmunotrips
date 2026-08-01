@@ -24,7 +24,7 @@ const tabIcons = { Users, Shield, Activity, Trophy };
 const emptyFilters = { search: '', status: '', roleId: '', department: '' };
 const emptyActivityFilters = { search: '', type: '' };
 
-const TARGET_SETTER_ROLES = new Set(['admin', 'sales_manager', 'team_leader']);
+const TARGET_SETTER_ROLES = new Set(['admin', 'sales_manager', 'team_leader', 'lead_provider']);
 const TARGET_USER_ROLES = new Set(['sales_executive', 'team_leader']);
 
 function canSetTargetFor(authRole, targetRole) {

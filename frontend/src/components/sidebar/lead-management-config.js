@@ -21,6 +21,7 @@ import {
 const leadPerm = { module: 'leads', action: 'view' };
 const analyticsRoles = ['admin', 'sales_manager', 'team_leader'];
 const systemRoles = ['admin', 'sales_manager'];
+const followupRoles = ['admin', 'sales_manager', 'team_leader', 'sales_executive'];
 
 /** Grouped Lead Management sidebar — HubSpot-style sections */
 export const leadManagementSections = [
@@ -78,18 +79,28 @@ export const leadManagementSections = [
         countKey: 'leads.assigned',
         permission: leadPerm,
       },
+      {
+        path: '/leads/hot',
+        label: 'Hot Leads',
+        icon: Flame,
+        badgeKey: 'leads.hot',
+        accent: 'orange',
+        permission: leadPerm,
+      },
     ],
   },
   {
     id: 'followups',
     label: 'Followups',
     defaultOpen: true,
+    roles: followupRoles,
     items: [
       {
         path: '/followups',
         label: 'Follow Ups',
         icon: CalendarClock,
         badgeKey: 'followups.due',
+        roles: followupRoles,
         permission: leadPerm,
       },
       {
@@ -97,14 +108,7 @@ export const leadManagementSections = [
         label: 'Reminder Center',
         icon: Bell,
         badgeKey: 'reminders.overdue',
-        permission: leadPerm,
-      },
-      {
-        path: '/leads/hot',
-        label: 'Hot Leads',
-        icon: Flame,
-        badgeKey: 'leads.hot',
-        accent: 'orange',
+        roles: followupRoles,
         permission: leadPerm,
       },
     ],

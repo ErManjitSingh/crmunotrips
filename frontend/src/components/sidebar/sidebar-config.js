@@ -85,19 +85,19 @@ export const teamManagementItems = [
     path: '/team/sales-teams',
     label: 'Sales Teams',
     icon: Users,
-    roles: ['admin'],
+    roles: ['admin', 'lead_provider'],
   },
   {
     path: '/team/sales-targets',
     label: 'Sales Targets',
     icon: Target,
-    roles: ['admin'],
+    roles: ['admin', 'lead_provider'],
   },
   {
     path: '/team/attendance',
     label: 'Attendance',
     icon: Clock,
-    roles: ['admin'],
+    roles: ['admin', 'lead_provider'],
   },
   {
     path: '/team/destination-assignment',

@@ -17,6 +17,7 @@ export default function TeamManagementPage() {
   const { user } = useAuth();
   const location = useLocation();
   const isAdminView = user?.role === 'admin' || location.pathname.startsWith('/team/sales-teams');
+  const canCreateTeam = user?.role !== 'lead_provider';
   const detailBase = isAdminView ? '/team/sales-teams' : '/sales-manager/teams';
   const [teams, setTeams] = useState([]);
   const [leaders, setLeaders] = useState([]);
@@ -43,6 +44,7 @@ export default function TeamManagementPage() {
     if (editTeam?._id) {
       await API.put(`${TEAMS_API}/${editTeam._id}`, payload);
     } else {
+      if (!canCreateTeam) return;
       await API.post(TEAMS_API, payload);
     }
     setFormOpen(false);
@@ -69,12 +71,18 @@ export default function TeamManagementPage() {
     <div className="space-y-6">
       <PageHeader
         title="Team Management"
-        description="Create and manage sales teams — Manager → Team Leader → Executives. Assign executives to any team."
+        description={
+          canCreateTeam
+            ? 'Create and manage sales teams — Manager → Team Leader → Executives. Assign executives to any team.'
+            : 'View sales teams and members — Manager → Team Leader → Executives.'
+        }
         breadcrumbs={[isAdminView ? 'Admin' : 'Sales Manager', 'Sales Teams']}
         actions={
-          <Button onClick={() => { setEditTeam(null); setFormOpen(true); }} variant="gradient">
-            <Plus className="w-4 h-4 mr-1.5" /> Create Team
-          </Button>
+          canCreateTeam ? (
+            <Button onClick={() => { setEditTeam(null); setFormOpen(true); }} variant="gradient">
+              <Plus className="w-4 h-4 mr-1.5" /> Create Team
+            </Button>
+          ) : null
         }
       />
 
@@ -110,8 +118,12 @@ export default function TeamManagementPage() {
       ) : teams.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-subtle p-16 text-center">
           <UsersRound className="w-12 h-12 mx-auto text-content-muted mb-4 opacity-50" />
-          <p className="text-content-muted mb-4">No teams yet. Create your first sales team.</p>
-          <Button onClick={() => setFormOpen(true)}><Plus className="w-4 h-4 mr-1" /> Create Team</Button>
+          <p className="text-content-muted mb-4">
+            {canCreateTeam ? 'No teams yet. Create your first sales team.' : 'No sales teams found yet.'}
+          </p>
+          {canCreateTeam && (
+            <Button onClick={() => setFormOpen(true)}><Plus className="w-4 h-4 mr-1" /> Create Team</Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

@@ -95,7 +95,7 @@ async function buildUserMap(userIds) {
 }
 
 async function getScopedUserIds(user, branchId = null) {
-  if (user.role === 'admin') {
+  if (user.role === 'admin' || user.role === 'lead_provider') {
     const users = await User.find({
       role: { $in: TRACKED_ROLES },
       status: 'active',

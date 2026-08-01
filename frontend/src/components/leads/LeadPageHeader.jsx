@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Upload, Download, Plus } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 
-export default function LeadPageHeader({ title, total }) {
+export default function LeadPageHeader({ title, total, showImportExport = true }) {
   const { can } = usePermissions();
   const canCreateLead = can('leads', 'create');
 
@@ -28,20 +28,24 @@ export default function LeadPageHeader({ title, total }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 shrink-0">
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-subtle bg-white text-sm font-medium text-content-primary hover:bg-slate-50 transition-colors shadow-sm"
-        >
-          <Upload className="w-4 h-4 text-content-muted" />
-          Import
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-subtle bg-white text-sm font-medium text-content-primary hover:bg-slate-50 transition-colors shadow-sm"
-        >
-          <Download className="w-4 h-4 text-content-muted" />
-          Export
-        </button>
+        {showImportExport && (
+          <>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-subtle bg-white text-sm font-medium text-content-primary hover:bg-slate-50 transition-colors shadow-sm"
+            >
+              <Upload className="w-4 h-4 text-content-muted" />
+              Import
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-subtle bg-white text-sm font-medium text-content-primary hover:bg-slate-50 transition-colors shadow-sm"
+            >
+              <Download className="w-4 h-4 text-content-muted" />
+              Export
+            </button>
+          </>
+        )}
         {canCreateLead && (
           <Link
             to="/leads/new"

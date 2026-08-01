@@ -55,7 +55,7 @@ async function assertCanAssignLeads(req, { leadIds, assigneeRole, assigneeId }) 
   const branchId = req.branchId || req.user.branchId || null;
   const assignee = await resolveAssignee(assigneeId, assigneeRole, branchId);
 
-  if (req.user.role === 'admin') {
+  if (req.user.role === 'admin' || req.user.role === 'lead_provider') {
     return { assignee, branchId };
   }
 

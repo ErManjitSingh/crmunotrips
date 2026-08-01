@@ -14,7 +14,7 @@ const listTargets = asyncHandler(async (req, res) => {
     month: Number(req.query.month) || currentPeriod().month,
   };
 
-  if (req.user.role === 'sales_manager' || req.user.role === 'admin') {
+  if (req.user.role === 'sales_manager' || req.user.role === 'admin' || req.user.role === 'lead_provider') {
     return res.json(await listTargetsForManager(req, period));
   }
   if (req.user.role === 'team_leader') {
@@ -35,7 +35,7 @@ const listTargets = asyncHandler(async (req, res) => {
 });
 
 const upsertTarget = asyncHandler(async (req, res) => {
-  if (!['admin', 'sales_manager', 'team_leader'].includes(req.user.role)) {
+  if (!['admin', 'sales_manager', 'team_leader', 'lead_provider'].includes(req.user.role)) {
     throw new ApiError(403, 'You do not have permission to set targets');
   }
 

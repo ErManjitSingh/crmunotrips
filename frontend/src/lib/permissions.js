@@ -37,6 +37,7 @@ export function filterNavItems(items, user) {
 
     if (item.sections) {
       const sections = item.sections
+        .filter((section) => !section.roles?.length || section.roles.includes(user?.role))
         .map((section) => ({
           ...section,
           items: filterSectionItems(section.items, user),

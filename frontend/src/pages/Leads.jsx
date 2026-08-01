@@ -38,13 +38,24 @@ export default function Leads() {
   const { can } = usePermissions();
   const isAdmin = user?.role === 'admin';
   const isSalesManager = user?.role === 'sales_manager';
+  const isLeadProvider = user?.role === 'lead_provider';
   const isManagerRole = isAdmin || isSalesManager;
   const isLimitedRole = ['team_leader', 'sales_executive'].includes(user?.role);
   const userCanAssignLeads = canAssignLeads(user?.role);
   const canEditLead = can('leads', 'edit');
+  const canDeleteLead = can('leads', 'delete');
+  const canImportExport = !isLeadProvider && (isManagerRole || isAdmin);
   const leadMenuActions = isLimitedRole
     ? { view: true, edit: false, assign: false, transferBranch: false, delete: false }
-    : { view: true, edit: isManagerRole, assign: isManagerRole, transferBranch: isManagerRole, delete: isManagerRole };
+    : isLeadProvider
+      ? { view: true, edit: canEditLead, assign: userCanAssignLeads, transferBranch: false, delete: false }
+      : {
+          view: true,
+          edit: isManagerRole,
+          assign: isManagerRole,
+          transferBranch: isManagerRole,
+          delete: isManagerRole && canDeleteLead,
+        };
   const config = pageConfig[location.pathname] || pageConfig['/leads'];
   const isAllLeadsPage = location.pathname === '/leads';
   const isConvertedPage = location.pathname === '/leads/converted' || config.status === 'converted';
@@ -286,6 +297,7 @@ export default function Leads() {
         <LeadPageHeader
           title={config.title}
           total={totalLeads ?? undefined}
+          showImportExport={canImportExport}
         />
 
         {isAllLeadsPage && <LeadKpiStrip />}
@@ -301,10 +313,10 @@ export default function Leads() {
         <LeadBulkActionsBar
           count={selectedCount}
           onClear={() => setRowSelection({})}
-          onAssign={isAdmin ? () => openBulkAssign(selectedLeadIds) : undefined}
-          onStatusUpdate={isManagerRole ? () => setBulkStatusOpen(true) : undefined}
-          onExport={handleBulkExport}
-          onDelete={handleBulkDelete}
+          onAssign={userCanAssignLeads ? () => openBulkAssign(selectedLeadIds) : undefined}
+          onStatusUpdate={isManagerRole || isLeadProvider ? () => setBulkStatusOpen(true) : undefined}
+          onExport={canImportExport ? handleBulkExport : undefined}
+          onDelete={canDeleteLead ? handleBulkDelete : undefined}
         />
 
         {loading ? (
@@ -331,14 +343,14 @@ export default function Leads() {
             rowSelection={rowSelection}
             onRowSelectionChange={setRowSelection}
             onRowClick={openLead}
-            onDelete={isManagerRole ? handleDelete : undefined}
-            onAssign={isManagerRole && userCanAssignLeads ? openAssign : undefined}
+            onDelete={canDeleteLead ? handleDelete : undefined}
+            onAssign={userCanAssignLeads ? openAssign : undefined}
             onTransferBranch={isManagerRole ? setTransferLead : undefined}
             onAccepted={invalidateLeads}
             onAcceptExpired={invalidateLeads}
-            canEditLead={isManagerRole && canEditLead}
+            canEditLead={(isManagerRole || isLeadProvider) && canEditLead}
             menuActions={leadMenuActions}
-            showAssignButton={isManagerRole && userCanAssignLeads}
+            showAssignButton={userCanAssignLeads}
             serverPagination={{
               pageIndex: pagination.pageIndex,
               pageSize: pagination.pageSize,
@@ -355,7 +367,7 @@ export default function Leads() {
         lead={previewLead}
         onClose={() => setPreviewLead(null)}
         onAssign={userCanAssignLeads ? openAssign : undefined}
-        onDelete={isManagerRole ? handleDelete : undefined}
+        onDelete={canDeleteLead ? handleDelete : undefined}
         onTransferBranch={isAdmin ? setTransferLead : undefined}
         canEditLead={canEditLead}
       />
