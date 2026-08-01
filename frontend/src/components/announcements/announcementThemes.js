@@ -144,5 +144,6 @@ export const ROLE_OPTIONS = [
   { value: 'team_leader', label: 'Team Leader' },
   { value: 'operations_manager', label: 'Operations' },
   { value: 'accountant', label: 'Accounts' },
+  { value: 'lead_provider', label: 'Lead Provider' },
   { value: 'admin', label: 'Admin' },
 ];

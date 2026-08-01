@@ -40,7 +40,7 @@ export const leadManagementSections = [
         path: '/whatsapp',
         label: 'WhatsApp Leads',
         icon: MessageCircle,
-        permission: leadPerm,
+        permission: { module: 'whatsapp', action: 'use' },
       },
       {
         path: '/leads/returned',

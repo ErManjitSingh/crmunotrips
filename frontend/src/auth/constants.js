@@ -6,7 +6,7 @@ export const AUTH_STORAGE_KEYS = {
   LAST_ACTIVITY_AT: 'lastActivityAt',
 };
 
-/** @typedef {'admin'|'sales_manager'|'sales_executive'|'team_leader'|'accountant'|'operations_manager'|'hr_admin'} RoleSlug */
+/** @typedef {'admin'|'sales_manager'|'sales_executive'|'team_leader'|'accountant'|'operations_manager'|'hr_admin'|'lead_provider'} RoleSlug */
 
 export const VALID_ROLES = /** @type {RoleSlug[]} */ ([
   'admin',
@@ -16,6 +16,7 @@ export const VALID_ROLES = /** @type {RoleSlug[]} */ ([
   'accountant',
   'operations_manager',
   'hr_admin',
+  'lead_provider',
 ]);
 
 /** @type {Record<RoleSlug, string>} */
@@ -27,6 +28,7 @@ export const ROLE_DASHBOARD_PATHS = {
   accountant: '/accountant/dashboard',
   operations_manager: '/operations-manager/dashboard',
   hr_admin: '/hr/dashboard',
+  lead_provider: '/leads',
 };
 
 export const ROLE_LABELS = {
@@ -37,4 +39,5 @@ export const ROLE_LABELS = {
   accountant: 'Accountant',
   operations_manager: 'Operations Manager',
   hr_admin: 'HR Admin',
+  lead_provider: 'Lead Provider',
 };

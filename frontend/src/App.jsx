@@ -328,8 +328,8 @@ function App() {
               <Route path="team/sales-teams" element={<RoleRoute roles={['admin']}><TeamManagementPage /></RoleRoute>} />
               <Route path="team/sales-teams/:id" element={<RoleRoute roles={['admin']}><TeamDetailPage /></RoleRoute>} />
               <Route path="team/sales-targets" element={<RoleRoute roles={['admin']}><TeamPerformancePage /></RoleRoute>} />
-              <Route path="team/destination-assignment" element={<RoleRoute roles={['admin', 'sales_manager']}><DestinationAssignmentPage /></RoleRoute>} />
-              <Route path="team/skill-assignment" element={<RoleRoute roles={['admin', 'sales_manager']}><SkillAssignmentPage /></RoleRoute>} />
+              <Route path="team/destination-assignment" element={<RoleRoute roles={['admin', 'sales_manager', 'lead_provider']}><DestinationAssignmentPage /></RoleRoute>} />
+              <Route path="team/skill-assignment" element={<RoleRoute roles={['admin', 'sales_manager', 'lead_provider']}><SkillAssignmentPage /></RoleRoute>} />
               <Route path="team" element={<PermissionRoute module="users"><Team /></PermissionRoute>} />
               <Route path="team/users/:id" element={<PermissionRoute module="users"><TeamUserProfile /></PermissionRoute>} />
               <Route path="reports" element={<PermissionRoute module="reports"><Reports /></PermissionRoute>} />

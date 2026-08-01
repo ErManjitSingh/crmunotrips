@@ -16,16 +16,16 @@ const {
 
 router.use(protect);
 
-router.get('/skills', authorize('admin', 'sales_manager'), listSkills);
-router.get('/user-skills', authorize('admin', 'sales_manager'), listUserSkills);
-router.put('/user-skills', authorize('admin', 'sales_manager'), updateUserSkills);
+router.get('/skills', authorize('admin', 'sales_manager', 'lead_provider'), listSkills);
+router.get('/user-skills', authorize('admin', 'sales_manager', 'lead_provider'), listUserSkills);
+router.put('/user-skills', authorize('admin', 'sales_manager', 'lead_provider'), updateUserSkills);
 
-router.get('/branch-settings', authorize('admin', 'sales_manager'), getBranchSkillSettings);
-router.put('/branch-settings', authorize('admin', 'sales_manager'), updateBranchSkillSettings);
+router.get('/branch-settings', authorize('admin', 'sales_manager', 'lead_provider'), getBranchSkillSettings);
+router.put('/branch-settings', authorize('admin', 'sales_manager', 'lead_provider'), updateBranchSkillSettings);
 
-router.get('/logs', authorize('admin', 'sales_manager'), listSkillAssignmentLogs);
-router.get('/reports', authorize('admin', 'sales_manager'), getReports);
-router.post('/detect-lead-type', authorize('admin', 'sales_manager', 'team_leader'), detectLeadTypePreview);
-router.post('/auto-assign/:leadId', authorize('admin', 'sales_manager'), triggerSkillAutoAssign);
+router.get('/logs', authorize('admin', 'sales_manager', 'lead_provider'), listSkillAssignmentLogs);
+router.get('/reports', authorize('admin', 'sales_manager', 'lead_provider'), getReports);
+router.post('/detect-lead-type', authorize('admin', 'sales_manager', 'team_leader', 'lead_provider'), detectLeadTypePreview);
+router.post('/auto-assign/:leadId', authorize('admin', 'sales_manager', 'lead_provider'), triggerSkillAutoAssign);
 
 module.exports = router;

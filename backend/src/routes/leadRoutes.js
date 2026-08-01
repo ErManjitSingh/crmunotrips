@@ -84,7 +84,7 @@ router.post('/clear-all', authorize('admin'), clearAllLeads);
 router.get('/assignees', getAssignees);
 router.get('/list-kpis', getListKpis);
 router.get('/lost', listLostLeads);
-router.post('/assign', authorize('admin', 'sales_manager', 'team_leader'), assignLeads);
+router.post('/assign', authorize('admin', 'sales_manager', 'team_leader', 'lead_provider'), assignLeads);
 router.patch('/:id/transfer-branch', authorize('admin'), transferLeadBranch);
 router.post('/:id/reactivate', authorize('admin', 'sales_manager', 'team_leader'), reactivateLead);
 router.post('/:id/reassign-reactivated', authorize('admin', 'sales_manager', 'team_leader'), reassignReactivatedLead);

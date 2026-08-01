@@ -6,6 +6,7 @@ const ROLES = [
   'accountant',
   'operations_manager',
   'hr_admin',
+  'lead_provider',
 ];
 
 const ROLE_LABELS = {
@@ -16,6 +17,7 @@ const ROLE_LABELS = {
   accountant: 'Accountant',
   operations_manager: 'Operations Manager',
   hr_admin: 'HR Admin',
+  lead_provider: 'Lead Provider',
 };
 
 const ROLE_DASHBOARD_PATHS = {
@@ -26,6 +28,7 @@ const ROLE_DASHBOARD_PATHS = {
   accountant: '/accountant/dashboard',
   operations_manager: '/operations-manager/dashboard',
   hr_admin: '/hr/dashboard',
+  lead_provider: '/leads',
 };
 
 module.exports = { ROLES, ROLE_LABELS, ROLE_DASHBOARD_PATHS };

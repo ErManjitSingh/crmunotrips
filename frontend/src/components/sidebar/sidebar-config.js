@@ -45,7 +45,7 @@ export const reportsAnalyticsItems = [
 ];
 
 export const settingsMenuItems = [
-  { path: '/settings', label: 'General Settings', icon: Settings },
+  { path: '/settings', label: 'General Settings', icon: Settings, roles: ['admin'] },
   {
     path: '/settings/email-templates',
     label: 'Email Templates',
@@ -69,6 +69,7 @@ export const settingsMenuItems = [
     label: 'Notifications',
     icon: Bell,
     badgeKey: 'notifications.unread',
+    roles: ['admin', 'sales_manager', 'team_leader', 'sales_executive', 'accountant', 'operations_manager'],
     permission: { module: 'leads', action: 'view' },
   },
 ];
@@ -102,18 +103,18 @@ export const teamManagementItems = [
     path: '/team/destination-assignment',
     label: 'Destination Assignment',
     icon: MapPin,
-    roles: ['admin', 'sales_manager'],
+    roles: ['admin', 'sales_manager', 'lead_provider'],
   },
   {
     path: '/team/skill-assignment',
     label: 'Skill Assignment',
     icon: Award,
-    roles: ['admin', 'sales_manager'],
+    roles: ['admin', 'sales_manager', 'lead_provider'],
   },
 ];
 
 export const mainNavItems = [
-  { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin'] },
   {
     id: 'lead-management',
     label: 'Lead Management',
@@ -208,6 +209,7 @@ export const mainNavItems = [
     id: 'settings',
     label: 'Settings',
     icon: Settings,
+    roles: ['admin', 'sales_manager', 'team_leader', 'sales_executive', 'accountant', 'operations_manager'],
     children: settingsMenuItems,
   },
 ];

@@ -95,6 +95,10 @@ const ROLE_PERMISSIONS = {
     hr: { view: true, create: true, edit: true, delete: true },
     reports: { view: true, export: true },
   },
+  lead_provider: {
+    ...noPerms(),
+    leads: { view: true, create: true, edit: true, delete: false },
+  },
 };
 
 const PERMISSION_MODULES = [

@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import {
+  Award,
   BarChart3,
   CalendarCheck,
   CalendarClock,
@@ -100,6 +101,16 @@ const PANEL_CONFIG = {
       { path: '/hr/profile', label: 'Profile', icon: User },
     ],
   },
+  lead_provider: {
+    accent: 'brand',
+    tabs: [
+      { path: '/leads', label: 'Leads', icon: Users },
+      { path: '/leads/new', label: 'Add', icon: Plus, primary: true },
+      { path: '/team/destination-assignment', label: 'Assign', icon: MapPin },
+      { path: '/team/skill-assignment', label: 'Skills', icon: Award },
+      { path: '/profile', label: 'Profile', icon: User },
+    ],
+  },
 };
 
 function resolvePanel(pathname, role) {
@@ -108,6 +119,7 @@ function resolvePanel(pathname, role) {
   if (pathname.startsWith('/sales-executive')) return 'sales_executive';
   if (pathname.startsWith('/operations-manager')) return 'operations_manager';
   if (pathname.startsWith('/hr')) return 'hr_admin';
+  if (role === 'lead_provider') return 'lead_provider';
   return role === 'accountant' ? 'accountant' : 'admin';
 }
 
