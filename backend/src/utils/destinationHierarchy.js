@@ -62,8 +62,19 @@ function resolveStateForDestination(destinationText, byKey) {
     if (key && byKey.has(key)) return byKey.get(key);
   }
 
-  // Longest-key-first so "himachalpradesh" wins over shorter fragments
+  // Token match (e.g. "gj test" → GJ → Gujarat)
+  const tokens = raw.split(/[^a-zA-Z0-9]+/).map((t) => normalizeDestinationKey(t)).filter(Boolean);
+  for (const token of tokens) {
+    if (token && byKey.has(token)) return byKey.get(token);
+  }
+
   const keys = [...byKey.keys()].sort((a, b) => b.length - a.length);
+
+  // Short codes (gj, hp): prefix on normalized text — "gjtest" → Gujarat
+  for (const key of keys) {
+    if (key.length === 2 && fullKey.startsWith(key)) return byKey.get(key);
+  }
+
   for (const key of keys) {
     if (key.length >= 3 && fullKey.includes(key)) return byKey.get(key);
   }

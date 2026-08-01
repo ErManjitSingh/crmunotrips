@@ -58,7 +58,7 @@ export const DESTINATION_FAMILIES = [
   },
   {
     name: 'Gujarat',
-    aliases: ['Dwarka', 'Somnath', 'Kutch', 'Ahmedabad'],
+    aliases: ['Dwarka', 'Somnath', 'Kutch', 'Ahmedabad', 'GJ', 'Guj'],
   },
   { name: 'Punjab', aliases: ['Amritsar'] },
   {

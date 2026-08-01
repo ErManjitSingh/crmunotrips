@@ -69,7 +69,7 @@ const MARGIN_STATES = [
   },
   {
     name: 'Gujarat',
-    aliases: ['Dwarka', 'Somnath', 'Kutch', 'Ahmedabad'],
+    aliases: ['Dwarka', 'Somnath', 'Kutch', 'Ahmedabad', 'GJ', 'Guj'],
   },
   {
     name: 'Punjab',
