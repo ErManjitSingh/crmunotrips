@@ -20,31 +20,31 @@ const {
  */
 const QUESTIONS = {
   welcome:
-    'Namaste! 👋 *Uno Trips* mein aapka swagat hai.\n\n' +
-    'Apni trip plan karne ke liye 4 chhoti details share karein:\n\n' +
-    '1️⃣ *Destination* kahan jaana hai?\n' +
-    '(jaise: Manali, Goa, Dubai)\n\n' +
-    '_Auto band karne ke liye STOP likhein._',
+    'Hello! 👋 Welcome to *UNO Trips*.\n\n' +
+    'To help us plan your trip, please share 4 quick details:\n\n' +
+    '1️⃣ What is your preferred *destination*?\n' +
+    '(e.g. Manali, Goa, Dubai)\n\n' +
+    '_Reply STOP anytime to pause automated messages._',
   travelDate:
-    'Bahut badhiya! ✈️\n\n' +
-    '2️⃣ *Travel date* kab hai?\n' +
-    '(jaise: 15/08/2026 ya 15 August)',
+    'Great choice! ✈️\n\n' +
+    '2️⃣ What is your preferred *travel date*?\n' +
+    '(e.g. 15/08/2026 or 15 August)',
   adults:
     'Perfect!\n\n' +
-    '3️⃣ Kitne *adults* travel karenge?\n' +
-    '(sirf number, jaise: 2)',
+    '3️⃣ How many *adults* will be travelling?\n' +
+    '(numbers only, e.g. 2)',
   bestTime:
-    'Shukriya!\n\n' +
-    '4️⃣ Call karne ka *best time* kab hai?\n' +
-    '(jaise: subah 10-12, dopahar, shaam 5-7)',
+    'Thank you!\n\n' +
+    '4️⃣ What is the *best time to call* you?\n' +
+    '(e.g. morning 10–12, afternoon, or evening 5–7)',
   done:
-    'Shukriya! ✅ Aapki details save ho gayi hain.\n\n' +
-    'Hamari team jaldi aapse baat karegi.\n' +
-    'Koi aur sawaal ho to yahan likhein.',
-  reaskDestination: 'Destination ka naam likhein (jaise: Manali ya Goa).',
-  reaskTravelDate: 'Date dobara bhejein (jaise: 15/08/2026).',
-  reaskAdults: 'Sirf adults ka number likhein (jaise: 2 ya 4).',
-  reaskBestTime: 'Call ka best time likhein (jaise: subah 11 baje).',
+    'Thank you! ✅ Your details have been saved successfully.\n\n' +
+    'Our travel specialist will contact you shortly.\n' +
+    'If you have any questions in the meantime, feel free to message us here.',
+  reaskDestination: 'Please share the destination name (e.g. Manali or Goa).',
+  reaskTravelDate: 'Please share the travel date again (e.g. 15/08/2026).',
+  reaskAdults: 'Please reply with the number of adults only (e.g. 2 or 4).',
+  reaskBestTime: 'Please share the best time to call (e.g. morning 11 AM).',
 };
 
 const ACTIVE_STEPS = [
@@ -252,7 +252,7 @@ async function maybeReask(conversation, replyText) {
     );
     await sendAndStoreBotReply(
       conversation,
-      'Theek hai — team member aapse personally baat karega.'
+      'No problem — a travel specialist from our team will connect with you personally.'
     );
     return false;
   }

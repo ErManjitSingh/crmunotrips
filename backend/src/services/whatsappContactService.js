@@ -8,13 +8,15 @@ const LEGACY_TEMPLATE_BODIES = new Set([
   'Hello {{customerName}},\n\nThank you for contacting UNO Trips.\n\nHow may I assist you regarding your trip to {{destination}}?',
   'Hello {{customerName}},\n\nYour quotation is ready.\n\nPlease check and let us know if you have any questions.',
   'Hello {{customerName}},\n\nJust following up regarding your travel inquiry.\n\nPlease let us know if you would like to proceed.',
+  'Namaste {{customerName}} 🙏\n\nThank you for connecting with *UNO Trips*.\n\nI am {{executiveName}}, and I will personally assist you with your travel plans for *{{destination}}*.\n\nPlease share your preferred travel dates, number of travellers, and any special requirements so I can prepare the best options for you.',
+  'Dear {{customerName}},\n\nGreat news — your *{{destination}}* trip is confirmed with *UNO Trips*! 🎉\n\nWe will share your detailed itinerary and vouchers shortly. Please keep this chat saved for any assistance during travel.\n\nThank you for choosing us.\n\n— {{executiveName}}',
 ]);
 
 const DEFAULT_TEMPLATES = [
   {
     name: 'Welcome',
     body:
-      'Namaste {{customerName}} 🙏\n\nThank you for connecting with *UNO Trips*.\n\nI am {{executiveName}}, and I will personally assist you with your travel plans for *{{destination}}*.\n\nPlease share your preferred travel dates, number of travellers, and any special requirements so I can prepare the best options for you.',
+      'Hello {{customerName}},\n\nThank you for connecting with *UNO Trips*.\n\nI am {{executiveName}}, and I will personally assist you with your travel plans for *{{destination}}*.\n\nPlease share your preferred travel dates, number of travellers, and any special requirements so I can prepare the best options for you.',
     sortOrder: 1,
   },
   {
@@ -56,7 +58,7 @@ const DEFAULT_TEMPLATES = [
   {
     name: 'Booking Confirmed',
     body:
-      'Dear {{customerName}},\n\nGreat news — your *{{destination}}* trip is confirmed with *UNO Trips*! 🎉\n\nWe will share your detailed itinerary and vouchers shortly. Please keep this chat saved for any assistance during travel.\n\nThank you for choosing us.\n\n— {{executiveName}}',
+      'Dear {{customerName}},\n\nGreat news — your *{{destination}}* trip is confirmed with *UNO Trips*!\n\nWe will share your detailed itinerary and vouchers shortly. Please keep this chat saved for any assistance during travel.\n\nThank you for choosing us.\n\n— {{executiveName}}',
     sortOrder: 8,
   },
   {

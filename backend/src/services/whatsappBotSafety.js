@@ -23,10 +23,10 @@ const GLOBAL_MAX_PER_WINDOW = 25;
 const globalSendTimestamps = [];
 
 const STOP_REPLY =
-  'Theek hai — auto messages band kar diye hain.\nAap kabhi bhi START likh kar wapas shuru kar sakte ho.\nTeam sirf zarurat par contact karegi.';
+  'Understood. Automated messages have been paused.\n\nYou can reply START anytime to resume.\nOur team will contact you only when needed.';
 
 const START_REPLY =
-  'Shukriya! Auto help on hai.\nKoi bhi message bhejein — welcome details poochhenge.';
+  'Thank you! Automated assistance is now on.\n\nSend any message and we will guide you through a few quick trip details.';
 
 function normalizeText(text = '') {
   return String(text || '')
