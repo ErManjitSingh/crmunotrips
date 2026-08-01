@@ -60,7 +60,8 @@ export function hydrateCabFromQuote(quote = {}, packageDetail = null) {
     return packageCabs.find((c) => c.isDefault) || packageCabs[0] || null;
   }
 
-  const unit = Number(snap.unitCost ?? snap.totalAmount ?? snap.cost ?? 0) || 0;
+  const unit = Number(snap.absoluteFare ?? snap.unitCost ?? snap.totalAmount ?? snap.cost ?? 0) || 0;
+  const upgrade = Number(snap.upgradePrice ?? snap.priceDelta ?? 0) || 0;
   const count = Math.max(1, Number(snap.vehicleCount) || 1);
   return {
     id: snap.packageCabId || snap.id || snap._id || snap.slug,
@@ -79,9 +80,11 @@ export function hydrateCabFromQuote(quote = {}, packageDetail = null) {
     isAc: snap.isAc,
     isPackageCab: Boolean(snap.isPackageCab || snap.packageCabId),
     isDefault: Boolean(snap.isDefault),
-    cost: unit,
+    absoluteFare: unit,
+    cost: upgrade,
     totalAmount: unit,
-    priceDelta: snap.priceDelta,
+    priceDelta: upgrade,
+    upgradePrice: upgrade,
     fare: snap.fare || {},
     externalSource: snap.externalSource || 'uno_package',
     _vehicleCount: count,

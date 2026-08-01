@@ -562,7 +562,11 @@ export default function PackageBuilderWorkspace({
   }, [picker, itinerary, dayWiseHotels]);
 
   const cabBasePrice = Number(
-    selectedUnoCab?.cost ?? selectedUnoCab?.priceDelta ?? selectedUnoCab?.totalAmount ?? 0
+    selectedUnoCab?.absoluteFare ??
+      selectedUnoCab?.totalAmount ??
+      selectedUnoCab?.cost ??
+      selectedUnoCab?.priceDelta ??
+      0
   ) || 0;
 
   const cabSelectedId =

@@ -12,7 +12,7 @@ import { buildListParams, unwrapPagination } from '../../utils/apiHelpers';
 import { fetchUnoPublicPackages, fetchUnoPublicPackageDetail } from '../../lib/unoPublicPackages';
 import { logSelectedPackageDebug } from '../../lib/logPackageDebug';
 import { resolvePackageItinerary, seedDayWiseHotelsFromItinerary } from '../../lib/packageItineraryMapper';
-import { resolvePackageCabs } from '../../lib/packageCabMapper';
+import { resolvePackageCabs, resolvePackageCabPricing } from '../../lib/packageCabMapper';
 import InclusionExclusionEditor, { cleanInclusionExclusionLines } from './InclusionExclusionEditor';
 import { resolvePackageHotelPricing } from './DayWiseHotelSelector';
 import { buildSelectedCabSnapshot } from './UnoCabSelector';
@@ -512,15 +512,23 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setSelectedUnoCab(defaultCab);
 
     setState((s) => {
-      const packageStart = Number(normalized.startingPrice || 0);
+      // Cost on unmargined package base; apply admin destination margin as markup %
+      const packageStart = Number(
+        normalized.baseStartingPrice ?? normalized.startingPrice ?? 0
+      );
+      const marginPct = Number(normalized.destinationMarginPercent || 0) || 0;
       const unit = resolvePackageHotelPricing(packageStart, seededHotels);
-      const unitCab = Number(defaultCab?.totalAmount || defaultCab?.cost || 0);
+      const transport = resolvePackageCabPricing(unit.baseCost, defaultCab, packageCabs);
       const party = applyPartyCosting({
-        unitBaseCost: unit.baseCost,
+        unitBaseCost: transport.baseCost,
         unitHotelCost: unit.hotelCost,
-        unitCabCost: unitCab,
+        unitCabCost: transport.cabCost,
         lead: selectedLead,
-        pkg: normalized,
+        pkg: {
+          ...normalized,
+          startingPrice: packageStart,
+          baseStartingPrice: packageStart,
+        },
         cabSeats: defaultCab?.seatingCapacity || 4,
         dayWiseHotels: seededHotels,
       });
@@ -531,6 +539,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         cabCost: party.cabCost,
         flightCost: 0,
         activityCost: 0,
+        markupPercent: marginPct > 0 ? marginPct : Number(s.pricing.markupPercent || 0) || 0,
         party: {
           adults: party.adults,
           children: party.children,
@@ -597,19 +606,27 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   };
 
   useEffect(() => {
-    const packageAnchor = Number(selectedPkgDetail?.startingPrice || 0);
+    // Unmargined package base — admin margin applied via markupPercent after summing costs
+    const packageAnchor = Number(
+      selectedPkgDetail?.baseStartingPrice ?? selectedPkgDetail?.startingPrice ?? 0
+    );
+    const packageCabs = resolvePackageCabs(selectedPkgDetail || {});
     const unit = resolvePackageHotelPricing(packageAnchor, dayWiseHotels);
-    const unitCab = Number(selectedUnoCab?.totalAmount || selectedUnoCab?.cost || 0);
+    const transport = resolvePackageCabPricing(unit.baseCost, selectedUnoCab, packageCabs);
     const flightCost = flights.filter((f) => state.selectedFlightIds.includes(f._id)).reduce((s, f) => s + (f.cost || 0), 0);
     const activityCost = activities.filter((a) => state.selectedActivityIds.includes(a._id)).reduce((s, a) => s + (a.price || 0), 0);
     const party = applyPartyCosting({
-      unitBaseCost: unit.baseCost,
+      unitBaseCost: transport.baseCost,
       unitHotelCost: unit.hotelCost,
-      unitCabCost: unitCab,
+      unitCabCost: transport.cabCost,
       flightCost,
       activityCost,
       lead: selectedLead,
-      pkg: selectedPkgDetail || {},
+      pkg: {
+        ...(selectedPkgDetail || {}),
+        startingPrice: packageAnchor,
+        baseStartingPrice: packageAnchor,
+      },
       cabSeats: selectedUnoCab?.seatingCapacity || 4,
       dayWiseHotels,
     });

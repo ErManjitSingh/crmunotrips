@@ -55,28 +55,22 @@ export function calculatePricing({
 }
 
 /**
- * Customer-facing costing rows: Hotel + Transport + Activities + Markup + Discount + GST = Final Total.
- * Folds residual package base (and flights) into hotel/transport so the visible lines sum correctly.
+ * Customer-facing costing rows: Hotel + Cab + Other + Activities + Markup + Discount + GST.
+ * Shows honest line amounts (no residual dumping into hotel/cab).
  */
 export function getDisplayedCostBreakdown(pricing = {}) {
   const calc = calculatePricing(pricing);
-  const base = Number(pricing.baseCost || 0);
-  const hotel = Number(pricing.hotelCost || 0);
-  const transport = Number(pricing.cabCost || 0);
-  const activities = Number(pricing.activityCost || 0);
-  const flight = Number(pricing.flightCost || 0);
-  const residual = base + flight;
-
-  // Peel path: absolute hotel rates extracted → residual is mostly non-hotel package share.
-  // Inclusive path: large base + small hotel upgrades → keep package base under Hotel.
-  const peeled = hotel > 0 && residual > 0 && hotel >= residual;
-  const hotelCost = peeled ? hotel : hotel + residual;
-  const transportCost = peeled ? transport + residual : transport;
+  const hotelCost = Number(pricing.hotelCost || 0);
+  const transportCost = Number(pricing.cabCost || 0);
+  const activityCost = Number(pricing.activityCost || 0);
+  const otherCost =
+    Number(pricing.baseCost || 0) + Number(pricing.flightCost || 0);
 
   return {
     hotelCost,
     transportCost,
-    activityCost: activities,
+    otherCost,
+    activityCost,
     markup: calc.markup,
     taxes: calc.taxes,
     discount: Math.max(0, Number(pricing.discount || 0)),
@@ -84,6 +78,8 @@ export function getDisplayedCostBreakdown(pricing = {}) {
     packageCost: calc.packageCost,
     subtotalBeforeDiscount: calc.subtotal,
     finalTotal: calc.total,
+    costsBeforeMargin:
+      hotelCost + transportCost + otherCost + activityCost,
   };
 }
 

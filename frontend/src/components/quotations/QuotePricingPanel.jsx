@@ -3,7 +3,8 @@ import { resolvePartyOccupancy } from './partyCosting';
 
 const COST_FIELDS = [
   { key: 'hotelCost', label: 'Hotel Cost', color: 'border-amber-400/30 bg-amber-500/5' },
-  { key: 'transportCost', label: 'Transport Cost', color: 'border-emerald-400/30 bg-emerald-500/5' },
+  { key: 'transportCost', label: 'Cab Cost', color: 'border-emerald-400/30 bg-emerald-500/5' },
+  { key: 'otherCost', label: 'Other package', color: 'border-slate-400/30 bg-slate-500/5' },
   { key: 'activityCost', label: 'Activities Cost', color: 'border-indigo-400/30 bg-indigo-500/5' },
 ];
 
@@ -50,7 +51,7 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false,
         ))}
 
         <div className="p-3 rounded-xl border border-green-400/30 bg-green-500/5">
-          <label className="text-[10px] uppercase font-semibold text-content-muted">Markup %</label>
+          <label className="text-[10px] uppercase font-semibold text-content-muted">Margin %</label>
           {readOnly ? (
             <p className="text-lg font-bold text-content-primary metric-tabular mt-1">
               {Number(pricing?.markupPercent || 0)}%

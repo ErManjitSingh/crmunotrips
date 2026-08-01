@@ -499,7 +499,16 @@ async function fetchUnoPackageDayOptionsPayload(slug) {
   return unwrapPayload(payload);
 }
 
-function mapPackageCab(cab = {}) {
+function mapPackageCab(cab = {}, { defaultAbsolute = 0 } = {}) {
+  const absolute = Number(cab.price_delta || cab.absoluteFare || 0) || 0;
+  const explicitUpgrade = cab.upgrade_price ?? cab.upgradePrice;
+  const upgrade =
+    explicitUpgrade != null && explicitUpgrade !== ''
+      ? Number(explicitUpgrade) || 0
+      : defaultAbsolute > 0
+        ? Math.max(0, absolute - defaultAbsolute)
+        : 0;
+
   return {
     id: cab.id,
     packageCabId: cab.id,
@@ -510,9 +519,11 @@ function mapPackageCab(cab = {}) {
     seatingCapacity: cab.seats,
     description: cab.description || '',
     featuredImage: sanitizeImageUrl(cab.image_url),
-    cost: Number(cab.price_delta || 0),
-    totalAmount: Number(cab.price_delta || 0),
-    priceDelta: Number(cab.price_delta || 0),
+    absoluteFare: absolute,
+    cost: upgrade,
+    totalAmount: absolute,
+    priceDelta: upgrade,
+    upgradePrice: upgrade,
     isDefault: Boolean(cab.is_default),
     isPopular: Boolean(cab.is_popular),
     isActive: cab.is_active !== false,
@@ -539,12 +550,16 @@ async function attachItineraryFromDayOptions(mapped, slug, itineraryDaysFromPack
     mapped._apiRaw = { ...(mapped._apiRaw || {}), dayOptions: payload };
     const days = Array.isArray(payload?.days) ? payload.days : [];
     const stays = Array.isArray(payload?.stays) ? payload.stays : [];
-    const packageCabs = (Array.isArray(payload?.cabs) ? payload.cabs : [])
-      .filter((cab) => cab.is_active !== false)
-      .map(mapPackageCab)
+    const rawCabs = (Array.isArray(payload?.cabs) ? payload.cabs : []).filter(
+      (cab) => cab.is_active !== false
+    );
+    const defaultRaw = rawCabs.find((c) => c.is_default) || rawCabs[0] || null;
+    const defaultAbsolute = Number(defaultRaw?.price_delta || 0) || 0;
+    const packageCabs = rawCabs
+      .map((cab) => mapPackageCab(cab, { defaultAbsolute }))
       .sort((a, b) => {
         if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
-        return (a.priceDelta || 0) - (b.priceDelta || 0);
+        return (a.absoluteFare || 0) - (b.absoluteFare || 0);
       });
 
     if (packageCabs.length) mapped.packageCabs = packageCabs;

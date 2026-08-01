@@ -46,9 +46,10 @@ export function resolveCabCount(travelers = 1, seats = 4) {
   return Math.max(1, Math.ceil(pax / capacity));
 }
 
-/** Listed Uno/CRM package price → per-adult rate. */
+/** Listed Uno/CRM package price → per-adult rate (use unmargined base when available). */
 export function resolvePerPersonPackageRate(pkg = {}) {
-  const listed = Number(pkg?.startingPrice ?? pkg?.basePrice ?? 0) || 0;
+  const listed =
+    Number(pkg?.baseStartingPrice ?? pkg?.startingPrice ?? pkg?.basePrice ?? 0) || 0;
   const pricePer = String(pkg?.pricePer || pkg?.price_per || 'per_couple').toLowerCase();
   if (
     pricePer.includes('person') ||
@@ -97,7 +98,8 @@ export function applyPartyCosting({
 } = {}) {
   const occ = resolvePartyOccupancy(lead);
   const perPersonRate = resolvePerPersonPackageRate(pkg);
-  const listed = Number(pkg?.startingPrice ?? pkg?.basePrice ?? 0) || 0;
+  const listed =
+    Number(pkg?.baseStartingPrice ?? pkg?.startingPrice ?? pkg?.basePrice ?? 0) || 0;
   const cabCount = resolveCabCount(occ.travelers, cabSeats);
   const mattressCost = estimateMattressCost(dayWiseHotels, occ.mattresses);
 

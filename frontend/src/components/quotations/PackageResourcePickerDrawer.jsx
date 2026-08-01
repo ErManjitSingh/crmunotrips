@@ -44,6 +44,9 @@ const BADGE_STYLES = [
 
 /** Price of an option relative to currently selected stay/cab. */
 function getOptionAmount(opt = {}) {
+  // Cabs: absoluteFare is the trip fare used for relative comparison
+  const cabAbs = Number(opt.absoluteFare ?? 0) || 0;
+  if (cabAbs > 0) return cabAbs;
   // Prefer true upgrade / cost delta. Catalog starting_price is display-only (included in package).
   const explicit =
     Number(opt.perNight ?? opt.priceDelta ?? opt.cost ?? opt.totalAmount ?? opt.upgrade_price ?? 0) || 0;

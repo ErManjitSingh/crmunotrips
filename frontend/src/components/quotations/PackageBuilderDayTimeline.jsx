@@ -114,6 +114,10 @@ function HotelCard({ meta, options = [], onOpenPicker, emptyLabel }) {
 
 function CabCard({ packageCab, onChangeCab }) {
   if (!packageCab) return null;
+  const fare = Number(
+    packageCab.absoluteFare ?? packageCab.totalAmount ?? packageCab.cost ?? 0
+  ) || 0;
+  const upgrade = Number(packageCab.upgradePrice ?? packageCab.priceDelta ?? 0) || 0;
   return (
     <div className="flex gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3 shadow-sm shadow-sky-100/60">
       <div className="w-16 h-16 rounded-xl bg-white border border-sky-200 overflow-hidden shrink-0 flex items-center justify-center">
@@ -132,6 +136,16 @@ function CabCard({ packageCab, onChangeCab }) {
               .filter(Boolean)
               .join(' · ')}
           </p>
+          {fare > 0 && (
+            <p className="mt-1 text-sm font-bold text-sky-800 metric-tabular">
+              {formatINR(fare)}
+              {upgrade > 0 ? (
+                <span className="ml-1 text-[11px] font-semibold text-amber-700">
+                  (+{formatINR(upgrade)} upgrade)
+                </span>
+              ) : null}
+            </p>
+          )}
         </div>
         {onChangeCab && <ChangeBtn onClick={onChangeCab} />}
       </div>

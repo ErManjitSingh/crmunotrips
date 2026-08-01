@@ -413,7 +413,8 @@ export default function UnoCabSelector({
 export function buildSelectedCabSnapshot(cab, { vehicleCount = 1, travelers } = {}) {
   if (!cab) return [];
   const count = Math.max(1, Number(vehicleCount) || 1);
-  const unit = Number(cab.totalAmount || cab.cost || 0) || 0;
+  const unit = Number(cab.absoluteFare ?? cab.totalAmount ?? cab.cost ?? 0) || 0;
+  const upgrade = Number(cab.upgradePrice ?? cab.priceDelta ?? 0) || 0;
   const total = Math.round(unit * count * 100) / 100;
   return [{
     _id: cab.id || cab.slug || cab.packageCabId,
@@ -437,10 +438,12 @@ export function buildSelectedCabSnapshot(cab, { vehicleCount = 1, travelers } = 
     isAc: cab.isAc,
     isPackageCab: Boolean(cab.isPackageCab),
     isDefault: Boolean(cab.isDefault),
+    absoluteFare: unit,
     unitCost: unit,
     cost: total,
     totalAmount: total,
-    priceDelta: cab.priceDelta,
+    priceDelta: upgrade,
+    upgradePrice: upgrade,
     fare: cab.fare || {},
     externalSource: cab.externalSource || (cab.isPackageCab ? 'uno_package' : 'uno_cabs'),
   }];
