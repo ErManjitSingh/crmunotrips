@@ -694,8 +694,10 @@ function buildListCacheKey(query = {}) {
 
 async function fetchUnoPackages(query = {}) {
   const limit = Math.min(Number(query.limit) || UNO_API_MAX_LIMIT, UNO_API_MAX_LIMIT);
-  const rawSearch = query.search || preferredDestinationSearch(query.destination) || '';
-  const search = String(rawSearch).trim().toLowerCase();
+  const destHint = String(preferredDestinationSearch(query.destination) || '').trim().toLowerCase();
+  const typedSearch = String(query.search || '').trim().toLowerCase();
+  // With a destination, always search UNO by destination family — never replace with a name keyword
+  const search = destHint || typedSearch;
   const page = Math.max(1, Number(query.page) || 1);
   const payload = await unoFetch('/v1/packages', {
     query: {
@@ -708,12 +710,36 @@ async function fetchUnoPackages(query = {}) {
   });
   const unwrapped = unwrapPayload(payload);
 
-  const items = (unwrapped.items || []).map((pkg) => mapUnoPackage(pkg));
-  const filtered = query.destination
-    ? items.filter((pkg) => matchesDestination(pkg, query.destination))
-    : items;
-  const total = query.destination ? filtered.length : Number(unwrapped.total ?? filtered.length);
-  const totalPages = query.destination
+  let items = (unwrapped.items || []).map((pkg) => mapUnoPackage(pkg));
+  if (query.destination) {
+    items = items.filter((pkg) => matchesDestination(pkg, query.destination));
+  }
+  // Optional explicit name filter (query.nameSearch), or typed search when no destination
+  const nameFilter = String(query.nameSearch || (!destHint ? typedSearch : '') || '')
+    .trim()
+    .toLowerCase();
+  if (nameFilter) {
+    const tokens = nameFilter.split(/\s+/).filter(Boolean);
+    items = items.filter((pkg) => {
+      const hay = [
+        pkg.name,
+        pkg.destination,
+        pkg.destinationName,
+        pkg.state,
+        pkg.shortDescription,
+        pkg.packageCode,
+        pkg.slug,
+      ]
+        .map((x) => String(x || '').toLowerCase())
+        .join(' ');
+      return tokens.every((t) => hay.includes(t));
+    });
+  }
+
+  const filtered = items;
+  const narrowed = Boolean(query.destination || nameFilter);
+  const total = narrowed ? filtered.length : Number(unwrapped.total ?? filtered.length);
+  const totalPages = narrowed
     ? 1
     : Number(unwrapped.total_pages ?? Math.max(1, Math.ceil(total / limit)));
 

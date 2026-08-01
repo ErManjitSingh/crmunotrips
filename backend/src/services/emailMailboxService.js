@@ -145,12 +145,17 @@ function matchesSearch(item, q) {
     item.from?.name,
     item.from?.email,
     item.leadName,
+    item.leadDestination,
     item.executiveName,
     ...(item.to || []),
   ]
     .join(' ')
     .toLowerCase();
   return hay.includes(q);
+}
+
+function prefetchForSearch(pageSize) {
+  return Math.max(pageSize * 4, 80);
 }
 
 function applySearchFilters(replyFilter, sentFilter, searchRegex) {
@@ -161,7 +166,13 @@ function applySearchFilters(replyFilter, sentFilter, searchRegex) {
     { fromEmail: searchRegex },
     { fromName: searchRegex },
   ];
-  sentFilter.$or = [{ subject: searchRegex }, { sentByName: searchRegex }];
+  sentFilter.$or = [
+    { subject: searchRegex },
+    { sentByName: searchRegex },
+    { to: searchRegex },
+    { errorMessage: searchRegex },
+    { from: searchRegex },
+  ];
 }
 
 async function fetchMailboxCounts(req, replyFilter, sentFilter) {
@@ -207,33 +218,51 @@ async function listMailboxMessages(req, { folder = 'inbox', search = '', page = 
       const replies = await EmailReply.find(replyFilter)
         .select(REPLY_LIST_SELECT)
         .sort({ receivedAt: -1 })
-        .skip(skip)
-        .limit(safeLimit)
+        .skip(searchRegex ? 0 : skip)
+        .limit(searchRegex ? Math.min(prefetchForSearch(safeLimit), 200) : safeLimit)
         .lean();
       const leadMap = await fetchLeadMap(replies.map((r) => r.leadId));
-      return replies.map((r) => mapInboundRow(r, leadMap));
+      let rows = replies.map((r) => mapInboundRow(r, leadMap));
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        rows = rows.filter((item) => matchesSearch(item, q));
+        return rows.slice(skip, skip + safeLimit);
+      }
+      return rows;
     }
 
     if (folder === 'sent') {
       const sentRows = await EmailLog.find({ ...sentFilter, status: 'sent' })
         .select(SENT_LIST_SELECT)
         .sort({ sentAt: -1 })
-        .skip(skip)
-        .limit(safeLimit)
+        .skip(searchRegex ? 0 : skip)
+        .limit(searchRegex ? Math.min(prefetchForSearch(safeLimit), 200) : safeLimit)
         .lean();
       const leadMap = await fetchLeadMap(sentRows.map((r) => r.leadId));
-      return sentRows.map((r) => mapSentRow(r, leadMap));
+      let rows = sentRows.map((r) => mapSentRow(r, leadMap));
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        rows = rows.filter((item) => matchesSearch(item, q));
+        return rows.slice(skip, skip + safeLimit);
+      }
+      return rows;
     }
 
     if (folder === 'failed') {
       const failedRows = await EmailLog.find({ ...sentFilter, status: 'failed' })
         .select(SENT_LIST_SELECT)
         .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(safeLimit)
+        .skip(searchRegex ? 0 : skip)
+        .limit(searchRegex ? Math.min(prefetchForSearch(safeLimit), 200) : safeLimit)
         .lean();
       const leadMap = await fetchLeadMap(failedRows.map((r) => r.leadId));
-      return failedRows.map((r) => mapSentRow(r, leadMap));
+      let rows = failedRows.map((r) => mapSentRow(r, leadMap));
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        rows = rows.filter((item) => matchesSearch(item, q));
+        return rows.slice(skip, skip + safeLimit);
+      }
+      return rows;
     }
 
     if (folder === 'all') {
@@ -265,7 +294,7 @@ async function listMailboxMessages(req, { folder = 'inbox', search = '', page = 
         ...sentRows.map((r) => mapSentRow(r, leadMap)),
         ...failedRows.map((r) => mapSentRow(r, leadMap)),
       ];
-      if (search.trim() && !searchRegex) {
+      if (search.trim()) {
         const q = search.trim().toLowerCase();
         merged = merged.filter((item) => matchesSearch(item, q));
       }

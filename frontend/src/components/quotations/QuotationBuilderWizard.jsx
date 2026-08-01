@@ -9,7 +9,7 @@ import Avatar from '../ui/Avatar';
 import VirtualizedList from '../ui/VirtualizedList';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { buildListParams, unwrapPagination } from '../../utils/apiHelpers';
-import { fetchUnoPublicPackages, fetchUnoPublicPackageDetail } from '../../lib/unoPublicPackages';
+import { fetchUnoPublicPackages, fetchUnoPublicPackageDetail, matchesPackageNameSearch } from '../../lib/unoPublicPackages';
 import { logSelectedPackageDebug } from '../../lib/logPackageDebug';
 import { resolvePackageItinerary, seedDayWiseHotelsFromItinerary } from '../../lib/packageItineraryMapper';
 import { resolvePackageCabs, resolvePackageCabPricing } from '../../lib/packageCabMapper';
@@ -370,14 +370,20 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     matchesResourceDestination(activity, hotelDestination)
   );
 
-  const packagePageCount = Math.max(1, Math.ceil(packages.length / PACKAGES_PAGE_SIZE));
+  const filteredPackages = useMemo(() => {
+    const q = debouncedPackageSearch.trim();
+    if (!q) return packages;
+    return packages.filter((p) => matchesPackageNameSearch(p, q));
+  }, [packages, debouncedPackageSearch]);
+
+  const packagePageCount = Math.max(1, Math.ceil(filteredPackages.length / PACKAGES_PAGE_SIZE));
   const safePackagePage = Math.min(packagePage, packagePageCount - 1);
   const pagedPackages = useMemo(() => {
     const start = safePackagePage * PACKAGES_PAGE_SIZE;
-    return packages.slice(start, start + PACKAGES_PAGE_SIZE);
-  }, [packages, safePackagePage]);
-  const packageShowingFrom = packages.length === 0 ? 0 : safePackagePage * PACKAGES_PAGE_SIZE + 1;
-  const packageShowingTo = Math.min((safePackagePage + 1) * PACKAGES_PAGE_SIZE, packages.length);
+    return filteredPackages.slice(start, start + PACKAGES_PAGE_SIZE);
+  }, [filteredPackages, safePackagePage]);
+  const packageShowingFrom = filteredPackages.length === 0 ? 0 : safePackagePage * PACKAGES_PAGE_SIZE + 1;
+  const packageShowingTo = Math.min((safePackagePage + 1) * PACKAGES_PAGE_SIZE, filteredPackages.length);
 
   const skipActivities = () => {
     setState((s) => ({ ...s, selectedActivityIds: [], activitiesSkipped: true }));
@@ -417,7 +423,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       fetchUnoPublicPackages({
         limit: 50,
         page: 1,
-        search: debouncedPackageSearch || undefined,
         destination,
       }),
       API.get('/packages', { skipErrorToast: true }).catch(() => ({ data: [] })),
@@ -451,7 +456,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     return () => {
       cancelled = true;
     };
-  }, [step, debouncedPackageSearch, selectedLead?.destination]);
+  }, [step, selectedLead?.destination]);
 
   const buildPackageSnapshot = (pkg) => ({
     ...pkg,
@@ -1048,8 +1053,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                   <input
                     type="search"
                     value={packageSearch}
-                    onChange={(e) => setPackageSearch(e.target.value)}
-                    placeholder="Search packages…"
+                    onChange={(e) => {
+                      setPackageSearch(e.target.value);
+                      setPackagePage(0);
+                    }}
+                    placeholder="Search by package name…"
                     className="w-full rounded-xl border border-subtle bg-surface py-3 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-amber-500/30"
                   />
                 </div>
@@ -1058,8 +1066,12 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                 ) : (
                 <>
                 <div className="max-h-[min(50dvh,420px)] space-y-2 overflow-y-auto">
-                  {packages.length === 0 ? (
-                    <p className="py-8 text-center text-sm text-content-muted">No packages found for this lead destination.</p>
+                  {filteredPackages.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-content-muted">
+                      {packages.length === 0
+                        ? 'No packages found for this lead destination.'
+                        : 'No packages match your search. Try another keyword from the package name.'}
+                    </p>
                   ) : pagedPackages.map((p) => (
                     <button
                       key={`${p.catalogSource || 'pkg'}-${p._id}`}
@@ -1091,10 +1103,10 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                     </button>
                   ))}
                 </div>
-                {packages.length > PACKAGES_PAGE_SIZE && (
+                {filteredPackages.length > PACKAGES_PAGE_SIZE && (
                   <div className="flex items-center justify-between gap-2 pt-1">
                     <p className="text-xs text-content-muted">
-                      Showing {packageShowingFrom}–{packageShowingTo} of {packages.length}
+                      Showing {packageShowingFrom}–{packageShowingTo} of {filteredPackages.length}
                     </p>
                     <div className="flex items-center gap-1">
                       <button

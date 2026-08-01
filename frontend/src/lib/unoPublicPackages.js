@@ -53,6 +53,39 @@ export function matchesDestination(pkg = {}, destination = '') {
   });
 }
 
+/**
+ * Partial / keyword match on package name (and related fields).
+ * Every whitespace-separated token must appear somewhere in the package text.
+ */
+export function matchesPackageNameSearch(pkg = {}, search = '') {
+  const q = String(search || '').trim().toLowerCase();
+  if (!q) return true;
+  const tokens = q.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return true;
+
+  const hayRaw = [
+    pkg.name,
+    pkg.title,
+    pkg.destination,
+    pkg.destinationName,
+    pkg.state,
+    pkg.shortDescription,
+    pkg.description,
+    pkg.packageCode,
+    pkg.slug,
+    pkg.code,
+  ]
+    .map((x) => String(x || ''))
+    .join(' ');
+  const hay = hayRaw.toLowerCase();
+  const hayNorm = normalize(hayRaw);
+  return tokens.every((token) => {
+    const t = token.toLowerCase();
+    const tn = normalize(t);
+    return hay.includes(t) || (tn && hayNorm.includes(tn));
+  });
+}
+
 export function mapUnoPackage(raw = {}, { includeDetail = false } = {}) {
   const duration = parseDurationDays(raw);
   const durationNights = parseDurationNights(raw);
@@ -142,36 +175,68 @@ export const UNO_PACKAGES_MAX_LIMIT = 50;
 /**
  * Fetch packages from UNO Hotels API (https://api.unohotelsandresorts.com/v1/packages)
  * via CRM backend proxy /api/uno-packages — never call UNO from the browser (CORS).
+ *
+ * When `destination` is set, UNO is queried by destination family (not the typed name).
+ * Typed `search` then filters locally so any keyword in the package name matches.
  */
 export async function fetchUnoPublicPackages({ page = 1, limit = 50, search = '', destination = '' } = {}) {
   const safeLimit = Math.min(Number(limit) || UNO_PACKAGES_MAX_LIMIT, UNO_PACKAGES_MAX_LIMIT);
-  const effectiveSearch = (
-    search || (destination ? preferredDestinationSearch(destination) : '')
-  )
-    .trim()
-    .toLowerCase();
+  const nameSearch = String(search || '').trim();
+  const destApiSearch = destination
+    ? String(preferredDestinationSearch(destination) || destination).trim().toLowerCase()
+    : '';
+  // Never let a typed package-name keyword replace destination catalog search
+  const apiSearch = (destApiSearch || nameSearch).trim().toLowerCase();
 
-  const { data } = await API.get('/uno-packages', {
-    params: {
-      page,
-      limit: safeLimit,
-      search: effectiveSearch || undefined,
-      destination: destination || undefined,
-    },
-    skipErrorToast: true,
-  });
+  const fetchPage = async (pageNum) => {
+    const { data } = await API.get('/uno-packages', {
+      params: {
+        page: pageNum,
+        limit: safeLimit,
+        search: apiSearch || undefined,
+        destination: destination || undefined,
+      },
+      skipErrorToast: true,
+    });
+    return data || {};
+  };
 
-  const items = Array.isArray(data?.items) ? data.items.map((item) => mapUnoPackage(item)) : [];
-  // Client-side family match (state ↔ cities) in case API search was narrow
-  const filtered = destination
+  const first = await fetchPage(Math.max(1, Number(page) || 1));
+  let items = Array.isArray(first.items) ? first.items.map((item) => mapUnoPackage(item)) : [];
+
+  // Destination catalogs: pull a few pages so name search can see more than page 1
+  if (destination) {
+    const totalPages = Math.min(Math.max(1, Number(first.totalPages) || 1), 5);
+    for (let p = 2; p <= totalPages; p += 1) {
+      const next = await fetchPage(p);
+      const batch = Array.isArray(next.items) ? next.items.map((item) => mapUnoPackage(item)) : [];
+      items = items.concat(batch);
+    }
+  }
+
+  let filtered = destination
     ? items.filter((pkg) => matchesDestination(pkg, destination))
     : items;
+
+  if (nameSearch) {
+    filtered = filtered.filter((pkg) => matchesPackageNameSearch(pkg, nameSearch));
+  }
+
+  // De-dupe by id after multi-page merge
+  const seen = new Set();
+  filtered = filtered.filter((pkg) => {
+    const key = String(pkg._id || pkg.id || pkg.slug || pkg.name);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
   return {
     items: filtered,
-    total: toNumber(data?.total, filtered.length),
-    page: toNumber(data?.page, page),
-    totalPages: toNumber(data?.totalPages, 1),
-    source: data?.source || 'uno_hotels_public',
+    total: destination || nameSearch ? filtered.length : toNumber(first.total, filtered.length),
+    page: destination ? 1 : toNumber(first.page, page),
+    totalPages: destination || nameSearch ? 1 : toNumber(first.totalPages, 1),
+    source: first.source || 'uno_hotels_public',
   };
 }
 
