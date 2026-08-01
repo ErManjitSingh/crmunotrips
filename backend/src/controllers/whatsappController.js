@@ -14,6 +14,8 @@ const {
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
 const {
   sendWhatsAppText,
+  sendWhatsAppTemplate,
+  hasOpenCustomerSession,
   createLeadFromConversation,
   isConfigured,
   normalizePhone,
@@ -23,7 +25,7 @@ const {
 const INBOX_LEAD_SELECT =
   'name phone whatsapp email city destination status budget travelDate travelers adults preferredCallTime source sourceLabel assignedTo leadId updatedAt channel';
 
-const MESSAGE_SELECT = 'direction type text attachment status timestamp waMessageId conversation lead';
+const MESSAGE_SELECT = 'direction type text attachment status errorCode errorMessage timestamp waMessageId conversation lead';
 const MESSAGE_LIMIT = 150;
 
 function isSalesExecutive(req) {
@@ -283,12 +285,17 @@ const getThread = asyncHandler(async (req, res) => {
     followupsPromise,
   ]);
 
+  const sessionOpen = conversation?._id
+    ? await hasOpenCustomerSession(conversation._id)
+    : false;
+
   res.json({
     messages,
     notes,
     followups,
     botAnswers: conversation?.botAnswers || null,
     botStep: conversation?.botStep || null,
+    sessionOpen,
   });
 });
 
@@ -341,10 +348,14 @@ const postMessage = asyncHandler(async (req, res) => {
     mediaBase64,
     mediaMimeType,
     mediaFileName,
+    templateName,
+    templateLanguage,
+    templateComponents,
   } = req.body;
 
+  const wantsTemplate = Boolean(String(templateName || '').trim());
   const hasMediaPayload = Boolean(mediaBase64 || attachment?.dataUrl || attachment?.base64);
-  if (!text?.trim() && !hasMediaPayload && !attachment?.url) {
+  if (!wantsTemplate && !text?.trim() && !hasMediaPayload && !attachment?.url) {
     throw new ApiError(400, 'Message text or media is required');
   }
 
@@ -379,11 +390,25 @@ const postMessage = asyncHandler(async (req, res) => {
   }
 
   const toPhone = conversation?.phone || lead?.phone || lead?.whatsapp;
+  const sessionOpen = conversation?._id
+    ? await hasOpenCustomerSession(conversation._id)
+    : false;
+
+  // Free-form / media outside 24h customer-care window will fail at Meta
+  if (!wantsTemplate && isConfigured() && !sessionOpen) {
+    throw new ApiError(
+      400,
+      'Customer has not messaged this WhatsApp number in the last 24 hours. Free text cannot be delivered — wait for their reply, or send an approved Meta template.'
+    );
+  }
+
   let waMessageId = null;
   let status = 'sent';
-  let messageType = type || 'text';
+  let messageType = wantsTemplate ? 'text' : type || 'text';
   let storedAttachment = attachment || null;
   let previewText = text?.trim() || '';
+  let errorCode = null;
+  let errorMessage = '';
 
   const {
     decodeDataUrlOrBase64,
@@ -391,7 +416,22 @@ const postMessage = asyncHandler(async (req, res) => {
     sendWhatsAppMediaMessage,
   } = require('../services/whatsappMediaService');
 
-  if (hasMediaPayload && isConfigured() && toPhone) {
+  if (wantsTemplate && isConfigured() && toPhone) {
+    try {
+      const sent = await sendWhatsAppTemplate({
+        toPhone,
+        templateName: String(templateName).trim(),
+        languageCode: templateLanguage || 'en',
+        components: templateComponents || [],
+      });
+      waMessageId = sent?.messages?.[0]?.id || null;
+      previewText = previewText || `Template: ${String(templateName).trim()}`;
+    } catch (err) {
+      status = 'failed';
+      errorMessage = err.message || 'WhatsApp template send failed';
+      throw new ApiError(502, errorMessage);
+    }
+  } else if (hasMediaPayload && isConfigured() && toPhone) {
     try {
       const raw =
         mediaBase64 ||
@@ -468,6 +508,8 @@ const postMessage = asyncHandler(async (req, res) => {
       text: previewText,
       attachment: storedAttachment,
       status,
+      errorCode,
+      errorMessage,
       timestamp: now,
       sentBy: req.user._id,
     }),
@@ -487,7 +529,10 @@ const postMessage = asyncHandler(async (req, res) => {
       : Promise.resolve(),
   ]);
 
-  res.status(201).json(msg);
+  res.status(201).json({
+    ...msg.toObject(),
+    sessionOpen: wantsTemplate ? sessionOpen : true,
+  });
 });
 
 const postNote = asyncHandler(async (req, res) => {

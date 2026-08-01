@@ -22,6 +22,7 @@ export const MESSAGE_STATUS_ICON = {
   sent: '✓',
   delivered: '✓✓',
   read: '✓✓',
+  failed: '!',
 };
 
 export const INFO_TABS = [

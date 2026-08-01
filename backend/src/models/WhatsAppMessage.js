@@ -15,6 +15,8 @@ const whatsAppMessageSchema = new mongoose.Schema(
     text: { type: String, default: '' },
     attachment: { type: mongoose.Schema.Types.Mixed },
     status: { type: String, enum: ['sent', 'delivered', 'read', 'failed', 'received'], default: 'sent' },
+    errorCode: { type: Number, default: null },
+    errorMessage: { type: String, default: '' },
     timestamp: { type: Date, default: Date.now, index: true },
     sentBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },

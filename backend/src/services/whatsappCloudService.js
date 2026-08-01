@@ -299,20 +299,40 @@ async function processWhatsAppWebhook(body = {}) {
       for (const status of statuses) {
         try {
           if (!status.id) continue;
-          await WhatsAppMessage.updateOne(
-            { waMessageId: status.id },
-            {
-              status:
-                status.status === 'read'
-                  ? 'read'
-                  : status.status === 'delivered'
-                    ? 'delivered'
-                    : status.status === 'failed'
-                      ? 'failed'
-                      : 'sent',
-            }
-          );
-          results.push({ ok: true, type: 'status', waMessageId: status.id, status: status.status });
+          const errInfo = Array.isArray(status.errors) && status.errors[0] ? status.errors[0] : null;
+          const patch = {
+            status:
+              status.status === 'read'
+                ? 'read'
+                : status.status === 'delivered'
+                  ? 'delivered'
+                  : status.status === 'failed'
+                    ? 'failed'
+                    : 'sent',
+          };
+          if (errInfo) {
+            patch.errorCode = Number(errInfo.code) || null;
+            patch.errorMessage = String(errInfo.title || errInfo.message || errInfo.error_data?.details || '').slice(
+              0,
+              500
+            );
+          }
+          await WhatsAppMessage.updateOne({ waMessageId: status.id }, { $set: patch });
+          if (status.status === 'failed') {
+            console.warn(
+              '[whatsappWebhook] delivery failed',
+              status.id,
+              patch.errorCode,
+              patch.errorMessage || ''
+            );
+          }
+          results.push({
+            ok: true,
+            type: 'status',
+            waMessageId: status.id,
+            status: status.status,
+            errorCode: patch.errorCode || null,
+          });
         } catch (err) {
           results.push({ ok: false, type: 'status', message: err.message });
         }
@@ -351,6 +371,60 @@ async function sendWhatsAppText({ toPhone, text }) {
     throw new ApiError(502, data?.error?.message || 'WhatsApp send failed');
   }
   return data;
+}
+
+/** Meta Cloud template (outside 24h session window). */
+async function sendWhatsAppTemplate({ toPhone, templateName, languageCode = 'en', components = [] }) {
+  const { accessToken, phoneNumberId } = getConfig();
+  if (!accessToken || !phoneNumberId) {
+    throw new ApiError(503, 'WhatsApp Cloud API is not configured');
+  }
+  const name = String(templateName || '').trim();
+  if (!name) throw new ApiError(400, 'templateName is required');
+
+  const phone10 = normalizePhone(toPhone);
+  const to = phone10.length === 10 ? `91${phone10}` : String(toPhone).replace(/\D/g, '');
+  const url = `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`;
+  const payload = {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'template',
+    template: {
+      name,
+      language: { code: languageCode || 'en' },
+    },
+  };
+  if (Array.isArray(components) && components.length) {
+    payload.template.components = components;
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new ApiError(502, data?.error?.message || 'WhatsApp template send failed');
+  }
+  return data;
+}
+
+/** True if customer messaged us within the last 24 hours (free-form reply allowed). */
+async function hasOpenCustomerSession(conversationId) {
+  if (!conversationId) return false;
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const inbound = await WhatsAppMessage.findOne({
+    conversation: conversationId,
+    direction: 'incoming',
+    timestamp: { $gte: since },
+  })
+    .select('_id timestamp')
+    .lean();
+  return Boolean(inbound);
 }
 
 async function createLeadFromConversation(conversationId, extras = {}, actor = null) {
@@ -445,6 +519,8 @@ module.exports = {
   verifyRequestSignature,
   processWhatsAppWebhook,
   sendWhatsAppText,
+  sendWhatsAppTemplate,
+  hasOpenCustomerSession,
   createLeadFromConversation,
   normalizePhone,
   upsertConversation,

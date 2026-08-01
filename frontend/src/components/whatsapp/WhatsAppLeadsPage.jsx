@@ -106,6 +106,7 @@ function WhatsAppLeadsPage() {
   const messages = threadQuery.data?.messages ?? [];
   const notes = threadQuery.data?.notes ?? [];
   const followups = threadQuery.data?.followups ?? [];
+  const sessionOpen = threadQuery.data?.sessionOpen !== false;
   const executives = executivesQuery.data ?? [];
   const loading = conversationsQuery.isLoading && !conversationsQuery.data;
   const messagesLoading = threadQuery.isLoading && !!detailsKey && !threadQuery.data;
@@ -469,6 +470,7 @@ function WhatsAppLeadsPage() {
             messages={messages}
             loading={messagesLoading}
             onSend={handleSend}
+            sessionOpen={sessionOpen}
             user={user}
             onBack={() => {
               setMobileView('list');

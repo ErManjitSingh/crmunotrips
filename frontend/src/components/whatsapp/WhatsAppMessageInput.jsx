@@ -32,7 +32,7 @@ function autoResize(el) {
   el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
 }
 
-export default function WhatsAppMessageInput({ onSend, disabled, lead, user }) {
+export default function WhatsAppMessageInput({ onSend, disabled, lead, user, sessionClosed = false }) {
   const [text, setText] = useState('');
   const [showAttach, setShowAttach] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -204,6 +204,11 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user }) {
 
   return (
     <div className="shrink-0 px-3 sm:px-4 py-3 bg-white border-t border-slate-200/80">
+      {sessionClosed && (
+        <p className="mb-2 text-[11px] text-amber-800/90">
+          Session closed — typing still works in CRM, but Meta will reject delivery until the customer replies.
+        </p>
+      )}
       <input
         ref={fileRef}
         type="file"

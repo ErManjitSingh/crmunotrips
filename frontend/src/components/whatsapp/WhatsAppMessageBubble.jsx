@@ -156,6 +156,13 @@ function WhatsAppMessageBubble({ message }) {
           <p className="text-[13.5px] leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
         )}
 
+        {isOutgoing && message.status === 'failed' && (
+          <p className="mt-1 text-[11px] leading-snug text-red-600/90">
+            {message.errorMessage ||
+              'Not delivered — customer must message our WhatsApp first (or within last 24h), or use a Meta template.'}
+          </p>
+        )}
+
         <div
           className={cn(
             'flex items-center gap-1 justify-end mt-1',
@@ -164,7 +171,14 @@ function WhatsAppMessageBubble({ message }) {
         >
           <span className="text-[10px]">{formatMessageTime(message.timestamp)}</span>
           {isOutgoing && (
-            <span className={cn('text-[11px] leading-none', message.status === 'read' ? 'text-sky-500' : '')}>
+            <span
+              className={cn(
+                'text-[11px] leading-none',
+                message.status === 'read' && 'text-sky-500',
+                message.status === 'failed' && 'font-bold text-red-500'
+              )}
+              title={message.errorMessage || message.status}
+            >
               {MESSAGE_STATUS_ICON[message.status] || '✓'}
             </span>
           )}
