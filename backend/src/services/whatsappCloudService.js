@@ -424,6 +424,7 @@ async function listMetaMessageTemplates() {
 
   return (data.data || [])
     .filter((t) => String(t.status || '').toUpperCase() === 'APPROVED')
+    .filter((t) => String(t.name || '').toLowerCase() !== 'hello_world')
     .map((t) => {
       const components = Array.isArray(t.components) ? t.components : [];
       const body = components.find((c) => String(c.type).toUpperCase() === 'BODY');

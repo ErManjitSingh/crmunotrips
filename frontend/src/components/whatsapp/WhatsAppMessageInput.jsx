@@ -152,7 +152,11 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
 
   const openMetaTemplatePreview = (template) => {
     const count = Number(template.bodyParamCount) || 0;
-    const bodyParams = Array.from({ length: count }, () => '');
+    const customerName = String(lead?.name || '').trim() || 'there';
+    const executiveName = String(user?.name || '').trim() || 'UNO Trips';
+    const destination = String(lead?.destination || '').trim() || 'your trip';
+    const defaults = [customerName, executiveName, destination];
+    const bodyParams = Array.from({ length: count }, (_, i) => defaults[i] || '');
     const body = fillMetaBody(template.bodyText, bodyParams);
     const header = template.headerText ? `${template.headerText}\n\n` : '';
     setTemplateDraft({
@@ -488,7 +492,7 @@ export default function WhatsAppMessageInput({ onSend, disabled, lead, user, ses
             {!templatesLoading && filteredTemplates.length === 0 && (
               <p className="px-2 py-6 text-center text-xs text-slate-400">
                 {templateMode === 'meta'
-                  ? 'No approved Meta templates. Create one in Meta Business Manager → WhatsApp → Message templates.'
+                  ? 'No usable Meta templates yet. hello_world cannot be sent from a live number — waiting for uno_trips_welcome approval in Meta Business Manager.'
                   : 'No CRM templates. Add some in Settings → WhatsApp Templates.'}
               </p>
             )}
