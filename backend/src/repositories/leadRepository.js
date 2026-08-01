@@ -27,6 +27,10 @@ function parseLocalDayEnd(dateStr) {
   return endOfDay(new Date(dateStr));
 }
 
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function buildLeadListFilter(query = {}) {
   const {
     status,
@@ -46,6 +50,9 @@ function buildLeadListFilter(query = {}) {
     executiveId,
     reactivatedFrom,
     reactivatedTo,
+    priority,
+    teamId,
+    state,
   } = query;
 
   const mongoFilter = { ...buildLeadSearchFilter(search), isDeleted: { $ne: true } };
@@ -77,6 +84,15 @@ function buildLeadListFilter(query = {}) {
   if (destination) mongoFilter.destination = destination;
   if (source) mongoFilter.source = source;
   if (agent) mongoFilter.assignedTo = agent;
+  if (teamId) mongoFilter.teamId = teamId;
+  if (state) {
+    mongoFilter.state = { $regex: `^${escapeRegex(state)}$`, $options: 'i' };
+  }
+  if (priority === 'hot') {
+    mongoFilter.isHot = true;
+  } else if (priority) {
+    mongoFilter.priority = priority;
+  }
 
   if (budgetMin || budgetMax) {
     mongoFilter.budget = {};
@@ -105,6 +121,12 @@ async function findLeadsPaginated(query = {}, { branchId } = {}) {
   const sortField = Object.keys(sort)[0] || 'createdAt';
   const sortDir = sort[sortField] ?? -1;
   const filter = withBranch(buildLeadListFilter(query), branchId);
+
+  if (query.filter === 'duplicates') {
+    const { findDuplicateLeadIds } = require('../services/leadListKpiService');
+    const ids = await findDuplicateLeadIds(branchId);
+    filter._id = { $in: ids.length ? ids : [] };
+  }
 
   // Opportunistically return overdue accepts to the unassigned pool
   try {

@@ -1,42 +1,51 @@
-import { Users, IndianRupee, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+  CalendarDays,
+  Sparkles,
+  Inbox,
+  UserCheck,
+  CalendarClock,
+  XCircle,
+  Star,
+  Copy,
+} from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import API from '../../api/axios';
 import { LIST_STALE_MS, GC_TIME_MS } from '../../lib/queryConfig';
 import { cn } from '../../lib/utils';
 
-function formatCurrency(n) {
-  if (!n) return '₹0';
-  if (n >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
-  if (n >= 1000) return `₹${(n / 1000).toFixed(0)}K`;
-  return `₹${n.toLocaleString('en-IN')}`;
-}
-
-function CompactKpi({ label, value, change, icon: Icon, iconColor, index = 0 }) {
-  return (
-    <div
-      className={cn(
-        'group relative flex items-center gap-2.5 rounded-xl border border-subtle bg-white px-3 py-2.5 shadow-sm',
-        'hover:shadow-md hover:border-sky-200/80 transition-all duration-200'
-      )}
-      style={{ animationDelay: `${index * 40}ms` }}
-    >
-      <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm', iconColor)}>
-        <Icon className="w-3.5 h-3.5 text-white" strokeWidth={2.25} />
+function CompactKpi({ label, value, icon: Icon, iconColor, href, index = 0 }) {
+  const inner = (
+    <>
+      <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm', iconColor)}>
+        <Icon className="h-4 w-4 text-white" strokeWidth={2.25} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 truncate">{label}</p>
-          {change !== undefined && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold shrink-0 text-emerald-600">
-              <TrendingUp className="w-2.5 h-2.5" />
-              {change}
-            </span>
-          )}
-        </div>
-        <p className="mt-0.5 text-base font-bold text-slate-900 metric-tabular tracking-tight leading-none truncate">
+        <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+        <p className="metric-tabular mt-0.5 truncate text-lg font-bold leading-none tracking-tight text-slate-900">
           {value}
         </p>
       </div>
+    </>
+  );
+
+  const className = cn(
+    'group relative flex items-center gap-2.5 rounded-xl border border-subtle bg-white px-3 py-2.5 shadow-sm',
+    'transition-all duration-200 hover:border-slate-300 hover:shadow-md',
+    href && 'cursor-pointer'
+  );
+
+  if (href) {
+    return (
+      <Link to={href} className={className} style={{ animationDelay: `${index * 40}ms` }}>
+        {inner}
+      </Link>
+    );
+  }
+
+  return (
+    <div className={className} style={{ animationDelay: `${index * 40}ms` }}>
+      {inner}
     </div>
   );
 }
@@ -55,9 +64,9 @@ export default function LeadKpiStrip() {
 
   if (isLoading && !stats) {
     return (
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 mb-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-[52px] rounded-xl bg-white border border-subtle animate-pulse" />
+      <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="h-[58px] animate-pulse rounded-xl border border-subtle bg-white" />
         ))}
       </div>
     );
@@ -67,33 +76,65 @@ export default function LeadKpiStrip() {
 
   const items = [
     {
-      label: 'Total Leads',
-      value: stats.totalLeads ?? 0,
-      icon: Users,
-      iconColor: 'bg-blue-500',
+      label: 'Total Leads (Today)',
+      value: stats.todayLeads ?? 0,
+      icon: CalendarDays,
+      iconColor: 'bg-emerald-500',
+      href: '/leads/new-leads',
     },
     {
-      label: 'Total Value',
-      value: formatCurrency(stats.totalBudget),
-      icon: IndianRupee,
-      iconColor: 'bg-emerald-500',
+      label: 'New Leads',
+      value: stats.newLeads ?? 0,
+      icon: Sparkles,
+      iconColor: 'bg-blue-500',
+      href: '/leads/inbox/new',
+    },
+    {
+      label: 'Unassigned Leads',
+      value: stats.unassignedLeads ?? 0,
+      icon: Inbox,
+      iconColor: 'bg-amber-400',
+      href: '/leads/unassigned',
+    },
+    {
+      label: 'Assigned Leads',
+      value: stats.assignedLeads ?? 0,
+      icon: UserCheck,
+      iconColor: 'bg-violet-500',
+      href: '/leads/assigned',
+    },
+    {
+      label: 'Follow-up Pending',
+      value: stats.followUpPending ?? 0,
+      icon: CalendarClock,
+      iconColor: 'bg-orange-500',
+      href: '/followups',
+    },
+    {
+      label: 'Lost Leads',
+      value: stats.lostLeads ?? 0,
+      icon: XCircle,
+      iconColor: 'bg-red-500',
+      href: '/leads/lost',
     },
     {
       label: 'Converted Leads',
       value: stats.convertedLeads ?? 0,
-      icon: CheckCircle2,
-      iconColor: 'bg-orange-500',
+      icon: Star,
+      iconColor: 'bg-yellow-500',
+      href: '/leads/converted',
     },
     {
-      label: 'Conversion Rate',
-      value: `${stats.conversionRate ?? 0}%`,
-      icon: TrendingUp,
-      iconColor: 'bg-violet-500',
+      label: 'Duplicate Leads',
+      value: stats.duplicateLeads ?? 0,
+      icon: Copy,
+      iconColor: 'bg-slate-700',
+      href: '/leads/duplicates',
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 mb-4">
+    <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
       {items.map((item, i) => (
         <CompactKpi
           key={item.label}
@@ -101,6 +142,7 @@ export default function LeadKpiStrip() {
           value={item.value}
           icon={item.icon}
           iconColor={item.iconColor}
+          href={item.href}
           index={i}
         />
       ))}

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   Bell,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Filter,
@@ -18,12 +18,21 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { useSidebar } from '../../context/SidebarContext';
-import { DESTINATIONS, LEAD_STATUSES, BUDGET_FILTER_OPTIONS, formatLeadId } from './constants';
+import { useAuth } from '../../context/AuthContext';
+import {
+  DESTINATIONS,
+  LEAD_STATUSES,
+  BUDGET_FILTER_OPTIONS,
+  TRAVEL_MONTHS,
+  PRIORITY_FILTER_OPTIONS,
+  formatLeadId,
+} from './constants';
+import { INDIAN_STATES } from '../lead-wizard/constants';
 import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
 import TrackedCallButton from './TrackedCallButton';
 import LeadCallStats from './LeadCallStats';
 import { TooltipProvider } from '../ui/tooltip';
-
+import API from '../../api/axios';
 const STATUS_STYLES = {
   new: 'bg-violet-50 text-violet-600',
   contacted: 'bg-emerald-50 text-emerald-600',
@@ -80,10 +89,24 @@ export default function MobileLeadList({
   hasMore,
 }) {
   const { toggleMobileOpen } = useSidebar();
+  const { user } = useAuth();
+  const { availableBranches = [] } = useSelector((s) => s.branch);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [search, setSearch] = useState(filters.search || '');
+  const [executives, setExecutives] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const canFilterBranch = ['admin', 'lead_provider', 'hr_admin'].includes(user?.role);
   const pageNumber = pagination.pageIndex + 1;
   const pageCount = total ? Math.max(1, Math.ceil(total / pagination.pageSize)) : null;
+
+  useEffect(() => {
+    API.get('/sales-manager/executives', { skipSuccessToast: true, skipErrorToast: true })
+      .then((res) => setExecutives(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setExecutives([]));
+    API.get('/teams', { skipSuccessToast: true, skipErrorToast: true })
+      .then((res) => setTeams(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setTeams([]));
+  }, []);
 
   const updateAndApply = (patch) => {
     const next = { ...filters, ...patch };
@@ -150,17 +173,40 @@ export default function MobileLeadList({
 
           {filtersOpen && (
             <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+              <input type="date" value={filters.dateFrom || ''} onChange={(event) => onFiltersChange({ ...filters, dateFrom: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none" title="Date From" />
+              <input type="date" value={filters.dateTo || ''} onChange={(event) => onFiltersChange({ ...filters, dateTo: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none" title="Date To" />
               <select value={filters.status} onChange={(event) => onFiltersChange({ ...filters, status: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
-                <option value="">All Statuses</option>
+                <option value="">Lead Status</option>
                 {LEAD_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
               </select>
               <select value={filters.source} onChange={(event) => onFiltersChange({ ...filters, source: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
-                <option value="">All Sources</option>
+                <option value="">Source</option>
                 {LEAD_SOURCE_FILTER_OPTIONS.filter((source) => source.value).map((source) => <option key={source.value} value={source.value}>{source.label}</option>)}
               </select>
               <select value={filters.destination} onChange={(event) => onFiltersChange({ ...filters, destination: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
-                <option value="">All Destinations</option>
+                <option value="">Destination</option>
                 {DESTINATIONS.map((destination) => <option key={destination} value={destination}>{destination}</option>)}
+              </select>
+              <select value={filters.agent || ''} onChange={(event) => onFiltersChange({ ...filters, agent: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                <option value="">Executive</option>
+                {executives.map((ex) => <option key={ex._id} value={ex._id}>{ex.name}</option>)}
+              </select>
+              {canFilterBranch && (
+                <select value={filters.branchId || ''} onChange={(event) => onFiltersChange({ ...filters, branchId: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                  <option value="">Branch</option>
+                  {availableBranches.map((b) => <option key={b._id} value={b._id}>{b.name}</option>)}
+                </select>
+              )}
+              <select value={filters.teamId || ''} onChange={(event) => onFiltersChange({ ...filters, teamId: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                <option value="">Team</option>
+                {teams.map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
+              </select>
+              <select value={filters.state || ''} onChange={(event) => onFiltersChange({ ...filters, state: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                <option value="">State</option>
+                {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <select value={filters.priority || ''} onChange={(event) => onFiltersChange({ ...filters, priority: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                {PRIORITY_FILTER_OPTIONS.map((p) => <option key={p.value || 'all'} value={p.value}>{p.label}</option>)}
               </select>
               <select
                 value={filters.budgetRange || ''}
@@ -179,7 +225,11 @@ export default function MobileLeadList({
                   <option key={b.value || 'all'} value={b.value}>{b.label}</option>
                 ))}
               </select>
-              <div className="flex gap-1.5">
+              <select value={filters.travelMonth} onChange={(event) => onFiltersChange({ ...filters, travelMonth: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                <option value="">Travel Month</option>
+                {TRAVEL_MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
+              </select>
+              <div className="col-span-2 flex gap-1.5">
                 <button type="button" onClick={() => onApplyFilters(filters)} className="h-9 flex-1 rounded-xl bg-violet-600 text-[9px] font-semibold text-white">Apply</button>
                 <button type="button" onClick={() => { setSearch(''); onReset(); }} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500" aria-label="Reset filters"><Filter className="h-3.5 w-3.5" /></button>
               </div>

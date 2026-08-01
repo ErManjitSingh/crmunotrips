@@ -35,6 +35,25 @@ export function applyLeadFilters(leads, filters, routeStatus = '') {
     result = result.filter((l) => l.assignedTo?._id === filters.agent);
   }
 
+  if (filters.teamId) {
+    result = result.filter((l) => String(l.teamId?._id || l.teamId || '') === String(filters.teamId));
+  }
+
+  if (filters.branchId) {
+    result = result.filter((l) => String(l.branchId?._id || l.branchId || '') === String(filters.branchId));
+  }
+
+  if (filters.state) {
+    const state = filters.state.toLowerCase();
+    result = result.filter((l) => String(l.state || '').toLowerCase() === state);
+  }
+
+  if (filters.priority === 'hot') {
+    result = result.filter((l) => l.isHot);
+  } else if (filters.priority) {
+    result = result.filter((l) => l.priority === filters.priority);
+  }
+
   if (filters.travelMonth !== '') {
     const month = Number(filters.travelMonth);
     result = result.filter((l) => l.travelDate && new Date(l.travelDate).getMonth() === month);

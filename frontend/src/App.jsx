@@ -308,6 +308,7 @@ function App() {
               <Route path="leads/assigned" element={<PermissionRoute module="leads"><Leads /></PermissionRoute>} />
               <Route path="leads/converted" element={<PermissionRoute module="leads"><Leads /></PermissionRoute>} />
               <Route path="leads/lost" element={<PermissionRoute module="leads"><Leads /></PermissionRoute>} />
+              <Route path="leads/duplicates" element={<PermissionRoute module="leads"><Leads /></PermissionRoute>} />
               <Route path="leads/reactivated" element={<PermissionRoute module="leads"><ReactivatedLeadsPage /></PermissionRoute>} />
               <Route path="leads/analytics" element={<PermissionRoute module="leads"><LeadAnalytics /></PermissionRoute>} />
               <Route path="leads/sla" element={<PermissionRoute module="leads"><SlaMonitor /></PermissionRoute>} />

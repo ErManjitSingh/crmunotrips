@@ -71,6 +71,13 @@ export const pageConfig = {
   '/leads/assigned': { title: 'Assigned Leads', subtitle: 'Leads assigned to team members', status: '', assignee: 'assigned' },
   '/leads/converted': { title: 'Converted Leads', subtitle: 'Successfully closed deals', status: 'converted', assignee: '' },
   '/leads/lost': { title: 'Lost Leads', subtitle: 'Did not convert', status: 'lost', assignee: '' },
+  '/leads/duplicates': {
+    title: 'Duplicate Leads',
+    subtitle: 'Leads sharing the same phone number',
+    status: '',
+    assignee: '',
+    listFilter: 'duplicates',
+  },
 };
 
 export function formatLeadId(id) {
@@ -98,4 +105,17 @@ export const emptyFilters = {
   budgetRange: '',
   dateFrom: '',
   dateTo: '',
+  priority: '',
+  teamId: '',
+  branchId: '',
+  state: '',
 };
+
+export const PRIORITY_FILTER_OPTIONS = [
+  { value: '', label: 'All Priorities' },
+  { value: 'hot', label: 'Hot' },
+  { value: 'urgent', label: 'Urgent' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+];
