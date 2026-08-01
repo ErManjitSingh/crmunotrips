@@ -195,7 +195,16 @@ const updateLead = asyncHandler(async (req, res) => {
   });
   if (!lead) throw new ApiError(404, 'Lead not found');
 
-  const { status, statusReason, advanceAmount, tokenAmount, paymentMethod, sendReceipt } = req.body;
+  const {
+    status,
+    statusReason,
+    advanceAmount,
+    tokenAmount,
+    paymentMethod,
+    sendReceipt,
+    paymentScreenshotBase64,
+    paymentScreenshotName,
+  } = req.body;
   const statusOnlyKeys = new Set([
     'status',
     'statusReason',
@@ -203,6 +212,8 @@ const updateLead = asyncHandler(async (req, res) => {
     'tokenAmount',
     'paymentMethod',
     'sendReceipt',
+    'paymentScreenshotBase64',
+    'paymentScreenshotName',
   ]);
   const otherFields = Object.keys(req.body).filter((k) => !statusOnlyKeys.has(k));
   const isStatusOnlyUpdate = Boolean(status) && otherFields.length === 0;
@@ -230,6 +241,9 @@ const updateLead = asyncHandler(async (req, res) => {
       const advance = Number(advanceAmount ?? tokenAmount);
       if (!Number.isFinite(advance) || advance < 0) {
         throw new ApiError(400, 'Enter advance / token amount received (₹)');
+      }
+      if (!paymentScreenshotBase64) {
+        throw new ApiError(400, 'Upload payment screenshot (UPI / bank transfer proof)');
       }
     }
     if (isLeadStatusLocked(lead.status)) {
@@ -283,6 +297,8 @@ const updateLead = asyncHandler(async (req, res) => {
         advanceAmount: Number(advanceAmount ?? tokenAmount),
         paymentMethod,
         sendReceipt: sendReceipt !== false,
+        paymentScreenshotBase64,
+        paymentScreenshotName,
       }).catch((err) => {
         console.error('[LeadConversion]', err.message);
       });

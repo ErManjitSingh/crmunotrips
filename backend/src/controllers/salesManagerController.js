@@ -211,7 +211,9 @@ const listQuotations = asyncHandler(async (req, res) => {
   });
 
   const result = await findScopedQuotationsPaginated(filter, req.query, { mapRow, branchId: req.branchId });
-  res.json(result);
+  const { attachPreviousQuotationComparison } = require('../services/quotationComparisonService');
+  const data = await attachPreviousQuotationComparison(result.data || []);
+  res.json({ ...result, data });
 });
 
 const createQuotation = asyncHandler(async (req, res) => {

@@ -2,6 +2,7 @@ export { default as LeadDetailLayout } from './LeadDetailLayout';
 export { default as LeadDetailHeader } from './LeadDetailHeader';
 export { default as LeadConvertedBanner } from './LeadConvertedBanner';
 export { default as LeadPaymentVoucherPanel } from './LeadPaymentVoucherPanel';
+export { default as LeadOpsStatusPanel } from './LeadOpsStatusPanel';
 export { default as LeadNotesPanel } from './LeadNotesPanel';
 export { default as LeadTagsPanel } from './LeadTagsPanel';
 export { default as LeadUpcomingFollowUp } from './LeadUpcomingFollowUp';

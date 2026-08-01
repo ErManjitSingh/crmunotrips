@@ -6,9 +6,50 @@ const Quotation = require('../models/Quotation');
 const ApiError = require('../utils/apiError');
 
 const UPLOAD_DIR = path.join(__dirname, '../../uploads/address-proofs');
+const PAYMENT_SHOT_DIR = path.join(__dirname, '../../uploads/payment-screenshots');
 
-function ensureUploadDir() {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+function ensureUploadDir(dir = UPLOAD_DIR) {
+  fs.mkdirSync(dir, { recursive: true });
+}
+
+function saveBase64Upload({ leadId, base64, originalName, dir, urlPrefix, label }) {
+  if (!base64) return null;
+  ensureUploadDir(dir);
+  const raw = String(base64).replace(/^data:[^;]+;base64,/, '');
+  const buf = Buffer.from(raw, 'base64');
+  if (!buf.length) return null;
+  if (buf.length > 8 * 1024 * 1024) {
+    throw new ApiError(400, `${label} must be under 8 MB`);
+  }
+  const safe = String(originalName || label).replace(/[^\w.\-]+/g, '_');
+  const fileName = `${leadId}-${Date.now()}-${safe}`;
+  fs.writeFileSync(path.join(dir, fileName), buf);
+  return {
+    url: `${urlPrefix}/${fileName}`,
+    name: originalName || fileName,
+  };
+}
+
+function saveAddressProofBase64({ leadId, base64, originalName }) {
+  return saveBase64Upload({
+    leadId,
+    base64,
+    originalName,
+    dir: UPLOAD_DIR,
+    urlPrefix: '/uploads/address-proofs',
+    label: 'Address proof',
+  });
+}
+
+function savePaymentScreenshotBase64({ leadId, base64, originalName }) {
+  return saveBase64Upload({
+    leadId,
+    base64,
+    originalName,
+    dir: PAYMENT_SHOT_DIR,
+    urlPrefix: '/uploads/payment-screenshots',
+    label: 'Payment screenshot',
+  });
 }
 
 function midDate(a, b) {
@@ -55,24 +96,6 @@ function buildInstallmentSchedule({ total, token, travelDate, returnDate }) {
       status: 'pending',
     },
   ].filter((row) => row.amount > 0);
-}
-
-function saveAddressProofBase64({ leadId, base64, originalName }) {
-  if (!base64) return null;
-  ensureUploadDir();
-  const raw = String(base64).replace(/^data:[^;]+;base64,/, '');
-  const buf = Buffer.from(raw, 'base64');
-  if (!buf.length) return null;
-  if (buf.length > 8 * 1024 * 1024) {
-    throw new ApiError(400, 'Address proof must be under 8 MB');
-  }
-  const safe = String(originalName || 'address-proof').replace(/[^\w.\-]+/g, '_');
-  const fileName = `${leadId}-${Date.now()}-${safe}`;
-  fs.writeFileSync(path.join(UPLOAD_DIR, fileName), buf);
-  return {
-    url: `/uploads/address-proofs/${fileName}`,
-    name: originalName || fileName,
-  };
 }
 
 async function getCommercialFormDraft({ leadId, executiveId, branchId }) {
@@ -149,6 +172,8 @@ async function getCommercialFormDraft({ leadId, executiveId, branchId }) {
     scheduledInstallments: schedule,
     addressProofUrl: payment?.addressProofUrl || '',
     addressProofName: payment?.addressProofName || '',
+    paymentScreenshotUrl: payment?.paymentScreenshotUrl || '',
+    paymentScreenshotName: payment?.paymentScreenshotName || '',
     commercialCompletedAt: payment?.commercialCompletedAt || null,
   };
 }
@@ -200,6 +225,18 @@ async function saveCommercialForm({ leadId, executiveId, branchId, body }) {
     }
   }
 
+  if (body.paymentScreenshotBase64) {
+    const shot = savePaymentScreenshotBase64({
+      leadId,
+      base64: body.paymentScreenshotBase64,
+      originalName: body.paymentScreenshotName,
+    });
+    if (shot) {
+      payment.paymentScreenshotUrl = shot.url;
+      payment.paymentScreenshotName = shot.name;
+    }
+  }
+
   await payment.save();
   return getCommercialFormDraft({ leadId, executiveId, branchId });
 }
@@ -208,4 +245,6 @@ module.exports = {
   buildInstallmentSchedule,
   getCommercialFormDraft,
   saveCommercialForm,
+  savePaymentScreenshotBase64,
+  saveAddressProofBase64,
 };

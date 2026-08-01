@@ -34,8 +34,10 @@ import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/foll
 import ConvertedLeadsTable from '../leads/ConvertedLeadsTable';
 import LostReasonSelect from '../leads/LostReasonSelect';
 import PostConvertCommercialModal from '../leads/PostConvertCommercialModal';
+import PaymentScreenshotField from '../leads/PaymentScreenshotField';
 import { useSidebarCounts } from '../../hooks/useSidebarCounts';
 import { resolveListTotal } from '../../lib/resolveListTotal';
+import { toast } from '../../context/ToastContext';
 
 const ICONS = { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Undo2 };
 
@@ -69,6 +71,9 @@ export default function MyLeadsPage() {
   const [modalStatusReason, setModalStatusReason] = useState('');
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('upi');
+  const [paymentShotBase64, setPaymentShotBase64] = useState('');
+  const [paymentShotName, setPaymentShotName] = useState('');
+  const [paymentShotPreview, setPaymentShotPreview] = useState('');
   const [commercialLeadId, setCommercialLeadId] = useState(null);
   const meta = LEAD_FILTERS[filter] || LEAD_FILTERS.new;
   const Icon = ICONS[meta.icon] || Sparkles;
@@ -127,9 +132,15 @@ export default function MyLeadsPage() {
     if (modalStatus === 'converted') {
       const advance = Number(advanceAmount);
       if (!Number.isFinite(advance) || advance < 0) return;
+      if (!paymentShotBase64) {
+        toast.error('Upload payment screenshot before converting');
+        return;
+      }
       payload.advanceAmount = advance;
       payload.paymentMethod = paymentMethod;
       payload.sendReceipt = true;
+      payload.paymentScreenshotBase64 = paymentShotBase64;
+      payload.paymentScreenshotName = paymentShotName;
     }
     await API.put(`/sales-executive/leads/${modal.lead._id}`, payload);
     const becameConverted = modalStatus === 'converted';
@@ -137,12 +148,20 @@ export default function MyLeadsPage() {
     setModal(null);
     setModalStatusReason('');
     setAdvanceAmount('');
+    setPaymentShotBase64('');
+    setPaymentShotName('');
+    setPaymentShotPreview('');
     fetchLeads();
     if (becameConverted) setCommercialLeadId(convertedId);
   };
   const reasonRequired = ['lost', 'booked_from_another_company'].includes(modalStatus);
   const convertAdvanceInvalid =
-    modalStatus === 'converted' && (!advanceAmount || Number(advanceAmount) < 0 || Number.isNaN(Number(advanceAmount)));
+    modalStatus === 'converted' && (
+      !advanceAmount
+      || Number(advanceAmount) < 0
+      || Number.isNaN(Number(advanceAmount))
+      || !paymentShotBase64
+    );
 
   const columns = useMemo(() => [
     columnHelper.accessor('leadId', {
@@ -392,6 +411,17 @@ export default function MyLeadsPage() {
                 <option value="cheque">Cheque</option>
               </select>
             </div>
+            <PaymentScreenshotField
+              required
+              fileName={paymentShotName}
+              previewUrl={paymentShotPreview}
+              onChange={({ base64, name, previewUrl, error }) => {
+                if (error) toast.error(error);
+                setPaymentShotBase64(base64 || '');
+                setPaymentShotName(name || '');
+                setPaymentShotPreview(previewUrl || '');
+              }}
+            />
           </div>
         )}
         {['lost', 'booked_from_another_company'].includes(modalStatus) ? (
@@ -410,7 +440,14 @@ export default function MyLeadsPage() {
           />
         )}
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => { setModal(null); setModalStatusReason(''); setAdvanceAmount(''); }}>Cancel</Button>
+          <Button variant="secondary" onClick={() => {
+            setModal(null);
+            setModalStatusReason('');
+            setAdvanceAmount('');
+            setPaymentShotBase64('');
+            setPaymentShotName('');
+            setPaymentShotPreview('');
+          }}>Cancel</Button>
           <Button
             onClick={handleChangeStatus}
             disabled={(reasonRequired && !modalStatusReason.trim()) || convertAdvanceInvalid}

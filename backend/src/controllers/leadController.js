@@ -558,10 +558,15 @@ const updateLead = asyncHandler(async (req, res) => {
   }
 
   if (data.status === 'converted' && prevStatus !== 'converted') {
+    if (!req.body.paymentScreenshotBase64) {
+      throw new ApiError(400, 'Upload payment screenshot (UPI / bank transfer proof)');
+    }
     await onLeadConverted(lead, req.user, {
       advanceAmount: req.body.advanceAmount ?? req.body.tokenAmount,
       paymentMethod: req.body.paymentMethod,
       sendReceipt: req.body.sendReceipt !== false,
+      paymentScreenshotBase64: req.body.paymentScreenshotBase64,
+      paymentScreenshotName: req.body.paymentScreenshotName,
     }).catch((err) => {
       console.error('[LeadConversion]', err.message);
     });

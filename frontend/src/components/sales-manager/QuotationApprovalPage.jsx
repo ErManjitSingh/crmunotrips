@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, MessageSquare, Plus } from 'lucide-react';
 import API from '../../api/axios';
 import { unwrapList } from '../../utils/apiHelpers';
@@ -10,6 +9,7 @@ import { formatCurrency } from './managerUtils';
 import QuotationFiltersPanel from '../quotations/QuotationFiltersPanel';
 import QuotationDetailDrawer from '../quotations/QuotationDetailDrawer';
 import QuotationPdfOverlay from '../quotations/QuotationPdfOverlay';
+import { formatDiscountLabel } from '../quotations/quotationUtils';
 import {
   emptyQuotationFilters,
   countQuotationActiveFilters,
@@ -17,6 +17,7 @@ import {
   SEGMENT_LABELS,
 } from '../quotations/quotationFilterUtils';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { toast } from '../../context/ToastContext';
 
 const META = {
   pending: { title: 'Pending Approval', desc: 'Review and approve team quotations' },
@@ -33,6 +34,8 @@ export default function QuotationApprovalPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [showPdf, setShowPdf] = useState(false);
+  const [pdfQuote, setPdfQuote] = useState(null);
+  const [loadingPrevious, setLoadingPrevious] = useState(false);
   const pdfRef = useRef(null);
   const meta = META[status] || META.pending;
   const debouncedSearch = useDebouncedValue(appliedFilters.search, 350);
@@ -71,6 +74,21 @@ export default function QuotationApprovalPage() {
     fetchQuotes();
   };
 
+  const handleViewPrevious = async () => {
+    const prevId = selected?.previousQuotation?._id;
+    if (!prevId) return;
+    setLoadingPrevious(true);
+    try {
+      const res = await API.get(`/quotations/${prevId}`, { skipSuccessToast: true });
+      setPdfQuote(res.data);
+      setShowPdf(true);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not open previous quotation');
+    } finally {
+      setLoadingPrevious(false);
+    }
+  };
+
   const hasActiveFilters = countQuotationActiveFilters(appliedFilters) > 0;
 
   return (
@@ -106,22 +124,39 @@ export default function QuotationApprovalPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-subtle bg-surface-elevated/50">
-                {['Quote #', 'Customer', 'Destination', 'Amount', 'Margin', 'Executive', 'Actions'].map((h) => (
+                {['Quote #', 'Customer', 'Destination', 'Amount', 'Discount', 'Margin', 'Executive', 'Actions'].map((h) => (
                   <th key={h} className="text-left px-4 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-subtle">
               {loading ? (
-                <tr><td colSpan={7} className="p-12 text-center text-content-muted">Loading…</td></tr>
+                <tr><td colSpan={8} className="p-12 text-center text-content-muted">Loading…</td></tr>
               ) : quotes.length === 0 ? (
-                <tr><td colSpan={7} className="p-12 text-center text-content-muted">No quotations match your filters</td></tr>
-              ) : quotes.map((q, i) => (
+                <tr><td colSpan={8} className="p-12 text-center text-content-muted">No quotations match your filters</td></tr>
+              ) : quotes.map((q) => (
                 <tr key={q._id} className="hover:bg-violet-500/[0.03] cursor-pointer" onClick={() => setSelected(q)}>
-                  <td className="px-4 py-3.5 font-mono text-xs font-medium text-brand-600">{q.quoteNumber}</td>
+                  <td className="px-4 py-3.5 font-mono text-xs font-medium text-brand-600">
+                    <div>{q.quoteNumber}</div>
+                    {q.isRevisionSubmission && (
+                      <span className="mt-1 inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-800">
+                        File #{q.submissionIndex}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3.5 font-medium text-content-primary">{q.lead?.name}</td>
                   <td className="px-4 py-3.5 text-content-secondary">{q.lead?.destination}</td>
                   <td className="px-4 py-3.5 font-semibold tabular-nums">{formatCurrency(q.pricing?.total)}</td>
+                  <td className="px-4 py-3.5">
+                    <div className="text-xs font-semibold tabular-nums text-amber-800">
+                      {formatDiscountLabel(q.discountSummary || q.pricing)}
+                    </div>
+                    {q.previousQuotation && (
+                      <p className="mt-0.5 text-[10px] text-content-muted">
+                        Prev: {formatDiscountLabel(q.previousQuotation)}
+                      </p>
+                    )}
+                  </td>
                   <td className="px-4 py-3.5"><span className={`font-medium ${(q.pricing?.profitMargin || 0) >= 10 ? 'text-emerald-600' : 'text-amber-600'}`}>{q.pricing?.profitMargin}%</span></td>
                   <td className="px-4 py-3.5 text-content-secondary">{q.executive || '—'}</td>
                   <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
@@ -143,8 +178,13 @@ export default function QuotationApprovalPage() {
       <QuotationDetailDrawer
         quote={selected}
         open={!!selected && !showPdf}
-        onClose={() => { setSelected(null); setShowPdf(false); }}
-        onDownloadPdf={() => setShowPdf(true)}
+        onClose={() => { setSelected(null); setShowPdf(false); setPdfQuote(null); }}
+        onDownloadPdf={() => {
+          setPdfQuote(selected);
+          setShowPdf(true);
+        }}
+        onViewPreviousQuotation={selected?.previousQuotation?._id ? handleViewPrevious : undefined}
+        viewingPreviousQuotation={loadingPrevious}
         canSetCosting={status === 'pending'}
         onApproveWithCosting={async (id, costingPercent) => {
           await handleAction(id, 'approve', costingPercent);
@@ -165,9 +205,9 @@ export default function QuotationApprovalPage() {
       />
 
       <QuotationPdfOverlay
-        quote={selected}
+        quote={pdfQuote || selected}
         open={showPdf}
-        onClose={() => setShowPdf(false)}
+        onClose={() => { setShowPdf(false); setPdfQuote(null); }}
         pdfRef={pdfRef}
       />
     </div>

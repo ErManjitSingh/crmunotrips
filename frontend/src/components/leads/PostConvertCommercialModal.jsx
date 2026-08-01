@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import AppModal from '../ui/AppModal';
 import { Button } from '../ui/button';
 import API from '../../api/axios';
+import PaymentScreenshotField from './PaymentScreenshotField';
+import { toast } from '../../context/ToastContext';
 
 function formatDate(value) {
   if (!value) return '—';
@@ -28,6 +30,9 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
   const [paymentMethod, setPaymentMethod] = useState('upi');
   const [proofName, setProofName] = useState('');
   const [proofBase64, setProofBase64] = useState('');
+  const [shotName, setShotName] = useState('');
+  const [shotBase64, setShotBase64] = useState('');
+  const [shotPreview, setShotPreview] = useState('');
 
   useEffect(() => {
     if (!open || !leadId) return undefined;
@@ -46,6 +51,9 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
         setPaymentMethod(data.paymentMethod || 'upi');
         setProofName(data.addressProofName || '');
         setProofBase64('');
+        setShotName(data.paymentScreenshotName || '');
+        setShotBase64('');
+        setShotPreview('');
       })
       .catch((err) => {
         if (!cancelled) setError(err.response?.data?.message || err.message || 'Failed to load form');
@@ -83,6 +91,8 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
         totalAmount: draft?.totalAmount,
         addressProofBase64: proofBase64 || undefined,
         addressProofName: proofName || undefined,
+        paymentScreenshotBase64: shotBase64 || undefined,
+        paymentScreenshotName: shotName || undefined,
       });
       setDraft(data);
       onSaved?.(data);
@@ -165,6 +175,19 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
                 </select>
               </label>
             </div>
+
+            <PaymentScreenshotField
+              fileName={shotName}
+              previewUrl={shotPreview}
+              existingUrl={draft.paymentScreenshotUrl}
+              existingName={draft.paymentScreenshotName}
+              onChange={({ base64, name, previewUrl, error }) => {
+                if (error) toast.error(error);
+                setShotBase64(base64 || '');
+                setShotName(name || draft.paymentScreenshotName || '');
+                setShotPreview(previewUrl || '');
+              }}
+            />
 
             <div>
               <p className="text-[11px] font-bold uppercase text-slate-500 mb-1.5">

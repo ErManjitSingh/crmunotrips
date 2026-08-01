@@ -540,6 +540,97 @@ function summarizePayment(payment, booking) {
     hasReceipt: Boolean(payment?.receiptNumber || payment?.receiptHtml),
     paidAt: payment?.paidAt || null,
     bookingCreatedAt: booking?.createdAt || null,
+    paymentScreenshotUrl: payment?.paymentScreenshotUrl || null,
+    paymentScreenshotName: payment?.paymentScreenshotName || null,
+    addressProofUrl: payment?.addressProofUrl || null,
+  };
+}
+
+function formatOpsLabel(value) {
+  return String(value || 'pending').replace(/_/g, ' ');
+}
+
+/** Slim ops + installment snapshot for sales (no vendor emails / internal notes). */
+function buildOpsFulfillment(payment, booking) {
+  if (!booking && !payment) return null;
+
+  const hotels = (booking?.hotels || []).map((h) => ({
+    id: h._id,
+    name: h.hotelName || 'Hotel',
+    day: h.day || null,
+    nights: h.nights || null,
+    roomType: h.roomType || '',
+    mealPlan: h.mealPlan || '',
+    checkIn: h.checkIn || null,
+    checkOut: h.checkOut || null,
+    status: h.status || 'pending',
+    confirmationNumber: h.confirmationNumber || '',
+    voucherSent: Boolean(h.voucherSentAt),
+  }));
+
+  const transport = (booking?.transport || []).map((t) => ({
+    id: t._id,
+    vehicleType: t.vehicleType || 'cab',
+    day: t.day || null,
+    days: t.days || [],
+    driverName: t.driverName || '',
+    driverPhone: t.driverPhone || '',
+    vehicleNumber: t.vehicleNumber || '',
+    pickupLocation: t.pickupLocation || '',
+    dropLocation: t.dropLocation || '',
+    pickupDate: t.pickupDate || null,
+    status: t.status || 'pending',
+    voucherSent: Boolean(t.voucherSentAt),
+  }));
+
+  const activities = (booking?.activities || []).map((a) => ({
+    id: a._id,
+    name: a.name || 'Activity',
+    scheduledAt: a.scheduledAt || null,
+    status: a.status || 'pending',
+  }));
+
+  const scheduledInstallments = (payment?.scheduledInstallments || []).map((row) => ({
+    label: row.label || 'Installment',
+    percent: Number(row.percent) || 0,
+    amount: Number(row.amount) || 0,
+    dueDate: row.dueDate || null,
+    status: row.status || 'pending',
+  }));
+
+  const receivedInstallments = (payment?.installments || []).map((row) => ({
+    amount: Number(row.amount) || 0,
+    receivedAt: row.receivedAt || null,
+    method: row.method || '',
+    reference: row.reference || '',
+    note: row.note || '',
+  }));
+
+  const hotelConfirmed = hotels.filter((h) => h.status === 'confirmed').length;
+  const cabConfirmed = transport.filter((t) => t.status === 'confirmed' || t.status === 'completed').length;
+  const installmentsPaid = scheduledInstallments.filter((r) => r.status === 'paid').length;
+
+  return {
+    bookingStatus: booking?.status || null,
+    bookingStatusLabel: formatOpsLabel(booking?.status),
+    hotelConfirmation: booking?.hotelConfirmation || 'pending',
+    cabConfirmation: booking?.cabConfirmation || 'pending',
+    activityConfirmation: booking?.activityConfirmation || 'pending',
+    voucherStatus: booking?.voucherStatus || 'pending',
+    hotels,
+    transport,
+    activities,
+    scheduledInstallments,
+    receivedInstallments,
+    counts: {
+      hotelsTotal: hotels.length,
+      hotelsConfirmed: hotelConfirmed,
+      cabsTotal: transport.length,
+      cabsConfirmed: cabConfirmed,
+      activitiesTotal: activities.length,
+      installmentsTotal: scheduledInstallments.length,
+      installmentsPaid,
+    },
   };
 }
 
@@ -590,7 +681,12 @@ async function getLeadPaymentSummary(leadId) {
     Payment.findOne({ lead: leadId }).sort({ createdAt: -1 }).lean(),
     Booking.findOne({ lead: leadId }).sort({ createdAt: -1 }).lean(),
   ]);
-  return summarizePayment(payment, booking);
+  const summary = summarizePayment(payment, booking);
+  if (!summary) return null;
+  return {
+    ...summary,
+    ops: buildOpsFulfillment(payment, booking),
+  };
 }
 
 async function getLeadPaymentReceipt(leadId, { branchId, extraFilter = {}, refreshHtml = false } = {}) {

@@ -7,6 +7,7 @@ import QuoteStatusBadge from './QuoteStatusBadge';
 import QuotePricingPanel from './QuotePricingPanel';
 import QuoteTimeline from './QuoteTimeline';
 import MobileQuotationDetail from './MobileQuotationDetail';
+import QuotationRevisionCompareBanner from './QuotationRevisionCompareBanner';
 import { Button } from '../ui/button';
 import { formatINR } from './quotationUtils';
 
@@ -93,6 +94,8 @@ export default function QuotationDetailDrawer({
   onEdit,
   onFollowUp,
   onAddNote,
+  onViewPreviousQuotation,
+  viewingPreviousQuotation = false,
 }) {
   const [costingPercent, setCostingPercent] = useState('');
   const [approving, setApproving] = useState(false);
@@ -145,6 +148,13 @@ export default function QuotationDetailDrawer({
           onAddNote={onAddNote}
           onDownloadPdf={onDownloadPdf}
           actions={!readOnly ? actions : null}
+          headerExtra={(
+            <QuotationRevisionCompareBanner
+              quote={quote}
+              onViewPrevious={onViewPreviousQuotation}
+              viewingPrevious={viewingPreviousQuotation}
+            />
+          )}
         />
       ) : (
         <AppDrawer open={open} onClose={onClose} className="max-w-xl overflow-y-auto">
@@ -160,6 +170,12 @@ export default function QuotationDetailDrawer({
           </div>
 
           <div className="p-5 space-y-6">
+            <QuotationRevisionCompareBanner
+              quote={quote}
+              onViewPrevious={onViewPreviousQuotation}
+              viewingPrevious={viewingPreviousQuotation}
+            />
+
             <section className="space-y-3">
               <h4 className="text-xs font-medium uppercase tracking-wider text-content-muted">Customer (sent to)</h4>
               <div className="rounded-xl border border-subtle bg-surface-elevated/40 p-4 space-y-3">

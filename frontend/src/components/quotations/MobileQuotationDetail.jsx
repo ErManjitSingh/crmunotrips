@@ -137,6 +137,7 @@ export default function MobileQuotationDetail({
   onAddNote,
   onDownloadPdf,
   actions,
+  headerExtra = null,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -315,6 +316,7 @@ export default function MobileQuotationDetail({
         </div>
 
         <div className="space-y-3">
+          {headerExtra}
           <SectionCard title="Customer Details">
             <div className="mb-1 flex items-center gap-3 rounded-xl bg-slate-50/80 px-2.5 py-2.5">
               <div className={cn('flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-base font-bold text-white', avatarTone(customer))}>

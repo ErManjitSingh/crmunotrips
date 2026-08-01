@@ -233,7 +233,9 @@ const listQuotations = asyncHandler(async (req, res) => {
   else if (segment === 'rejected') filter.status = 'rejected';
 
   const result = await findScopedQuotationsPaginated(filter, req.query, { branchId: req.branchId });
-  res.json(result);
+  const { attachPreviousQuotationComparison } = require('../services/quotationComparisonService');
+  const data = await attachPreviousQuotationComparison(result.data || []);
+  res.json({ ...result, data });
 });
 
 const createQuotation = asyncHandler(async (req, res) => {

@@ -13,6 +13,8 @@ import { isLeadStatusLocked } from '../../utils/leadUtils';
 import LostReasonSelect from '../leads/LostReasonSelect';
 import LeadAcceptBanner from '../leads/LeadAcceptBanner';
 import PostConvertCommercialModal from '../leads/PostConvertCommercialModal';
+import PaymentScreenshotField from '../leads/PaymentScreenshotField';
+import { toast } from '../../context/ToastContext';
 
 const STATUSES = [
   'new',
@@ -40,6 +42,9 @@ export default function ExecutiveLeadDetailPage() {
   const [modalStatusReason, setModalStatusReason] = useState('');
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('upi');
+  const [paymentShotBase64, setPaymentShotBase64] = useState('');
+  const [paymentShotName, setPaymentShotName] = useState('');
+  const [paymentShotPreview, setPaymentShotPreview] = useState('');
   const [markingCallDone, setMarkingCallDone] = useState(false);
   const [commercialOpen, setCommercialOpen] = useState(false);
 
@@ -127,21 +132,35 @@ export default function ExecutiveLeadDetailPage() {
       if (!Number.isFinite(advance) || advance < 0) {
         return;
       }
+      if (!paymentShotBase64) {
+        toast.error('Upload payment screenshot before converting');
+        return;
+      }
       payload.advanceAmount = advance;
       payload.paymentMethod = paymentMethod;
       payload.sendReceipt = true;
+      payload.paymentScreenshotBase64 = paymentShotBase64;
+      payload.paymentScreenshotName = paymentShotName;
     }
     await API.put(`/sales-executive/leads/${id}`, payload);
     const becameConverted = modalStatus === 'converted';
     setStatusModalOpen(false);
     setModalStatusReason('');
     setAdvanceAmount('');
+    setPaymentShotBase64('');
+    setPaymentShotName('');
+    setPaymentShotPreview('');
     await loadLead();
     if (becameConverted) setCommercialOpen(true);
   };
   const reasonRequired = ['lost', 'booked_from_another_company'].includes(modalStatus);
   const convertAdvanceInvalid =
-    modalStatus === 'converted' && (!advanceAmount || Number(advanceAmount) < 0 || Number.isNaN(Number(advanceAmount)));
+    modalStatus === 'converted' && (
+      !advanceAmount
+      || Number(advanceAmount) < 0
+      || Number.isNaN(Number(advanceAmount))
+      || !paymentShotBase64
+    );
 
   const handleColdCallDone = async () => {
     if (!id || markingCallDone) return;
@@ -257,6 +276,17 @@ export default function ExecutiveLeadDetailPage() {
                 <option value="cheque">Cheque</option>
               </select>
             </div>
+            <PaymentScreenshotField
+              required
+              fileName={paymentShotName}
+              previewUrl={paymentShotPreview}
+              onChange={({ base64, name, previewUrl, error }) => {
+                if (error) toast.error(error);
+                setPaymentShotBase64(base64 || '');
+                setPaymentShotName(name || '');
+                setPaymentShotPreview(previewUrl || '');
+              }}
+            />
           </div>
         )}
         {['lost', 'booked_from_another_company'].includes(modalStatus) ? (
@@ -275,7 +305,14 @@ export default function ExecutiveLeadDetailPage() {
           />
         )}
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => { setStatusModalOpen(false); setModalStatusReason(''); setAdvanceAmount(''); }}>Cancel</Button>
+          <Button variant="secondary" onClick={() => {
+            setStatusModalOpen(false);
+            setModalStatusReason('');
+            setAdvanceAmount('');
+            setPaymentShotBase64('');
+            setPaymentShotName('');
+            setPaymentShotPreview('');
+          }}>Cancel</Button>
           <Button
             onClick={handleChangeStatus}
             disabled={(reasonRequired && !modalStatusReason.trim()) || convertAdvanceInvalid}

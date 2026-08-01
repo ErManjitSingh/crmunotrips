@@ -91,6 +91,38 @@ export function formatINR(n, { zeroLabel } = {}) {
   return `₹${value.toLocaleString('en-IN')}`;
 }
 
+/** Discount as % of package before discount (costs + markup). */
+export function getDiscountPercent(pricing = {}) {
+  const discount = Math.max(0, Number(pricing.discount) || 0);
+  if (discount <= 0) return 0;
+  const costs =
+    Number(pricing.baseCost || 0) +
+    Number(pricing.hotelCost || 0) +
+    Number(pricing.cabCost || 0) +
+    Number(pricing.flightCost || 0) +
+    Number(pricing.activityCost || 0);
+  const pct = Number(pricing.markupPercent) || 0;
+  const markup =
+    pct > 0
+      ? Math.round(costs * (pct / 100) * 100) / 100
+      : Math.max(0, Number(pricing.markup) || 0);
+  const packageBeforeDisc = costs + markup;
+  if (packageBeforeDisc <= 0) return 0;
+  return Math.round((discount / packageBeforeDisc) * 1000) / 10;
+}
+
+export function formatDiscountLabel(pricingOrSummary) {
+  if (!pricingOrSummary) return '0%';
+  const pct =
+    pricingOrSummary.discountPercent != null
+      ? Number(pricingOrSummary.discountPercent)
+      : getDiscountPercent(pricingOrSummary);
+  const amount = Number(pricingOrSummary.discount || 0);
+  if (pct <= 0 && amount <= 0) return '0%';
+  if (amount > 0) return `${pct}% (₹${amount.toLocaleString('en-IN')})`;
+  return `${pct}%`;
+}
+
 export function getPackageTypeConfig(type) {
   const types = {
     honeymoon: { label: 'Honeymoon', color: 'rose' },

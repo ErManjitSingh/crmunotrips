@@ -23,7 +23,7 @@ export default function LeadConvertedBanner({ status, bookingHref, bookingNumber
           <Trophy className="w-4 h-4" />
         </div>
         <p className="text-sm font-semibold text-emerald-900 leading-snug">
-          Converted! Booking started for this lead. Advance / balance details and payment voucher are below — customer gets the voucher by email.
+          Converted! Booking started for this lead. Track hotel, cab & installment status below — customer gets the payment voucher by email.
           {bookingNumber ? (
             <span className="block sm:inline text-emerald-700/90 font-medium mt-0.5 sm:mt-0 sm:ml-1">
               ({bookingNumber})

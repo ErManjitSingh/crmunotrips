@@ -98,10 +98,16 @@ export default function LeadActivityTimeline({
             <p className="text-sm text-slate-400 text-center py-6">No activity yet</p>
           )}
           {!loading && sorted.length > 0 && (
-            <div className="relative">
-              <div className="absolute left-[19px] top-2 bottom-2 w-px bg-gradient-to-b from-violet-300 via-slate-200 to-transparent dark:from-violet-800 dark:via-slate-700" />
-              <div className="space-y-1">
-                {sorted.map((item, i) => {
+            <div>
+              {sorted.length > 8 && (
+                <p className="mb-2 text-[11px] font-medium text-slate-400">
+                  Showing 8 at a time · scroll for {sorted.length - 8} more
+                </p>
+              )}
+              <div className="relative max-h-[36rem] overflow-y-auto overscroll-contain pr-1">
+                <div className="absolute left-[19px] top-2 bottom-2 w-px bg-gradient-to-b from-violet-300 via-slate-200 to-transparent dark:from-violet-800 dark:via-slate-700" />
+                <div className="space-y-1">
+                  {sorted.map((item, i) => {
                   const cfg = ACTIVITY_CONFIG[item.type] || ACTIVITY_CONFIG.status_changed;
                   const Icon = cfg.icon;
                   const { date, time } = formatActivityDate(item.date);
@@ -126,7 +132,7 @@ export default function LeadActivityTimeline({
                       ref={isHighlight ? highlightRef : undefined}
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.04 }}
+                      transition={{ delay: Math.min(i, 8) * 0.04 }}
                       className={cn(
                         'relative flex gap-4 py-3 group rounded-xl transition-colors',
                         isHighlight && 'bg-violet-50/80 dark:bg-violet-950/30 ring-1 ring-[#5D5FEF]/25 px-2 -mx-2'
@@ -187,7 +193,8 @@ export default function LeadActivityTimeline({
                       </div>
                     </motion.div>
                   );
-                })}
+                  })}
+                </div>
               </div>
             </div>
           )}

@@ -10,6 +10,7 @@ import LeadUpcomingFollowUp from './LeadUpcomingFollowUp';
 import LeadTagsPanel from './LeadTagsPanel';
 import LeadQuotationSection from './LeadQuotationSection';
 import LeadScoreBreakdown from './LeadScoreBreakdown';
+import LeadOpsStatusPanel from './LeadOpsStatusPanel';
 import { useLeadQuotationsQuery, useLeadNotesQuery } from '../../features/leads/hooks/useLeadRelatedQueries';
 import { getLeadDetailData } from './leadDetailData';
 
@@ -81,10 +82,15 @@ export default function LeadDetailLayout({
       <LeadConvertedBanner
         status={lead.status}
         bookingNumber={lead.paymentSummary?.bookingNumber}
-        onViewBooking={() =>
-          document.getElementById('payment-advance')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
+        onViewBooking={() => {
+          const el =
+            document.getElementById('ops-fulfillment') ||
+            document.getElementById('payment-advance');
+          el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
       />
+
+      <LeadOpsStatusPanel lead={lead} paymentSummary={lead.paymentSummary} />
 
       <LeadContactActions
         lead={lead}
