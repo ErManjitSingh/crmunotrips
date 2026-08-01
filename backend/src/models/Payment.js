@@ -56,9 +56,16 @@ const paymentSchema = new mongoose.Schema(
     gstAmount: { type: Number, default: 0 },
     addressProofUrl: { type: String, trim: true, default: '' },
     addressProofName: { type: String, trim: true, default: '' },
-    /** UPI / bank transfer payment screenshot collected on conversion */
+    /** UPI / bank transfer payment screenshot collected on conversion (legacy single) */
     paymentScreenshotUrl: { type: String, trim: true, default: '' },
     paymentScreenshotName: { type: String, trim: true, default: '' },
+    /** Multiple payment proof images */
+    paymentScreenshots: [
+      {
+        url: { type: String, trim: true, default: '' },
+        name: { type: String, trim: true, default: '' },
+      },
+    ],
     commercialCompletedAt: { type: Date },
     refunds: [
       {

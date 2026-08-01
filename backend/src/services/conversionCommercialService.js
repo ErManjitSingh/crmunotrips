@@ -52,6 +52,60 @@ function savePaymentScreenshotBase64({ leadId, base64, originalName }) {
   });
 }
 
+/** Normalize body into [{ base64, name }] — supports multi + legacy single fields */
+function collectPaymentScreenshotUploads(body = {}) {
+  const list = [];
+  const arr = Array.isArray(body.paymentScreenshots) ? body.paymentScreenshots : [];
+  for (const item of arr) {
+    if (item?.base64) {
+      list.push({ base64: item.base64, name: item.name || 'payment-proof' });
+    }
+  }
+  // Legacy single field only when multi array was not provided (avoid duplicating first image)
+  if (!list.length && body.paymentScreenshotBase64) {
+    list.push({
+      base64: body.paymentScreenshotBase64,
+      name: body.paymentScreenshotName || 'payment-proof',
+    });
+  }
+  return list;
+}
+
+function applyPaymentScreenshotsToPayment(payment, uploads, leadId) {
+  if (!uploads?.length) return payment;
+  const existing = Array.isArray(payment.paymentScreenshots)
+    ? [...payment.paymentScreenshots]
+    : [];
+  for (const item of uploads) {
+    const shot = savePaymentScreenshotBase64({
+      leadId,
+      base64: item.base64,
+      originalName: item.name,
+    });
+    if (shot) existing.push({ url: shot.url, name: shot.name });
+  }
+  payment.paymentScreenshots = existing;
+  const primary = existing[0];
+  if (primary) {
+    payment.paymentScreenshotUrl = primary.url;
+    payment.paymentScreenshotName = primary.name;
+  }
+  return payment;
+}
+
+function listPaymentScreenshots(payment) {
+  if (!payment) return [];
+  if (Array.isArray(payment.paymentScreenshots) && payment.paymentScreenshots.length) {
+    return payment.paymentScreenshots
+      .filter((s) => s?.url)
+      .map((s) => ({ url: s.url, name: s.name || 'Payment proof' }));
+  }
+  if (payment.paymentScreenshotUrl) {
+    return [{ url: payment.paymentScreenshotUrl, name: payment.paymentScreenshotName || 'Payment proof' }];
+  }
+  return [];
+}
+
 function midDate(a, b) {
   const t1 = new Date(a).getTime();
   const t2 = new Date(b).getTime();
@@ -174,6 +228,7 @@ async function getCommercialFormDraft({ leadId, executiveId, branchId }) {
     addressProofName: payment?.addressProofName || '',
     paymentScreenshotUrl: payment?.paymentScreenshotUrl || '',
     paymentScreenshotName: payment?.paymentScreenshotName || '',
+    paymentScreenshots: listPaymentScreenshots(payment),
     commercialCompletedAt: payment?.commercialCompletedAt || null,
   };
 }
@@ -225,16 +280,12 @@ async function saveCommercialForm({ leadId, executiveId, branchId, body }) {
     }
   }
 
-  if (body.paymentScreenshotBase64) {
-    const shot = savePaymentScreenshotBase64({
-      leadId,
-      base64: body.paymentScreenshotBase64,
-      originalName: body.paymentScreenshotName,
-    });
-    if (shot) {
-      payment.paymentScreenshotUrl = shot.url;
-      payment.paymentScreenshotName = shot.name;
-    }
+  if (body.paymentScreenshotBase64 || (Array.isArray(body.paymentScreenshots) && body.paymentScreenshots.length)) {
+    applyPaymentScreenshotsToPayment(
+      payment,
+      collectPaymentScreenshotUploads(body),
+      leadId
+    );
   }
 
   await payment.save();
@@ -247,4 +298,7 @@ module.exports = {
   saveCommercialForm,
   savePaymentScreenshotBase64,
   saveAddressProofBase64,
+  collectPaymentScreenshotUploads,
+  applyPaymentScreenshotsToPayment,
+  listPaymentScreenshots,
 };

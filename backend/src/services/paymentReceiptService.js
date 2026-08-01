@@ -542,6 +542,17 @@ function summarizePayment(payment, booking) {
     bookingCreatedAt: booking?.createdAt || null,
     paymentScreenshotUrl: payment?.paymentScreenshotUrl || null,
     paymentScreenshotName: payment?.paymentScreenshotName || null,
+    paymentScreenshots: (() => {
+      if (Array.isArray(payment?.paymentScreenshots) && payment.paymentScreenshots.length) {
+        return payment.paymentScreenshots
+          .filter((s) => s?.url)
+          .map((s) => ({ url: s.url, name: s.name || 'Payment proof' }));
+      }
+      if (payment?.paymentScreenshotUrl) {
+        return [{ url: payment.paymentScreenshotUrl, name: payment.paymentScreenshotName || 'Payment proof' }];
+      }
+      return [];
+    })(),
     addressProofUrl: payment?.addressProofUrl || null,
   };
 }

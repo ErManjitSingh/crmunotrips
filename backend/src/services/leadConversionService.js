@@ -128,7 +128,7 @@ async function notifyOperationsTeam(lead, booking) {
 /**
  * @param {object} lead
  * @param {object} actor
- * @param {{ advanceAmount?: number, tokenAmount?: number, paymentMethod?: string, sendReceipt?: boolean, paymentScreenshotBase64?: string, paymentScreenshotName?: string }} [options]
+ * @param {{ advanceAmount?: number, tokenAmount?: number, paymentMethod?: string, sendReceipt?: boolean, paymentScreenshotBase64?: string, paymentScreenshotName?: string, paymentScreenshots?: Array<{base64:string,name?:string}> }} [options]
  */
 async function onLeadConverted(lead, actor, options = {}) {
   const existingBooking = await Booking.findOne({ lead: lead._id });
@@ -145,16 +145,14 @@ async function onLeadConverted(lead, actor, options = {}) {
 
   const payment = await ensurePaymentForConversion(lead, quotation, actor, options);
 
-  if (payment && options.paymentScreenshotBase64) {
-    const { savePaymentScreenshotBase64 } = require('./conversionCommercialService');
-    const shot = savePaymentScreenshotBase64({
-      leadId: lead._id,
-      base64: options.paymentScreenshotBase64,
-      originalName: options.paymentScreenshotName,
-    });
-    if (shot) {
-      payment.paymentScreenshotUrl = shot.url;
-      payment.paymentScreenshotName = shot.name;
+  if (payment) {
+    const {
+      collectPaymentScreenshotUploads,
+      applyPaymentScreenshotsToPayment,
+    } = require('./conversionCommercialService');
+    const uploads = collectPaymentScreenshotUploads(options);
+    if (uploads.length) {
+      applyPaymentScreenshotsToPayment(payment, uploads, lead._id);
       await payment.save();
     }
   }

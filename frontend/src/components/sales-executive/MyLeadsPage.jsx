@@ -71,9 +71,7 @@ export default function MyLeadsPage() {
   const [modalStatusReason, setModalStatusReason] = useState('');
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('upi');
-  const [paymentShotBase64, setPaymentShotBase64] = useState('');
-  const [paymentShotName, setPaymentShotName] = useState('');
-  const [paymentShotPreview, setPaymentShotPreview] = useState('');
+  const [paymentShots, setPaymentShots] = useState([]);
   const [commercialLeadId, setCommercialLeadId] = useState(null);
   const meta = LEAD_FILTERS[filter] || LEAD_FILTERS.new;
   const Icon = ICONS[meta.icon] || Sparkles;
@@ -132,15 +130,19 @@ export default function MyLeadsPage() {
     if (modalStatus === 'converted') {
       const advance = Number(advanceAmount);
       if (!Number.isFinite(advance) || advance < 0) return;
-      if (!paymentShotBase64) {
+      if (!paymentShots.length) {
         toast.error('Upload payment screenshot before converting');
         return;
       }
       payload.advanceAmount = advance;
       payload.paymentMethod = paymentMethod;
       payload.sendReceipt = true;
-      payload.paymentScreenshotBase64 = paymentShotBase64;
-      payload.paymentScreenshotName = paymentShotName;
+      payload.paymentScreenshots = paymentShots.map((f) => ({
+        base64: f.base64,
+        name: f.name,
+      }));
+      payload.paymentScreenshotBase64 = paymentShots[0]?.base64;
+      payload.paymentScreenshotName = paymentShots[0]?.name;
     }
     await API.put(`/sales-executive/leads/${modal.lead._id}`, payload);
     const becameConverted = modalStatus === 'converted';
@@ -148,9 +150,7 @@ export default function MyLeadsPage() {
     setModal(null);
     setModalStatusReason('');
     setAdvanceAmount('');
-    setPaymentShotBase64('');
-    setPaymentShotName('');
-    setPaymentShotPreview('');
+    setPaymentShots([]);
     fetchLeads();
     if (becameConverted) setCommercialLeadId(convertedId);
   };
@@ -160,7 +160,7 @@ export default function MyLeadsPage() {
       !advanceAmount
       || Number(advanceAmount) < 0
       || Number.isNaN(Number(advanceAmount))
-      || !paymentShotBase64
+      || !paymentShots.length
     );
 
   const columns = useMemo(() => [
@@ -413,13 +413,10 @@ export default function MyLeadsPage() {
             </div>
             <PaymentScreenshotField
               required
-              fileName={paymentShotName}
-              previewUrl={paymentShotPreview}
-              onChange={({ base64, name, previewUrl, error }) => {
+              value={paymentShots}
+              onChange={({ files, error }) => {
                 if (error) toast.error(error);
-                setPaymentShotBase64(base64 || '');
-                setPaymentShotName(name || '');
-                setPaymentShotPreview(previewUrl || '');
+                setPaymentShots(files || []);
               }}
             />
           </div>
@@ -444,9 +441,7 @@ export default function MyLeadsPage() {
             setModal(null);
             setModalStatusReason('');
             setAdvanceAmount('');
-            setPaymentShotBase64('');
-            setPaymentShotName('');
-            setPaymentShotPreview('');
+            setPaymentShots([]);
           }}>Cancel</Button>
           <Button
             onClick={handleChangeStatus}

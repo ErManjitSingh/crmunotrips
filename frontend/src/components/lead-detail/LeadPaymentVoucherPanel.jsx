@@ -132,20 +132,28 @@ export default function LeadPaymentVoucherPanel({
           </div>
         ) : null}
 
-        {summary.paymentScreenshotUrl ? (
+        {(summary.paymentScreenshots?.length || summary.paymentScreenshotUrl) ? (
           <div className="px-5 pb-5">
             <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2">
-              Payment screenshot
+              Payment screenshot{(summary.paymentScreenshots?.length || 0) > 1 ? 's' : ''}
             </p>
-            <a
-              href={summary.paymentScreenshotUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              {summary.paymentScreenshotName || 'View payment proof'}
-            </a>
+            <div className="flex flex-wrap gap-2">
+              {(summary.paymentScreenshots?.length
+                ? summary.paymentScreenshots
+                : [{ url: summary.paymentScreenshotUrl, name: summary.paymentScreenshotName }]
+              ).map((shot) => (
+                <a
+                  key={shot.url}
+                  href={shot.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  {shot.name || 'View payment proof'}
+                </a>
+              ))}
+            </div>
           </div>
         ) : null}
       </div>

@@ -220,6 +220,7 @@ const updateLead = asyncHandler(async (req, res) => {
     sendReceipt,
     paymentScreenshotBase64,
     paymentScreenshotName,
+    paymentScreenshots,
   } = req.body;
   const statusOnlyKeys = new Set([
     'status',
@@ -230,6 +231,7 @@ const updateLead = asyncHandler(async (req, res) => {
     'sendReceipt',
     'paymentScreenshotBase64',
     'paymentScreenshotName',
+    'paymentScreenshots',
   ]);
   const otherFields = Object.keys(req.body).filter((k) => !statusOnlyKeys.has(k));
   const isStatusOnlyUpdate = Boolean(status) && otherFields.length === 0;
@@ -258,7 +260,8 @@ const updateLead = asyncHandler(async (req, res) => {
       if (!Number.isFinite(advance) || advance < 0) {
         throw new ApiError(400, 'Enter advance / token amount received (₹)');
       }
-      if (!paymentScreenshotBase64) {
+      const hasMulti = Array.isArray(paymentScreenshots) && paymentScreenshots.some((s) => s?.base64);
+      if (!paymentScreenshotBase64 && !hasMulti) {
         throw new ApiError(400, 'Upload payment screenshot (UPI / bank transfer proof)');
       }
     }
@@ -315,6 +318,7 @@ const updateLead = asyncHandler(async (req, res) => {
         sendReceipt: sendReceipt !== false,
         paymentScreenshotBase64,
         paymentScreenshotName,
+        paymentScreenshots,
       }).catch((err) => {
         console.error('[LeadConversion]', err.message);
       });

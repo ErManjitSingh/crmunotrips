@@ -30,9 +30,7 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
   const [paymentMethod, setPaymentMethod] = useState('upi');
   const [proofName, setProofName] = useState('');
   const [proofBase64, setProofBase64] = useState('');
-  const [shotName, setShotName] = useState('');
-  const [shotBase64, setShotBase64] = useState('');
-  const [shotPreview, setShotPreview] = useState('');
+  const [shotFiles, setShotFiles] = useState([]);
 
   useEffect(() => {
     if (!open || !leadId) return undefined;
@@ -51,9 +49,7 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
         setPaymentMethod(data.paymentMethod || 'upi');
         setProofName(data.addressProofName || '');
         setProofBase64('');
-        setShotName(data.paymentScreenshotName || '');
-        setShotBase64('');
-        setShotPreview('');
+        setShotFiles([]);
       })
       .catch((err) => {
         if (!cancelled) setError(err.response?.data?.message || err.message || 'Failed to load form');
@@ -91,8 +87,11 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
         totalAmount: draft?.totalAmount,
         addressProofBase64: proofBase64 || undefined,
         addressProofName: proofName || undefined,
-        paymentScreenshotBase64: shotBase64 || undefined,
-        paymentScreenshotName: shotName || undefined,
+        paymentScreenshots: shotFiles.length
+          ? shotFiles.map((f) => ({ base64: f.base64, name: f.name }))
+          : undefined,
+        paymentScreenshotBase64: shotFiles[0]?.base64 || undefined,
+        paymentScreenshotName: shotFiles[0]?.name || undefined,
       });
       setDraft(data);
       onSaved?.(data);
@@ -177,15 +176,13 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
             </div>
 
             <PaymentScreenshotField
-              fileName={shotName}
-              previewUrl={shotPreview}
-              existingUrl={draft.paymentScreenshotUrl}
-              existingName={draft.paymentScreenshotName}
-              onChange={({ base64, name, previewUrl, error }) => {
+              value={shotFiles}
+              existing={draft.paymentScreenshots || (draft.paymentScreenshotUrl
+                ? [{ url: draft.paymentScreenshotUrl, name: draft.paymentScreenshotName }]
+                : [])}
+              onChange={({ files, error }) => {
                 if (error) toast.error(error);
-                setShotBase64(base64 || '');
-                setShotName(name || draft.paymentScreenshotName || '');
-                setShotPreview(previewUrl || '');
+                setShotFiles(files || []);
               }}
             />
 
