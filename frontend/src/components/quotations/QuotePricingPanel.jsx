@@ -65,9 +65,6 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false,
               className="input-premium w-full h-10 rounded-lg text-sm font-bold metric-tabular mt-1"
             />
           )}
-          <p className="mt-1 text-xs font-semibold text-green-700 metric-tabular">
-            = {formatINR(breakdown.markup, { zeroLabel: '—' })}
-          </p>
         </div>
 
         {!readOnly && (

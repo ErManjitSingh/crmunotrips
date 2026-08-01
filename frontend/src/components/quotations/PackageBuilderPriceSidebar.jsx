@@ -170,15 +170,6 @@ export default function PackageBuilderPriceSidebar({
                 placeholder="0"
               />
             </div>
-            <div className="flex items-center justify-between gap-3 px-0.5">
-              <span className="text-[10px] font-medium text-green-700/80">Your margin amount</span>
-              <span className={cn(
-                'text-sm font-semibold metric-tabular',
-                Number(breakdown.markup) === 0 ? 'text-slate-400' : 'text-green-800'
-              )}>
-                {formatINR(breakdown.markup, { zeroLabel: '—' })}
-              </span>
-            </div>
           </div>
 
           <div className="flex items-center justify-between gap-3 rounded-lg bg-emerald-50/80 border border-emerald-100 px-2 py-1.5">
