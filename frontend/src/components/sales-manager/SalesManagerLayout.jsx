@@ -9,6 +9,7 @@ import MissedFollowUpAlert from '../notifications/MissedFollowUpAlert';
 import RouteFallback from '../ui/RouteFallback';
 import PanelMobileNav from '../mobile/PanelMobileNav';
 import { salesManagerNavItems } from './sidebar-config';
+import ManagerSidebarHelp from './ManagerSidebarHelp';
 
 function SalesManagerShell() {
   const { user } = useAuth();
@@ -21,10 +22,11 @@ function SalesManagerShell() {
     brandSubtitle: 'Sales Manager',
     accent: 'violet',
     profilePath: '/sales-manager/profile',
+    sidebarFooter: <ManagerSidebarHelp />,
   };
 
   return (
-    <div className="flex min-h-screen bg-surface-app">
+    <div className="flex min-h-screen bg-[#F8FAFC]">
       <div className="hidden lg:block h-screen sticky top-0">
         <AppSidebar {...sidebarProps} className="h-screen border-r-violet-500/10" />
       </div>

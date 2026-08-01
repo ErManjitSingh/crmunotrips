@@ -1,18 +1,24 @@
 import { lazy, Suspense, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
 import { useDashboardQuery } from '../../features/dashboard/hooks/useDashboardQuery';
 import { invalidateDashboard } from '../../lib/queryInvalidation';
 import PageHeader from '../ui/PageHeader';
+import ManagerDashboardHero from './dashboard/ManagerDashboardHero';
 import ManagerKpiCards from './dashboard/ManagerKpiCards';
+import ManagerQuickActions from './dashboard/ManagerQuickActions';
 import ManagerDashboardPanels from './dashboard/ManagerDashboardPanels';
 
 const ManagerCharts = lazy(() => import('./dashboard/ManagerCharts'));
 
 function ChartSkeleton() {
-  return <div className="h-60 rounded-2xl bg-surface-elevated/60 animate-pulse" />;
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="h-64 rounded-2xl bg-slate-100 animate-pulse" />
+      <div className="h-64 rounded-2xl bg-slate-100 animate-pulse" />
+    </div>
+  );
 }
 
 export default function ManagerDashboard() {
@@ -34,12 +40,13 @@ export default function ManagerDashboard() {
   }
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-5 pb-8">
       {isFetching && (
         <div className="h-0.5 w-full bg-violet-500/30 rounded-full overflow-hidden">
           <div className="h-full w-1/3 bg-violet-500 animate-pulse" />
         </div>
       )}
+
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <PageHeader
           title="Sales Manager Command Center"
@@ -48,27 +55,20 @@ export default function ManagerDashboard() {
         />
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl border border-violet-500/20 bg-gradient-to-r from-violet-600/10 via-brand-500/5 to-sky-500/10 p-6 backdrop-blur-xl"
-      >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-violet-600 dark:text-violet-400 text-xs font-semibold uppercase tracking-wider mb-2">
-              <Sparkles className="w-3.5 h-3.5" /> Manager Overview
-            </div>
-            <h2 className="text-xl font-bold text-content-primary">Your team has {data?.kpis?.pendingFollowups} follow-ups pending today</h2>
-            <p className="text-sm text-content-secondary mt-1">{data?.kpis?.newLeadsToday} new leads arrived · {data?.pendingApprovals?.length || 0} quotes need approval</p>
-          </div>
-        </div>
-      </motion.div>
+      <ManagerDashboardHero
+        pendingFollowups={data?.kpis?.pendingFollowups ?? 0}
+        newLeadsToday={data?.kpis?.newLeadsToday ?? 0}
+        pendingQuotes={data?.pendingApprovals?.length || 0}
+      />
 
       <ManagerKpiCards kpis={data?.kpis} />
+
       <Suspense fallback={<ChartSkeleton />}>
         <ManagerCharts data={data} />
       </Suspense>
+
+      <ManagerQuickActions />
+
       <ManagerDashboardPanels data={data} />
     </div>
   );

@@ -118,7 +118,7 @@ function Panel({ title, link, children, delay }) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className="rounded-2xl border border-subtle bg-surface/80 backdrop-blur-xl p-5"
+      className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm shadow-slate-200/50"
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-bold text-content-primary">{title}</h3>

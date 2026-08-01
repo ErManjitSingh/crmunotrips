@@ -1187,7 +1187,72 @@ async function buildSalesManagerDashboard(options = {}) {
     })
   );
 
-  const colors = ['#2563EB', '#7C3AED', '#059669', '#D97706', '#DC2626'];
+  const colorsBySource = {
+    whatsapp: '#14B8A6',
+    social: '#3B82F6',
+    facebook_ads: '#3B82F6',
+    phone: '#10B981',
+    website: '#7C3AED',
+    instagram: '#EC4899',
+    google_ads: '#F59E0B',
+    referral: '#8B5CF6',
+    organic: '#64748B',
+    other: '#94A3B8',
+  };
+  const palette = ['#7C3AED', '#3B82F6', '#10B981', '#14B8A6', '#F59E0B', '#EC4899'];
+
+  const leadSources = sourceAgg
+    .map((s, i) => {
+      const key = String(s._id || 'other').toLowerCase();
+      return {
+        name: formatSourceName(s._id),
+        value: s.count,
+        color: colorsBySource[key] || palette[i % palette.length],
+      };
+    })
+    .sort((a, b) => b.value - a.value);
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const monthlyCreated = await Lead.aggregate([
+    {
+      $match: withBranch(
+        {
+          createdAt: {
+            $gte: new Date(year, 0, 1),
+            $lte: now,
+          },
+        },
+        branchId
+      ),
+    },
+    {
+      $group: {
+        _id: { month: { $month: '$createdAt' } },
+        total: { $sum: 1 },
+        converted: {
+          $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] },
+        },
+      },
+    },
+  ]);
+  const monthMap = Object.fromEntries(
+    monthlyCreated.map((r) => [r._id.month, r])
+  );
+  const monthlyConversion = Array.from({ length: now.getMonth() + 1 }, (_, i) => {
+    const m = i + 1;
+    const row = monthMap[m];
+    const total = row?.total || 0;
+    const conv = row?.converted || 0;
+    return {
+      month: MONTH_LABELS[i],
+      rate: total ? Math.round((conv / total) * 1000) / 10 : 0,
+    };
+  });
+
+  const topSource = leadSources[0];
+  const bestExec = [...executivePerformance].sort((a, b) => b.conversions - a.conversions || b.leads - a.leads)[0];
+  const sourceTotal = leadSources.reduce((s, x) => s + x.value, 0) || 1;
 
   return {
     kpis: {
@@ -1198,14 +1263,21 @@ async function buildSalesManagerDashboard(options = {}) {
       teamRevenue,
       conversionRate,
     },
-    leadSources: sourceAgg.map((s, i) => ({
-      name: s._id || 'Other',
-      value: s.count,
-      color: colors[i % colors.length],
-    })),
+    keyHighlights: {
+      periodLabel: 'This week',
+      highestLeadsSource: topSource
+        ? { name: topSource.name, pct: Math.round((topSource.value / sourceTotal) * 1000) / 10 }
+        : { name: '—', pct: 0 },
+      bestPerformingExecutive: bestExec
+        ? { name: bestExec.name, conversions: bestExec.conversions }
+        : { name: '—' },
+      conversionRate,
+      revenueGenerated: teamRevenue,
+    },
+    leadSources,
     teamRevenueChart: await aggregateConvertedPackageRevenueByMonth({ branchId }),
     executivePerformance,
-    monthlyConversion: [],
+    monthlyConversion,
     recentLeads: recentLeads.map((l) => ({
       _id: l._id,
       leadId: l.leadId,

@@ -110,15 +110,21 @@ export default function SidebarQuickActions({ actions }) {
     pathname === '/' ||
     pathname === '/dashboard' ||
     pathname.endsWith('/dashboard');
+  const isSalesManagerDashboard = pathname.startsWith('/sales-manager') && onDashboard;
 
-  const { data: stats } = useDashboardQuery('/dashboard/stats', {}, {
-    enabled: showHighlights && !collapsed && onDashboard,
+  const { data: adminStats } = useDashboardQuery('/dashboard/stats', {}, {
+    enabled: showHighlights && !collapsed && onDashboard && !isSalesManagerDashboard,
+  });
+  const { data: smDash } = useDashboardQuery('/sales-manager/dashboard', {}, {
+    enabled: showHighlights && !collapsed && isSalesManagerDashboard,
   });
 
   if (collapsed) return null;
   if (!showHighlights && !showCustomActions) return null;
 
-  const highlights = stats?.report?.keyHighlights;
+  const highlights = isSalesManagerDashboard
+    ? smDash?.keyHighlights
+    : adminStats?.report?.keyHighlights;
 
   return (
     <AnimatePresence>
