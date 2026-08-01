@@ -1,14 +1,18 @@
 /**
  * Remap legacy lead.source values → canonical DPW / DPW WA / DPW2 / DPW2 WA / …
- * Run on app server after deploy:
  *   node deploy/backfill-lead-sources.mjs
  */
-import mongoose from 'mongoose';
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const backendRoot = existsSync('/var/www/app-unotrips-crm/backend/package.json')
+  ? '/var/www/app-unotrips-crm/backend'
+  : resolve(__dirname, '../backend');
+const require = createRequire(resolve(backendRoot, 'package.json'));
+const mongoose = require('mongoose');
 
 function loadEnv(file) {
   if (!existsSync(file)) return;
@@ -21,8 +25,7 @@ function loadEnv(file) {
   }
 }
 
-loadEnv(resolve(__dirname, '../backend/.env'));
-loadEnv(resolve('/var/www/app-unotrips-crm/backend/.env'));
+loadEnv(resolve(backendRoot, '.env'));
 
 const MAP = {
   website: { source: 'dpw', sourceLabel: 'DPW' },
@@ -57,7 +60,6 @@ async function main() {
     total += res.modifiedCount;
   }
 
-  // Fix blank/stale labels on canonical keys (do not overwrite campaign-style labels)
   const staleLabels = [
     '',
     'Website',
