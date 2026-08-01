@@ -289,16 +289,21 @@ export async function fetchUnoPublicPackages({ page = 1, limit = 50, search = ''
     return data || {};
   };
 
-  const first = await fetchPage(Math.max(1, Number(page) || 1));
+  const startPage = Math.max(1, Number(page) || 1);
+  const first = await fetchPage(startPage);
   let items = Array.isArray(first.items) ? first.items.map((item) => mapUnoPackage(item)) : [];
 
-  // Destination catalogs: pull a few pages so name search can see more than page 1
-  if (destination) {
-    const totalPages = Math.min(Math.max(1, Number(first.totalPages) || 1), 5);
-    for (let p = 2; p <= totalPages; p += 1) {
-      const next = await fetchPage(p);
-      const batch = Array.isArray(next.items) ? next.items.map((item) => mapUnoPackage(item)) : [];
-      items = items.concat(batch);
+  // Destination catalogs: pull extra pages in parallel (cap 3 = 150 pkgs)
+  if (destination && startPage === 1) {
+    const totalPages = Math.min(Math.max(1, Number(first.totalPages) || 1), 3);
+    if (totalPages > 1) {
+      const extra = await Promise.all(
+        Array.from({ length: totalPages - 1 }, (_, i) => fetchPage(i + 2))
+      );
+      for (const next of extra) {
+        const batch = Array.isArray(next.items) ? next.items.map((item) => mapUnoPackage(item)) : [];
+        items = items.concat(batch);
+      }
     }
   }
 

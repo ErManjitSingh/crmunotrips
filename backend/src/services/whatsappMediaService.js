@@ -183,15 +183,12 @@ async function hydrateMessageAttachment(messageDoc) {
 }
 
 async function hydrateMessageAttachments(messages = []) {
-  const out = [];
-  for (const m of messages) {
-    if (m?.attachment?.id && !m?.attachment?.url) {
-      out.push(await hydrateMessageAttachment(m));
-    } else {
-      out.push(m);
-    }
-  }
-  return out;
+  if (!Array.isArray(messages) || !messages.length) return messages || [];
+  return Promise.all(
+    messages.map((m) =>
+      m?.attachment?.id && !m?.attachment?.url ? hydrateMessageAttachment(m) : Promise.resolve(m)
+    )
+  );
 }
 
 async function uploadBufferToWhatsApp({ buffer, mimeType, filename }) {

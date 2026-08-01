@@ -680,11 +680,16 @@ function mapUnoPackage(pkg, { includeItinerary = false, includeDetail = false } 
 const UNO_API_MAX_LIMIT = 50;
 
 function buildListCacheKey(query = {}) {
+  const dest = String(query.destination || '').trim();
+  const destHint = dest
+    ? String(preferredDestinationSearch(dest) || dest).trim().toLowerCase()
+    : '';
+  const typedSearch = String(query.search || '').trim().toLowerCase();
   const normalized = {
     page: Number(query.page) || 1,
     limit: Math.min(Number(query.limit) || UNO_API_MAX_LIMIT, UNO_API_MAX_LIMIT),
-    search: query.search || '',
-    destination: query.destination || '',
+    search: destHint || typedSearch,
+    destination: destHint || dest.toLowerCase(),
     status: query.status || 'published',
     tour_type: query.tour_type || '',
     destination_id: query.destination_id || '',
@@ -737,11 +742,14 @@ async function fetchUnoPackages(query = {}) {
   }
 
   const filtered = items;
-  const narrowed = Boolean(query.destination || nameFilter);
-  const total = narrowed ? filtered.length : Number(unwrapped.total ?? filtered.length);
-  const totalPages = narrowed
-    ? 1
-    : Number(unwrapped.total_pages ?? Math.max(1, Math.ceil(total / limit)));
+  // Keep UNO pagination metadata so clients can fetch more destination pages.
+  // Filtered length is only for the current page slice.
+  const unoTotal = Number(unwrapped.total ?? filtered.length);
+  const unoTotalPages = Number(
+    unwrapped.total_pages ?? Math.max(1, Math.ceil(unoTotal / limit))
+  );
+  const total = nameFilter ? filtered.length : unoTotal;
+  const totalPages = nameFilter ? 1 : unoTotalPages;
 
   return {
     items: filtered,

@@ -51,11 +51,19 @@ function applySearch(items, search) {
 }
 
 const listPackages = asyncHandler(async (req, res) => {
-  const { search, packageType } = req.query;
+  const { search, packageType, sourceType } = req.query;
   const filter = {};
   if (packageType) filter.packageType = packageType;
+  if (sourceType) filter.sourceType = sourceType;
 
-  let packages = await Package.find(filter).sort({ createdAt: -1 }).lean();
+  const select = sourceType
+    ? 'name destination destinationName sourceType startingPrice coverImage duration durationNights durationLabel packageCode slug createdAt'
+    : undefined;
+
+  let packages = await Package.find(filter)
+    .select(select)
+    .sort({ createdAt: -1 })
+    .lean();
   packages = applySearch(packages, search);
   res.json(await applyMarginToPackages(packages));
 });

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, ExternalLink, Search } from 'lucide-react';
 import API from '../../api/axios';
@@ -129,7 +129,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const [leadSearch, setLeadSearch] = useState('');
   const debouncedLeadSearch = useDebouncedValue(leadSearch, 500);
   const [loadingLeads, setLoadingLeads] = useState(false);
-  const [packages, setPackages] = useState([]);
   const [flights, setFlights] = useState([]);
   const [activities, setActivities] = useState([]);
   const [selectedUnoCab, setSelectedUnoCab] = useState(null);
@@ -142,7 +141,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const [dayWiseHotels, setDayWiseHotels] = useState([]);
   const [loadingPackageDetail, setLoadingPackageDetail] = useState(false);
   const [openingPackageMeta, setOpeningPackageMeta] = useState({ name: '', destination: '' });
-  const [loadingPackages, setLoadingPackages] = useState(false);
   const [packageSearch, setPackageSearch] = useState('');
   const [packagePage, setPackagePage] = useState(0);
   const debouncedPackageSearch = useDebouncedValue(packageSearch, 350);
@@ -362,6 +360,57 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       cancelled = true;
     };
   }, [mode, state.leadId, editQuoteId]);
+
+  const packageDestination = selectedLead?.destination?.trim() || '';
+  const packagesQuery = useQuery({
+    queryKey: ['quotation-packages', packageDestination],
+    enabled: step === 2 && Boolean(packageDestination),
+    staleTime: 5 * 60_000,
+    gcTime: 15 * 60_000,
+    queryFn: async () => {
+      const destination = packageDestination;
+      const [unoResult, localRes] = await Promise.all([
+        fetchUnoPublicPackages({
+          limit: 50,
+          page: 1,
+          destination,
+        }),
+        API.get('/packages', {
+          params: { sourceType: 'uno_clone' },
+          skipErrorToast: true,
+        }).catch(() => ({ data: [] })),
+      ]);
+      const matchDest = (p) => {
+        const hasDest = String(p.destination || p.destinationName || '').trim();
+        return Boolean(hasDest) && matchesResourceDestination(p, destination);
+      };
+      const uno = (unoResult.items || [])
+        .filter(matchDest)
+        .map((p) => ({
+          ...p,
+          _id: p._id || p.id,
+          catalogSource: 'uno',
+        }));
+      const customs = unwrapList(localRes.data)
+        .filter((p) => matchDest(p))
+        .map((p) => ({ ...p, catalogSource: 'custom' }));
+      return [...customs, ...uno];
+    },
+  });
+
+  const packages = packagesQuery.data || [];
+  const loadingPackages = packagesQuery.isFetching && !packagesQuery.data;
+
+  useEffect(() => {
+    if (step === 2) setPackagePage(0);
+  }, [step, packageDestination]);
+
+  const filteredPackages = useMemo(() => {
+    const q = debouncedPackageSearch.trim();
+    if (!q) return packages;
+    return packages.filter((p) => matchesPackageNameSearch(p, q));
+  }, [packages, debouncedPackageSearch]);
+
   const selectedPkg = packages.find((p) => String(p._id) === String(state.packageId));
   const activePkg = selectedPkgDetail || selectedPkg;
   const packageNights = parsePackageNights(activePkg);
@@ -369,12 +418,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const availableActivities = activities.filter((activity) =>
     matchesResourceDestination(activity, hotelDestination)
   );
-
-  const filteredPackages = useMemo(() => {
-    const q = debouncedPackageSearch.trim();
-    if (!q) return packages;
-    return packages.filter((p) => matchesPackageNameSearch(p, q));
-  }, [packages, debouncedPackageSearch]);
 
   const packagePageCount = Math.max(1, Math.ceil(filteredPackages.length / PACKAGES_PAGE_SIZE));
   const safePackagePage = Math.min(packagePage, packagePageCount - 1);
@@ -407,56 +450,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       })
     );
   };
-
-  useEffect(() => {
-    if (step !== 2) return undefined;
-    const destination = selectedLead?.destination?.trim();
-    if (!destination) {
-      setPackages([]);
-      return undefined;
-    }
-
-    let cancelled = false;
-    setLoadingPackages(true);
-    setPackagePage(0);
-    Promise.all([
-      fetchUnoPublicPackages({
-        limit: 50,
-        page: 1,
-        destination,
-      }),
-      API.get('/packages', { skipErrorToast: true }).catch(() => ({ data: [] })),
-    ])
-      .then(([unoResult, localRes]) => {
-        if (cancelled) return;
-        const matchDest = (p) => {
-          const hasDest = String(p.destination || p.destinationName || '').trim();
-          return Boolean(hasDest) && matchesResourceDestination(p, destination);
-        };
-        const uno = (unoResult.items || [])
-          .filter(matchDest)
-          .map((p) => ({
-            ...p,
-            _id: p._id || p.id,
-            catalogSource: 'uno',
-          }));
-        const customs = unwrapList(localRes.data)
-          .filter((p) => p.sourceType === 'uno_clone' && matchDest(p))
-          .map((p) => ({ ...p, catalogSource: 'custom' }));
-        setPackages([...customs, ...uno]);
-      })
-      .catch((err) => {
-        console.error('Failed to load UNO packages for quotation:', err);
-        if (!cancelled) setPackages([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingPackages(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [step, selectedLead?.destination]);
 
   const buildPackageSnapshot = (pkg) => ({
     ...pkg,

@@ -57,14 +57,17 @@ async function logLeadActivity({
 
 const { clampLimit, DETAIL_MAX_LIMIT } = require('../utils/pagination');
 
-async function getLeadTimeline(leadId, { page = 1, limit = 50 } = {}) {
+async function getLeadTimeline(leadId, { page = 1, limit = 50, includeTotal = false } = {}) {
   const lim = clampLimit(limit, { defaultLimit: 20, maxLimit: DETAIL_MAX_LIMIT });
   const skip = (Math.max(1, page) - 1) * lim;
   const filter = { leadId };
-  const [data, total] = await Promise.all([
-    LeadActivity.find(filter).sort({ createdAt: -1 }).skip(skip).limit(lim).lean(),
-    LeadActivity.countDocuments(filter),
-  ]);
+  const data = await LeadActivity.find(filter)
+    .select('type title description actorName createdAt meta')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(lim)
+    .lean();
+  const total = includeTotal ? await LeadActivity.countDocuments(filter) : data.length;
   return {
     data: data.map((a) => ({
       id: a._id,
@@ -76,7 +79,12 @@ async function getLeadTimeline(leadId, { page = 1, limit = 50 } = {}) {
       notes: a.description,
       meta: a.meta,
     })),
-    pagination: { page, limit: lim, total, totalPages: Math.ceil(total / lim) || 0 },
+    pagination: {
+      page,
+      limit: lim,
+      total,
+      totalPages: includeTotal ? Math.ceil(total / lim) || 0 : 1,
+    },
   };
 }
 

@@ -155,7 +155,7 @@ function matchesSearch(item, q) {
 }
 
 function prefetchForSearch(pageSize) {
-  return Math.max(pageSize * 4, 80);
+  return Math.max(pageSize * 2, 40);
 }
 
 function applySearchFilters(replyFilter, sentFilter, searchRegex) {
@@ -204,6 +204,10 @@ async function listMailboxMessages(req, { folder = 'inbox', search = '', page = 
   const searchRegex = search.trim()
     ? new RegExp(escapeRegex(search.trim()), 'i')
     : null;
+
+  // Counts must ignore search filters (cache key has no search)
+  const countReplyFilter = { ...branchFilter, ...leadScope };
+  const countSentFilter = { ...sentScope, ...leadScope };
 
   const replyFilter = { ...branchFilter, ...leadScope };
   const sentFilter = { ...sentScope, ...leadScope };
@@ -266,22 +270,22 @@ async function listMailboxMessages(req, { folder = 'inbox', search = '', page = 
     }
 
     if (folder === 'all') {
-      const prefetch = skip + safeLimit;
+      const perSource = Math.min(safeLimit + skip, 60);
       const [replies, sentRows, failedRows] = await Promise.all([
         EmailReply.find(replyFilter)
           .select(REPLY_LIST_SELECT)
           .sort({ receivedAt: -1 })
-          .limit(prefetch)
+          .limit(perSource)
           .lean(),
         EmailLog.find({ ...sentFilter, status: 'sent' })
           .select(SENT_LIST_SELECT)
           .sort({ sentAt: -1 })
-          .limit(prefetch)
+          .limit(perSource)
           .lean(),
         EmailLog.find({ ...sentFilter, status: 'failed' })
           .select(SENT_LIST_SELECT)
           .sort({ createdAt: -1 })
-          .limit(prefetch)
+          .limit(perSource)
           .lean(),
       ]);
       const leadMap = await fetchLeadMap([
@@ -313,7 +317,7 @@ async function listMailboxMessages(req, { folder = 'inbox', search = '', page = 
   };
 
   const [counts, items] = await Promise.all([
-    fetchMailboxCounts(req, replyFilter, sentFilter),
+    fetchMailboxCounts(req, countReplyFilter, countSentFilter),
     fetchFolderItems(),
   ]);
 

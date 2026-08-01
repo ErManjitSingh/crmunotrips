@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, Pencil, Send } from 'lucide-react';
@@ -76,7 +76,19 @@ export default function LeadActivityTimeline({
   const [viewEmail, setViewEmail] = useState(null);
   const pdfRef = useRef(null);
   const highlightRef = useRef(null);
-  const sorted = [...activities].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sorted = useMemo(() => {
+    if (!Array.isArray(activities) || activities.length === 0) return [];
+    // Upstream merge is newest-first; only re-sort if needed
+    let needsSort = false;
+    for (let i = 1; i < activities.length; i += 1) {
+      if (new Date(activities[i - 1].date) < new Date(activities[i].date)) {
+        needsSort = true;
+        break;
+      }
+    }
+    if (!needsSort) return activities;
+    return [...activities].sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [activities]);
 
   useEffect(() => {
     if (!highlightQuotationId || !highlightRef.current) return undefined;

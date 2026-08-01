@@ -61,16 +61,16 @@ function WhatsAppLeadsPage() {
   const conversationsQuery = useQuery({
     queryKey: ['whatsapp', 'conversations', { statusFilter, search: debouncedSearch }],
     queryFn: async () => {
-      const params = { page: 1, limit: 100 };
+      const params = { page: 1, limit: 40 };
       if (statusFilter) params.status = statusFilter;
       if (debouncedSearch) params.search = debouncedSearch;
       const res = await API.get('/whatsapp/conversations', { params, skipSuccessToast: true });
       return res.data?.data || [];
     },
-    staleTime: 45_000,
-    refetchInterval: 45_000,
+    staleTime: 60_000,
+    refetchInterval: 90_000,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     placeholderData: (prev) => prev,
   });
 
@@ -89,24 +89,47 @@ function WhatsAppLeadsPage() {
   const threadQuery = useQuery({
     queryKey: ['whatsapp', 'thread', detailsKey],
     queryFn: async () => {
-      const params = {};
+      const params = { meta: '0' };
       if (selected.conversationId) params.conversationId = selected.conversationId;
       if (selected.leadId) params.leadId = selected.leadId;
       const res = await API.get('/whatsapp/thread', { params, skipSuccessToast: true });
       return res.data || { messages: [], notes: [], followups: [] };
     },
     enabled: !!detailsKey,
-    staleTime: 20_000,
-    refetchInterval: selected ? 30_000 : false,
+    staleTime: 45_000,
+    refetchInterval: selected ? 60_000 : false,
     refetchIntervalInBackground: false,
     placeholderData: (prev) => prev,
   });
 
+  const threadMetaQuery = useQuery({
+    queryKey: ['whatsapp', 'thread-meta', detailsKey],
+    queryFn: async () => {
+      const params = {};
+      if (selected.conversationId) params.conversationId = selected.conversationId;
+      if (selected.leadId) params.leadId = selected.leadId;
+      const res = await API.get('/whatsapp/thread', { params, skipSuccessToast: true });
+      return {
+        notes: res.data?.notes || [],
+        followups: res.data?.followups || [],
+        botAnswers: res.data?.botAnswers || null,
+        botStep: res.data?.botStep || null,
+        sessionOpen: res.data?.sessionOpen,
+      };
+    },
+    enabled: !!detailsKey,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
   const conversations = conversationsQuery.data ?? [];
   const messages = threadQuery.data?.messages ?? [];
-  const notes = threadQuery.data?.notes ?? [];
-  const followups = threadQuery.data?.followups ?? [];
-  const sessionOpen = threadQuery.data?.sessionOpen !== false;
+  const notes = threadMetaQuery.data?.notes ?? threadQuery.data?.notes ?? [];
+  const followups = threadMetaQuery.data?.followups ?? threadQuery.data?.followups ?? [];
+  const sessionOpen =
+    threadMetaQuery.data?.sessionOpen !== undefined
+      ? threadMetaQuery.data.sessionOpen !== false
+      : threadQuery.data?.sessionOpen !== false;
   const executives = executivesQuery.data ?? [];
   const loading = conversationsQuery.isLoading && !conversationsQuery.data;
   const messagesLoading = threadQuery.isLoading && !!detailsKey && !threadQuery.data;
@@ -446,7 +469,13 @@ function WhatsAppLeadsPage() {
   }, []);
 
   const selectedKey = selected?.conversationId || selected?.leadId;
-  const contact = useMemo(() => contactFromSelected(selected), [selected]);
+  const contact = useMemo(() => {
+    const base = contactFromSelected(selected);
+    return {
+      ...base,
+      botAnswers: threadMetaQuery.data?.botAnswers || base.botAnswers,
+    };
+  }, [selected, threadMetaQuery.data?.botAnswers]);
   const canCreateLead = !isExecutive && !selected?.lead && selected?.conversationId;
 
   return (

@@ -17,7 +17,7 @@ export function useLeadActivities(lead, leadId) {
     }
     let cancelled = false;
     setTimelineLoading(true);
-    fetchLeadTimeline(leadId, { limit: 50 })
+    fetchLeadTimeline(leadId, { limit: 30 })
       .then((res) => {
         if (!cancelled) setTimeline(res.data || []);
       })
@@ -30,7 +30,7 @@ export function useLeadActivities(lead, leadId) {
     return () => {
       cancelled = true;
     };
-  }, [leadId, lead?.updatedAt, lead?.lastContactedAt, lead?.quotations?.length]);
+  }, [leadId]);
 
   const detail = useMemo(() => (lead ? getLeadDetailData(lead) : { activities: [] }), [lead]);
   const activities = useMemo(() => {
