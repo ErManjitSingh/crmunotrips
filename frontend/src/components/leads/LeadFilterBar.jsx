@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Search, RotateCcw } from 'lucide-react';
+import { Search, RotateCcw, Filter, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   DESTINATIONS,
   LEAD_STATUSES,
@@ -11,6 +12,7 @@ import {
 import { INDIAN_STATES } from '../lead-wizard/constants';
 import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
 import { useAuth } from '../../context/AuthContext';
+import { cn } from '../../lib/utils';
 import API from '../../api/axios';
 
 const fieldClass =
@@ -24,12 +26,27 @@ function FieldLabel({ children }) {
   );
 }
 
+function hasMoreFilterValues(filters = {}, canFilterBranch) {
+  return Boolean(
+    filters.branchId ||
+      filters.teamId ||
+      filters.state ||
+      filters.priority ||
+      filters.budgetRange ||
+      filters.travelMonth ||
+      filters.status ||
+      (canFilterBranch && filters.branchId)
+  );
+}
+
 export default function LeadFilterBar({ filters, onChange, onApply, onReset, activeCount = 0 }) {
   const { user } = useAuth();
   const { availableBranches = [] } = useSelector((s) => s.branch);
   const [executives, setExecutives] = useState([]);
   const [teams, setTeams] = useState([]);
   const canFilterBranch = ['admin', 'lead_provider', 'hr_admin'].includes(user?.role);
+  const [showMore, setShowMore] = useState(() => hasMoreFilterValues(filters, canFilterBranch));
+  const morePanelRef = useRef(null);
 
   useEffect(() => {
     API.get('/sales-manager/executives', { skipSuccessToast: true, skipErrorToast: true })
@@ -49,6 +66,18 @@ export default function LeadFilterBar({ filters, onChange, onApply, onReset, act
       budgetRange: value,
       budgetMin: opt?.min ?? '',
       budgetMax: opt?.max ?? '',
+    });
+  };
+
+  const openMoreFilters = () => {
+    setShowMore((v) => {
+      const next = !v;
+      if (next) {
+        requestAnimationFrame(() => {
+          morePanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      }
+      return next;
     });
   };
 
@@ -73,7 +102,8 @@ export default function LeadFilterBar({ filters, onChange, onApply, onReset, act
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {/* Primary 5 filters */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <div>
           <FieldLabel>Date From</FieldLabel>
           <input
@@ -123,86 +153,120 @@ export default function LeadFilterBar({ filters, onChange, onApply, onReset, act
             ))}
           </select>
         </div>
-        {canFilterBranch && (
-          <div>
-            <FieldLabel>Branch</FieldLabel>
-            <select
-              value={filters.branchId || ''}
-              onChange={(e) => set('branchId', e.target.value)}
-              className={fieldClass}
-            >
-              <option value="">All Branches</option>
-              {availableBranches.map((b) => (
-                <option key={b._id} value={b._id}>{b.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
-        <div>
-          <FieldLabel>Team</FieldLabel>
-          <select value={filters.teamId || ''} onChange={(e) => set('teamId', e.target.value)} className={fieldClass}>
-            <option value="">All Teams</option>
-            {teams.map((t) => (
-              <option key={t._id} value={t._id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <FieldLabel>State</FieldLabel>
-          <select value={filters.state || ''} onChange={(e) => set('state', e.target.value)} className={fieldClass}>
-            <option value="">All States</option>
-            {INDIAN_STATES.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <FieldLabel>Priority</FieldLabel>
-          <select
-            value={filters.priority || ''}
-            onChange={(e) => set('priority', e.target.value)}
-            className={fieldClass}
+        <div className="flex items-end">
+          <button
+            type="button"
+            onClick={openMoreFilters}
+            aria-expanded={showMore}
+            aria-label="More filters"
+            className={cn(
+              'inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition-colors',
+              showMore
+                ? 'border-blue-300 bg-blue-50 text-blue-700'
+                : 'border-subtle bg-white text-content-primary hover:bg-slate-50'
+            )}
           >
-            {PRIORITY_FILTER_OPTIONS.map((p) => (
-              <option key={p.value || 'all'} value={p.value}>{p.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <FieldLabel>Budget</FieldLabel>
-          <select
-            value={filters.budgetRange || ''}
-            onChange={(e) => setBudgetRange(e.target.value)}
-            className={fieldClass}
-          >
-            {BUDGET_FILTER_OPTIONS.map((b) => (
-              <option key={b.value || 'all'} value={b.value}>{b.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <FieldLabel>Travel Month</FieldLabel>
-          <select
-            value={filters.travelMonth}
-            onChange={(e) => set('travelMonth', e.target.value)}
-            className={fieldClass}
-          >
-            <option value="">All Months</option>
-            {TRAVEL_MONTHS.map((m, i) => (
-              <option key={m} value={i}>{m}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <FieldLabel>Lead Status</FieldLabel>
-          <select value={filters.status} onChange={(e) => set('status', e.target.value)} className={fieldClass}>
-            <option value="">All Statuses</option>
-            {LEAD_STATUSES.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
+            <Filter className="h-4 w-4" />
+            More
+            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showMore && 'rotate-180')} />
+          </button>
         </div>
       </div>
+
+      <AnimatePresence initial={false}>
+        {showMore && (
+          <motion.div
+            ref={morePanelRef}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-3 grid grid-cols-1 gap-3 rounded-xl border border-blue-100 bg-blue-50/40 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {canFilterBranch && (
+                <div>
+                  <FieldLabel>Branch</FieldLabel>
+                  <select
+                    value={filters.branchId || ''}
+                    onChange={(e) => set('branchId', e.target.value)}
+                    className={fieldClass}
+                  >
+                    <option value="">All Branches</option>
+                    {availableBranches.map((b) => (
+                      <option key={b._id} value={b._id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div>
+                <FieldLabel>Team</FieldLabel>
+                <select value={filters.teamId || ''} onChange={(e) => set('teamId', e.target.value)} className={fieldClass}>
+                  <option value="">All Teams</option>
+                  {teams.map((t) => (
+                    <option key={t._id} value={t._id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>State</FieldLabel>
+                <select value={filters.state || ''} onChange={(e) => set('state', e.target.value)} className={fieldClass}>
+                  <option value="">All States</option>
+                  {INDIAN_STATES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Priority</FieldLabel>
+                <select
+                  value={filters.priority || ''}
+                  onChange={(e) => set('priority', e.target.value)}
+                  className={fieldClass}
+                >
+                  {PRIORITY_FILTER_OPTIONS.map((p) => (
+                    <option key={p.value || 'all'} value={p.value}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Budget</FieldLabel>
+                <select
+                  value={filters.budgetRange || ''}
+                  onChange={(e) => setBudgetRange(e.target.value)}
+                  className={fieldClass}
+                >
+                  {BUDGET_FILTER_OPTIONS.map((b) => (
+                    <option key={b.value || 'all'} value={b.value}>{b.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Travel Month</FieldLabel>
+                <select
+                  value={filters.travelMonth}
+                  onChange={(e) => set('travelMonth', e.target.value)}
+                  className={fieldClass}
+                >
+                  <option value="">All Months</option>
+                  {TRAVEL_MONTHS.map((m, i) => (
+                    <option key={m} value={i}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Lead Status</FieldLabel>
+                <select value={filters.status} onChange={(e) => set('status', e.target.value)} className={fieldClass}>
+                  <option value="">All Statuses</option>
+                  {LEAD_STATUSES.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-subtle pt-4">
         <button

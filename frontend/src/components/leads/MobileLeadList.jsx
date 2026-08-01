@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
   Bell,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Filter,
   Flame,
   IndianRupee,
@@ -16,6 +17,7 @@ import {
   Search,
   SlidersHorizontal,
   UserCheck,
+  RotateCcw,
 } from 'lucide-react';
 import { useSidebar } from '../../context/SidebarContext';
 import { useAuth } from '../../context/AuthContext';
@@ -92,9 +94,11 @@ export default function MobileLeadList({
   const { user } = useAuth();
   const { availableBranches = [] } = useSelector((s) => s.branch);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [search, setSearch] = useState(filters.search || '');
   const [executives, setExecutives] = useState([]);
   const [teams, setTeams] = useState([]);
+  const moreFiltersRef = useRef(null);
   const canFilterBranch = ['admin', 'lead_provider', 'hr_admin'].includes(user?.role);
   const pageNumber = pagination.pageIndex + 1;
   const pageCount = total ? Math.max(1, Math.ceil(total / pagination.pageSize)) : null;
@@ -158,80 +162,109 @@ export default function MobileLeadList({
           <div className="mt-2 flex items-center gap-2 overflow-x-auto">
             <button
               type="button"
-              onClick={() => setFiltersOpen((open) => !open)}
+              onClick={() => {
+                const next = !filtersOpen;
+                setFiltersOpen(next);
+                if (next) {
+                  requestAnimationFrame(() => {
+                    moreFiltersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  });
+                }
+              }}
               className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-[9px] font-semibold ${
                 filtersOpen ? 'border-violet-300 bg-violet-50 text-violet-700' : 'border-slate-200 text-slate-600'
               }`}
             >
-              <SlidersHorizontal className="h-3.5 w-3.5" />Filters
+              <Filter className="h-3.5 w-3.5" />
+              <ChevronDown className={`h-3 w-3 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
             </button>
             <button type="button" onClick={() => updateAndApply({ status: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${!filters.status ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>All</button>
             <button type="button" onClick={() => updateAndApply({ status: 'new' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'new' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>New</button>
             <button type="button" onClick={() => updateAndApply({ status: 'follow_up' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'follow_up' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Follow-up</button>
             <button type="button" onClick={() => updateAndApply({ status: 'converted' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'converted' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Converted</button>
+            <button type="button" onClick={() => updateAndApply({ status: 'negotiation' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'negotiation' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Negotiation</button>
           </div>
 
           {filtersOpen && (
-            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
-              <input type="date" value={filters.dateFrom || ''} onChange={(event) => onFiltersChange({ ...filters, dateFrom: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none" title="Date From" />
-              <input type="date" value={filters.dateTo || ''} onChange={(event) => onFiltersChange({ ...filters, dateTo: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none" title="Date To" />
-              <select value={filters.status} onChange={(event) => onFiltersChange({ ...filters, status: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
-                <option value="">Lead Status</option>
-                {LEAD_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
-              </select>
-              <select value={filters.source} onChange={(event) => onFiltersChange({ ...filters, source: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
-                <option value="">Source</option>
-                {LEAD_SOURCE_FILTER_OPTIONS.filter((source) => source.value).map((source) => <option key={source.value} value={source.value}>{source.label}</option>)}
-              </select>
-              <select value={filters.destination} onChange={(event) => onFiltersChange({ ...filters, destination: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
-                <option value="">Destination</option>
-                {DESTINATIONS.map((destination) => <option key={destination} value={destination}>{destination}</option>)}
-              </select>
-              <select value={filters.agent || ''} onChange={(event) => onFiltersChange({ ...filters, agent: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
-                <option value="">Executive</option>
-                {executives.map((ex) => <option key={ex._id} value={ex._id}>{ex.name}</option>)}
-              </select>
-              {canFilterBranch && (
-                <select value={filters.branchId || ''} onChange={(event) => onFiltersChange({ ...filters, branchId: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
-                  <option value="">Branch</option>
-                  {availableBranches.map((b) => <option key={b._id} value={b._id}>{b.name}</option>)}
+            <div ref={moreFiltersRef} className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+              <div className="grid grid-cols-2 gap-2">
+                <input type="date" value={filters.dateFrom || ''} onChange={(event) => onFiltersChange({ ...filters, dateFrom: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none" title="Date From" />
+                <input type="date" value={filters.dateTo || ''} onChange={(event) => onFiltersChange({ ...filters, dateTo: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none" title="Date To" />
+                <select value={filters.source} onChange={(event) => onFiltersChange({ ...filters, source: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                  <option value="">Source</option>
+                  {LEAD_SOURCE_FILTER_OPTIONS.filter((source) => source.value).map((source) => <option key={source.value} value={source.value}>{source.label}</option>)}
                 </select>
+                <select value={filters.destination} onChange={(event) => onFiltersChange({ ...filters, destination: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                  <option value="">Destination</option>
+                  {DESTINATIONS.map((destination) => <option key={destination} value={destination}>{destination}</option>)}
+                </select>
+                <select value={filters.agent || ''} onChange={(event) => onFiltersChange({ ...filters, agent: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                  <option value="">Executive</option>
+                  {executives.map((ex) => <option key={ex._id} value={ex._id}>{ex.name}</option>)}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowMoreFilters((v) => !v)}
+                  className={`inline-flex h-9 items-center justify-center gap-1 rounded-xl border px-2 text-[9px] font-semibold ${
+                    showMoreFilters ? 'border-violet-300 bg-violet-50 text-violet-700' : 'border-slate-200 text-slate-600'
+                  }`}
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  More
+                  <ChevronDown className={`h-3 w-3 transition-transform ${showMoreFilters ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              {showMoreFilters && (
+                <div className="grid grid-cols-2 gap-2 rounded-xl border border-violet-100 bg-violet-50/40 p-2">
+                  <select value={filters.status} onChange={(event) => onFiltersChange({ ...filters, status: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                    <option value="">Lead Status</option>
+                    {LEAD_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
+                  </select>
+                  {canFilterBranch && (
+                    <select value={filters.branchId || ''} onChange={(event) => onFiltersChange({ ...filters, branchId: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                      <option value="">Branch</option>
+                      {availableBranches.map((b) => <option key={b._id} value={b._id}>{b.name}</option>)}
+                    </select>
+                  )}
+                  <select value={filters.teamId || ''} onChange={(event) => onFiltersChange({ ...filters, teamId: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                    <option value="">Team</option>
+                    {teams.map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
+                  </select>
+                  <select value={filters.state || ''} onChange={(event) => onFiltersChange({ ...filters, state: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                    <option value="">State</option>
+                    {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <select value={filters.priority || ''} onChange={(event) => onFiltersChange({ ...filters, priority: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                    {PRIORITY_FILTER_OPTIONS.map((p) => <option key={p.value || 'all'} value={p.value}>{p.label}</option>)}
+                  </select>
+                  <select
+                    value={filters.budgetRange || ''}
+                    onChange={(event) => {
+                      const opt = BUDGET_FILTER_OPTIONS.find((o) => o.value === event.target.value);
+                      onFiltersChange({
+                        ...filters,
+                        budgetRange: event.target.value,
+                        budgetMin: opt?.min ?? '',
+                        budgetMax: opt?.max ?? '',
+                      });
+                    }}
+                    className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none"
+                  >
+                    {BUDGET_FILTER_OPTIONS.map((b) => (
+                      <option key={b.value || 'all'} value={b.value}>{b.label}</option>
+                    ))}
+                  </select>
+                  <select value={filters.travelMonth} onChange={(event) => onFiltersChange({ ...filters, travelMonth: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                    <option value="">Travel Month</option>
+                    {TRAVEL_MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
+                  </select>
+                </div>
               )}
-              <select value={filters.teamId || ''} onChange={(event) => onFiltersChange({ ...filters, teamId: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
-                <option value="">Team</option>
-                {teams.map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
-              </select>
-              <select value={filters.state || ''} onChange={(event) => onFiltersChange({ ...filters, state: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
-                <option value="">State</option>
-                {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <select value={filters.priority || ''} onChange={(event) => onFiltersChange({ ...filters, priority: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
-                {PRIORITY_FILTER_OPTIONS.map((p) => <option key={p.value || 'all'} value={p.value}>{p.label}</option>)}
-              </select>
-              <select
-                value={filters.budgetRange || ''}
-                onChange={(event) => {
-                  const opt = BUDGET_FILTER_OPTIONS.find((o) => o.value === event.target.value);
-                  onFiltersChange({
-                    ...filters,
-                    budgetRange: event.target.value,
-                    budgetMin: opt?.min ?? '',
-                    budgetMax: opt?.max ?? '',
-                  });
-                }}
-                className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none"
-              >
-                {BUDGET_FILTER_OPTIONS.map((b) => (
-                  <option key={b.value || 'all'} value={b.value}>{b.label}</option>
-                ))}
-              </select>
-              <select value={filters.travelMonth} onChange={(event) => onFiltersChange({ ...filters, travelMonth: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
-                <option value="">Travel Month</option>
-                {TRAVEL_MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
-              </select>
-              <div className="col-span-2 flex gap-1.5">
+
+              <div className="flex gap-1.5">
                 <button type="button" onClick={() => onApplyFilters(filters)} className="h-9 flex-1 rounded-xl bg-violet-600 text-[9px] font-semibold text-white">Apply</button>
-                <button type="button" onClick={() => { setSearch(''); onReset(); }} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500" aria-label="Reset filters"><Filter className="h-3.5 w-3.5" /></button>
+                <button type="button" onClick={() => { setSearch(''); onReset(); }} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500" aria-label="Reset filters"><RotateCcw className="h-3.5 w-3.5" /></button>
               </div>
             </div>
           )}
