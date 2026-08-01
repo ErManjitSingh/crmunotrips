@@ -615,11 +615,16 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     const packageCabs = resolvePackageCabs(selectedPkgDetail || {});
     const unit = resolvePackageHotelPricing(packageAnchor, dayWiseHotels);
     const transport = resolvePackageCabPricing(unit.baseCost, selectedUnoCab, packageCabs);
-    const flightCost = flights.filter((f) => state.selectedFlightIds.includes(f._id)).reduce((s, f) => s + (f.cost || 0), 0);
-    const activityCost = activities.filter((a) => state.selectedActivityIds.includes(a._id)).reduce((s, a) => s + (a.price || 0), 0);
-    const adminMarginPct = Number(
-      selectedPkgDetail?.destinationMarginPercent ?? state.pricing.adminMarginPercent ?? 0
-    ) || 0;
+    const flightCost = flights
+      .filter((f) => state.selectedFlightIds.includes(f._id))
+      .reduce((s, f) => s + (f.cost || 0), 0);
+    const activityCost = activities
+      .filter((a) => state.selectedActivityIds.includes(a._id))
+      .reduce((s, a) => s + (a.price || 0), 0);
+    const adminMarginPct =
+      Number(
+        selectedPkgDetail?.destinationMarginPercent ?? state.pricing.adminMarginPercent ?? 0
+      ) || 0;
     const party = applyPartyCosting({
       unitBaseCost: transport.baseCost,
       unitHotelCost: unit.hotelCost,
@@ -636,20 +641,27 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       dayWiseHotels,
     });
     const folded = foldPackageResidualIntoHotel({
-      ...state.pricing,
       baseCost: party.baseCost,
       hotelCost: party.hotelCost,
       cabCost: party.cabCost,
       flightCost: party.flightCost,
       activityCost: party.activityCost,
       adminMarginPercent: adminMarginPct,
+      markupPercent: Number(state.pricing.markupPercent || 0) || 0,
+      discount: Number(state.pricing.discount || 0) || 0,
+      gstEnabled: Boolean(state.pricing.gstEnabled),
+      markup: 0,
     });
     const calc = calculatePricing(folded);
-    setState((s) => ({
-      ...s,
-      pricing: {
+
+    setState((s) => {
+      const nextPricing = {
         ...s.pricing,
-        ...folded,
+        baseCost: folded.baseCost,
+        hotelCost: folded.hotelCost,
+        cabCost: folded.cabCost,
+        flightCost: folded.flightCost,
+        activityCost: folded.activityCost,
         adminMarginPercent: adminMarginPct,
         taxes: calc.taxes,
         markup: calc.markup,
@@ -665,8 +677,27 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           cabSeats: party.cabSeats,
           perPersonRate: party.perPersonRate,
         },
-      },
-    }));
+      };
+
+      const prev = s.pricing || {};
+      const same =
+        Number(prev.baseCost || 0) === Number(nextPricing.baseCost || 0) &&
+        Number(prev.hotelCost || 0) === Number(nextPricing.hotelCost || 0) &&
+        Number(prev.cabCost || 0) === Number(nextPricing.cabCost || 0) &&
+        Number(prev.flightCost || 0) === Number(nextPricing.flightCost || 0) &&
+        Number(prev.activityCost || 0) === Number(nextPricing.activityCost || 0) &&
+        Number(prev.adminMarginPercent || 0) === Number(nextPricing.adminMarginPercent || 0) &&
+        Number(prev.taxes || 0) === Number(nextPricing.taxes || 0) &&
+        Number(prev.markup || 0) === Number(nextPricing.markup || 0) &&
+        Number(prev.total || 0) === Number(nextPricing.total || 0) &&
+        Number(prev.party?.rooms || 0) === Number(nextPricing.party?.rooms || 0) &&
+        Number(prev.party?.cabCount || 0) === Number(nextPricing.party?.cabCount || 0) &&
+        Number(prev.party?.adults || 0) === Number(nextPricing.party?.adults || 0);
+
+      if (same) return s;
+      return { ...s, pricing: nextPricing };
+    });
+    // Intentionally omit taxes/markup/total — those are outputs of this effect
   }, [
     selectedUnoCab,
     selectedPkgDetail,
@@ -675,8 +706,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     state.selectedActivityIds,
     flights,
     activities,
-    state.pricing.taxes,
-    state.pricing.markup,
     state.pricing.discount,
     state.pricing.gstEnabled,
     state.pricing.markupPercent,
