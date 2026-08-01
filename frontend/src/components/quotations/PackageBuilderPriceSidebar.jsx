@@ -65,7 +65,6 @@ export default function PackageBuilderPriceSidebar({
   const rows = [
     { key: 'hotelCost', label: 'Hotel Cost' },
     { key: 'transportCost', label: 'Cab Cost' },
-    { key: 'otherCost', label: 'Other package' },
     { key: 'activityCost', label: 'Activities Cost' },
   ];
 
@@ -134,7 +133,6 @@ export default function PackageBuilderPriceSidebar({
 
           {rows.map(({ key, label }) => {
             const amount = breakdown[key] || 0;
-            if (key === 'otherCost' && Number(amount) === 0) return null;
             if (key === 'activityCost' && Number(amount) === 0) return null;
             return (
               <div key={key} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50/80 border border-slate-100 px-2 py-1.5">

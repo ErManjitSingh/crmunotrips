@@ -18,7 +18,7 @@ import { resolvePackageHotelPricing } from './DayWiseHotelSelector';
 import { buildSelectedCabSnapshot } from './UnoCabSelector';
 import { parsePackageNights } from './UnoHotelSelector';
 import { WIZARD_STEPS } from './constants';
-import { calculatePricing, defaultItineraryDay, defaultWizardState, formatINR, matchesResourceDestination } from './quotationUtils';
+import { calculatePricing, defaultItineraryDay, defaultWizardState, foldPackageResidualIntoHotel, formatINR, matchesResourceDestination } from './quotationUtils';
 import { applyPartyCosting } from './partyCosting';
 import { buildSelectedHotelsSnapshot } from './quotePdfHelpers';
 import { hydrateWizardFromQuote } from './quotationHydrate';
@@ -532,7 +532,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         cabSeats: defaultCab?.seatingCapacity || 4,
         dayWiseHotels: seededHotels,
       });
-      const nextPricing = {
+      const nextPricing = foldPackageResidualIntoHotel({
         ...s.pricing,
         baseCost: party.baseCost,
         hotelCost: party.hotelCost,
@@ -550,7 +550,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           cabSeats: party.cabSeats,
           perPersonRate: party.perPersonRate,
         },
-      };
+      });
       return {
         ...s,
         pricing: {
@@ -630,7 +630,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       cabSeats: selectedUnoCab?.seatingCapacity || 4,
       dayWiseHotels,
     });
-    const calc = calculatePricing({
+    const folded = foldPackageResidualIntoHotel({
       ...state.pricing,
       baseCost: party.baseCost,
       hotelCost: party.hotelCost,
@@ -638,15 +638,12 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       flightCost: party.flightCost,
       activityCost: party.activityCost,
     });
+    const calc = calculatePricing(folded);
     setState((s) => ({
       ...s,
       pricing: {
         ...s.pricing,
-        baseCost: party.baseCost,
-        hotelCost: party.hotelCost,
-        cabCost: party.cabCost,
-        flightCost: party.flightCost,
-        activityCost: party.activityCost,
+        ...folded,
         taxes: calc.taxes,
         markup: calc.markup,
         total: calc.total,

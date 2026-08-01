@@ -54,22 +54,30 @@ export function calculatePricing({
   };
 }
 
+/** Fold residual package/flight share into hotel so UI only shows Hotel + Cab. */
+export function foldPackageResidualIntoHotel(pricing = {}) {
+  const residual =
+    Number(pricing.baseCost || 0) + Number(pricing.flightCost || 0);
+  return {
+    ...pricing,
+    hotelCost: Math.round((Number(pricing.hotelCost || 0) + residual) * 100) / 100,
+    baseCost: 0,
+    flightCost: 0,
+  };
+}
+
 /**
- * Customer-facing costing rows: Hotel + Cab + Other + Activities + Markup + Discount + GST.
- * Shows honest line amounts (no residual dumping into hotel/cab).
+ * Customer-facing costing rows: Hotel + Cab + Activities + Margin + Discount + GST.
  */
 export function getDisplayedCostBreakdown(pricing = {}) {
   const calc = calculatePricing(pricing);
   const hotelCost = Number(pricing.hotelCost || 0);
   const transportCost = Number(pricing.cabCost || 0);
   const activityCost = Number(pricing.activityCost || 0);
-  const otherCost =
-    Number(pricing.baseCost || 0) + Number(pricing.flightCost || 0);
 
   return {
     hotelCost,
     transportCost,
-    otherCost,
     activityCost,
     markup: calc.markup,
     taxes: calc.taxes,
@@ -78,8 +86,7 @@ export function getDisplayedCostBreakdown(pricing = {}) {
     packageCost: calc.packageCost,
     subtotalBeforeDiscount: calc.subtotal,
     finalTotal: calc.total,
-    costsBeforeMargin:
-      hotelCost + transportCost + otherCost + activityCost,
+    costsBeforeMargin: hotelCost + transportCost + activityCost,
   };
 }
 

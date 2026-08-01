@@ -4,7 +4,6 @@ import { resolvePartyOccupancy } from './partyCosting';
 const COST_FIELDS = [
   { key: 'hotelCost', label: 'Hotel Cost', color: 'border-amber-400/30 bg-amber-500/5' },
   { key: 'transportCost', label: 'Cab Cost', color: 'border-emerald-400/30 bg-emerald-500/5' },
-  { key: 'otherCost', label: 'Other package', color: 'border-slate-400/30 bg-slate-500/5' },
   { key: 'activityCost', label: 'Activities Cost', color: 'border-indigo-400/30 bg-indigo-500/5' },
 ];
 
