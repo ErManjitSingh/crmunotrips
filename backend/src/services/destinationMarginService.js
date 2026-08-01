@@ -1,11 +1,10 @@
 const Destination = require('../models/Destination');
 const DestinationMargin = require('../models/DestinationMargin');
-const Package = require('../models/Package');
 const { normalizeDestinationKey } = require('../models/Destination');
 const ApiError = require('../utils/apiError');
 
 const MARGIN_CACHE_TTL_MS = 60_000;
-let marginCache = { at: 0, byKey: new Map(), byId: new Map(), byPackageId: new Map() };
+let marginCache = { at: 0, byKey: new Map(), byId: new Map() };
 
 /**
  * Margin Control is state-wise only. City names go in aliases so packages
@@ -111,7 +110,7 @@ const MARGIN_STATES = [
 ];
 
 function invalidateMarginCache() {
-  marginCache = { at: 0, byKey: new Map(), byId: new Map(), byPackageId: new Map() };
+  marginCache = { at: 0, byKey: new Map(), byId: new Map() };
 }
 
 function roundMoney(value) {
@@ -148,7 +147,7 @@ async function ensureMarginStates() {
         existing.kind !== 'state' ||
         existing.status !== 'active' ||
         nextAliases.length !== (existing.aliases || []).length ||
-        nextAliases.some((a, i) => a !== (existing.aliases || [])[i]);
+        nextAliases.some((a) => !(existing.aliases || []).includes(a));
       if (needsUpdate) {
         existing.kind = 'state';
         existing.status = 'active';
@@ -179,7 +178,6 @@ async function loadMarginIndex(force = false) {
 
   const byKey = new Map();
   const byId = new Map();
-  const byPackageId = new Map();
 
   for (const row of rows) {
     const dest = row.destinationId;
@@ -191,7 +189,6 @@ async function loadMarginIndex(force = false) {
       destinationId: String(dest._id),
       destinationName: dest.name || row.destinationName,
       marginPercent: Number(row.marginPercent) || 0,
-      packageIds: (row.packageIds || []).map((id) => String(id)),
     };
     byId.set(entry.destinationId, entry);
 
@@ -203,13 +200,9 @@ async function loadMarginIndex(force = false) {
     keys.forEach((key) => {
       if (key) byKey.set(key, entry);
     });
-
-    for (const pkgId of entry.packageIds) {
-      if (pkgId) byPackageId.set(pkgId, entry);
-    }
   }
 
-  marginCache = { at: now, byKey, byId, byPackageId };
+  marginCache = { at: now, byKey, byId };
   return marginCache;
 }
 
@@ -245,11 +238,6 @@ async function resolveMarginForDestination(destinationText = '') {
 
 async function resolveMarginForPackage(pkg) {
   if (!pkg) return null;
-  const { byPackageId } = await loadMarginIndex();
-  const pkgId = String(pkg._id || pkg.id || '');
-  if (pkgId && byPackageId.has(pkgId)) {
-    return byPackageId.get(pkgId);
-  }
   const destination =
     pkg.destination ||
     pkg.destinationName ||
@@ -308,19 +296,6 @@ async function applyMarginToPackages(packages = []) {
   return out;
 }
 
-function normalizePackageIds(packageIds = []) {
-  if (!Array.isArray(packageIds)) return [];
-  const seen = new Set();
-  const out = [];
-  for (const id of packageIds) {
-    const s = String(id || '').trim();
-    if (!s || seen.has(s)) continue;
-    seen.add(s);
-    out.push(s);
-  }
-  return out;
-}
-
 async function listDestinationMargins() {
   await ensureMarginStates();
   const destinations = await Destination.find({ status: 'active', kind: 'state' })
@@ -331,34 +306,8 @@ async function listDestinationMargins() {
   }).lean();
   const byDest = new Map(margins.map((m) => [String(m.destinationId), m]));
 
-  const allPackageIds = [
-    ...new Set(
-      margins.flatMap((m) => (m.packageIds || []).map((id) => String(id)))
-    ),
-  ];
-  const packages = allPackageIds.length
-    ? await Package.find({ _id: { $in: allPackageIds } })
-        .select('_id name destination startingPrice')
-        .lean()
-    : [];
-  const packageById = new Map(packages.map((p) => [String(p._id), p]));
-
   return destinations.map((dest) => {
     const row = byDest.get(String(dest._id));
-    const packageIds = (row?.packageIds || []).map((id) => String(id));
-    const mappedPackages = packageIds
-      .map((id) => {
-        const pkg = packageById.get(id);
-        if (!pkg) return null;
-        return {
-          _id: pkg._id,
-          name: pkg.name,
-          destination: pkg.destination,
-          startingPrice: pkg.startingPrice,
-        };
-      })
-      .filter(Boolean);
-
     return {
       destinationId: dest._id,
       destinationName: dest.name,
@@ -366,8 +315,6 @@ async function listDestinationMargins() {
       aliases: dest.aliases || [],
       kind: 'state',
       marginPercent: row ? Number(row.marginPercent) || 0 : 0,
-      packageIds,
-      mappedPackages,
       active: row ? row.active !== false : true,
       notes: row?.notes || '',
       updatedAt: row?.updatedAt || null,
@@ -377,10 +324,7 @@ async function listDestinationMargins() {
   });
 }
 
-async function upsertDestinationMargin(
-  req,
-  { destinationId, marginPercent, notes, active, packageIds }
-) {
+async function upsertDestinationMargin(req, { destinationId, marginPercent, notes, active }) {
   const destination = await Destination.findById(destinationId);
   if (!destination) throw new ApiError(404, 'State not found');
   if (destination.kind !== 'state') {
@@ -392,61 +336,29 @@ async function upsertDestinationMargin(
 
   const pct = Math.max(0, Math.min(500, Number(marginPercent) || 0));
   const isActive = active !== false;
-  const normalizedIds = normalizePackageIds(packageIds);
-
-  if (normalizedIds.length) {
-    const found = await Package.find({ _id: { $in: normalizedIds } }).select('_id').lean();
-    const foundSet = new Set(found.map((p) => String(p._id)));
-    const missing = normalizedIds.filter((id) => !foundSet.has(id));
-    if (missing.length) {
-      throw new ApiError(400, `Unknown package id(s): ${missing.slice(0, 5).join(', ')}`);
-    }
-  }
-
-  // A package can only map to one state margin — remove from other rows
-  if (normalizedIds.length) {
-    await DestinationMargin.updateMany(
-      {
-        destinationId: { $ne: destination._id },
-        packageIds: { $in: normalizedIds },
-      },
-      { $pull: { packageIds: { $in: normalizedIds } } }
-    );
-  }
-
-  const setFields = {
-    destinationName: destination.name,
-    marginPercent: pct,
-    active: isActive,
-    notes: String(notes || '').trim().slice(0, 500),
-    updatedBy: req.user?._id,
-    updatedByName: req.user?.name || '',
-  };
-  if (packageIds !== undefined) {
-    setFields.packageIds = normalizedIds;
-  }
 
   const doc = await DestinationMargin.findOneAndUpdate(
     { destinationId: destination._id },
-    { $set: setFields },
+    {
+      $set: {
+        destinationName: destination.name,
+        marginPercent: pct,
+        active: isActive,
+        notes: String(notes || '').trim().slice(0, 500),
+        updatedBy: req.user?._id,
+        updatedByName: req.user?.name || '',
+      },
+    },
     { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true }
   );
 
   invalidateMarginCache();
-
-  const mappedPackages = doc.packageIds?.length
-    ? await Package.find({ _id: { $in: doc.packageIds } })
-        .select('_id name destination startingPrice')
-        .lean()
-    : [];
 
   return {
     destinationId: destination._id,
     destinationName: destination.name,
     stateName: destination.name,
     marginPercent: doc.marginPercent,
-    packageIds: (doc.packageIds || []).map((id) => String(id)),
-    mappedPackages,
     active: doc.active,
     notes: doc.notes,
     updatedAt: doc.updatedAt,
@@ -468,7 +380,6 @@ async function bulkUpsertDestinationMargins(req, items = []) {
         marginPercent: item.marginPercent,
         notes: item.notes,
         active: item.active,
-        packageIds: item.packageIds,
       })
     );
   }

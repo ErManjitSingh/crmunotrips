@@ -17,8 +17,6 @@ import {
   Play,
   Check,
   HardDrive,
-  Package,
-  X,
 } from 'lucide-react';
 import API from '../api/axios';
 import { Button } from '../components/ui/button';
@@ -272,7 +270,6 @@ export default function MarginControlPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [rows, setRows] = useState([]);
-  const [packages, setPackages] = useState([]);
   const [drafts, setDrafts] = useState({});
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -283,27 +280,19 @@ export default function MarginControlPage() {
   const [dirtyIds, setDirtyIds] = useState(() => new Set());
   const [focusedId, setFocusedId] = useState(null);
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [mappingOpenId, setMappingOpenId] = useState(null);
-  const [packageSearch, setPackageSearch] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [marginRes, pkgRes] = await Promise.all([
-        API.get('/margin-control', { skipSuccessToast: true }),
-        API.get('/packages', { skipSuccessToast: true }).catch(() => ({ data: [] })),
-      ]);
-      const list = Array.isArray(marginRes.data) ? marginRes.data : [];
-      const pkgList = Array.isArray(pkgRes.data) ? pkgRes.data : [];
+      const { data } = await API.get('/margin-control', { skipSuccessToast: true });
+      const list = Array.isArray(data) ? data : [];
       setRows(list);
-      setPackages(pkgList);
       const next = {};
       list.forEach((row) => {
         next[String(row.destinationId)] = {
           marginPercent: String(row.marginPercent ?? 0),
           notes: row.notes || '',
           active: row.active !== false,
-          packageIds: (row.packageIds || []).map(String),
         };
       });
       setDrafts(next);
@@ -321,23 +310,6 @@ export default function MarginControlPage() {
   }, [load]);
 
   useDataRefresh(['packages', 'destinations'], load);
-
-  const packageById = useMemo(() => {
-    const map = new Map();
-    packages.forEach((pkg) => map.set(String(pkg._id || pkg.id), pkg));
-    return map;
-  }, [packages]);
-
-  /** Package already mapped to another state (excluding current) */
-  const packageOwnerById = useMemo(() => {
-    const map = new Map();
-    Object.entries(drafts).forEach(([stateId, draft]) => {
-      (draft.packageIds || []).forEach((pkgId) => {
-        map.set(String(pkgId), stateId);
-      });
-    });
-    return map;
-  }, [drafts]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -409,52 +381,6 @@ export default function MarginControlPage() {
     updateDraft(id, { marginPercent: String(next) });
   };
 
-  const togglePackageMapping = (stateId, packageId) => {
-    const id = String(stateId);
-    const pkgId = String(packageId);
-    const current = drafts[id]?.packageIds || [];
-    const exists = current.includes(pkgId);
-
-    setDrafts((prev) => {
-      const updated = { ...prev };
-      if (exists) {
-        updated[id] = {
-          ...updated[id],
-          packageIds: (updated[id]?.packageIds || []).filter((x) => x !== pkgId),
-        };
-      } else {
-        Object.keys(updated).forEach((otherId) => {
-          if (otherId === id) return;
-          const ids = updated[otherId]?.packageIds || [];
-          if (ids.includes(pkgId)) {
-            updated[otherId] = {
-              ...updated[otherId],
-              packageIds: ids.filter((x) => x !== pkgId),
-            };
-          }
-        });
-        updated[id] = {
-          ...updated[id],
-          packageIds: [...(updated[id]?.packageIds || []).filter((x) => x !== pkgId), pkgId],
-        };
-      }
-      return updated;
-    });
-
-    setDirtyIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      if (!exists) {
-        Object.entries(drafts).forEach(([otherId, draft]) => {
-          if (otherId !== id && (draft.packageIds || []).includes(pkgId)) {
-            next.add(otherId);
-          }
-        });
-      }
-      return next;
-    });
-  };
-
   const saveAll = async () => {
     const items = [...dirtyIds].map((id) => {
       const draft = drafts[id] || {};
@@ -463,7 +389,6 @@ export default function MarginControlPage() {
         marginPercent: Number(draft.marginPercent) || 0,
         notes: draft.notes || '',
         active: draft.active !== false,
-        packageIds: draft.packageIds || [],
       };
     });
     if (!items.length) {
@@ -494,7 +419,6 @@ export default function MarginControlPage() {
           marginPercent: Number(draft.marginPercent) || 0,
           notes: draft.notes || '',
           active: draft.active !== false,
-          packageIds: draft.packageIds || [],
         },
         { skipSuccessToast: true }
       );
@@ -514,7 +438,6 @@ export default function MarginControlPage() {
         marginPercent: String(row.marginPercent ?? 0),
         notes: row.notes || '',
         active: row.active !== false,
-        packageIds: (row.packageIds || []).map(String),
       };
     });
     setDrafts(next);
@@ -528,15 +451,6 @@ export default function MarginControlPage() {
     const start = Math.max(1, Math.min(safePage - 2, totalPages - max + 1));
     return Array.from({ length: max }, (_, i) => start + i).filter((n) => n >= 1 && n <= totalPages);
   }, [safePage, totalPages]);
-
-  const filteredPackagesForPicker = useMemo(() => {
-    const q = packageSearch.trim().toLowerCase();
-    if (!q) return packages;
-    return packages.filter((pkg) => {
-      const hay = `${pkg.name || ''} ${pkg.destination || ''}`.toLowerCase();
-      return hay.includes(q);
-    });
-  }, [packages, packageSearch]);
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5 pb-10">
@@ -553,8 +467,8 @@ export default function MarginControlPage() {
               <Sparkles className="h-3.5 w-3.5 text-violet-400" />
             </div>
             <p className="mt-1.5 max-w-xl text-sm text-content-secondary">
-              Set state-wise package margin. Map packages to a state, or match by state / city
-              alias — matching packages automatically get this % added to cost.
+              Set state-wise package margin. Related packages auto-match by state name or city
+              alias (e.g. Manali → Himachal Pradesh) and get this % added to cost.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <Button
@@ -628,7 +542,7 @@ export default function MarginControlPage() {
             Example: Goa margin <span className="font-semibold">10%</span> → a package listed at{' '}
             <span className="font-semibold">{formatINR(PREVIEW_BASE)}</span> becomes{' '}
             <span className="font-semibold">{formatINR(11000)}</span> in catalog and quotation costing.
-            Margins are state-wise only — map packages explicitly or match by city alias (e.g. Manali →
+            Margins are state-wise — packages auto-match via state name or city alias (e.g. Manali →
             Himachal Pradesh).
           </p>
         </div>
@@ -650,8 +564,8 @@ export default function MarginControlPage() {
           <ol className="mt-2 list-decimal space-y-1 pl-5">
             <li>Set a margin % for each state (e.g. Goa = 10%). Cities are not listed here.</li>
             <li>
-              Map packages to a state, or let destination text match the state name / city alias
-              (Manali → Himachal Pradesh).
+              Packages whose destination matches the state name or a city alias get the %
+              automatically (Manali → Himachal Pradesh).
             </li>
             <li>Preview uses a base of {formatINR(PREVIEW_BASE)} so you can see uplift instantly.</li>
             <li>Toggle Active off to pause a margin without deleting the value.</li>
@@ -753,7 +667,6 @@ export default function MarginControlPage() {
               <tr>
                 <th className="w-10 px-2 py-3" />
                 <th className="px-3 py-3">State</th>
-                <th className="w-52 px-3 py-3">Mapped Packages</th>
                 <th className="w-36 px-3 py-3">Margin %</th>
                 <th className="w-44 px-3 py-3">Preview Price ({formatINR(PREVIEW_BASE)})</th>
                 <th className="w-36 px-3 py-3">Margin Impact</th>
@@ -764,14 +677,14 @@ export default function MarginControlPage() {
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-14 text-center text-content-muted">
+                  <td colSpan={7} className="px-4 py-14 text-center text-content-muted">
                     Loading states…
                   </td>
                 </tr>
               )}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-14 text-center text-content-muted">
+                  <td colSpan={7} className="px-4 py-14 text-center text-content-muted">
                     No states found for margin control.
                   </td>
                 </tr>
@@ -779,20 +692,13 @@ export default function MarginControlPage() {
               {!loading &&
                 pageRows.map((row, index) => {
                   const id = String(row.destinationId);
-                  const draft = drafts[id] || {
-                    marginPercent: '0',
-                    notes: '',
-                    active: true,
-                    packageIds: [],
-                  };
+                  const draft = drafts[id] || { marginPercent: '0', notes: '', active: true };
                   const pct = Number(draft.marginPercent) || 0;
                   const isDirty = dirtyIds.has(id);
                   const preview = previewUplift(PREVIEW_BASE, pct);
                   const impact = preview - PREVIEW_BASE;
                   const meta = getDestMeta(row.destinationName);
                   const isFocused = focusedId === id;
-                  const mappedIds = draft.packageIds || [];
-                  const mappingOpen = mappingOpenId === id;
 
                   return (
                     <tr
@@ -821,103 +727,6 @@ export default function MarginControlPage() {
                             </p>
                           </div>
                         </div>
-                      </td>
-                      <td className="relative px-3 py-3">
-                        <button
-                          type="button"
-                          className={cn(
-                            'inline-flex h-9 max-w-full items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold transition',
-                            mappedIds.length
-                              ? 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300'
-                              : 'border-subtle bg-white text-content-secondary hover:bg-slate-50 dark:bg-slate-950'
-                          )}
-                          onClick={() => {
-                            setMappingOpenId((cur) => (cur === id ? null : id));
-                            setPackageSearch('');
-                          }}
-                        >
-                          <Package className="h-3.5 w-3.5 shrink-0" />
-                          <span className="truncate">
-                            {mappedIds.length
-                              ? `${mappedIds.length} package${mappedIds.length === 1 ? '' : 's'}`
-                              : 'Map packages'}
-                          </span>
-                          <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
-                        </button>
-                        {mappedIds.length > 0 && (
-                          <p className="mt-1 max-w-[11rem] truncate text-[10px] text-content-muted">
-                            {mappedIds
-                              .slice(0, 2)
-                              .map((pid) => packageById.get(pid)?.name || 'Package')
-                              .join(', ')}
-                            {mappedIds.length > 2 ? ` +${mappedIds.length - 2}` : ''}
-                          </p>
-                        )}
-                        {mappingOpen && (
-                          <div className="absolute left-3 z-30 mt-1 w-72 overflow-hidden rounded-xl border border-subtle bg-white shadow-xl dark:bg-slate-950">
-                            <div className="flex items-center gap-2 border-b border-subtle px-2 py-2">
-                              <Search className="h-3.5 w-3.5 shrink-0 text-content-muted" />
-                              <input
-                                value={packageSearch}
-                                onChange={(e) => setPackageSearch(e.target.value)}
-                                placeholder="Search packages..."
-                                className="h-7 w-full bg-transparent text-xs outline-none"
-                                autoFocus
-                              />
-                              <button
-                                type="button"
-                                className="rounded p-0.5 text-content-muted hover:bg-slate-100"
-                                onClick={() => setMappingOpenId(null)}
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                            <div className="max-h-56 overflow-y-auto py-1">
-                              {filteredPackagesForPicker.length === 0 && (
-                                <p className="px-3 py-4 text-center text-xs text-content-muted">
-                                  No packages found
-                                </p>
-                              )}
-                              {filteredPackagesForPicker.map((pkg) => {
-                                const pkgId = String(pkg._id || pkg.id);
-                                const checked = mappedIds.includes(pkgId);
-                                const ownerId = packageOwnerById.get(pkgId);
-                                const ownedElsewhere = ownerId && ownerId !== id;
-                                const ownerName = ownedElsewhere
-                                  ? rows.find((r) => String(r.destinationId) === ownerId)
-                                      ?.destinationName
-                                  : null;
-                                return (
-                                  <label
-                                    key={pkgId}
-                                    className={cn(
-                                      'flex cursor-pointer items-start gap-2 px-3 py-2 text-left hover:bg-violet-50 dark:hover:bg-violet-950/40',
-                                      checked && 'bg-violet-50/80 dark:bg-violet-950/30'
-                                    )}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      className="mt-0.5"
-                                      checked={checked}
-                                      onChange={() => togglePackageMapping(id, pkgId)}
-                                    />
-                                    <span className="min-w-0 flex-1">
-                                      <span className="block truncate text-xs font-semibold text-content-primary">
-                                        {pkg.name}
-                                      </span>
-                                      <span className="block truncate text-[10px] text-content-muted">
-                                        {pkg.destination || '—'}
-                                        {ownedElsewhere && ownerName
-                                          ? ` · currently on ${ownerName}`
-                                          : ''}
-                                      </span>
-                                    </span>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1">
