@@ -1,5 +1,5 @@
-import { memo, useCallback, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -30,6 +30,7 @@ function contactFromSelected(selected) {
 
 function WhatsAppLeadsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const isExecutive = user?.role === 'sales_executive';
   const canAssign = canAssignLeads(user?.role);
@@ -53,6 +54,9 @@ function WhatsAppLeadsPage() {
   const [page, setPage] = useState(1);
   const pageSize = 8;
   const debouncedSearch = useDebouncedValue(search, 280);
+  const deepLinkConversationId = searchParams.get('conversationId') || '';
+  const deepLinkLeadId = searchParams.get('leadId') || '';
+  const deepLinkHandled = useRef('');
 
   const conversationsQuery = useQuery({
     queryKey: ['whatsapp', 'conversations', { statusFilter, search: debouncedSearch }],
@@ -162,6 +166,68 @@ function WhatsAppLeadsPage() {
       }).catch(() => {});
     }
   }, [queryClient]);
+
+  // Deep-link from lead WhatsApp click → select CRM conversation
+  useEffect(() => {
+    if (!deepLinkConversationId && !deepLinkLeadId) return;
+    const key = `${deepLinkConversationId}|${deepLinkLeadId}`;
+    if (deepLinkHandled.current === key) return;
+
+    const fromList = (conversations || []).find((c) => {
+      if (deepLinkConversationId) {
+        return String(c.conversationId || c._id) === String(deepLinkConversationId);
+      }
+      return String(c.leadId || c.lead?._id || '') === String(deepLinkLeadId);
+    });
+
+    if (fromList) {
+      deepLinkHandled.current = key;
+      handleSelect(fromList);
+      setSearchParams({}, { replace: true });
+      return;
+    }
+
+    // Wait until list attempt finished loading before creating/opening
+    if (conversationsQuery.isLoading) return;
+    if (!deepLinkLeadId) {
+      deepLinkHandled.current = key;
+      setSearchParams({}, { replace: true });
+      return;
+    }
+
+    let cancelled = false;
+    deepLinkHandled.current = key;
+    (async () => {
+      try {
+        const res = await API.post(
+          '/whatsapp/open-chat',
+          { leadId: deepLinkLeadId },
+          { skipSuccessToast: true }
+        );
+        const row = res.data?.data;
+        if (!cancelled && row) {
+          handleSelect(row);
+          refreshConversations();
+        }
+      } catch {
+        if (!cancelled) toast.error('Could not open WhatsApp chat');
+      } finally {
+        if (!cancelled) setSearchParams({}, { replace: true });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    deepLinkConversationId,
+    deepLinkLeadId,
+    conversations,
+    conversationsQuery.isLoading,
+    handleSelect,
+    setSearchParams,
+    refreshConversations,
+  ]);
 
   const handleSend = useCallback(async (payload) => {
     if (!selected || sending) return;

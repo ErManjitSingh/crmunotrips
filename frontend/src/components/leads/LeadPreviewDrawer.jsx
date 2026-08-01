@@ -20,7 +20,10 @@ import {
   Trash2,
   Luggage,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { toast } from '../../context/ToastContext';
+import { openCrmWhatsApp } from '../../lib/openCrmWhatsApp';
 import LeadStatusBadge from './LeadStatusBadge';
 import Avatar from '../ui/Avatar';
 import AppDrawer from '../ui/AppDrawer';
@@ -164,9 +167,8 @@ export default function LeadPreviewDrawer({
   onTransferBranch,
   canEditLead = true,
 }) {
-  const waHref = lead?.phone
-    ? `https://wa.me/${lead.phone.replace(/\D/g, '').length === 10 ? `91${lead.phone.replace(/\D/g, '')}` : lead.phone.replace(/\D/g, '')}`
-    : null;
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const nextFu = splitDateTime(lead?.nextFollowUp);
   const lastFu = splitDateTime(lead?.lastFollowUp);
   const assignedName = lead?.assignedTo?.name;
@@ -215,8 +217,21 @@ export default function LeadPreviewDrawer({
               {lead.phone && (
                 <ContactBtn href={`tel:${lead.phone}`} icon={Phone} label="Call" tone="blue" />
               )}
-              {waHref && (
-                <ContactBtn href={waHref} icon={MessageCircle} label="WhatsApp" tone="green" target="_blank" rel="noreferrer" />
+              {lead.phone && (
+                <ContactBtn
+                  icon={MessageCircle}
+                  label="WhatsApp"
+                  tone="green"
+                  onClick={() =>
+                    openCrmWhatsApp({
+                      leadId: lead._id,
+                      phone: lead.phone,
+                      navigate,
+                      role: user?.role,
+                      toast,
+                    })
+                  }
+                />
               )}
               {lead.email && (
                 <ContactBtn href={`mailto:${lead.email}`} icon={Mail} label="Email" tone="purple" />

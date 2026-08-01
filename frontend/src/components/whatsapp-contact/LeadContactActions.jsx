@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Phone, FileText, CalendarPlus, MoreHorizontal, MessageCircle, Mail } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
-import WhatsAppActionButton from './WhatsAppActionButton';
+import { useAuth } from '../../context/AuthContext';
 import EmailComposerModal from '../email/EmailComposerModal';
 import ActionTile from '../ui/ActionTile';
 import {
@@ -13,6 +14,7 @@ import {
 import { DETAIL_CARD } from '../lead-detail/leadDetailUtils';
 import { toast } from '../../context/ToastContext';
 import { beginLeadCall } from '../../lib/callSession';
+import { openCrmWhatsApp } from '../../lib/openCrmWhatsApp';
 
 export default function LeadContactActions({
   lead,
@@ -26,14 +28,17 @@ export default function LeadContactActions({
   onLogCallNote,
   className = '',
 }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { can } = usePermissions();
   const canUseWhatsApp = can('whatsapp', 'use');
   const canSendEmail = can('email', 'send');
   const [emailOpen, setEmailOpen] = useState(false);
-  const [waOpen, setWaOpen] = useState(false);
+  const [waOpening, setWaOpening] = useState(false);
 
   const phone = lead?.whatsapp || lead?.phone;
   const email = lead?.email;
+  const id = leadId || lead?._id;
 
   const handleCall = () => {
     if (!phone) {
@@ -41,18 +46,30 @@ export default function LeadContactActions({
       return;
     }
     beginLeadCall({
-      leadId: leadId || lead?._id,
+      leadId: id,
       leadName: lead?.name,
       phone,
     });
   };
 
-  const handleWhatsApp = () => {
-    if (!phone) {
+  const handleWhatsApp = async () => {
+    if (!phone || !id) {
       toast.error('Lead phone number is missing');
       return;
     }
-    setWaOpen(true);
+    setWaOpening(true);
+    try {
+      const row = await openCrmWhatsApp({
+        leadId: id,
+        phone,
+        navigate,
+        role: user?.role,
+        toast,
+      });
+      if (row) onContactLogged?.();
+    } finally {
+      setWaOpening(false);
+    }
   };
 
   const handleEmail = () => {
@@ -67,7 +84,9 @@ export default function LeadContactActions({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">Quick Actions</h3>
-          <p className="text-[11px] text-slate-500 mt-0.5">Call, WhatsApp, or email this lead in one tap</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Call, CRM WhatsApp, or email this lead in one tap
+          </p>
         </div>
       </div>
 
@@ -75,12 +94,12 @@ export default function LeadContactActions({
         {canUseWhatsApp ? (
           <ActionTile
             icon={MessageCircle}
-            label="WhatsApp"
-            description="Chat on WhatsApp"
+            label={waOpening ? 'Opening…' : 'WhatsApp'}
+            description="Open in CRM WhatsApp"
             tone="green"
-            disabled={!phone}
+            disabled={!phone || waOpening}
             onClick={handleWhatsApp}
-            title={phone ? `WhatsApp ${phone}` : 'No phone on lead'}
+            title={phone ? `CRM WhatsApp ${phone}` : 'No phone on lead'}
           />
         ) : null}
 
@@ -157,25 +176,12 @@ export default function LeadContactActions({
         </DropdownMenuRoot>
       </div>
 
-      {/* Controlled WhatsApp picker — trigger hidden, opened via Quick Action tile */}
-      {canUseWhatsApp ? (
-        <WhatsAppActionButton
-          lead={lead}
-          leadId={leadId}
-          contactEndpoint={contactEndpoint}
-          onContactLogged={onContactLogged}
-          open={waOpen}
-          onOpenChange={setWaOpen}
-          hideTrigger
-        />
-      ) : null}
-
       {canSendEmail ? (
         <EmailComposerModal
           open={emailOpen}
           onClose={() => setEmailOpen(false)}
           lead={lead}
-          leadId={leadId}
+          leadId={id}
           emailEndpoint={contactEndpoint}
           onSent={() => {
             setEmailOpen(false);

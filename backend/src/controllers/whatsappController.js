@@ -614,6 +614,62 @@ const cloudStatus = asyncHandler(async (_req, res) => {
   });
 });
 
+/**
+ * Open (or create) CRM WhatsApp conversation for a lead — same business number for all SEs.
+ */
+const openChatForLead = asyncHandler(async (req, res) => {
+  const leadId = req.body?.leadId || req.query?.leadId;
+  if (!leadId) throw new ApiError(400, 'leadId is required');
+
+  const lead = await findScopedLead(
+    req,
+    leadId,
+    'name phone whatsapp branchId assignedTo status destination leadId source sourceLabel'
+  );
+  const phone10 = normalizePhone(lead.whatsapp || lead.phone);
+  if (!phone10 || phone10.length < 10) {
+    throw new ApiError(400, 'Lead has no valid WhatsApp / phone number');
+  }
+
+  let conversation = await WhatsAppConversation.findOne({ phone: phone10 });
+  if (!conversation) {
+    conversation = await WhatsAppConversation.create({
+      phone: phone10,
+      waId: `91${phone10}`,
+      profileName: lead.name || '',
+      lead: lead._id,
+      branchId: lead.branchId || req.branchId || undefined,
+      lastMessageAt: new Date(),
+      lastDirection: null,
+      unreadCount: 0,
+    });
+  } else {
+    let dirty = false;
+    // Link / re-link to the lead the user opened (same phone = same CRM chat)
+    if (!conversation.lead || String(conversation.lead) !== String(lead._id)) {
+      conversation.lead = lead._id;
+      dirty = true;
+    }
+    if (!conversation.profileName && lead.name) {
+      conversation.profileName = lead.name;
+      dirty = true;
+    }
+    if (!conversation.branchId && (lead.branchId || req.branchId)) {
+      conversation.branchId = lead.branchId || req.branchId;
+      dirty = true;
+    }
+    if (dirty) await conversation.save();
+  }
+
+  const displayLead = await Lead.findById(lead._id)
+    .select(INBOX_LEAD_SELECT)
+    .populate('assignedTo', 'name email')
+    .lean();
+
+  const plain = typeof conversation.toObject === 'function' ? conversation.toObject() : conversation;
+  res.json({ success: true, data: mapConversationRow(plain, displayLead) });
+});
+
 module.exports = {
   listConversations,
   getMessages,
@@ -628,4 +684,5 @@ module.exports = {
   markRead,
   createLeadFromChat,
   cloudStatus,
+  openChatForLead,
 };

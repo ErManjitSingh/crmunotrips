@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
   Bell,
@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { useSidebar } from '../../context/SidebarContext';
 import { useAuth } from '../../context/AuthContext';
+import { toast } from '../../context/ToastContext';
+import { openCrmWhatsApp } from '../../lib/openCrmWhatsApp';
 import {
   DESTINATIONS,
   LEAD_STATUSES,
@@ -92,6 +94,7 @@ export default function MobileLeadList({
 }) {
   const { toggleMobileOpen } = useSidebar();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { availableBranches = [] } = useSelector((s) => s.branch);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
@@ -309,7 +312,24 @@ export default function MobileLeadList({
                       lead={lead}
                       className="flex h-9 flex-1 items-center justify-center gap-1 border-r border-slate-100 text-[8px] font-semibold text-blue-600"
                     />
-                    <a href={whatsapp ? `https://wa.me/${whatsapp}` : undefined} target="_blank" rel="noreferrer" className="flex h-9 flex-1 items-center justify-center gap-1 border-r border-slate-100 text-[8px] font-semibold text-emerald-600"><MessageCircle className="h-3.5 w-3.5" />WhatsApp</a>
+                    <button
+                      type="button"
+                      disabled={!whatsapp}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!whatsapp || !lead._id) return;
+                        openCrmWhatsApp({
+                          leadId: lead._id,
+                          phone: lead.phone || lead.whatsapp,
+                          navigate,
+                          role: user?.role,
+                          toast,
+                        });
+                      }}
+                      className="flex h-9 flex-1 items-center justify-center gap-1 border-r border-slate-100 text-[8px] font-semibold text-emerald-600 disabled:opacity-40"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />WhatsApp
+                    </button>
                     <button type="button" onClick={() => onOpenLead(lead)} className="flex h-9 flex-1 items-center justify-center gap-1 text-[8px] font-semibold text-violet-600">View Details<ChevronRight className="h-3.5 w-3.5" /></button>
                   </div>
                 </article>

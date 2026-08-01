@@ -112,7 +112,9 @@ export default function LeadDataTable({
       {
         accessorKey: 'phone',
         header: 'Phone',
-        cell: ({ row }) => <PhoneCell phone={row.original.phone} />,
+        cell: ({ row }) => (
+          <PhoneCell phone={row.original.phone} leadId={row.original._id} lead={row.original} />
+        ),
       },
       {
         accessorKey: 'destination',

@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   MoreVertical, Eye, Phone, MessageCircle, Pencil,
   CalendarClock, RefreshCw, FileText,
@@ -14,6 +13,9 @@ import {
 import { Button } from '../ui/button';
 import AppModal from '../ui/AppModal';
 import { beginLeadCall } from '../../lib/callSession';
+import { useAuth } from '../../context/AuthContext';
+import { toast } from '../../context/ToastContext';
+import { openCrmWhatsApp } from '../../lib/openCrmWhatsApp';
 
 export default function LeadActionsMenu({
   lead,
@@ -22,6 +24,8 @@ export default function LeadActionsMenu({
   canChangeStatus = true,
   contactLocked = false,
 }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const phone = lead.phone?.replace(/\s/g, '');
   const locked = contactLocked || lead?.contactMasked || lead?.returnedToPool || phone === 'XXXX';
 
@@ -65,10 +69,19 @@ export default function LeadActionsMenu({
           <Phone className="w-4 h-4" /> {locked ? 'Call locked' : 'Call Customer'}
         </DropdownMenuItem>
         {!locked ? (
-          <DropdownMenuItem asChild>
-            <a href={`https://wa.me/${phone?.replace('+', '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 cursor-pointer">
-              <MessageCircle className="w-4 h-4" /> WhatsApp
-            </a>
+          <DropdownMenuItem
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() =>
+              openCrmWhatsApp({
+                leadId: lead._id,
+                phone,
+                navigate,
+                role: user?.role,
+                toast,
+              })
+            }
+          >
+            <MessageCircle className="w-4 h-4" /> WhatsApp (CRM)
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem disabled className="flex items-center gap-2 opacity-70">

@@ -1,4 +1,6 @@
 import { MapPin, User, Users, MessageCircle, Calendar, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { getLeadSourceShortLabel } from '../../lib/leadSourceLabels';
 import Avatar from '../ui/Avatar';
@@ -6,6 +8,9 @@ import { STATUS_STYLES, formatBudget } from './managerUtils';
 import RepeatedLeadBadge from '../leads/RepeatedLeadBadge';
 import LeadCallStats from '../leads/LeadCallStats';
 import { LEAD_ACCEPT_MINUTES } from '../../constants/salesSop';
+import { useAuth } from '../../context/AuthContext';
+import { toast } from '../../context/ToastContext';
+import { openCrmWhatsApp } from '../../lib/openCrmWhatsApp';
 
 const SOURCE_STYLES = {
   dpw: 'bg-gradient-to-r from-sky-500/20 to-blue-500/15 text-sky-700 dark:text-sky-300 ring-sky-400/40',
@@ -234,25 +239,46 @@ export function CustomerCell({ name, lead, showPhone = false }) {
   );
 }
 
-export function PhoneCell({ phone }) {
+export function PhoneCell({ phone, leadId, lead }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [opening, setOpening] = useState(false);
   if (!phone) return <span className="text-sm text-content-muted">—</span>;
-  const digits = String(phone).replace(/\D/g, '');
-  const waUrl = digits ? `https://wa.me/${digits.length === 10 ? `91${digits}` : digits}` : null;
+  const id = leadId || lead?._id;
+
+  const openWa = async (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!id || opening) return;
+    setOpening(true);
+    try {
+      await openCrmWhatsApp({
+        leadId: id,
+        phone,
+        navigate,
+        role: user?.role,
+        toast,
+      });
+    } finally {
+      setOpening(false);
+    }
+  };
+
   return (
     <div className="flex items-center gap-2 whitespace-nowrap">
       <span className="text-sm text-content-secondary">{phone}</span>
-      {waUrl && (
-        <a
-          href={waUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-colors"
-          aria-label="Open WhatsApp"
+      {id ? (
+        <button
+          type="button"
+          onClick={openWa}
+          disabled={opening}
+          className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-colors disabled:opacity-60"
+          aria-label="Open CRM WhatsApp"
+          title="Open CRM WhatsApp"
         >
           <MessageCircle className="w-3.5 h-3.5" />
-        </a>
-      )}
+        </button>
+      ) : null}
     </div>
   );
 }

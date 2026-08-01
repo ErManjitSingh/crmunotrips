@@ -14,6 +14,7 @@ const {
   markRead,
   createLeadFromChat,
   cloudStatus,
+  openChatForLead,
 } = require('../controllers/whatsappController');
 const { protect } = require('../middleware/auth');
 
@@ -30,6 +31,7 @@ router.get('/executives', listExecutives);
 router.post('/messages', postMessage);
 router.post('/notes', postNote);
 router.post('/create-lead', createLeadFromChat);
+router.post('/open-chat', openChatForLead);
 router.put('/leads/:id', updateWhatsAppLead);
 router.put('/read/:leadId', markRead);
 
