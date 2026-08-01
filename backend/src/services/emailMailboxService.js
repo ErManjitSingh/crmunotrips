@@ -377,15 +377,10 @@ async function getMailboxMessage(req, { type, id }) {
   }
 
   if (type === 'sent') {
-    const sentScope =
-      req.user.role === 'sales_executive'
-        ? { sentBy: req.user._id, ...branchFilter }
-        : { ...branchFilter };
-
     const row = await EmailLog.findOne({
       _id: id,
-      ...sentScope,
-      status: { $in: ['sent', 'failed'] },
+      ...branchFilter,
+      status: { $in: ['sent', 'failed', 'queued'] },
     })
       .select(`${SENT_LIST_SELECT} bodyText cc bcc`)
       .lean();
@@ -400,6 +395,7 @@ async function getMailboxMessage(req, { type, id }) {
       bodyHtml: '',
       cc: row.cc || [],
       bcc: row.bcc || [],
+      attachmentNames: row.attachmentNames || [],
       errorMessage: row.errorMessage || '',
     };
   }

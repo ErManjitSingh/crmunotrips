@@ -5,6 +5,7 @@ import { Eye, Pencil, Send } from 'lucide-react';
 import { ACTIVITY_CONFIG, findQuotationForActivity } from './leadDetailData';
 import QuotationPdfOverlay from '../quotations/QuotationPdfOverlay';
 import SendQuotationModal from './SendQuotationModal';
+import EmailSentViewModal from './EmailSentViewModal';
 import { Button } from '../ui/button';
 import { DETAIL_CARD } from './leadDetailUtils';
 import { cn } from '../../lib/utils';
@@ -72,6 +73,7 @@ export default function LeadActivityTimeline({
 }) {
   const [pdfQuote, setPdfQuote] = useState(null);
   const [sendQuote, setSendQuote] = useState(null);
+  const [viewEmail, setViewEmail] = useState(null);
   const pdfRef = useRef(null);
   const highlightRef = useRef(null);
   const sorted = [...activities].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -112,10 +114,13 @@ export default function LeadActivityTimeline({
                   const Icon = cfg.icon;
                   const { date, time } = formatActivityDate(item.date);
                   const isQuote = item.type?.startsWith('quotation_');
+                  const isEmailSent = item.type === 'email_sent';
+                  const emailLogId = item.meta?.emailLogId || null;
                   const quote = isQuote ? findQuotationForActivity(item, quotations) : null;
                   const quoteId = quote?._id || item.meta?.quotationId || null;
                   const editHref = isQuote ? resolveQuoteEditHref(quoteId, contactEndpoint) : null;
                   const canView = Boolean(quote?._id && (quote.pricing || quote.packageSnapshot));
+                  const canViewEmail = Boolean(emailLogId);
                   const canSend =
                     canView &&
                     lead &&
@@ -183,6 +188,22 @@ export default function LeadActivityTimeline({
                               )}
                             </div>
                           )}
+                          {isEmailSent && canViewEmail && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setViewEmail({
+                                  emailLogId,
+                                  subject: item.notes || item.title || item.meta?.subject || 'Sent email',
+                                })
+                              }
+                              className="rounded-lg h-7 gap-1 text-[11px] text-sky-700 border-sky-200 bg-sky-50 hover:bg-sky-100"
+                            >
+                              <Eye className="w-3 h-3" /> View
+                            </Button>
+                          )}
                         </div>
                         {isQuote && <QuoteMetaChips item={item} quote={quote} />}
                         {item.notes && (
@@ -216,6 +237,13 @@ export default function LeadActivityTimeline({
         quote={sendQuote}
         contactEndpoint={contactEndpoint}
         onSent={onQuotationSent}
+      />
+
+      <EmailSentViewModal
+        open={!!viewEmail}
+        onClose={() => setViewEmail(null)}
+        emailLogId={viewEmail?.emailLogId}
+        fallbackSubject={viewEmail?.subject || ''}
       />
     </>
   );
