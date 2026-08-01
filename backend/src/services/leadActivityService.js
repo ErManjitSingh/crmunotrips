@@ -3,6 +3,8 @@ const LeadActivity = require('../models/LeadActivity');
 const ACTIVITY_TITLES = {
   lead_created: 'Lead Created',
   lead_assigned: 'Lead Assigned',
+  lead_accepted: 'Lead Accepted',
+  lead_accept_expired: 'Accept Window Expired',
   lead_reassigned: 'Lead Reassigned',
   lead_transferred: 'Lead Transferred',
   lead_merged: 'Lead Merged',

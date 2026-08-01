@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const LEAD_ACTIVITY_TYPES = [
   'lead_created',
   'lead_assigned',
+  'lead_accepted',
+  'lead_accept_expired',
   'lead_reassigned',
   'lead_transferred',
   'call_made',

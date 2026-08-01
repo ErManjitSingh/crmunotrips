@@ -26,6 +26,8 @@ export const PIPELINE_STAGES = [
 export const ACTIVITY_CONFIG = {
   lead_created: { label: 'Lead Created', icon: UserPlus, color: 'bg-blue-500/10 text-blue-600' },
   lead_assigned: { label: 'Lead Assigned', icon: UserCheck, color: 'bg-violet-500/10 text-violet-600' },
+  lead_accepted: { label: 'Lead Accepted', icon: UserCheck, color: 'bg-emerald-500/10 text-emerald-600' },
+  lead_accept_expired: { label: 'Accept Window Expired', icon: RefreshCw, color: 'bg-rose-500/10 text-rose-600' },
   call_made: { label: 'Call Made', icon: Phone, color: 'bg-emerald-500/10 text-emerald-600' },
   whatsapp_sent: { label: 'WhatsApp Sent', icon: MessageCircle, color: 'bg-green-500/10 text-green-600' },
   whatsapp_contact_initiated: { label: 'WhatsApp Contact Initiated', icon: MessageCircle, color: 'bg-green-500/10 text-green-600' },
