@@ -471,9 +471,10 @@ function WhatsAppLeadsPage() {
   const selectedKey = selected?.conversationId || selected?.leadId;
   const contact = useMemo(() => {
     const base = contactFromSelected(selected);
+    if (!base) return null;
     return {
       ...base,
-      botAnswers: threadMetaQuery.data?.botAnswers || base.botAnswers,
+      botAnswers: threadMetaQuery.data?.botAnswers || base.botAnswers || null,
     };
   }, [selected, threadMetaQuery.data?.botAnswers]);
   const canCreateLead = !isExecutive && !selected?.lead && selected?.conversationId;
