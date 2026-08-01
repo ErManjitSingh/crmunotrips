@@ -71,22 +71,12 @@ export default function LeadContactActions({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
-        <ActionTile
-          icon={Phone}
-          label="Call"
-          description="Make a call"
-          tone="emerald"
-          disabled={!phone}
-          onClick={handleCall}
-          title={phone ? `Call ${phone}` : 'No phone on lead'}
-        />
-
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2.5">
         {canUseWhatsApp ? (
           <ActionTile
             icon={MessageCircle}
             label="WhatsApp"
-            description="Send WhatsApp"
+            description="Chat on WhatsApp"
             tone="green"
             disabled={!phone}
             onClick={handleWhatsApp}
@@ -94,14 +84,34 @@ export default function LeadContactActions({
           />
         ) : null}
 
+        <ActionTile
+          icon={Phone}
+          label="Call Lead"
+          description={phone || 'No phone on lead'}
+          tone="sky"
+          disabled={!phone}
+          onClick={handleCall}
+          title={phone ? `Call ${phone}` : 'No phone on lead'}
+        />
+
         {canSendEmail ? (
           <ActionTile
             icon={Mail}
             label="Send Email"
-            description="Send an email"
-            tone="sky"
+            description="Send quick email"
+            tone="violet"
             onClick={handleEmail}
             title={email || 'Compose email'}
+          />
+        ) : null}
+
+        {onScheduleFollowUp ? (
+          <ActionTile
+            icon={CalendarPlus}
+            label="Lead follow up"
+            description="Set reminder"
+            tone="amber"
+            onClick={onScheduleFollowUp}
           />
         ) : null}
 
@@ -112,16 +122,6 @@ export default function LeadContactActions({
             description="Build a package"
             tone="violet"
             onClick={onCreateQuote}
-          />
-        ) : null}
-
-        {onScheduleFollowUp ? (
-          <ActionTile
-            icon={CalendarPlus}
-            label="Lead follow up"
-            description="Set a reminder"
-            tone="amber"
-            onClick={onScheduleFollowUp}
           />
         ) : null}
 
@@ -136,7 +136,7 @@ export default function LeadContactActions({
               </span>
               <span className="min-w-0">
                 <span className="block text-sm font-bold leading-tight text-slate-800">More Actions</span>
-                <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">View all actions</span>
+                <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">View all options</span>
               </span>
             </button>
           </DropdownMenuTrigger>
