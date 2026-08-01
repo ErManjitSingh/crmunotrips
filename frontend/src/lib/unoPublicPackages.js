@@ -54,14 +54,99 @@ export function matchesDestination(pkg = {}, destination = '') {
 }
 
 /**
- * Partial / keyword match on package name (and related fields).
- * Every whitespace-separated token must appear somewhere in the package text.
+ * Parse day/night hints from search text.
+ * Supports: 3, 3d, 3D, 3 day(s), 2n, 2 night(s), 3d2n, 3D/2N, 3 days 2 nights, Hindi दिन/रात.
+ */
+function parsePackageDurationHints(search = '') {
+  let remaining = String(search || '').toLowerCase().trim();
+  if (!remaining) {
+    return { days: null, nights: null, flexibleNumber: false, textTokens: [] };
+  }
+
+  let days = null;
+  let nights = null;
+  let flexibleNumber = false;
+
+  const combo =
+    remaining.match(/(\d+)\s*[dD](?:ays?)?\s*[/\-–]?\s*(\d+)\s*[nN](?:ights?)?/) ||
+    remaining.match(/(\d+)\s*(?:days?|दिन)\s+(\d+)\s*(?:nights?|रात)/);
+  if (combo) {
+    days = Number(combo[1]);
+    nights = Number(combo[2]);
+    remaining = remaining.replace(combo[0], ' ');
+  } else {
+    const dayMatch =
+      remaining.match(/(\d+)\s*(?:days?|दिन)\b/) ||
+      remaining.match(/(\d+)\s*d\b/) ||
+      remaining.match(/\b(\d+)d\b/);
+    if (dayMatch) {
+      days = Number(dayMatch[1]);
+      remaining = remaining.replace(dayMatch[0], ' ');
+    }
+
+    const nightMatch =
+      remaining.match(/(\d+)\s*(?:nights?|रात)\b/) ||
+      remaining.match(/(\d+)\s*n\b/) ||
+      remaining.match(/\b(\d+)n\b/);
+    if (nightMatch) {
+      nights = Number(nightMatch[1]);
+      remaining = remaining.replace(nightMatch[0], ' ');
+    }
+  }
+
+  remaining = remaining.replace(/\s+/g, ' ').trim();
+  if (days == null && nights == null && /^\d{1,2}$/.test(remaining)) {
+    days = Number(remaining);
+    flexibleNumber = true;
+    remaining = '';
+  }
+
+  const textTokens = remaining.split(/\s+/).filter(Boolean);
+  return { days, nights, flexibleNumber, textTokens };
+}
+
+function packageDurationDays(pkg = {}) {
+  const n = Number(pkg.duration ?? pkg.durationDays ?? pkg.duration_days);
+  if (Number.isFinite(n) && n > 0) return n;
+  const label = String(pkg.durationLabel || pkg.duration_label || '');
+  const m = label.match(/(\d+)\s*D/i) || label.match(/(\d+)\s*days?/i);
+  return m ? Number(m[1]) : 0;
+}
+
+function packageDurationNights(pkg = {}) {
+  const n = Number(pkg.durationNights ?? pkg.duration_nights);
+  if (Number.isFinite(n) && n > 0) return n;
+  const label = String(pkg.durationLabel || pkg.duration_label || '');
+  const m = label.match(/(\d+)\s*N/i) || label.match(/(\d+)\s*nights?/i);
+  if (m) return Number(m[1]);
+  const days = packageDurationDays(pkg);
+  return days > 0 ? Math.max(0, days - 1) : 0;
+}
+
+/**
+ * Partial / keyword match on package name, destination, and duration (days/nights).
+ * Every text token must appear in package fields; duration hints must match package length.
  */
 export function matchesPackageNameSearch(pkg = {}, search = '') {
   const q = String(search || '').trim().toLowerCase();
   if (!q) return true;
-  const tokens = q.split(/\s+/).filter(Boolean);
-  if (!tokens.length) return true;
+
+  const { days, nights, flexibleNumber, textTokens } = parsePackageDurationHints(q);
+  const pkgDays = packageDurationDays(pkg);
+  const pkgNights = packageDurationNights(pkg);
+
+  if (flexibleNumber && days != null) {
+    if (pkgDays !== days && pkgNights !== days) return false;
+  } else {
+    if (days != null && pkgDays !== days) return false;
+    if (nights != null && pkgNights !== nights) return false;
+  }
+
+  if (!textTokens.length) {
+    // Pure duration search (e.g. "3", "3 days", "3d2n") — duration checks above are enough
+    if (days != null || nights != null) return true;
+    return true;
+  }
 
   const hayRaw = [
     pkg.name,
@@ -74,12 +159,15 @@ export function matchesPackageNameSearch(pkg = {}, search = '') {
     pkg.packageCode,
     pkg.slug,
     pkg.code,
+    pkg.durationLabel,
+    pkgDays ? `${pkgDays}d ${pkgDays} day ${pkgDays} days` : '',
+    pkgNights ? `${pkgNights}n ${pkgNights} night ${pkgNights} nights` : '',
   ]
     .map((x) => String(x || ''))
     .join(' ');
   const hay = hayRaw.toLowerCase();
   const hayNorm = normalize(hayRaw);
-  return tokens.every((token) => {
+  return textTokens.every((token) => {
     const t = token.toLowerCase();
     const tn = normalize(t);
     return hay.includes(t) || (tn && hayNorm.includes(tn));

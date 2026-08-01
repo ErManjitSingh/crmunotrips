@@ -1057,7 +1057,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                       setPackageSearch(e.target.value);
                       setPackagePage(0);
                     }}
-                    placeholder="Search by package name…"
+                    placeholder="Search by name or days (e.g. Goa, 3 days, 3D)…"
                     className="w-full rounded-xl border border-subtle bg-surface py-3 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-amber-500/30"
                   />
                 </div>
