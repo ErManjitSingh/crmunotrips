@@ -28,6 +28,7 @@ import { LEAD_FILTERS } from './executiveUtils';
 import LeadActionsMenu, { ActionModal } from './LeadActionsMenu';
 import LeadListAcceptButton from '../leads/LeadListAcceptButton';
 import { invalidateLeadLists } from '../../lib/queryInvalidation';
+import { LEAD_ACCEPT_MINUTES } from '../../constants/salesSop';
 import VirtualizedRoleTable from '../ui/VirtualizedRoleTable';
 import AddFollowUpModal from '../followups/AddFollowUpModal';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/followupApi';
@@ -313,7 +314,7 @@ export default function MyLeadsPage() {
                   : `${returnedLeads.length} leads were returned to the pool`}
             </p>
             <p className="mt-0.5 text-xs font-medium opacity-90">
-              These leads went back to the unassigned pool because they were not accepted within 2 minutes. Phone is shown as{' '}
+              These leads went back to the unassigned pool because they were not accepted within {LEAD_ACCEPT_MINUTES} minutes. Phone is shown as{' '}
               <span className="font-bold tracking-widest">XXXX</span>.
             </p>
           </div>

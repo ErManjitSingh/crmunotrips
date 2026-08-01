@@ -1,6 +1,6 @@
 /** UNO Trips Sales SOP — Phase 1 constants */
 
-const LEAD_ACCEPT_MINUTES = 2;
+const LEAD_ACCEPT_MINUTES = 30;
 
 const FIRST_CONTACT_SLA = {
   hotMinutes: 5,

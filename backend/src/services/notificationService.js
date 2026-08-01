@@ -4,6 +4,7 @@ const { NOTIFICATIONS_ENABLED } = require('../config/notifications');
 const { getIO } = require('../config/socket');
 const { formatNotification } = require('../utils/queryHelpers');
 const { NOTIFICATION_TYPES: T } = require('../constants/notificationTypes');
+const { LEAD_ACCEPT_MINUTES } = require('../constants/salesSop');
 
 async function emitUnreadCount(userId) {
   const io = getIO();
@@ -521,7 +522,7 @@ async function notifyLeadAcceptMissed({ lead, executiveId, executiveName }) {
     branchId: lead?.branchId || null,
     type: T.LEAD_ACCEPT_MISSED,
     title: 'Lead returned to pool',
-    message: `"${name}" was not accepted within 2 minutes — the lead was returned to the unassigned pool`,
+    message: `"${name}" was not accepted within ${LEAD_ACCEPT_MINUTES} minutes — the lead was returned to the unassigned pool`,
     meta: {
       leadId: lead?._id,
       href: '/sales-executive/leads/all',

@@ -11,4 +11,4 @@ export const LOST_REASONS = [
   { value: 'duplicate_lead', label: 'Duplicate Lead' },
 ];
 
-export const LEAD_ACCEPT_MINUTES = 2;
+export const LEAD_ACCEPT_MINUTES = 30;

@@ -139,7 +139,7 @@ const leadSchema = new mongoose.Schema(
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     assignedAt: { type: Date, index: true },
     executiveLastViewedAt: { type: Date },
-    /** SOP: accept within 2 minutes or return to unassigned pool */
+    /** SOP: accept within LEAD_ACCEPT_MINUTES or return to unassigned pool */
     assignmentAcceptance: {
       type: String,
       enum: ['pending', 'accepted', 'expired', 'not_required'],

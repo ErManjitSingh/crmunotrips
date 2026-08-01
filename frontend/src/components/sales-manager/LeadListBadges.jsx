@@ -5,6 +5,7 @@ import Avatar from '../ui/Avatar';
 import { STATUS_STYLES, formatBudget } from './managerUtils';
 import RepeatedLeadBadge from '../leads/RepeatedLeadBadge';
 import LeadCallStats from '../leads/LeadCallStats';
+import { LEAD_ACCEPT_MINUTES } from '../../constants/salesSop';
 
 const SOURCE_STYLES = {
   website: 'bg-gradient-to-r from-sky-500/20 to-blue-500/15 text-sky-700 dark:text-sky-300 ring-sky-400/40',
@@ -179,8 +180,8 @@ export function CustomerCell({ name, lead, showPhone = false }) {
               className="shrink-0 px-1.5 py-0.5 rounded-md bg-amber-100 text-[10px] font-bold text-amber-800"
               title={
                 lead.acceptanceMissedName
-                  ? `${lead.acceptanceMissedName} did not accept within 2 minutes`
-                  : 'Lead was not accepted within 2 minutes'
+                  ? `${lead.acceptanceMissedName} did not accept within ${LEAD_ACCEPT_MINUTES} minutes`
+                  : `Lead was not accepted within ${LEAD_ACCEPT_MINUTES} minutes`
               }
             >
               Not accepted
