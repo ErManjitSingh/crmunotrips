@@ -62,6 +62,7 @@ function resolveStateForDestination(destinationText, byKey) {
     if (key && byKey.has(key)) return byKey.get(key);
   }
 
+  // Longest-key-first so "himachalpradesh" wins over shorter fragments
   const keys = [...byKey.keys()].sort((a, b) => b.length - a.length);
   for (const key of keys) {
     if (key.length >= 3 && fullKey.includes(key)) return byKey.get(key);
@@ -70,9 +71,16 @@ function resolveStateForDestination(destinationText, byKey) {
   return null;
 }
 
+function blankMetrics(metricFields) {
+  const row = {};
+  for (const field of metricFields) row[field] = 0;
+  return row;
+}
+
 /**
- * Add city-row metrics onto their parent state row (create state row if missing).
- * City rows stay as-is; state totals become own + child cities.
+ * Collapse free-text destination rows into known parent states.
+ * e.g. "kerala june", "uno 5N6D Kerala Package" → single "Kerala" row.
+ * Unmapped junk (e.g. "gj test") groups under Other by default.
  */
 async function rollupCityStatsIntoStates(rows = [], options = {}) {
   const {
@@ -81,6 +89,8 @@ async function rollupCityStatsIntoStates(rows = [], options = {}) {
     rateConfig = null, // { field, numerator, denominator }
     sortField = null,
     limit = null,
+    collapseChildren = true,
+    groupUnknownAs = 'Other',
   } = options;
 
   if (!Array.isArray(rows) || !rows.length) return rows;
@@ -93,8 +103,17 @@ async function rollupCityStatsIntoStates(rows = [], options = {}) {
     const name = String(row?.[nameField] || '').trim();
     if (!name) continue;
     const key = normalizeDestinationKey(name) || name.toLowerCase();
-    working.set(key, { ...row, [nameField]: name });
+    const existing = working.get(key);
+    if (!existing) {
+      working.set(key, { ...row, [nameField]: name });
+      continue;
+    }
+    for (const field of metricFields) {
+      existing[field] = (Number(existing[field]) || 0) + (Number(row[field]) || 0);
+    }
   }
+
+  const childKeysToRemove = [];
 
   for (const row of [...working.values()]) {
     const name = row[nameField];
@@ -102,19 +121,57 @@ async function rollupCityStatsIntoStates(rows = [], options = {}) {
     if (!parent) continue;
 
     const rowKey = normalizeDestinationKey(name);
-    if (rowKey === parent.key) continue; // already the state row
+    if (rowKey === parent.key) {
+      row[nameField] = parent.name;
+      working.set(parent.key, row);
+      continue;
+    }
 
     let stateRow = working.get(parent.key);
     if (!stateRow) {
-      stateRow = { [nameField]: parent.name };
-      for (const field of metricFields) {
-        stateRow[field] = 0;
-      }
+      stateRow = { [nameField]: parent.name, ...blankMetrics(metricFields) };
       working.set(parent.key, stateRow);
+    } else {
+      stateRow[nameField] = parent.name;
     }
 
     for (const field of metricFields) {
       stateRow[field] = (Number(stateRow[field]) || 0) + (Number(row[field]) || 0);
+    }
+
+    if (collapseChildren && rowKey) childKeysToRemove.push(rowKey);
+  }
+
+  for (const key of childKeysToRemove) {
+    working.delete(key);
+  }
+
+  if (groupUnknownAs) {
+    const otherLabel = String(groupUnknownAs).trim() || 'Other';
+    const otherKey = normalizeDestinationKey(otherLabel) || 'other';
+    let otherRow = null;
+    const unknownKeys = [];
+
+    for (const [key, row] of working.entries()) {
+      if (key === otherKey) continue;
+      if (resolveStateForDestination(row[nameField], byKey)) continue;
+      unknownKeys.push(key);
+      if (!otherRow) {
+        otherRow = working.get(otherKey) || {
+          [nameField]: otherLabel,
+          ...blankMetrics(metricFields),
+        };
+        otherRow[nameField] = otherLabel;
+      }
+      for (const field of metricFields) {
+        otherRow[field] = (Number(otherRow[field]) || 0) + (Number(row[field]) || 0);
+      }
+    }
+
+    for (const key of unknownKeys) working.delete(key);
+    if (otherRow) {
+      const hasAny = metricFields.some((f) => Number(otherRow[f]) > 0);
+      if (hasAny) working.set(otherKey, otherRow);
     }
   }
 
