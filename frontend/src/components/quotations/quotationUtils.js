@@ -11,6 +11,7 @@ export function calculatePricing({
   discount = 0,
   gstEnabled = false,
   markupPercent = 0,
+  adminMarginPercent = 0,
 } = {}) {
   const costs =
     Number(baseCost || 0) +
@@ -19,17 +20,23 @@ export function calculatePricing({
     Number(flightCost || 0) +
     Number(activityCost || 0);
 
-  const pct = Number(markupPercent) || 0;
-  const computedMarkup =
-    pct > 0
-      ? Math.round(costs * (pct / 100) * 100) / 100
+  // Hidden admin destination margin — applied on cost total first
+  const adminPct = Math.max(0, Number(adminMarginPercent) || 0);
+  const adminMarkup =
+    adminPct > 0 ? Math.round(costs * (adminPct / 100) * 100) / 100 : 0;
+  const afterAdmin = costs + adminMarkup;
+
+  // Executive margin — optional, on top of admin-adjusted total
+  const execPct = Math.max(0, Number(markupPercent) || 0);
+  const execMarkup =
+    execPct > 0
+      ? Math.round(afterAdmin * (execPct / 100) * 100) / 100
       : Math.max(0, Number(markup) || 0);
 
+  const computedMarkup = adminMarkup + execMarkup;
   const disc = Math.max(0, Number(discount) || 0);
-  const packageBeforeDisc = costs + computedMarkup;
-  // Package cost before GST: costs + markup − discount
+  const packageBeforeDisc = afterAdmin + execMarkup;
   const packageCost = Math.max(0, packageBeforeDisc - disc);
-  // GST last — on full package cost (after discount)
   const computedTaxes = gstEnabled
     ? Math.round(packageCost * 0.05 * 100) / 100
     : 0;
@@ -48,6 +55,8 @@ export function calculatePricing({
     profitMargin,
     taxes: computedTaxes,
     markup: computedMarkup,
+    adminMarkup,
+    execMarkup,
     packageCost,
     packageBeforeDisc,
     youSave,
@@ -67,7 +76,8 @@ export function foldPackageResidualIntoHotel(pricing = {}) {
 }
 
 /**
- * Customer-facing costing rows: Hotel + Cab + Activities + Margin + Discount + GST.
+ * Customer-facing costing rows: Hotel + Cab + Activities + Your margin + Discount + GST.
+ * Admin destination margin is applied in calculatePricing but not shown here.
  */
 export function getDisplayedCostBreakdown(pricing = {}) {
   const calc = calculatePricing(pricing);
@@ -79,7 +89,7 @@ export function getDisplayedCostBreakdown(pricing = {}) {
     hotelCost,
     transportCost,
     activityCost,
-    markup: calc.markup,
+    markup: calc.execMarkup,
     taxes: calc.taxes,
     discount: Math.max(0, Number(pricing.discount || 0)),
     youSave: calc.youSave,
@@ -96,22 +106,12 @@ export function formatINR(n, { zeroLabel } = {}) {
   return `₹${value.toLocaleString('en-IN')}`;
 }
 
-/** Discount as % of package before discount (costs + markup). */
+/** Discount as % of package before discount (costs + admin + exec margins). */
 export function getDiscountPercent(pricing = {}) {
   const discount = Math.max(0, Number(pricing.discount) || 0);
   if (discount <= 0) return 0;
-  const costs =
-    Number(pricing.baseCost || 0) +
-    Number(pricing.hotelCost || 0) +
-    Number(pricing.cabCost || 0) +
-    Number(pricing.flightCost || 0) +
-    Number(pricing.activityCost || 0);
-  const pct = Number(pricing.markupPercent) || 0;
-  const markup =
-    pct > 0
-      ? Math.round(costs * (pct / 100) * 100) / 100
-      : Math.max(0, Number(pricing.markup) || 0);
-  const packageBeforeDisc = costs + markup;
+  const calc = calculatePricing(pricing);
+  const packageBeforeDisc = Number(calc.packageBeforeDisc) || 0;
   if (packageBeforeDisc <= 0) return 0;
   return Math.round((discount / packageBeforeDisc) * 1000) / 10;
 }
@@ -163,6 +163,7 @@ export const defaultPricing = {
   gstEnabled: false,
   markup: 0,
   markupPercent: 0,
+  adminMarginPercent: 0,
   discount: 0,
   total: 0,
   profitMargin: 0,

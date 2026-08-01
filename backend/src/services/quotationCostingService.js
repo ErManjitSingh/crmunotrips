@@ -103,6 +103,7 @@ function calculateQuotationPricing({
 
   const markupInput = toNumber(pricingInput.markup);
   const markupPercent = toNumber(pricingInput.markupPercent);
+  const adminMarginPercent = toNumber(pricingInput.adminMarginPercent);
   const discount = toNumber(pricingInput.discount);
   const gstEnabled = Boolean(pricingInput.gstEnabled);
 
@@ -113,12 +114,18 @@ function calculateQuotationPricing({
     categoryTotals.flightCost +
     categoryTotals.activityCost;
 
-  // Markup on costs, then discount, GST last on full package cost
-  const markup =
+  // Hidden admin margin on costs, then optional executive margin on top
+  const adminMarkup =
+    adminMarginPercent > 0
+      ? Math.round(costs * (adminMarginPercent / 100) * 100) / 100
+      : 0;
+  const afterAdmin = costs + adminMarkup;
+  const execMarkup =
     markupPercent > 0
-      ? Math.round(costs * (markupPercent / 100) * 100) / 100
+      ? Math.round(afterAdmin * (markupPercent / 100) * 100) / 100
       : markupInput;
-  const packageCost = Math.max(0, costs + markup - discount);
+  const markup = adminMarkup + execMarkup;
+  const packageCost = Math.max(0, afterAdmin + execMarkup - discount);
   const taxes = gstEnabled ? Math.round(packageCost * 0.05 * 100) / 100 : 0;
   const total = Math.max(0, packageCost + taxes);
   const profitAmount = markup - discount;
@@ -135,6 +142,7 @@ function calculateQuotationPricing({
       gstEnabled,
       markup,
       markupPercent,
+      adminMarginPercent,
       discount,
       total,
       profitMargin,
@@ -149,6 +157,7 @@ function calculateQuotationPricing({
       gstEnabled,
       markup,
       markupPercent,
+      adminMarginPercent,
       discount,
       grandTotal: total,
       profitMargin,

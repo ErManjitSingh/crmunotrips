@@ -516,7 +516,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       const packageStart = Number(
         normalized.baseStartingPrice ?? normalized.startingPrice ?? 0
       );
-      const marginPct = Number(normalized.destinationMarginPercent || 0) || 0;
+      const adminMarginPct = Number(normalized.destinationMarginPercent || 0) || 0;
       const unit = resolvePackageHotelPricing(packageStart, seededHotels);
       const transport = resolvePackageCabPricing(unit.baseCost, defaultCab, packageCabs);
       const party = applyPartyCosting({
@@ -539,7 +539,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         cabCost: party.cabCost,
         flightCost: 0,
         activityCost: 0,
-        markupPercent: marginPct > 0 ? marginPct : Number(s.pricing.markupPercent || 0) || 0,
+        // Admin margin hidden + auto; SE markup starts at 0 (they can add their own)
+        adminMarginPercent: adminMarginPct,
+        markupPercent: Number(s.pricing.markupPercent || 0) || 0,
         party: {
           adults: party.adults,
           children: party.children,
@@ -606,7 +608,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   };
 
   useEffect(() => {
-    // Unmargined package base — admin margin applied via markupPercent after summing costs
+    // Unmargined package base; admin margin stays in adminMarginPercent (hidden)
     const packageAnchor = Number(
       selectedPkgDetail?.baseStartingPrice ?? selectedPkgDetail?.startingPrice ?? 0
     );
@@ -615,6 +617,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     const transport = resolvePackageCabPricing(unit.baseCost, selectedUnoCab, packageCabs);
     const flightCost = flights.filter((f) => state.selectedFlightIds.includes(f._id)).reduce((s, f) => s + (f.cost || 0), 0);
     const activityCost = activities.filter((a) => state.selectedActivityIds.includes(a._id)).reduce((s, a) => s + (a.price || 0), 0);
+    const adminMarginPct = Number(
+      selectedPkgDetail?.destinationMarginPercent ?? state.pricing.adminMarginPercent ?? 0
+    ) || 0;
     const party = applyPartyCosting({
       unitBaseCost: transport.baseCost,
       unitHotelCost: unit.hotelCost,
@@ -637,6 +642,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       cabCost: party.cabCost,
       flightCost: party.flightCost,
       activityCost: party.activityCost,
+      adminMarginPercent: adminMarginPct,
     });
     const calc = calculatePricing(folded);
     setState((s) => ({
@@ -644,6 +650,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       pricing: {
         ...s.pricing,
         ...folded,
+        adminMarginPercent: adminMarginPct,
         taxes: calc.taxes,
         markup: calc.markup,
         total: calc.total,
@@ -673,6 +680,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     state.pricing.discount,
     state.pricing.gstEnabled,
     state.pricing.markupPercent,
+    state.pricing.adminMarginPercent,
     dayWiseHotels,
   ]);
 

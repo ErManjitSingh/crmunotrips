@@ -148,7 +148,7 @@ export default function PackageBuilderPriceSidebar({
           })}
 
           <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
-            <span className="text-[11px] font-semibold text-slate-600">Subtotal (before margin)</span>
+            <span className="text-[11px] font-semibold text-slate-600">Subtotal</span>
             <span className="text-sm font-bold metric-tabular text-slate-800">
               {formatINR(breakdown.costsBeforeMargin || 0)}
             </span>
@@ -157,8 +157,8 @@ export default function PackageBuilderPriceSidebar({
           <div className="rounded-lg border border-green-100 bg-green-50/70 px-2 py-2 space-y-1.5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <span className="text-xs font-semibold text-green-800">Margin %</span>
-                <p className="text-[10px] text-green-700/70">Admin destination margin</p>
+                <span className="text-xs font-semibold text-green-800">Your margin %</span>
+                <p className="text-[10px] text-green-700/70">Optional — add your own margin</p>
               </div>
               <input
                 type="number"
@@ -171,7 +171,7 @@ export default function PackageBuilderPriceSidebar({
               />
             </div>
             <div className="flex items-center justify-between gap-3 px-0.5">
-              <span className="text-[10px] font-medium text-green-700/80">Margin amount</span>
+              <span className="text-[10px] font-medium text-green-700/80">Your margin amount</span>
               <span className={cn(
                 'text-sm font-semibold metric-tabular',
                 Number(breakdown.markup) === 0 ? 'text-slate-400' : 'text-green-800'

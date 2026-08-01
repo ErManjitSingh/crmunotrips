@@ -50,7 +50,7 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false,
         ))}
 
         <div className="p-3 rounded-xl border border-green-400/30 bg-green-500/5">
-          <label className="text-[10px] uppercase font-semibold text-content-muted">Margin %</label>
+          <label className="text-[10px] uppercase font-semibold text-content-muted">Your margin %</label>
           {readOnly ? (
             <p className="text-lg font-bold text-content-primary metric-tabular mt-1">
               {Number(pricing?.markupPercent || 0)}%

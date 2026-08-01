@@ -146,6 +146,11 @@ export function hydrateWizardFromQuote(quote) {
     pricing: {
       ...(quote.pricing || {}),
       markupPercent: Number(quote.pricing?.markupPercent ?? quote.costing1?.markupPercent ?? 0) || 0,
+      adminMarginPercent: Number(
+        quote.pricing?.adminMarginPercent ??
+          pkg.destinationMarginPercent ??
+          0
+      ) || 0,
       gstEnabled: Boolean(quote.pricing?.gstEnabled),
     },
     quoteNumber: quote.quoteNumber || '',
