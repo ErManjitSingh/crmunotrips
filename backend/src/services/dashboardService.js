@@ -715,9 +715,13 @@ async function buildAdminDashboard(options = {}) {
   const conversionRateTrend = monthBuckets.map((b) => {
     const leads = leadMap[b.key] || 0;
     const converted = convertedMap[b.key] || 0;
+    const connected = connectedMap[b.key] || 0;
     return {
       label: b.label,
       month: b.label,
+      leads,
+      connected,
+      converted,
       rate: leads ? Math.round((converted / leads) * 1000) / 10 : 0,
     };
   });
