@@ -14,7 +14,7 @@ const statusStyles = {
 
 const labels = {
   new: 'New',
-  contacted: 'Contacted',
+  contacted: 'Connected',
   working_progress: 'Working Progress',
   qualified: 'Qualified',
   proposal: 'Proposal',

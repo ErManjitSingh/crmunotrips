@@ -7,6 +7,7 @@ import Avatar from '../ui/Avatar';
 import { STATUS_STYLES, formatBudget } from './managerUtils';
 import RepeatedLeadBadge from '../leads/RepeatedLeadBadge';
 import LeadCallStats from '../leads/LeadCallStats';
+import { getLeadStatusLabel } from '../../lib/leadStatusLabel';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from '../../context/ToastContext';
 import { openCrmWhatsApp } from '../../lib/openCrmWhatsApp';
@@ -148,7 +149,7 @@ export function ManagerStatusBadge({ status, lead }) {
   const isActiveReactivated =
     lead?.reactivation?.isReactivated &&
     ['follow_up', 'working_progress', 'contacted', 'negotiation', 'quotation_sent'].includes(status);
-  const label = isActiveReactivated ? 'active' : (status?.replace(/_/g, ' ') || 'new');
+  const label = isActiveReactivated ? 'active' : getLeadStatusLabel(status || 'new');
   return (
     <span className={cn(
       'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide ring-1 ring-inset capitalize whitespace-nowrap',

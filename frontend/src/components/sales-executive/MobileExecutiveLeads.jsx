@@ -130,6 +130,7 @@ function avatarTone(name = '') {
 
 function titleCaseStatus(status) {
   if (status === 'new') return 'New Lead';
+  if (status === 'contacted') return 'Connected';
   if (status === 'follow_up') return 'Follow-up';
   return String(status || 'New')
     .replaceAll('_', ' ')

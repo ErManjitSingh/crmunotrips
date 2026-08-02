@@ -38,7 +38,7 @@ const FALLBACK_UPDATES = [
 
 const DEFAULT_STATUS = [
   { stage: 'New', count: 0, color: '#0EA5E9' },
-  { stage: 'Contacted', count: 0, color: '#8B5CF6' },
+  { stage: 'Connected', count: 0, color: '#8B5CF6' },
   { stage: 'Follow-up', count: 0, color: '#F59E0B' },
   { stage: 'Quotation', count: 0, color: '#6366F1' },
   { stage: 'Converted', count: 0, color: '#10B981' },

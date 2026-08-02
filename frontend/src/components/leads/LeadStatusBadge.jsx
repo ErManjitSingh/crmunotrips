@@ -2,7 +2,7 @@ import { cn } from '../../lib/utils';
 
 const config = {
   new: { label: 'New Lead', class: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-blue-500/25', dot: 'bg-blue-500' },
-  contacted: { label: 'Contacted', class: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 ring-indigo-500/25', dot: 'bg-indigo-500' },
+  contacted: { label: 'Connected', class: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 ring-indigo-500/25', dot: 'bg-indigo-500' },
   working_progress: { label: 'Working Progress', class: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 ring-cyan-500/25', dot: 'bg-cyan-500' },
   follow_up: { label: 'Follow Up', class: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 ring-violet-500/25', dot: 'bg-violet-500' },
   quotation_sent: { label: 'Quotation Sent', class: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-500/25', dot: 'bg-amber-500' },

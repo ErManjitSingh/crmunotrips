@@ -1,6 +1,6 @@
 const STATUS_LABELS = {
   new: 'New Lead',
-  contacted: 'Contacted',
+  contacted: 'Connected',
   working_progress: 'Working Progress',
   follow_up: 'Follow Up',
   quotation_sent: 'Quotation Sent',

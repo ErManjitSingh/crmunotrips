@@ -248,6 +248,15 @@ const addCallNote = asyncHandler(async (req, res) => {
     recent: prevRecent.slice(-12),
   };
 
+  // Call picked / answered → move New leads into Connected (status: contacted)
+  const outcomeKey = String(outcome || '');
+  const notConnectedOutcomes = new Set(['no_answer']);
+  const callConnected = !notConnectedOutcomes.has(outcomeKey);
+  const prevStatus = lead.status;
+  if (callConnected && lead.status === 'new') {
+    lead.status = 'contacted';
+  }
+
   await applyLeadMetrics(lead);
   await lead.save();
 
@@ -256,13 +265,19 @@ const addCallNote = asyncHandler(async (req, res) => {
     try {
       const { createFollowUpForLead } = require('../services/followUpService');
       const scheduledAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+      const followCategory = !callConnected
+        ? 'call_not_picked'
+        : outcomeKey === 'interested' || outcomeKey === 'discussed_package'
+          ? 'warm'
+          : 'call_picked';
       nextFollowUp = await createFollowUpForLead({
         body: {
           lead: lead._id,
           type: 'call',
-          category: outcome === 'interested' || outcome === 'discussed_package' ? 'warm' : 'cold',
+          category: followCategory,
+          notPickedReason: !callConnected ? 'not_answering' : undefined,
           scheduledAt: scheduledAt.toISOString(),
-          notes: `Auto next call (2 hrs) after call — ${String(outcome).replace(/_/g, ' ')}${noteText ? `: ${noteText.slice(0, 80)}` : ''}`,
+          notes: `Auto next call (2 hrs) after call — ${outcomeKey.replace(/_/g, ' ')}${noteText ? `: ${noteText.slice(0, 80)}` : ''}`,
           priority: lead.priority || 'medium',
         },
         user: req.user,
@@ -278,7 +293,14 @@ const addCallNote = asyncHandler(async (req, res) => {
     type: 'call_note_added',
     description: `Call (${seconds}s): ${outcome.replace(/_/g, ' ')}${noteText ? ` — ${noteText.slice(0, 100)}` : ''}`,
     actor: req.user,
-    meta: { callNoteId: callNote._id, outcome, durationSeconds: seconds },
+    meta: {
+      callNoteId: callNote._id,
+      outcome,
+      durationSeconds: seconds,
+      statusFrom: prevStatus,
+      statusTo: lead.status,
+      callConnected,
+    },
   });
   await logAudit({
     entityType: 'lead',
@@ -287,7 +309,7 @@ const addCallNote = asyncHandler(async (req, res) => {
     action: 'lead.call_note_added',
     actor: req.user,
     ip: getClientIp(req),
-    meta: { outcome, durationSeconds: seconds },
+    meta: { outcome, durationSeconds: seconds, status: lead.status, callConnected },
   });
 
   const populated = await CallNote.findById(callNote._id).populate('userId', 'name role').lean();
@@ -295,6 +317,8 @@ const addCallNote = asyncHandler(async (req, res) => {
     ...populated,
     nextFollowUp,
     callStats: lead.callStats,
+    status: lead.status,
+    callConnected,
   });
 });
 

@@ -831,6 +831,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
 
   const [
     myLeads,
+    connectedLeads,
     hotLeads,
     convertedCount,
     todayFollowupCount,
@@ -858,6 +859,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
     destinationWise,
   ] = await Promise.all([
     Lead.countDocuments({ ...leadScope, status: { $nin: ['lost', 'booked_from_another_company'] } }),
+    Lead.countDocuments({ ...leadScope, status: 'contacted' }),
     Lead.countDocuments({ ...leadScope, isHot: true, status: { $nin: ['converted', 'lost', 'booked_from_another_company'] } }),
     Lead.countDocuments({ ...leadScope, status: 'converted' }),
     FollowUp.countDocuments({
@@ -1006,7 +1008,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
 
   const pipelineOverview = [
     { name: 'New Leads', value: statusCounts.new || 0, color: '#3B82F6' },
-    { name: 'Contacted', value: statusCounts.contacted || 0, color: '#8B5CF6' },
+    { name: 'Connected', value: statusCounts.contacted || 0, color: '#8B5CF6' },
     {
       name: 'Follow-up',
       value: (statusCounts.follow_up || 0) + (statusCounts.negotiation || 0),
@@ -1046,6 +1048,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
     emailStats,
     kpis: {
       myLeads,
+      connectedLeads,
       todayFollowups: todayFollowupCount,
       hotLeads,
       quotationsSent: quotesSentCount,
@@ -1055,6 +1058,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
     },
     kpiTrends: {
       myLeads: { change: pctChange(myLeads, lastMonthLeads), period: 'from last month' },
+      connectedLeads: { change: 0, period: 'live' },
       todayFollowups: { change: pctChange(todayFollowups.length, yesterdayFollowups), period: 'from yesterday' },
       hotLeads: { change: pctChange(hotLeads, yesterdayHotLeads), period: 'from yesterday' },
       quotationsSent: { change: pctChange(quotesSentCount, lastMonthQuotes), period: 'from last month' },

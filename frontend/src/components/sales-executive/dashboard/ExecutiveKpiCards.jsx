@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, CalendarClock, Flame, FileText, IndianRupee, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Users, Phone, CalendarClock, Flame, FileText, IndianRupee, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { formatCurrency } from '../executiveUtils';
 
 const cards = [
-  { key: 'myLeads', label: 'My Leads', icon: Users, iconBg: 'bg-violet-100 text-violet-600', path: '/sales-executive/leads/all' },
+  { key: 'myLeads', label: 'Total Leads', icon: Users, iconBg: 'bg-violet-100 text-violet-600', path: '/sales-executive/leads/all' },
+  { key: 'connectedLeads', label: 'Connected Leads', icon: Phone, iconBg: 'bg-emerald-100 text-emerald-600', path: '/sales-executive/leads/contacted' },
   { key: 'todayFollowups', label: "Today's Follow-ups", icon: CalendarClock, iconBg: 'bg-blue-100 text-blue-600', path: '/sales-executive/follow-ups' },
   { key: 'hotLeads', label: 'Hot Leads', icon: Flame, iconBg: 'bg-orange-100 text-orange-600', path: '/sales-executive/leads/hot' },
-  { key: 'quotationsSent', label: 'Quotations Sent', icon: FileText, iconBg: 'bg-emerald-100 text-emerald-600', path: '/sales-executive/quotations' },
+  { key: 'quotationsSent', label: 'Quotations Sent', icon: FileText, iconBg: 'bg-emerald-100 text-emerald-700', path: '/sales-executive/quotations' },
   { key: 'monthlyRevenue', label: 'Monthly Revenue', icon: IndianRupee, iconBg: 'bg-rose-100 text-rose-600', format: formatCurrency },
 ];
 
@@ -35,7 +36,7 @@ export default function ExecutiveKpiCards({ kpis, trends }) {
   if (!kpis) return null;
 
   return (
-    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-5">
+    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
       {cards.map(({ key, label, icon: Icon, iconBg, format, path }, i) => {
         const value = kpis[key];
         const Wrapper = path ? Link : 'div';

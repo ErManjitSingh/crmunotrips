@@ -61,18 +61,21 @@ async function applyCategoryToLead(lead, category, status) {
     if (['new', 'contacted', 'follow_up'].includes(lead.status)) {
       lead.status = 'negotiation';
     }
-  } else if (category === 'warm' || category === 'call_picked') {
+  } else if (category === 'warm') {
     if (lead.status === 'new') {
       lead.status = 'follow_up';
+    }
+  } else if (category === 'call_picked') {
+    // Call answered → Connected leads bucket (status: contacted)
+    if (lead.status === 'new') {
+      lead.status = 'contacted';
     }
   } else if (category === 'dead_lead') {
     lead.status = 'lost';
     lead.temperature = 'cold';
     lead.isHot = false;
   } else if (category === 'call_not_picked') {
-    if (lead.status === 'new') {
-      lead.status = 'contacted';
-    }
+    // Tried calling but not answered — stay New (not Connected)
   }
 
   promoteReactivatedLeadOnFollowUp(lead, lead.assignedTo);

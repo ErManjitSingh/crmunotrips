@@ -8,7 +8,7 @@ export const LEAD_FILTERS = {
     icon: 'Undo2',
   },
   new: { title: 'Today Lead', desc: 'Fresh inquiries assigned to you — act fast', icon: 'Sparkles' },
-  contacted: { title: 'Contacted Leads', desc: 'Leads you have reached out to', icon: 'Phone' },
+  contacted: { title: 'Connected Leads', desc: 'Leads where the call was picked / connected', icon: 'Phone' },
   'follow-up': { title: 'Follow-up Leads', desc: 'Active pipeline requiring nurturing', icon: 'CalendarClock' },
   hot: { title: 'Hot Leads', desc: 'High budget, urgent travel, or repeat customers', icon: 'Flame' },
   converted: { title: 'Converted Leads', desc: 'Successfully closed bookings', icon: 'Trophy' },

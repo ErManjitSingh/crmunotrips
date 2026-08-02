@@ -14,6 +14,7 @@ import { beginLeadCall } from '../../lib/callSession';
 import Avatar from '../ui/Avatar';
 import { STATUS_STYLES, formatBudget } from '../sales-manager/managerUtils';
 import { CustomerCell } from '../sales-manager/LeadListBadges';
+import { getLeadStatusLabel } from '../../lib/leadStatusLabel';
 
 function formatCreatedAt(date) {
   if (!date) return null;
@@ -67,7 +68,7 @@ const STATUS_DOT = {
 
 export function ExecLeadIdCell({ lead }) {
   const status = lead?.status || 'new';
-  const label = status === 'new' ? 'New' : status.replace(/_/g, ' ');
+  const label = status === 'new' ? 'New' : getLeadStatusLabel(status);
   const created = formatCreatedAt(lead?.createdAt || lead?.assignedAt);
 
   return (
@@ -258,7 +259,7 @@ export function ExecStatusCell({ lead }) {
   const isActiveReactivated =
     lead?.reactivation?.isReactivated &&
     ['follow_up', 'working_progress', 'contacted', 'negotiation', 'quotation_sent'].includes(status);
-  const label = isActiveReactivated ? 'Active' : status.replace(/_/g, ' ');
+  const label = isActiveReactivated ? 'Active' : getLeadStatusLabel(status);
   const styleKey = isActiveReactivated ? 'active' : status;
 
   return (

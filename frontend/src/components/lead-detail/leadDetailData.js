@@ -13,7 +13,7 @@ import { getLeadStatusLabel } from '../../lib/leadStatusLabel';
 
 export const PIPELINE_STAGES = [
   { value: 'new', label: 'New Lead', shortLabel: 'New Lead' },
-  { value: 'contacted', label: 'Contacted', shortLabel: 'Contacted' },
+  { value: 'contacted', label: 'Connected', shortLabel: 'Connected' },
   { value: 'working_progress', label: 'Working Progress', shortLabel: 'Working Progress' },
   { value: 'follow_up', label: 'Follow Up', shortLabel: 'Follow Up' },
   { value: 'quotation_sent', label: 'Quotation Sent', shortLabel: 'Quotation Sent' },

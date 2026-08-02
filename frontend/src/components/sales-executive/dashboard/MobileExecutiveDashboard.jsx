@@ -24,9 +24,9 @@ import RecentUpdatesRemindersRow from './RecentUpdatesRemindersRow';
 
 const KPI_CARDS = [
   { key: 'myLeads', label: 'Total Leads', icon: Users, tone: 'bg-blue-500', spark: '#7c3aed' },
-  { key: 'totalLeadValue', label: 'Total Value', icon: IndianRupee, tone: 'bg-emerald-500', spark: '#10b981', currency: true },
+  { key: 'connectedLeads', label: 'Connected', icon: Phone, tone: 'bg-emerald-500', spark: '#10b981' },
+  { key: 'totalLeadValue', label: 'Total Value', icon: IndianRupee, tone: 'bg-emerald-600', spark: '#059669', currency: true },
   { key: 'convertedLeads', label: 'Converted', icon: UserRoundCheck, tone: 'bg-orange-500', spark: '#f97316' },
-  { key: 'conversionRate', label: 'Conversion Rate', icon: TrendingUp, tone: 'bg-violet-500', spark: '#8b5cf6', suffix: '%' },
   { key: 'todayFollowups', label: 'Follow-ups', icon: Phone, tone: 'bg-blue-500', spark: '#3b82f6' },
   { key: 'monthlyRevenue', label: 'Revenue', icon: IndianRupee, tone: 'bg-rose-500', spark: '#f43f5e', currency: true },
 ];
@@ -186,7 +186,13 @@ export default function MobileExecutiveDashboard({
             return (
               <Link
                 key={card.key}
-                to={card.key === 'todayFollowups' ? '/sales-executive/follow-ups' : '/sales-executive/leads/all'}
+                to={
+                  card.key === 'todayFollowups'
+                    ? '/sales-executive/follow-ups'
+                    : card.key === 'connectedLeads'
+                      ? '/sales-executive/leads/contacted'
+                      : '/sales-executive/leads/all'
+                }
                 className="min-w-0 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm"
               >
                 <div className="flex items-start gap-1.5">

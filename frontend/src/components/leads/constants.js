@@ -1,6 +1,6 @@
 export const LEAD_STATUSES = [
   { value: 'new', label: 'New Lead' },
-  { value: 'contacted', label: 'Contacted' },
+  { value: 'contacted', label: 'Connected' },
   { value: 'working_progress', label: 'Working Progress' },
   { value: 'follow_up', label: 'Follow Up' },
   { value: 'quotation_sent', label: 'Quotation Sent' },
