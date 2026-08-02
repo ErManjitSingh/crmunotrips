@@ -461,7 +461,18 @@ async function buildAdminDashboard(options = {}) {
       $or: [{ status: 'missed' }, { status: 'pending', scheduledAt: { $lt: todayStart } }],
     }),
     Lead.aggregate([{ $match: activeLeadScope({}, branchId) }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
-    Lead.aggregate([{ $match: activeLeadScope({}, branchId) }, { $group: { _id: '$source', count: { $sum: 1 } } }]),
+    Lead.aggregate([
+      { $match: activeLeadScope({}, branchId) },
+      {
+        $group: {
+          _id: '$source',
+          count: { $sum: 1 },
+          connected: {
+            $sum: { $cond: [{ $eq: ['$status', 'contacted'] }, 1, 0] },
+          },
+        },
+      },
+    ]),
     Lead.aggregate([{ $match: activeLeadScope({}, branchId) }, { $group: { _id: null, total: { $sum: '$budget' } } }]),
     Payment.aggregate([
       { $match: withBranch({ status: { $in: ['paid', 'partial'] } }, branchId) },
@@ -517,7 +528,18 @@ async function buildAdminDashboard(options = {}) {
     Lead.aggregate([{ $match: prevLeadScope }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
     sumRevenueInRange(branchId, periodStart, periodEnd),
     sumRevenueInRange(branchId, prevStart, prevEnd),
-    Lead.aggregate([{ $match: isAllTime ? liveLeadScope : periodLeadScope }, { $group: { _id: '$source', count: { $sum: 1 } } }]),
+    Lead.aggregate([
+      { $match: isAllTime ? liveLeadScope : periodLeadScope },
+      {
+        $group: {
+          _id: '$source',
+          count: { $sum: 1 },
+          connected: {
+            $sum: { $cond: [{ $eq: ['$status', 'contacted'] }, 1, 0] },
+          },
+        },
+      },
+    ]),
     Lead.countDocuments(momLeadScope),
     Lead.aggregate([{ $match: momLeadScope }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
     sumRevenueInRange(branchId, momStart, momEnd),
@@ -731,7 +753,10 @@ async function buildAdminDashboard(options = {}) {
       name: formatSourceName(s._id),
       key: s._id || 'other',
       value: s.count,
+      connected: Number(s.connected || 0),
       pct: Math.round((s.count / periodSourceTotal) * 1000) / 10,
+      connectedPct:
+        s.count > 0 ? Math.round((Number(s.connected || 0) / s.count) * 1000) / 10 : 0,
       color: SOURCE_COLORS[i % SOURCE_COLORS.length],
     }))
     .sort((a, b) => b.value - a.value);
@@ -812,6 +837,7 @@ async function buildAdminDashboard(options = {}) {
   const sourceFilteredLeadSourceAnalytics = (periodSourceAgg.length ? periodSourceAgg : leadsBySource).map((s) => ({
     name: s._id || 'Unknown',
     value: s.count,
+    connected: Number(s.connected || 0),
     pct: (periodSourceAgg.length ? periodSourceTotal : totalLeads)
       ? Math.round((s.count / (periodSourceAgg.length ? periodSourceTotal : totalLeads || 1)) * 100)
       : 0,

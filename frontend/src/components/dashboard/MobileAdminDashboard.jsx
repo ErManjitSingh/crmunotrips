@@ -392,6 +392,7 @@ export default function MobileAdminDashboard({
                   <div key={source.key || source.name} className="flex items-center gap-1 text-[7px]">
                     <span className="h-1.5 w-1.5 rounded-full" style={{ background: source.color || sourceColors[index % sourceColors.length] }} />
                     <span className="min-w-0 flex-1 truncate text-slate-500">{source.name}</span>
+                    <span className="font-semibold text-amber-600">{Number(source.connected || 0)}</span>
                     <span className="font-bold text-slate-700">{source.pct ?? Math.round((source.value / sourceTotal) * 100)}%</span>
                   </div>
                 ))}
