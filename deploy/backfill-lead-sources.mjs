@@ -32,11 +32,11 @@ const MAP = {
   google_ads: { source: 'dpw', sourceLabel: 'DPW' },
   facebook_ads: { source: 'dpw2', sourceLabel: 'DPW2' },
   social: { source: 'dpw2', sourceLabel: 'DPW2' },
-  whatsapp: { source: 'dpw2_wa', sourceLabel: 'DPW2 WA' },
+  // Legacy enum only — do NOT remapped canonical dpw_wa (Google Ads WhatsApp)
+  whatsapp: { source: 'dpw_wa', sourceLabel: 'DPW WA' },
   phone: { source: 'call_lead', sourceLabel: 'Call Lead' },
   'walk-in': { source: 'call_lead', sourceLabel: 'Call Lead' },
   other: { source: 'organic', sourceLabel: 'Organic' },
-  dpw_wa: { source: 'dpw2_wa', sourceLabel: 'DPW2 WA' },
 };
 
 async function main() {
@@ -96,14 +96,6 @@ async function main() {
     );
     if (res.modifiedCount) console.log(`label ${source}: ${res.modifiedCount}`);
   }
-
-  // Mis-tagged WA while Facebook ads were running → DPW2 WA
-  const waFix = await Lead.updateMany(
-    { source: { $in: ['dpw_wa', 'whatsapp'] } },
-    { $set: { source: 'dpw2_wa', sourceLabel: 'DPW2 WA', leadSource: 'dpw2_wa' } }
-  );
-  console.log(`dpw_wa/whatsapp → dpw2_wa: ${waFix.modifiedCount}`);
-  total += waFix.modifiedCount;
 
   console.log('BACKFILL_LEAD_SOURCES_OK', { total });
   await mongoose.disconnect();

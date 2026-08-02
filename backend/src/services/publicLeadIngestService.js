@@ -139,8 +139,16 @@ function resolvePublicLeadSource(raw = {}) {
       ((/\bfacebook\b|\bmeta\b|\binstagram\b|\bfb\b/.test(hint) &&
         /\bwhatsapp\b|\bwa\b|\bctwa\b/.test(hint)));
 
-    // Explicit Google → DPW WA; Facebook/CTWA or default (current ads = FB) → DPW2 WA
-    if (isGoogleWa && !isFbWa) {
+    // Explicit Google → DPW WA; Meta CTWA → DPW2 WA; bare WhatsApp defaults to Google Ads WA (DPW WA)
+    if (isFbWa && !isGoogleWa) {
+      return {
+        source: 'dpw2_wa',
+        sourceLabel: 'DPW2 WA',
+        channel: 'whatsapp',
+      };
+    }
+
+    if (isGoogleWa) {
       return {
         source: 'dpw_wa',
         sourceLabel: 'DPW WA',
@@ -149,16 +157,15 @@ function resolvePublicLeadSource(raw = {}) {
     }
 
     const defaultWa =
-      String(process.env.WHATSAPP_DEFAULT_LEAD_SOURCE || 'dpw2_wa')
+      String(process.env.WHATSAPP_DEFAULT_LEAD_SOURCE || 'dpw_wa')
         .trim()
-        .toLowerCase() === 'dpw_wa'
-        ? 'dpw_wa'
-        : 'dpw2_wa';
+        .toLowerCase() === 'dpw2_wa'
+        ? 'dpw2_wa'
+        : 'dpw_wa';
 
-    const source = isFbWa ? 'dpw2_wa' : defaultWa;
     return {
-      source,
-      sourceLabel: source === 'dpw_wa' ? 'DPW WA' : 'DPW2 WA',
+      source: defaultWa,
+      sourceLabel: defaultWa === 'dpw_wa' ? 'DPW WA' : 'DPW2 WA',
       channel: 'whatsapp',
     };
   }

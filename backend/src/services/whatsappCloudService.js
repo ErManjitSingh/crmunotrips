@@ -21,8 +21,8 @@ function getConfig() {
       process.env.WHATSAPP_WABA_ID ||
       '',
     defaultDestination: process.env.WHATSAPP_DEFAULT_DESTINATION || 'Not specified',
-    /** Current ads = Facebook → dpw2_wa. Set WHATSAPP_DEFAULT_LEAD_SOURCE=dpw_wa when Google WA is primary. */
-    defaultLeadSource: process.env.WHATSAPP_DEFAULT_LEAD_SOURCE || 'dpw2_wa',
+    /** Google Ads WA is default when no Meta CTWA referral. Set WHATSAPP_DEFAULT_LEAD_SOURCE=dpw2_wa to prefer Meta. */
+    defaultLeadSource: process.env.WHATSAPP_DEFAULT_LEAD_SOURCE || 'dpw_wa',
   };
 }
 
@@ -162,14 +162,23 @@ async function upsertConversation({ phone, waId, profileName, text, direction, t
     const sourceUrl = String(referral.source_url || referral.sourceUrl || '').trim();
     const headline = String(referral.headline || '').trim();
     const body = String(referral.body || '').trim();
-    if (!sourceType && !sourceId && !sourceUrl) return null;
-    const isFbAd =
-      sourceType === 'ad' ||
-      Boolean(sourceId) ||
-      /facebook|fb\.com|instagram|meta\.com/i.test(sourceUrl);
+    const ctwaClid = String(referral.ctwa_clid || referral.ctwaClid || '').trim();
+    if (!sourceType && !sourceId && !sourceUrl && !ctwaClid) return null;
+
+    const url = sourceUrl.toLowerCase();
+    const isMeta =
+      Boolean(ctwaClid) ||
+      /facebook|fb\.me|fb\.com|instagram|meta\.com|ig\.me/i.test(url) ||
+      /facebook|instagram|meta|ctwa/i.test(`${sourceType} ${headline} ${body}`);
+
+    // Google Click-to-WhatsApp rarely sends Meta-style referral; if present without Meta markers, treat as Google.
+    const isGoogle =
+      !isMeta &&
+      (/google|gclid|gads|youtube/i.test(url) || /google/i.test(`${sourceType} ${headline}`));
+
     return {
-      inboundAdSource: isFbAd ? 'facebook_ad' : 'ad',
-      inboundAdMeta: { sourceType, sourceId, sourceUrl, headline, body },
+      inboundAdSource: isMeta ? 'facebook_ad' : isGoogle ? 'google_ad' : 'ad',
+      inboundAdMeta: { sourceType, sourceId, sourceUrl, headline, body, ctwaClid },
     };
   })();
 
@@ -521,14 +530,25 @@ async function createLeadFromConversation(conversationId, extras = {}, actor = n
   const answers = conversation.botAnswers || {};
   const adults = answers.adults || answers.travelers || extras.travelers || extras.adults;
   const inbound = String(conversation.inboundAdSource || extras.inboundAdSource || '').toLowerCase();
-  const isFbWa = inbound === 'facebook_ad' || inbound === 'ad';
-  const isGoogleWa = inbound === 'google' || inbound === 'google_ad';
-  // Current traffic is Facebook CTWA; Google Ads WA only when explicitly marked
-  let sourceKey = 'dpw2_wa';
-  if (isGoogleWa && !isFbWa) sourceKey = 'dpw_wa';
-  else if (isFbWa) sourceKey = 'dpw2_wa';
-  else if (String(process.env.WHATSAPP_DEFAULT_LEAD_SOURCE || '').toLowerCase() === 'dpw_wa') {
-    sourceKey = 'dpw_wa';
+  const meta = conversation.inboundAdMeta || {};
+  const metaUrl = String(meta.sourceUrl || meta.source_url || '').toLowerCase();
+  const hasMetaSignal =
+    inbound === 'facebook_ad' ||
+    Boolean(meta.ctwaClid || meta.ctwa_clid) ||
+    /facebook|fb\.me|fb\.com|instagram|meta\.com|ig\.me/i.test(metaUrl);
+
+  const isFbWa = hasMetaSignal;
+  const isGoogleWa =
+    inbound === 'google' ||
+    inbound === 'google_ad' ||
+    (!isFbWa && (inbound === 'ad' || !inbound));
+
+  // Meta CTWA → DPW2 WA. Google Ads WA / no Meta referral → DPW WA.
+  let sourceKey = 'dpw_wa';
+  if (isFbWa) sourceKey = 'dpw2_wa';
+  else if (isGoogleWa) sourceKey = 'dpw_wa';
+  else if (String(process.env.WHATSAPP_DEFAULT_LEAD_SOURCE || 'dpw_wa').toLowerCase() === 'dpw2_wa') {
+    sourceKey = 'dpw2_wa';
   }
   const lead = await ingestPublicLead({
     name: extras.name || conversation.profileName || `WhatsApp ${conversation.phone.slice(-4)}`,
