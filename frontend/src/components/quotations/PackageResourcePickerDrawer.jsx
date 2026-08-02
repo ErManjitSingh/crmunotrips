@@ -641,7 +641,12 @@ export default function PackageResourcePickerDrawer({
       : []
   ).map((room) => ({ ...room, mealPlanOptions: ensureMealPlanOptions(room) }));
 
-  const mealPlans = selectedRoom ? ensureMealPlanOptions(selectedRoom) : [];
+  const mealPlans = useMemo(
+    () => (selectedRoom ? ensureMealPlanOptions(selectedRoom) : []),
+    // Recompute when room identity / catalog meal options change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedRoom?.id, selectedRoom?.pricePerNight, selectedRoom?.mealPlanOptions]
+  );
 
   const packageMealKey = normalizeMealPlanKey(defaultMealPlanKey) || 'map';
 
@@ -653,6 +658,17 @@ export default function PackageResourcePickerDrawer({
     selectedRoom && resolvedMealPlan
       ? mealPlanNightlyRate(resolvedMealPlan, selectedRoom)
       : 0;
+
+  const packageMealOnRoom = selectedRoom
+    ? pickPreferredMealPlan(mealPlans, selectedRoom, packageMealKey)
+    : null;
+  const packageMealNightly =
+    selectedRoom && packageMealOnRoom
+      ? mealPlanNightlyRate(packageMealOnRoom, selectedRoom)
+      : 0;
+  // Compare meal cards vs package-included meal rate (MAP), not EP / stale base.
+  const mealCompareBase =
+    packageMealNightly > 0 ? packageMealNightly : Number(basePrice || 0) || 0;
 
   const resetClose = () => {
     setQuery('');
@@ -695,13 +711,13 @@ export default function PackageResourcePickerDrawer({
     const room = roomOverride || selectedRoom;
     if (!packageHotel || !room || !plan) return;
     const plans = ensureMealPlanOptions(room);
-    const absolutePerNight = mealPlanNightlyRate(plan, room);
+    // Always apply the priced list entry (never a zero/EP stub with same key).
+    const applied = resolveSelectedMealPlan(plan, plans, room, packageMealKey) || plan;
+    const absolutePerNight = mealPlanNightlyRate(applied, room);
     const packageMealPlan = pickPreferredMealPlan(plans, room, packageMealKey);
     const packageMealAbs = mealPlanNightlyRate(packageMealPlan, room);
-    // Package upgrade_price is hotel-to-hotel at the package meal plan (usually MAP).
     const hotelDelta =
       Number(packageHotel.priceDelta ?? packageHotel.upgrade_price ?? packageHotel.perNight ?? 0) || 0;
-    // Extra / savings vs package meal on this room (EP↔MAP↔AP).
     const mealDelta =
       packageMealAbs > 0
         ? Math.round((absolutePerNight - packageMealAbs) * 100) / 100
@@ -715,6 +731,8 @@ export default function PackageResourcePickerDrawer({
         : Number(basePrice || 0) > 0
           ? Number(basePrice)
           : Number(packageHotel.startingPrice || packageHotel.absolutePerNight || 0) || 0;
+    const epRate = Number(room.epPrice || room.rates?.ep || room.pricePerNight || 0) || 0;
+    const mealKey = normalizeMealPlanKey(applied.key || applied.label) || packageMealKey;
 
     onSelect?.({
       ...packageHotel,
@@ -727,22 +745,24 @@ export default function PackageResourcePickerDrawer({
       slug: catalogHotel.slug || packageHotel.slug || '',
       startingPrice: absolutePerNight || packageHotel.startingPrice || catalogHotel.startingPrice || 0,
       tierName: room.name,
-      meals: plan.label,
-      mealPlanKey: normalizeMealPlanKey(plan.key || plan.label) || packageMealKey,
+      meals: applied.label,
+      mealPlanKey: mealKey,
       priceDelta: costDeltaPerNight,
       room: {
         id: room.id,
         name: room.name,
-        pricePerNight: Number(room.pricePerNight || absolutePerNight || 0),
+        // Selected meal rack — never leave EP here while mealPlan says MAP.
+        pricePerNight: absolutePerNight || Number(room.pricePerNight || 0),
+        epPrice: epRate,
         rates: room.rates || null,
         bedType: room.bedType,
         maxOccupancy: room.maxOccupancy,
         mealPlanOptions: plans,
       },
       mealPlan: {
-        key: normalizeMealPlanKey(plan.key || plan.label) || plan.key,
-        label: plan.label,
-        price: Number(plan.price || 0),
+        key: mealKey,
+        label: applied.label,
+        price: Number(applied.price || 0),
         absolutePrice: absolutePerNight,
       },
       perNight: costDeltaPerNight,
@@ -1020,12 +1040,21 @@ export default function PackageResourcePickerDrawer({
                         {resolvedMealPlan?.label || 'MAP — Breakfast + Dinner'}
                       </p>
                     </div>
-                    <p className="text-sm font-black text-violet-700 shrink-0">
-                      {formatINR(selectedMealNightly || 0, { zeroLabel: 'Not included' })}
-                      {selectedMealNightly > 0 && (
-                        <span className="text-[10px] font-medium text-slate-400"> /night</span>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-black text-violet-700">
+                        {formatINR(selectedMealNightly || 0, { zeroLabel: 'Not included' })}
+                        {selectedMealNightly > 0 && (
+                          <span className="text-[10px] font-medium text-slate-400"> /night</span>
+                        )}
+                      </p>
+                      {Number(selectedRoom.epPrice || selectedRoom.rates?.ep || 0) > 0 &&
+                        selectedMealNightly >
+                          Number(selectedRoom.epPrice || selectedRoom.rates?.ep || 0) && (
+                        <p className="text-[10px] font-medium text-slate-400 mt-0.5">
+                          EP {formatINR(selectedRoom.epPrice || selectedRoom.rates?.ep)}
+                        </p>
                       )}
-                    </p>
+                    </div>
                   </div>
 
                   <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 px-0.5">
@@ -1040,14 +1069,20 @@ export default function PackageResourcePickerDrawer({
                         room={selectedRoom}
                         nights={stayNights}
                         selected={
-                          String(resolvedMealPlan?.key || '').toLowerCase() ===
-                          String(plan.key || '').toLowerCase()
+                          normalizeMealPlanKey(resolvedMealPlan?.key || resolvedMealPlan?.label) ===
+                          normalizeMealPlanKey(plan.key || plan.label)
                         }
                         onSelect={(nextPlan) => {
-                          setSelectedMealPlan(nextPlan);
-                          selectMealPlan(nextPlan);
+                          const priced = resolveSelectedMealPlan(
+                            nextPlan,
+                            mealPlans,
+                            selectedRoom,
+                            packageMealKey
+                          );
+                          setSelectedMealPlan(priced || nextPlan);
+                          selectMealPlan(priced || nextPlan);
                         }}
-                        basePrice={basePrice}
+                        basePrice={mealCompareBase}
                       />
                     ))}
                   </div>

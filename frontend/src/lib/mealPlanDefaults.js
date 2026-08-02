@@ -51,13 +51,26 @@ export function isMapMealPlan(plan = {}) {
 /** Nightly rate for a meal plan (absolute rack, else EP room + supplement). */
 export function mealPlanNightlyRate(plan = {}, room = {}) {
   const absolute = Number(plan?.absolutePrice || 0);
-  if (absolute > 0) return absolute;
+  const supplement = Number(plan?.price || 0);
   const roomBase =
     Number(room?.pricePerNight || 0) ||
     Number(room?.epPrice || 0) ||
     Number(room?.rates?.ep || 0) ||
     0;
-  return Math.round((roomBase + Number(plan?.price || 0)) * 100) / 100;
+
+  // absolute accidentally set to EP while supplement holds MAP/CP/AP premium
+  if (absolute > 0 && supplement > 0 && roomBase > 0 && Math.abs(absolute - roomBase) < 1) {
+    return Math.round((roomBase + supplement) * 100) / 100;
+  }
+  if (absolute > 0) return absolute;
+  return Math.round((roomBase + supplement) * 100) / 100;
+}
+
+function preferPricedPlan(matches = [], room = null) {
+  if (!matches.length) return null;
+  return [...matches].sort(
+    (a, b) => mealPlanNightlyRate(b, room || {}) - mealPlanNightlyRate(a, room || {})
+  )[0];
 }
 
 /**
@@ -120,19 +133,12 @@ export function pickPreferredMealPlan(mealPlanOptions = [], room = null, preferr
     : ensureMealPlanOptions(room || {});
   const want = normalizeMealPlanKey(preferredKey) || DEFAULT_MEAL_PLAN_KEY;
   const matches = plans.filter((p) => normalizeMealPlanKey(p?.key || p?.label) === want);
-  if (matches.length) {
-    return [...matches].sort(
-      (a, b) => mealPlanNightlyRate(b, room || {}) - mealPlanNightlyRate(a, room || {})
-    )[0];
-  }
-  const mapMatches = plans.filter(isMapMealPlan);
-  if (mapMatches.length) {
-    return [...mapMatches].sort(
-      (a, b) => mealPlanNightlyRate(b, room || {}) - mealPlanNightlyRate(a, room || {})
-    )[0];
-  }
+  const preferred = preferPricedPlan(matches, room);
+  if (preferred) return preferred;
+  const mapPreferred = preferPricedPlan(plans.filter(isMapMealPlan), room);
+  if (mapPreferred) return mapPreferred;
   const ensured = ensureMealPlanOptions(room || { mealPlanOptions: plans });
-  return ensured.find(isMapMealPlan) || { ...DEFAULT_MAP_MEAL_PLAN };
+  return preferPricedPlan(ensured.filter(isMapMealPlan), room) || { ...DEFAULT_MAP_MEAL_PLAN };
 }
 
 /**
@@ -154,15 +160,17 @@ export function resolveSelectedMealPlan(
     : ensureMealPlanOptions(room || {});
   if (selectedPlan) {
     const key = normalizeMealPlanKey(selectedPlan.key || selectedPlan.label);
-    const byKey = key
-      ? plans.find((p) => normalizeMealPlanKey(p?.key || p?.label) === key)
-      : null;
-    if (byKey) return byKey;
-    const byLabel = plans.find(
+    if (key) {
+      const matches = plans.filter((p) => normalizeMealPlanKey(p?.key || p?.label) === key);
+      const priced = preferPricedPlan(matches, room);
+      if (priced) return priced;
+    }
+    const byLabel = plans.filter(
       (p) =>
         String(p?.label || '').toLowerCase() === String(selectedPlan.label || '').toLowerCase()
     );
-    if (byLabel) return byLabel;
+    const pricedLabel = preferPricedPlan(byLabel, room);
+    if (pricedLabel) return pricedLabel;
   }
   return pickPreferredMealPlan(plans, room, preferredKey);
 }
