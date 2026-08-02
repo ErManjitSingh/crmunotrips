@@ -109,24 +109,23 @@ async function reassignExpiredLead(lead) {
   return releaseExpiredLead(lead);
 }
 
+/** Accept SLA disabled — clear leftover pending windows without returning leads to pool. */
 async function processExpiredAcceptances() {
-  const now = new Date();
   const overdue = await Lead.find({
     isDeleted: { $ne: true },
     assignmentAcceptance: 'pending',
-    assignmentAcceptBy: { $lte: now },
     assignedTo: { $ne: null },
-    status: { $nin: ['lost', 'converted', 'booked_from_another_company'] },
   })
     .sort({ assignmentAcceptBy: 1 })
-    .limit(40);
+    .limit(80);
 
-  let released = 0;
   for (const lead of overdue) {
-    await releaseExpiredLead(lead);
-    released += 1;
+    lead.assignmentAcceptance = 'not_required';
+    lead.assignmentAcceptBy = null;
+    if (!lead.acceptedAt) lead.acceptedAt = new Date();
+    await lead.save();
   }
-  return { checked: overdue.length, reassigned: released, released };
+  return { checked: overdue.length, reassigned: 0, released: 0, cleared: overdue.length };
 }
 
 module.exports = {

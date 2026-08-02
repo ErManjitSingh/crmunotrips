@@ -36,8 +36,8 @@ import { ReactivationFlowSteps, ReactivationEmptyState } from '../leads/Reactiva
 const TITLES = {
   all: { title: 'All Team Leads', desc: 'Complete pipeline across your sales team', icon: Users },
   returned: {
-    title: 'Returned Leads',
-    desc: 'Leads executives did not accept in time — back in the unassigned pool',
+    title: 'Unassigned Leads',
+    desc: 'Leads waiting to be reassigned',
     icon: Undo2,
   },
   unassigned: { title: 'Unassigned Leads', desc: 'Leads waiting for executive assignment', icon: Inbox },
@@ -209,19 +209,14 @@ export default function TeamLeadsPage() {
                 <RefreshCw className="w-3 h-3 mr-0.5" /> Reactivate
               </Button>
             ) : row.original.assignmentAcceptance === 'expired' && !row.original.assignedTo ? (
-              <div className="inline-flex items-stretch rounded-xl overflow-hidden ring-1 ring-amber-500/30 shadow-sm">
-                <span className="inline-flex h-8 items-center px-2 text-[10px] font-bold uppercase tracking-wide text-amber-800 bg-amber-50">
-                  Not accepted
-                </span>
-                <Button
-                  size="sm"
-                  variant="gradient"
-                  className="h-8 rounded-none px-2.5 text-[11px]"
-                  onClick={() => setAssignLead(row.original)}
-                >
-                  <UserPlus className="w-3 h-3 mr-0.5" /> Reassign
-                </Button>
-              </div>
+              <Button
+                size="sm"
+                variant="gradient"
+                className="h-8 px-2.5 text-[11px]"
+                onClick={() => setAssignLead(row.original)}
+              >
+                <UserPlus className="w-3 h-3 mr-0.5" /> Reassign
+              </Button>
             ) : (
               <Button size="sm" variant="gradient" className="h-8 px-2.5 text-[11px]" onClick={() => setAssignLead(row.original)}>
                 <UserPlus className="w-3 h-3 mr-0.5" /> {row.original.assignedTo ? 'Reassign' : 'Assign'}

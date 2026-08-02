@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Plus, ChevronDown, AlertTriangle, Undo2 } from 'lucide-react';
+import { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Plus, ChevronDown, Undo2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import API from '../../api/axios';
@@ -26,9 +26,7 @@ import {
 } from './ExecutiveLeadListCells';
 import { LEAD_FILTERS } from './executiveUtils';
 import LeadActionsMenu, { ActionModal } from './LeadActionsMenu';
-import LeadListAcceptButton from '../leads/LeadListAcceptButton';
 import { invalidateLeadLists } from '../../lib/queryInvalidation';
-import { LEAD_ACCEPT_MINUTES } from '../../constants/salesSop';
 import VirtualizedRoleTable from '../ui/VirtualizedRoleTable';
 import AddFollowUpModal from '../followups/AddFollowUpModal';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/followupApi';
@@ -104,7 +102,6 @@ export default function MyLeadsPage() {
     fallbackTotal: isAllView ? navCounts?.leads?.all : navCounts?.leads?.[filter === 'follow-up' ? 'followUp' : filter],
   }) ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pagination.pageSize) || 1);
-  const returnedLeads = leads.filter((l) => l.returnedToPool || l.contactMasked);
 
   const fetchLeads = () => {
     queryClient.invalidateQueries({ queryKey: ['leads', '/sales-executive/leads'] });
@@ -218,43 +215,16 @@ export default function MyLeadsPage() {
         }
         return (
         <div className="flex items-center justify-end gap-0 pr-1">
-          {row.original.assignmentAcceptance === 'pending' ? (
-            <div className="inline-flex items-stretch rounded-xl ring-1 ring-emerald-500/25 shadow-sm shadow-emerald-500/10 overflow-hidden">
-              <LeadListAcceptButton
-                lead={row.original}
-                className="!rounded-none"
-                onAccepted={() => {
-                  invalidateLeadLists(queryClient);
-                  fetchLeads();
-                }}
-                onExpired={() => {
-                  invalidateLeadLists(queryClient);
-                  fetchLeads();
-                }}
-              />
-              <LeadActionsMenu
-                lead={row.original}
-                canChangeStatus={!isLeadStatusLocked(row.original.status)}
-                onScheduleFollowUp={(lead) => { setModal({ type: 'followup', lead }); }}
-                onChangeStatus={(lead) => {
-                  setModal({ type: 'status', lead });
-                  setModalStatus(lead.status);
-                  setModalStatusReason(lead.statusReason || '');
-                }}
-              />
-            </div>
-          ) : (
-            <LeadActionsMenu
-              lead={row.original}
-              canChangeStatus={!isLeadStatusLocked(row.original.status)}
-              onScheduleFollowUp={(lead) => { setModal({ type: 'followup', lead }); }}
-              onChangeStatus={(lead) => {
-                setModal({ type: 'status', lead });
-                setModalStatus(lead.status);
-                setModalStatusReason(lead.statusReason || '');
-              }}
-            />
-          )}
+          <LeadActionsMenu
+            lead={row.original}
+            canChangeStatus={!isLeadStatusLocked(row.original.status)}
+            onScheduleFollowUp={(lead) => { setModal({ type: 'followup', lead }); }}
+            onChangeStatus={(lead) => {
+              setModal({ type: 'status', lead });
+              setModalStatus(lead.status);
+              setModalStatusReason(lead.statusReason || '');
+            }}
+          />
         </div>
         );
       },
@@ -281,10 +251,6 @@ export default function MyLeadsPage() {
         onSourceChange={setSourceFilter}
         onRefresh={fetchLeads}
         onOpenLead={(lead) => navigate(`/sales-executive/leads/${lead._id}/view`)}
-        onAcceptChanged={() => {
-          invalidateLeadLists(queryClient);
-          fetchLeads();
-        }}
       />
 
       <div className="hidden lg:block">
@@ -305,25 +271,6 @@ export default function MyLeadsPage() {
       )}
     >
       <ExecutiveLeadKpiStrip />
-
-      {(filter === 'returned' || returnedLeads.length > 0) && (
-        <div className="mb-3 flex flex-wrap items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-          <div className="min-w-0">
-            <p className="text-sm font-bold">
-              {filter === 'returned'
-                ? 'Leads you did not accept in time'
-                : returnedLeads.length === 1
-                  ? '1 lead was returned to the pool'
-                  : `${returnedLeads.length} leads were returned to the pool`}
-            </p>
-            <p className="mt-0.5 text-xs font-medium opacity-90">
-              These leads went back to the unassigned pool because they were not accepted within {LEAD_ACCEPT_MINUTES} minutes. Phone is shown as{' '}
-              <span className="font-bold tracking-widest">XXXX</span>.
-            </p>
-          </div>
-        </div>
-      )}
 
       <ExecutiveLeadsFilterBar
         search={search}

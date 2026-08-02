@@ -137,18 +137,10 @@ async function findLeadsPaginated(query = {}, { branchId } = {}) {
     filter._id = { $in: ids.length ? ids : [] };
   }
 
-  // Opportunistically return overdue accepts to the unassigned pool
+  // Accept SLA disabled — clear leftover pending flags (do not return to pool)
   try {
-    const { releaseExpiredLead } = require('../services/leadAcceptanceService');
-    const overdue = await Lead.find({
-      ...withBranch({ isDeleted: { $ne: true } }, branchId),
-      assignmentAcceptance: 'pending',
-      assignmentAcceptBy: { $lte: new Date() },
-      assignedTo: { $ne: null },
-    }).limit(25);
-    for (const lead of overdue) {
-      await releaseExpiredLead(lead);
-    }
+    const { processExpiredAcceptances } = require('../services/leadAcceptanceService');
+    await processExpiredAcceptances();
   } catch {
     /* non-blocking */
   }

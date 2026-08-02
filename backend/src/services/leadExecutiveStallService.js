@@ -1,5 +1,4 @@
 const Lead = require('../models/Lead');
-const { LEAD_ACCEPT_MINUTES } = require('../constants/salesSop');
 const { computeFirstContactDeadline } = require('./salesSopService');
 
 const STALL_MINUTES = 20;
@@ -12,12 +11,12 @@ function stampExecutiveAssignment(target = {}) {
   return target;
 }
 
-/** SOP: accept within LEAD_ACCEPT_MINUTES + first-contact deadline */
+/** Assignment stamp only — accept SLA disabled (leads stay with assignee immediately). */
 function stampPendingAcceptance(target = {}, leadLike = {}) {
   const now = new Date();
   stampExecutiveAssignment(target);
-  target.assignmentAcceptance = 'pending';
-  target.assignmentAcceptBy = new Date(now.getTime() + LEAD_ACCEPT_MINUTES * 60 * 1000);
+  target.assignmentAcceptance = 'not_required';
+  target.assignmentAcceptBy = null;
   target.acceptedAt = null;
   target.acceptanceMissedBy = null;
   target.acceptanceMissedName = '';
@@ -99,7 +98,6 @@ function buildExecutiveStallQuery(now = new Date()) {
 module.exports = {
   STALL_MINUTES,
   TERMINAL_STATUSES,
-  LEAD_ACCEPT_MINUTES,
   stampExecutiveAssignment,
   stampPendingAcceptance,
   markLeadViewedByExecutive,

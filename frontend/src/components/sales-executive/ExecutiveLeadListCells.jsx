@@ -99,7 +99,7 @@ export function ExecCustomerCell({ lead }) {
       <CustomerCell name={lead?.name || 'Unknown'} lead={lead} />
       {returned && (
         <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-amber-700 pl-10">
-          Lead returned — not accepted
+          Lead unassigned
         </p>
       )}
     </>
@@ -138,7 +138,7 @@ export function ExecContactCell({ lead }) {
           </span>
           XXXX
         </p>
-        <p className="text-[10px] font-semibold text-amber-700 pl-8">Hidden — not accepted</p>
+        <p className="text-[10px] font-semibold text-amber-700 pl-8">Contact hidden</p>
       </div>
     );
   }

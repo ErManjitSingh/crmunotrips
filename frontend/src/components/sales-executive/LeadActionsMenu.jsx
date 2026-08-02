@@ -50,7 +50,7 @@ export default function LeadActionsMenu({
         )}
         {locked && (
           <DropdownMenuItem disabled className="flex items-center gap-2 opacity-70">
-            <Eye className="w-4 h-4" /> Lead returned — no access
+            <Eye className="w-4 h-4" /> Lead unassigned — no access
           </DropdownMenuItem>
         )}
         {!locked && (

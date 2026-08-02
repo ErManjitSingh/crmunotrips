@@ -11,7 +11,6 @@ import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/foll
 import { useLeadActivities } from '../../features/leads/hooks/useLeadActivities';
 import { isLeadStatusLocked } from '../../utils/leadUtils';
 import LostReasonSelect from '../leads/LostReasonSelect';
-import LeadAcceptBanner from '../leads/LeadAcceptBanner';
 import PostConvertCommercialModal from '../leads/PostConvertCommercialModal';
 import PaymentScreenshotField from '../leads/PaymentScreenshotField';
 import { toast } from '../../context/ToastContext';
@@ -178,7 +177,6 @@ export default function ExecutiveLeadDetailPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="pb-8">
-      <LeadAcceptBanner lead={lead} onAccepted={(updated) => setLead((prev) => ({ ...prev, ...updated }))} />
       {lead.coldCallPending && (
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div>

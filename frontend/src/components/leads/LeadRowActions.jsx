@@ -19,7 +19,6 @@ import {
   DropdownMenuLabel,
 } from '../ui/dropdown-menu';
 import { cn } from '../../lib/utils';
-import LeadListAcceptButton, { NotAcceptedChip } from './LeadListAcceptButton';
 
 function MenuActionIcon({ icon: Icon, tone }) {
   const tones = {
@@ -150,25 +149,22 @@ export default function LeadRowActions({
   showAcceptButton = false,
 }) {
   const assignedName = lead.assignedTo?.name;
-  const isPendingAccept = lead.assignmentAcceptance === 'pending';
   const isExpiredUnassigned =
     lead.assignmentAcceptance === 'expired' && !assignedName;
-  const showAccept = showAcceptButton && isPendingAccept;
   const showReassignExpired = isExpiredUnassigned && actions.assign && onAssign;
   const showAssign =
     showAssignButton &&
     actions.assign &&
     !assignedName &&
-    !isPendingAccept &&
     !isExpiredUnassigned &&
     onAssign;
-  const showAssignedName = Boolean(assignedName) && !showAccept;
+  const showAssignedName = Boolean(assignedName);
   const showEdit = actions.edit && canEditLead;
   const showAssignMenu = actions.assign && onAssign;
   const showTransfer = actions.transferBranch && onTransferBranch;
   const showDelete = actions.delete && onDelete;
   const hasMenuItems = actions.view || showEdit || showAssignMenu || showTransfer || showDelete;
-  const hasLeading = showAssign || showAssignedName || showAccept || showReassignExpired;
+  const hasLeading = showAssign || showAssignedName || showReassignExpired;
 
   const menuContent = (
     <DropdownMenuContent
@@ -215,7 +211,7 @@ export default function LeadRowActions({
               {assignedName || isExpiredUnassigned ? 'Reassign Lead' : 'Assign Lead'}
             </p>
             <p className="text-[11px] text-content-muted">
-              {isExpiredUnassigned ? 'Lead was not accepted — pick executive' : 'Pick sales executive or manager'}
+              {isExpiredUnassigned ? 'Pick executive to reassign' : 'Pick sales executive or manager'}
             </p>
           </div>
         </DropdownMenuItem>
@@ -268,14 +264,8 @@ export default function LeadRowActions({
   return (
     <div className="relative z-10" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
       <ActionCluster>
-        {showAccept && (
-          <LeadListAcceptButton lead={lead} onAccepted={onAccepted} onExpired={onAcceptExpired} />
-        )}
         {showReassignExpired && (
-          <>
-            <NotAcceptedChip lead={lead} />
-            <ReassignButton onClick={() => onAssign(lead)} />
-          </>
+          <ReassignButton onClick={() => onAssign(lead)} />
         )}
         {showAssign && <AssignButton onClick={() => onAssign(lead)} />}
         {showAssignedName && !showAssign && !showReassignExpired && <AssignedChip name={assignedName} />}

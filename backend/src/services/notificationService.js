@@ -106,12 +106,9 @@ async function notifyLeadAssigned({
   const label = leadNames?.[0] || `${count} lead(s)`;
   const assigneeStr = (assigneeId._id || assigneeId).toString();
   const assignerStr = assignedBy?._id?.toString() || assignedBy?.toString();
-  const needsAccept =
-    typeof requiresAccept === 'boolean'
-      ? requiresAccept
-      : !assigneeRole || assigneeRole === 'sales_executive';
+  // Accept SLA disabled — assignment is immediate
   const leadHref = leadIds?.[0]
-    ? needsAccept
+    ? assigneeRole === 'sales_executive'
       ? `/sales-executive/leads/${leadIds[0]}/view`
       : `/leads/${leadIds[0]}`
     : undefined;
@@ -119,21 +116,16 @@ async function notifyLeadAssigned({
   await notifyUser(assigneeId, {
     branchId: assignedBy?.branchId || null,
     type: T.LEAD_ASSIGNED,
-    title: needsAccept ? `Accept lead within ${LEAD_ACCEPT_MINUTES} min` : 'Lead assigned to you',
+    title: 'Lead assigned to you',
     message:
       count === 1
-        ? needsAccept
-          ? `${by} assigned ${label} to you — accept within ${LEAD_ACCEPT_MINUTES} minutes or it returns to the pool`
-          : `${by} assigned ${label} to you`
-        : needsAccept
-          ? `${by} assigned ${count} leads to you — accept each within ${LEAD_ACCEPT_MINUTES} minutes`
-          : `${by} assigned ${count} leads to you`,
+        ? `${by} assigned ${label} to you`
+        : `${by} assigned ${count} leads to you`,
     meta: {
       leadId: leadIds?.[0],
       leadIds,
       href: leadHref,
-      requiresAccept: needsAccept,
-      acceptMinutes: needsAccept ? LEAD_ACCEPT_MINUTES : undefined,
+      requiresAccept: false,
     },
   });
 

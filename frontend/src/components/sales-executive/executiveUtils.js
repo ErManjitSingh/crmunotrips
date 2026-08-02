@@ -3,8 +3,8 @@ export { formatBudget, formatCurrency, STATUS_STYLES } from '../sales-manager/ma
 export const LEAD_FILTERS = {
   all: { title: 'All Leads', desc: 'Complete pipeline — every lead assigned to you', icon: 'Users' },
   returned: {
-    title: 'Returned Leads',
-    desc: 'Leads you did not accept in time — returned to the pool (contact masked)',
+    title: 'Unassigned Leads',
+    desc: 'Leads waiting to be reassigned',
     icon: 'Undo2',
   },
   new: { title: 'Today Lead', desc: 'Fresh inquiries assigned to you — act fast', icon: 'Sparkles' },

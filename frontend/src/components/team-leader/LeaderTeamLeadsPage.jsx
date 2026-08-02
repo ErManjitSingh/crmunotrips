@@ -51,8 +51,8 @@ export function ActionModal({ open, title, onClose, children }) {
 const FILTER_META = {
   all: { title: 'Team Leads', desc: 'Leads assigned to your squad — coach and convert', icon: Users },
   returned: {
-    title: 'Returned Leads',
-    desc: 'Leads your executives did not accept in time — back in the pool',
+    title: 'Unassigned Leads',
+    desc: 'Leads waiting to be reassigned',
     icon: Undo2,
   },
   lost: { title: 'Lost Leads', desc: 'Closed-lost opportunities from your team', icon: XCircle },
@@ -178,19 +178,14 @@ export default function LeaderTeamLeadsPage() {
             </Button>
           )}
           {row.original.assignmentAcceptance === 'expired' && !row.original.assignedTo && (
-            <div className="inline-flex items-stretch rounded-xl overflow-hidden ring-1 ring-amber-500/30 shadow-sm">
-              <span className="inline-flex h-8 items-center px-2 text-[10px] font-bold uppercase tracking-wide text-amber-800 bg-amber-50">
-                Not accepted
-              </span>
-              <Button
-                size="sm"
-                variant="gradient"
-                className="h-8 rounded-none px-2.5 text-[11px]"
-                onClick={() => openAssign(row.original)}
-              >
-                <UserPlus className="w-3 h-3 mr-0.5" /> Reassign
-              </Button>
-            </div>
+            <Button
+              size="sm"
+              variant="gradient"
+              className="h-8 px-2.5 text-[11px]"
+              onClick={() => openAssign(row.original)}
+            >
+              <UserPlus className="w-3 h-3 mr-0.5" /> Reassign
+            </Button>
           )}
         <DropdownMenuRoot>
           <DropdownMenuTrigger asChild>

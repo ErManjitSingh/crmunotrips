@@ -15,7 +15,6 @@ import {
   Timer,
   Shield,
   Archive,
-  Undo2,
 } from 'lucide-react';
 
 const leadPerm = { module: 'leads', action: 'view' };
@@ -42,13 +41,6 @@ export const leadManagementSections = [
         label: 'WhatsApp Leads',
         icon: MessageCircle,
         permission: { module: 'whatsapp', action: 'use' },
-      },
-      {
-        path: '/leads/returned',
-        label: 'Returned Leads',
-        icon: Undo2,
-        badgeKey: 'leads.returned',
-        permission: leadPerm,
       },
       {
         path: '/leads/inbox/new',

@@ -155,18 +155,10 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
   const { page, limit, skip } = parsePagination(query);
   const sort = parseSort(query, { createdAt: -1 });
 
-  // Release any of this exec's overdue accept windows before listing
+  // Accept SLA disabled — clear leftover pending flags (do not return to pool)
   try {
-    const { releaseExpiredLead } = require('../services/leadAcceptanceService');
-    const overdue = await Lead.find({
-      assignedTo: userId,
-      assignmentAcceptance: 'pending',
-      assignmentAcceptBy: { $lte: new Date() },
-      isDeleted: { $ne: true },
-    }).limit(20);
-    for (const lead of overdue) {
-      await releaseExpiredLead(lead);
-    }
+    const { processExpiredAcceptances } = require('../services/leadAcceptanceService');
+    await processExpiredAcceptances();
   } catch {
     /* non-blocking */
   }
