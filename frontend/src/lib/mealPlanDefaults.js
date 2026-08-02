@@ -56,6 +56,13 @@ export function ensureMealPlanOptions(room = {}) {
         price: ep > 0 ? Math.max(0, fromRates - ep) : Number(plan.price || 0),
       };
     }
+    // Supplement-only plans (absolute missing): derive rack = EP + supplement.
+    if (!(Number(plan.absolutePrice) > 0) && ep > 0 && Number(plan.price || 0) > 0) {
+      return {
+        ...plan,
+        absolutePrice: ep + Number(plan.price || 0),
+      };
+    }
     return plan;
   };
 
@@ -84,14 +91,41 @@ export function ensureMealPlanOptions(room = {}) {
 /**
  * Prefer MAP from room mealPlanOptions; fall back to a synthetic MAP plan
  * so SE always lands on MAP and can switch to EP/CP/AP if needed.
+ * Always prefer the priced MAP entry when duplicates / zero-price stubs exist.
  */
 export function pickDefaultMapMealPlan(mealPlanOptions = [], room = null) {
   const plans = Array.isArray(mealPlanOptions) && mealPlanOptions.length
     ? mealPlanOptions
     : ensureMealPlanOptions(room || {});
-  const byKey = plans.find((p) => String(p?.key || '').toLowerCase() === DEFAULT_MEAL_PLAN_KEY);
-  if (byKey) return byKey;
-  const byLabel = plans.find((p) => /\bmap\b/i.test(String(p?.label || '')));
-  if (byLabel) return byLabel;
+  const mapPlans = plans.filter(isMapMealPlan);
+  if (mapPlans.length) {
+    return [...mapPlans].sort(
+      (a, b) => mealPlanNightlyRate(b, room || {}) - mealPlanNightlyRate(a, room || {})
+    )[0];
+  }
+  // Last resort: build from room rates so banner/confirm never stick to ₹0 MAP stub.
+  const ensured = ensureMealPlanOptions(room || { mealPlanOptions: plans });
+  const ensuredMap = ensured.find(isMapMealPlan);
+  if (ensuredMap) return ensuredMap;
   return { ...DEFAULT_MAP_MEAL_PLAN };
+}
+
+/** Re-bind a selected plan to the priced entry from the current options list. */
+export function resolveSelectedMealPlan(selectedPlan, mealPlanOptions = [], room = null) {
+  const plans = Array.isArray(mealPlanOptions) && mealPlanOptions.length
+    ? mealPlanOptions
+    : ensureMealPlanOptions(room || {});
+  if (selectedPlan) {
+    const key = String(selectedPlan.key || '').toLowerCase();
+    const byKey = key
+      ? plans.find((p) => String(p?.key || '').toLowerCase() === key)
+      : null;
+    if (byKey) return byKey;
+    const byLabel = plans.find(
+      (p) =>
+        String(p?.label || '').toLowerCase() === String(selectedPlan.label || '').toLowerCase()
+    );
+    if (byLabel) return byLabel;
+  }
+  return pickDefaultMapMealPlan(plans, room);
 }

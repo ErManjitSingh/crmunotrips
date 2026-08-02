@@ -24,6 +24,7 @@ import {
   ensureMealPlanOptions,
   mealPlanNightlyRate,
   pickDefaultMapMealPlan,
+  resolveSelectedMealPlan,
 } from '../../lib/mealPlanDefaults';
 import { cn } from '../../lib/utils';
 
@@ -636,9 +637,14 @@ export default function PackageResourcePickerDrawer({
 
   const mealPlans = selectedRoom ? ensureMealPlanOptions(selectedRoom) : [];
 
-  const selectedMealNightly = selectedRoom
-    ? mealPlanNightlyRate(selectedMealPlan || pickDefaultMapMealPlan(mealPlans, selectedRoom), selectedRoom)
-    : 0;
+  const resolvedMealPlan = selectedRoom
+    ? resolveSelectedMealPlan(selectedMealPlan, mealPlans, selectedRoom)
+    : null;
+
+  const selectedMealNightly =
+    selectedRoom && resolvedMealPlan
+      ? mealPlanNightlyRate(resolvedMealPlan, selectedRoom)
+      : 0;
 
   const resetClose = () => {
     setQuery('');
@@ -753,7 +759,7 @@ export default function PackageResourcePickerDrawer({
   const continueDisabled =
     (step === 'hotel' && !packageHotel) ||
     (step === 'room' && !selectedRoom) ||
-    (step === 'meal' && !selectedMealPlan) ||
+    (step === 'meal' && !resolvedMealPlan) ||
     loadingDetail;
 
   const handleContinue = () => {
@@ -765,8 +771,8 @@ export default function PackageResourcePickerDrawer({
       selectRoom(selectedRoom);
       return;
     }
-    if (step === 'meal' && selectedMealPlan) {
-      selectMealPlan(selectedMealPlan);
+    if (step === 'meal' && resolvedMealPlan) {
+      selectMealPlan(resolvedMealPlan);
     }
   };
 
@@ -775,7 +781,9 @@ export default function PackageResourcePickerDrawer({
       ? 'Continue to Rooms →'
       : step === 'room'
         ? 'Continue to Meal Plan →'
-        : `Confirm · ${selectedMealPlan?.label || 'MAP'}`;
+        : `Confirm · ${resolvedMealPlan?.label || 'MAP'} · ${
+            selectedMealNightly > 0 ? formatINR(selectedMealNightly) : 'MAP'
+          }`;
 
   return (
     <AppDrawer
@@ -999,7 +1007,7 @@ export default function PackageResourcePickerDrawer({
                       <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Selected room</p>
                       <p className="text-sm font-bold text-slate-900 truncate">{selectedRoom.name}</p>
                       <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">
-                        {selectedMealPlan?.label || 'MAP — Breakfast + Dinner'}
+                        {resolvedMealPlan?.label || 'MAP — Breakfast + Dinner'}
                       </p>
                     </div>
                     <p className="text-sm font-black text-violet-700 shrink-0">
@@ -1022,7 +1030,7 @@ export default function PackageResourcePickerDrawer({
                         room={selectedRoom}
                         nights={stayNights}
                         selected={
-                          String(selectedMealPlan?.key || '').toLowerCase() ===
+                          String(resolvedMealPlan?.key || '').toLowerCase() ===
                           String(plan.key || '').toLowerCase()
                         }
                         onSelect={(nextPlan) => {
