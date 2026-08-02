@@ -151,7 +151,7 @@ export default function LeadSourceChart({ data = [], total }) {
                 {row.name}
               </span>
               <span className="shrink-0 tabular-nums text-content-secondary">
-                <span className="text-violet-600">{row.leads || 0} aayi</span>
+                <span className="text-violet-600">{row.leads || 0} leads</span>
                 <span className="mx-1 text-content-muted">·</span>
                 <span className="font-semibold text-emerald-600">
                   {row.connected || 0} connected
