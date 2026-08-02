@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { calculatePricing, formatINR, getDisplayedCostBreakdown } from './quotationUtils';
+import { cleanInclusionExclusionLines } from './InclusionExclusionEditor';
 import { resolvePartyOccupancy } from './partyCosting';
 import ActionTile from '../ui/ActionTile';
 import { cn } from '../../lib/utils';
@@ -19,6 +20,7 @@ export default function PackageBuilderPriceSidebar({
   onPricingChange,
   nights,
   daysCount,
+  inclusions = [],
   onSaveDraft,
   onSubmit,
   onShare,
@@ -39,6 +41,12 @@ export default function PackageBuilderPriceSidebar({
   const youSave = Number(breakdown.youSave ?? pricing?.discount ?? 0) || 0;
   const party = pricing?.party || resolvePartyOccupancy(lead || {});
   const adults = Math.max(1, Number(party.adults) || 1);
+  const inclusionLines = useMemo(() => {
+    const fromProp = cleanInclusionExclusionLines(inclusions);
+    if (fromProp.length) return fromProp;
+    return cleanInclusionExclusionLines(pkg?.inclusions || pkg?.includes || []);
+  }, [inclusions, pkg]);
+
 
   const applyPricing = (partial) => {
     const next = { ...pricing, ...partial };
@@ -147,12 +155,33 @@ export default function PackageBuilderPriceSidebar({
             );
           })}
 
-          {Number(breakdown.packageInclusions || 0) > 0 ? (
-            <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50/80 border border-slate-100 px-2 py-1.5">
-              <span className="text-xs font-semibold text-slate-600">Package inclusions</span>
-              <span className="min-w-[108px] h-8 inline-flex items-center justify-end px-2 text-sm font-semibold metric-tabular text-slate-800">
-                {formatINR(breakdown.packageInclusions)}
-              </span>
+          {Number(breakdown.packageInclusions || 0) > 0 || inclusionLines.length > 0 ? (
+            <div className="rounded-lg bg-slate-50/80 border border-slate-100 px-2 py-2 space-y-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-semibold text-slate-600">Package inclusions</span>
+                <span className="min-w-[108px] h-8 inline-flex items-center justify-end px-2 text-sm font-semibold metric-tabular text-slate-800">
+                  {Number(breakdown.packageInclusions || 0) > 0
+                    ? formatINR(breakdown.packageInclusions)
+                    : '—'}
+                </span>
+              </div>
+              {inclusionLines.length > 0 ? (
+                <ul className="max-h-28 overflow-y-auto space-y-0.5 border-t border-slate-100/80 pt-1.5 pr-0.5">
+                  {inclusionLines.map((line, idx) => (
+                    <li
+                      key={`${idx}-${line.slice(0, 24)}`}
+                      className="flex items-start gap-1.5 text-[10px] leading-snug text-slate-600"
+                    >
+                      <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-emerald-500" />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[10px] text-slate-400 border-t border-slate-100/80 pt-1.5">
+                  Residual package cost after hotel &amp; cab (sightseeing / meals / other).
+                </p>
+              )}
             </div>
           ) : null}
 

@@ -788,6 +788,7 @@ export default function PackageBuilderWorkspace({
             onPricingChange={onPricingChange}
             nights={nights}
             daysCount={itinerary?.length}
+            inclusions={inclusions}
             onSaveDraft={onSaveDraft}
             onSubmit={onSubmit}
             onShare={handleShare}
@@ -850,6 +851,7 @@ export default function PackageBuilderWorkspace({
                 onPricingChange={onPricingChange}
                 nights={nights}
                 daysCount={itinerary?.length}
+                inclusions={inclusions}
                 onSaveDraft={onSaveDraft}
                 onSubmit={() => {
                   setMobilePricingOpen(false);
