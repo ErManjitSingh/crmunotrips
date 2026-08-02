@@ -2,8 +2,6 @@
  * Retag WhatsApp leads that were force-labeled DPW2 WA but have no Meta CTWA referral
  * → DPW WA (Google Ads WhatsApp).
  *
- * Keeps DPW2 WA when conversation has facebook_ad / ctwa / fb|instagram|meta URL.
- *
  *   node deploy/retag-whatsapp-google-source.mjs
  */
 import { readFileSync, existsSync } from 'fs';
@@ -31,14 +29,22 @@ function loadEnv(file) {
 
 loadEnv(resolve(backendRoot, '.env'));
 
-function isMetaConversation(conv = {}) {
+function isRealMetaConversation(conv = {}) {
   const meta = conv.inboundAdMeta || {};
   const url = String(meta.sourceUrl || meta.source_url || '').toLowerCase();
   const ctwa = String(meta.ctwaClid || meta.ctwa_clid || '').trim();
-  // Require real Meta CTWA signal — do not trust bare inboundAdSource alone
   if (ctwa) return true;
   if (/facebook|fb\.me|fb\.com|instagram|meta\.com|ig\.me/i.test(url)) return true;
   return false;
+}
+
+function toId(value) {
+  if (!value) return null;
+  try {
+    return new mongoose.Types.ObjectId(String(value));
+  } catch {
+    return null;
+  }
 }
 
 async function main() {
@@ -48,57 +54,52 @@ async function main() {
   const Lead = mongoose.connection.collection('leads');
   const Conv = mongoose.connection.collection('whatsappconversations');
 
-  const convs = await Conv.find(
-    { lead: { $ne: null } },
-    { projection: { lead: 1, inboundAdSource: 1, inboundAdMeta: 1, phone: 1 } }
-  ).toArray();
-
+  const convs = await Conv.find({ lead: { $ne: null } }).toArray();
   const metaLeadIds = new Set();
-  const nonMetaLeadIds = new Set();
+  const googleLeadIds = new Set();
+
   for (const c of convs) {
     const id = String(c.lead);
-    if (isMetaConversation(c)) metaLeadIds.add(id);
-    else nonMetaLeadIds.add(id);
+    if (isRealMetaConversation(c)) metaLeadIds.add(id);
+    else googleLeadIds.add(id);
   }
 
-  // Non-meta wins only when no meta signal on any conversation for that lead
-  const toGoogle = [...nonMetaLeadIds].filter((id) => !metaLeadIds.has(id));
+  const onlyGoogle = [...googleLeadIds].filter((id) => !metaLeadIds.has(id));
+  const googleOids = onlyGoogle.map(toId).filter(Boolean);
 
-  let modified = 0;
-  if (toGoogle.length) {
-    const objectIds = toGoogle
-      .filter((id) => mongoose.Types.ObjectId.isValid(id))
-      .map((id) => new mongoose.Types.ObjectId(id));
+  const before = await Lead.countDocuments({
+    _id: { $in: googleOids },
+    source: 'dpw2_wa',
+    deletedAt: null,
+  });
 
-    const res = await Lead.updateMany(
-      {
-        _id: { $in: objectIds },
-        source: { $in: ['dpw2_wa', 'whatsapp'] },
-        deletedAt: null,
+  const res = await Lead.updateMany(
+    {
+      _id: { $in: googleOids },
+      source: { $in: ['dpw2_wa', 'whatsapp'] },
+      deletedAt: null,
+    },
+    {
+      $set: {
+        source: 'dpw_wa',
+        sourceLabel: 'DPW WA',
+        leadSource: 'dpw_wa',
       },
-      {
-        $set: {
-          source: 'dpw_wa',
-          sourceLabel: 'DPW WA',
-          leadSource: 'dpw_wa',
-        },
-      }
-    );
-    modified = res.modifiedCount;
-  }
+    }
+  );
 
-  // Also: channel whatsapp + dpw2_wa with no linked meta conversation (orphans already covered)
-  // channel whatsapp leads tagged dpw2_wa that have zero conversations stay as-is unless channel-only
+  // Any remaining channel=whatsapp / captureType whatsapp dpw2_wa without Meta lead id
+  const metaOids = [...metaLeadIds].map(toId).filter(Boolean);
   const orphan = await Lead.updateMany(
     {
-      channel: 'whatsapp',
-      source: 'dpw2_wa',
       deletedAt: null,
-      _id: {
-        $nin: [...metaLeadIds]
-          .filter((id) => mongoose.Types.ObjectId.isValid(id))
-          .map((id) => new mongoose.Types.ObjectId(id)),
-      },
+      source: 'dpw2_wa',
+      _id: { $nin: metaOids },
+      $or: [
+        { channel: 'whatsapp' },
+        { captureType: { $in: ['whatsapp_chat', 'whatsapp_google', 'whatsapp_ctwa'] } },
+        { sourceLabel: { $in: ['DPW2 WA', 'WhatsApp', 'whatsapp'] } },
+      ],
     },
     {
       $set: {
@@ -112,8 +113,10 @@ async function main() {
   console.log('RETAG_WHATSAPP_GOOGLE_OK', {
     conversations: convs.length,
     metaLeads: metaLeadIds.size,
-    retaggedFromConv: modified,
-    retaggedOrphanChannel: orphan.modifiedCount,
+    googleOnlyLeads: onlyGoogle.length,
+    matchedDpw2Before: before,
+    retaggedFromConv: res.modifiedCount,
+    retaggedOrphan: orphan.modifiedCount,
   });
   await mongoose.disconnect();
 }
