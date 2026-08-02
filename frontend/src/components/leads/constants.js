@@ -15,8 +15,10 @@ export const LEAD_STATUSES = [
 export const LEAD_SOURCES = [
   'dpw',
   'dpw_wa',
+  'dpw_call',
   'dpw2',
   'dpw2_wa',
+  'dpw2_call',
   'referral',
   'call_lead',
   'organic',

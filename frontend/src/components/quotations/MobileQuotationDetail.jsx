@@ -84,8 +84,10 @@ function formatSource(lead = {}) {
   const map = {
     dpw: 'DPW',
     dpw_wa: 'DPW WA',
+    dpw_call: 'DPW CALL',
     dpw2: 'DPW2',
     dpw2_wa: 'DPW2 WA',
+    dpw2_call: 'DPW2 CALL',
     call_lead: 'Call Lead',
     website: 'DPW',
     google_ads: 'DPW',

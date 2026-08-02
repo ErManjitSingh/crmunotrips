@@ -15,8 +15,10 @@ import { openCrmWhatsApp } from '../../lib/openCrmWhatsApp';
 const SOURCE_STYLES = {
   dpw: 'bg-gradient-to-r from-sky-500/20 to-blue-500/15 text-sky-700 dark:text-sky-300 ring-sky-400/40',
   dpw_wa: 'bg-gradient-to-r from-green-500/20 to-emerald-500/15 text-green-700 dark:text-green-300 ring-green-400/40',
+  dpw_call: 'bg-gradient-to-r from-blue-500/20 to-cyan-500/15 text-blue-700 dark:text-blue-300 ring-blue-400/40',
   dpw2: 'bg-gradient-to-r from-indigo-500/20 to-blue-500/15 text-indigo-700 dark:text-indigo-300 ring-indigo-400/40',
   dpw2_wa: 'bg-gradient-to-r from-teal-500/20 to-cyan-500/15 text-teal-700 dark:text-teal-300 ring-teal-400/40',
+  dpw2_call: 'bg-gradient-to-r from-violet-500/20 to-indigo-500/15 text-violet-700 dark:text-violet-300 ring-violet-400/40',
   website: 'bg-gradient-to-r from-sky-500/20 to-blue-500/15 text-sky-700 dark:text-sky-300 ring-sky-400/40',
   google_ads: 'bg-gradient-to-r from-sky-500/20 to-blue-500/15 text-sky-700 dark:text-sky-300 ring-sky-400/40',
   referral: 'bg-gradient-to-r from-emerald-500/20 to-teal-500/15 text-emerald-700 dark:text-emerald-300 ring-emerald-400/40',

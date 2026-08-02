@@ -113,8 +113,10 @@ const leadSchema = new mongoose.Schema(
       enum: [
         'dpw',
         'dpw_wa',
+        'dpw_call',
         'dpw2',
         'dpw2_wa',
+        'dpw2_call',
         'referral',
         'call_lead',
         'organic',

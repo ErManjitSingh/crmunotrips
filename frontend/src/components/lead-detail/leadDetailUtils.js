@@ -1,8 +1,10 @@
 const SOURCE_LABELS = {
   dpw: 'DPW',
   dpw_wa: 'DPW WA',
+  dpw_call: 'DPW CALL',
   dpw2: 'DPW2',
   dpw2_wa: 'DPW2 WA',
+  dpw2_call: 'DPW2 CALL',
   referral: 'Referral',
   call_lead: 'Call Lead',
   organic: 'Organic',
@@ -16,8 +18,10 @@ const SOURCE_LABELS = {
   facebook_ads: 'DPW2',
   DPW: 'DPW',
   'DPW WA': 'DPW WA',
+  'DPW CALL': 'DPW CALL',
   DPW2: 'DPW2',
   'DPW2 WA': 'DPW2 WA',
+  'DPW2 CALL': 'DPW2 CALL',
   'Facebook Lead': 'DPW2',
 };
 

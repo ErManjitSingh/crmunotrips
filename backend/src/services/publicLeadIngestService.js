@@ -200,7 +200,7 @@ async function ingestPublicLead(raw = {}) {
   const rawSourceText = String(raw.landingPage || raw.page || raw.landing || raw.sourceLabel || raw.source || '').trim();
   const landingPage =
     rawSourceText &&
-    !['dpw', 'dpw wa', 'dpw2', 'dpw2 wa', 'website', 'facebook', 'facebook lead', 'facebook_ads', 'fb lead', 'meta', 'whatsapp', 'dpw_wa', 'dpw2_wa'].includes(
+    !['dpw', 'dpw wa', 'dpw call', 'dpw2', 'dpw2 wa', 'dpw2 call', 'website', 'facebook', 'facebook lead', 'facebook_ads', 'fb lead', 'meta', 'whatsapp', 'dpw_wa', 'dpw_call', 'dpw2_wa', 'dpw2_call'].includes(
       rawSourceText.toLowerCase()
     )
       ? rawSourceText

@@ -18,6 +18,8 @@ function getLeadSourceShortLabel(source, sourceLabel) {
       return LEAD_SOURCE_LABELS[resolvedFromLabel];
     }
     const lower = explicit.toLowerCase();
+    if (lower === 'dpw call' || lower === 'dpw_call') return 'DPW CALL';
+    if (lower === 'dpw2 call' || lower === 'dpw2_call') return 'DPW2 CALL';
     if (lower === 'dpw wa' || lower === 'dpw_wa') return 'DPW WA';
     if (lower === 'dpw2 wa' || lower === 'dpw2_wa') return 'DPW2 WA';
     if (lower === 'dpw2') return 'DPW2';
@@ -29,6 +31,8 @@ function getLeadSourceShortLabel(source, sourceLabel) {
   if (key && SOURCE_SHORT[key]) return SOURCE_SHORT[key];
 
   const label = explicit.toLowerCase();
+  if (label.includes('dpw2') && label.includes('call')) return 'DPW2 CALL';
+  if (label.includes('dpw') && label.includes('call') && !label.includes('wa')) return 'DPW CALL';
   if (label.includes('dpw2') && (label.includes('wa') || label.includes('whatsapp'))) return 'DPW2 WA';
   if (label.includes('dpw') && (label.includes('wa') || label.includes('whatsapp'))) return 'DPW WA';
   if (label.includes('facebook') || label.includes('instagram') || label.includes('fb ')) return 'DPW2';

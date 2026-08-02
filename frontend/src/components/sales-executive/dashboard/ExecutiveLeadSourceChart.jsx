@@ -3,8 +3,10 @@ import { Globe, MessageCircle, Users, MapPin, MoreHorizontal } from 'lucide-reac
 const SOURCE_ICONS = {
   DPW: Globe,
   'DPW WA': MessageCircle,
+  'DPW CALL': MapPin,
   DPW2: Users,
   'DPW2 WA': MessageCircle,
+  'DPW2 CALL': MapPin,
   Referral: Users,
   'Call Lead': MapPin,
   Organic: Globe,

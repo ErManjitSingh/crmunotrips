@@ -7,8 +7,10 @@ const COLORS = ['#3B82F6', '#EC4899', '#64748B', '#22C55E', '#8B5CF6', '#F59E0B'
 const SOURCE_LABELS = {
   dpw: 'DPW',
   dpw_wa: 'DPW WA',
+  dpw_call: 'DPW CALL',
   dpw2: 'DPW2',
   dpw2_wa: 'DPW2 WA',
+  dpw2_call: 'DPW2 CALL',
   referral: 'Referral',
   call_lead: 'Call Lead',
   organic: 'Organic',

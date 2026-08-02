@@ -4,8 +4,10 @@
 const LEAD_SOURCE_KEYS = [
   'dpw',
   'dpw_wa',
+  'dpw_call',
   'dpw2',
   'dpw2_wa',
+  'dpw2_call',
   'referral',
   'call_lead',
   'organic',
@@ -28,8 +30,10 @@ const LEAD_SOURCE_ENUM = [...LEAD_SOURCE_KEYS, ...LEGACY_LEAD_SOURCE_KEYS];
 const LEAD_SOURCE_LABELS = {
   dpw: 'DPW',
   dpw_wa: 'DPW WA',
+  dpw_call: 'DPW CALL',
   dpw2: 'DPW2',
   dpw2_wa: 'DPW2 WA',
+  dpw2_call: 'DPW2 CALL',
   referral: 'Referral',
   call_lead: 'Call Lead',
   organic: 'Organic',
@@ -57,6 +61,11 @@ const LEAD_SOURCE_ALIASES = {
   google_whatsapp: 'dpw_wa',
   landing_whatsapp: 'dpw_wa',
 
+  dpw_call: 'dpw_call',
+  'dpw call': 'dpw_call',
+  dpwcall: 'dpw_call',
+  google_call: 'dpw_call',
+
   dpw2: 'dpw2',
   facebook_ads: 'dpw2',
   facebook: 'dpw2',
@@ -74,6 +83,12 @@ const LEAD_SOURCE_ALIASES = {
   fb_whatsapp: 'dpw2_wa',
   ctwa: 'dpw2_wa',
   meta_whatsapp: 'dpw2_wa',
+
+  dpw2_call: 'dpw2_call',
+  'dpw2 call': 'dpw2_call',
+  dpw2call: 'dpw2_call',
+  facebook_call: 'dpw2_call',
+  fb_call: 'dpw2_call',
 
   referral: 'referral',
 

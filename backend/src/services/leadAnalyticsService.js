@@ -6,8 +6,10 @@ const { withBranch } = require('../utils/branchScope');
 const SOURCE_LABELS = {
   dpw: 'DPW',
   dpw_wa: 'DPW WA',
+  dpw_call: 'DPW CALL',
   dpw2: 'DPW2',
   dpw2_wa: 'DPW2 WA',
+  dpw2_call: 'DPW2 CALL',
   referral: 'Referral',
   call_lead: 'Call Lead',
   organic: 'Organic',

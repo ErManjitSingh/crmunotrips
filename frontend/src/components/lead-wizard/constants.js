@@ -10,8 +10,10 @@ export const WIZARD_STEPS = [
 export const LEAD_SOURCES = [
   { value: 'dpw', label: 'DPW' },
   { value: 'dpw_wa', label: 'DPW WA' },
+  { value: 'dpw_call', label: 'DPW CALL' },
   { value: 'dpw2', label: 'DPW2' },
   { value: 'dpw2_wa', label: 'DPW2 WA' },
+  { value: 'dpw2_call', label: 'DPW2 CALL' },
   { value: 'referral', label: 'Referral' },
   { value: 'call_lead', label: 'Call Lead' },
   { value: 'organic', label: 'Organic' },
