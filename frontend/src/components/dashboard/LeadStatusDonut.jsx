@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Flame, Heart, Phone, Users, Trophy } from 'lucide-react';
 import DashboardPanel from './DashboardPanel';
@@ -30,10 +29,6 @@ function SummaryChip({ icon: Icon, label, value, tone }) {
   );
 }
 
-/**
- * Same list style as Leads by Source — name, count, % and progress bar under each row.
- * Total in centre matches sum of exclusive status slices.
- */
 export default function LeadStatusDonut({ data = [], total = 0, summary = null }) {
   const rows = Array.isArray(data) ? data : [];
   const sumValues = rows.reduce((s, d) => s + (Number(d.value) || 0), 0);
@@ -96,70 +91,31 @@ export default function LeadStatusDonut({ data = [], total = 0, summary = null }
       {!chartData.length ? (
         <p className="py-8 text-center text-sm text-content-muted">No leads in this period</p>
       ) : (
-        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-stretch">
-          <div className="relative mx-auto h-[140px] w-[140px] shrink-0 sm:mx-0 sm:h-[160px] sm:w-[160px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={44}
-                  outerRadius={66}
-                  paddingAngle={3}
-                  dataKey="value"
-                  strokeWidth={0}
-                >
-                  {chartData.map((item) => (
-                    <Cell key={item.key || item.name} fill={item.color} />
-                  ))}
-                </Pie>
-                <Tooltip content={<DonutTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Total</p>
-              <p className="text-xl font-bold text-slate-900 metric-tabular">
-                {Number(displayTotal).toLocaleString('en-IN')}
-              </p>
-            </div>
-          </div>
-
-          <div className="min-w-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5 max-h-[200px] scrollbar-thin">
-            {chartData.map((item, i) => (
-              <motion.div
-                key={item.key || item.name}
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.04 }}
-                className="min-w-0"
+        <div className="relative mx-auto h-[160px] w-[160px] sm:h-[180px] sm:w-[180px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                innerRadius={48}
+                outerRadius={72}
+                paddingAngle={3}
+                dataKey="value"
+                strokeWidth={0}
               >
-                <div className="mb-1 flex items-center gap-2">
-                  <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white shadow-sm"
-                    style={{ background: item.color }}
-                  />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700" title={item.name}>
-                    {item.name}
-                  </span>
-                  <span className="shrink-0 text-xs font-semibold text-slate-500 metric-tabular">
-                    {Number(item.value).toLocaleString('en-IN')}
-                  </span>
-                  <span className="w-11 shrink-0 text-right text-sm font-bold text-slate-900 metric-tabular">
-                    {item.pct}%
-                  </span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${Math.min(100, Math.max(2, item.pct || 0))}%`,
-                      background: item.color,
-                    }}
-                  />
-                </div>
-              </motion.div>
-            ))}
+                {chartData.map((item) => (
+                  <Cell key={item.key || item.name} fill={item.color} />
+                ))}
+              </Pie>
+              <Tooltip content={<DonutTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Total</p>
+            <p className="text-xl font-bold text-slate-900 metric-tabular sm:text-2xl">
+              {Number(displayTotal).toLocaleString('en-IN')}
+            </p>
           </div>
         </div>
       )}
