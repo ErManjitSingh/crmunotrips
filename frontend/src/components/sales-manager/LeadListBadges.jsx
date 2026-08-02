@@ -64,6 +64,38 @@ export function leadArrivedFullTitle(date) {
   return formatLeadArrivedAt(date) || undefined;
 }
 
+/** Compact date+time lines under lead name (created / assigned). */
+export function LeadTimingLines({ lead, className }) {
+  const created = formatLeadArrivedAt(lead?.createdAt);
+  const assigned = formatLeadArrivedAt(lead?.assignedAt);
+  if (!created && !assigned) return null;
+
+  return (
+    <div className={cn('mt-0.5 space-y-0.5 text-[11px] leading-tight text-slate-500', className)}>
+      {created ? (
+        <p className="flex items-center gap-1 min-w-0" title={`Created ${created}`}>
+          <Clock className="w-3 h-3 shrink-0 text-slate-400" />
+          <span className="truncate">
+            <span className="font-semibold text-slate-600">Created</span>
+            {' · '}
+            {created}
+          </span>
+        </p>
+      ) : null}
+      {assigned ? (
+        <p className="flex items-center gap-1 min-w-0" title={`Assigned ${assigned}`}>
+          <User className="w-3 h-3 shrink-0 text-slate-400" />
+          <span className="truncate">
+            <span className="font-semibold text-slate-600">Assigned</span>
+            {' · '}
+            {assigned}
+          </span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function LeadIdPill({ id }) {
   return (
     <span className="text-sm font-semibold text-blue-600 whitespace-nowrap">
@@ -183,8 +215,6 @@ export function formatFollowUpDate(date) {
 
 export function CustomerCell({ name, lead, showPhone = false }) {
   const isRepeated = lead?.isRepeatCustomer || lead?.isVip;
-  const arrived = formatLeadArrivedAt(lead?.createdAt);
-  const arrivedTitle = leadArrivedFullTitle(lead?.createdAt);
   return (
     <div className="flex items-start gap-2.5 min-w-0 max-w-[340px]">
       <Avatar name={name} size="sm" className="!w-8 !h-8 !text-[11px] shrink-0 mt-0.5" />
@@ -199,15 +229,7 @@ export function CustomerCell({ name, lead, showPhone = false }) {
             </span>
           )}
         </div>
-        {arrived && (
-          <p
-            className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500 leading-tight"
-            title={arrivedTitle}
-          >
-            <Clock className="w-3 h-3 shrink-0 text-slate-400" />
-            <span className="truncate">{arrived}</span>
-          </p>
-        )}
+        <LeadTimingLines lead={lead} />
         {/* Same call chips as executive / converted lists — under the name */}
         <LeadCallStats lead={lead} compact className="mt-1.5" />
         {showPhone && lead?.phone && (

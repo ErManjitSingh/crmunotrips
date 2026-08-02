@@ -534,9 +534,18 @@ export default function MobileExecutiveLeads({
                           </p>
                         </div>
                         <div className="shrink-0 text-right">
-                          <p className="text-[10px] leading-tight text-slate-400">
+                          <p className="text-[10px] leading-tight text-slate-500">
+                            <span className="font-semibold text-slate-600">Created</span>
+                            <br />
                             {formatDateTime(lead.createdAt)}
                           </p>
+                          {lead.assignedAt ? (
+                            <p className="mt-1 text-[10px] leading-tight text-slate-500">
+                              <span className="font-semibold text-slate-600">Assigned</span>
+                              <br />
+                              {formatDateTime(lead.assignedAt)}
+                            </p>
+                          ) : null}
                           <div className="mt-1.5 flex flex-col items-end gap-1">
                             {hot ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700">
