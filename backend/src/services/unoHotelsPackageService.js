@@ -88,6 +88,28 @@ function formatMealPlanCode(code = '') {
   return map[key] || (code ? String(code).toUpperCase() : '');
 }
 
+function normalizeMealPlanKey(code = '') {
+  const s = String(code || '').trim().toLowerCase();
+  if (!s) return '';
+  if (s === 'ep' || s.startsWith('ep') || /\bep\b/.test(s)) return 'ep';
+  if (s === 'cp' || s.startsWith('cp') || /\bcp\b/.test(s)) return 'cp';
+  if (s === 'map' || s.startsWith('map') || /\bmap\b/.test(s)) return 'map';
+  if (s === 'ap' || s.startsWith('ap') || /\bap\b/.test(s)) return 'ap';
+  if (s === 'ai' || /all\s*inclusive/.test(s)) return 'ai';
+  return '';
+}
+
+/** Package stay meal (usually MAP). No-hotel / departure day → EP. */
+function packageMealLabel(code = '', { hasHotel = true } = {}) {
+  if (!hasHotel) return formatMealPlanCode('ep');
+  return formatMealPlanCode(normalizeMealPlanKey(code) || 'map');
+}
+
+function packageMealKey(code = '', { hasHotel = true } = {}) {
+  if (!hasHotel) return 'ep';
+  return normalizeMealPlanKey(code) || 'map';
+}
+
 function formatNamedList(items = []) {
   return items
     .map((item) => item?.name || item?.title || (typeof item === 'string' ? item : ''))
@@ -239,7 +261,8 @@ function applyCatalogToOption(option = {}, catalog = null, stay = null) {
 /** Hotels live on day-options `stays[]` — build default + alternatives for a night. */
 function hotelOptionsFromStay(stay = {}, catalog = null) {
   if (!stay || typeof stay !== 'object') return [];
-  const meals = formatMealPlanCode('map');
+  const mealKey = packageMealKey(stay.default_meal_plan, { hasHotel: true });
+  const meals = packageMealLabel(stay.default_meal_plan, { hasHotel: true });
   const location = stay.destination_city || stay.destination_state || '';
   const roomFallback = stay.default_room_type_name || '';
   const options = [];
@@ -257,6 +280,8 @@ function hotelOptionsFromStay(stay = {}, catalog = null) {
           tier_name: stay.default_room_type_name || roomFallback,
           room_type_id: stay.default_room_type_id || null,
           meals,
+          meal_plan: mealKey,
+          mealPlanKey: mealKey,
           price_delta: Number(stay.default_upgrade_price || 0),
           is_default: true,
           location,
@@ -280,6 +305,8 @@ function hotelOptionsFromStay(stay = {}, catalog = null) {
           room_type: opt.default_room_type_name || roomFallback,
           tier_name: opt.default_room_type_name || roomFallback,
           meals,
+          meal_plan: mealKey,
+          mealPlanKey: mealKey,
           price_delta: Number(opt.upgrade_price ?? opt.price_delta ?? 0),
           is_default: false,
           location,
@@ -306,7 +333,11 @@ function mapHotelMeta(option = {}) {
       option.cover_image ||
       (Array.isArray(option.images) ? option.images[0] : '')
   );
-  const meals = formatMealPlanCode('map');
+  const mealKey = packageMealKey(
+    option.mealPlanKey || option.meal_plan || option.default_meal_plan || option.meals,
+    { hasHotel: true }
+  );
+  const meals = packageMealLabel(mealKey, { hasHotel: true });
   const startingPrice = Number(
     option.starting_price ?? option.startingPrice ?? 0
   );
@@ -325,6 +356,7 @@ function mapHotelMeta(option = {}) {
     city: option.city || '',
     slug: option.slug || '',
     meals,
+    mealPlanKey: mealKey,
     startingPrice,
     priceDelta,
     tierName: option.tier_name || option.room_type || option.default_room_type_name || '',
@@ -357,7 +389,9 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null, catal
   const legacyActivities = legacyActivityParts.join(' · ');
   const activities = [activitiesFromOptions, legacyActivities].filter(Boolean).join(' · ');
 
-  const meals = formatMealPlanCode('map');
+  const hasHotel = Boolean(defaultHotelName);
+  const mealPlanKey = packageMealKey(stay?.default_meal_plan, { hasHotel });
+  const meals = packageMealLabel(stay?.default_meal_plan, { hasHotel });
 
   const transport = itineraryDay.transport || itineraryDay.cab_name || itineraryDay.transport_mode || '';
 
@@ -373,13 +407,16 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null, catal
     ).trim(),
     hotel: defaultHotelName,
     accommodation: defaultHotelName,
-    hotelMeta: defaultHotelMeta,
+    hotelMeta: defaultHotelMeta
+      ? { ...defaultHotelMeta, meals, mealPlanKey }
+      : defaultHotelMeta,
     hotelOptions,
     stayId: stay?.id || null,
     stayNights: stay ? Number(stay.nights) || 1 : null,
     activities: activities || sightseeing,
     sightseeing,
     meals,
+    mealPlanKey,
     transport,
     dayImage: sanitizeImageUrl(itineraryDay.day_image || optionDay.day_image),
     dayImages: sanitizeImages(itineraryDay.day_images || optionDay.day_images || []),
@@ -408,7 +445,17 @@ function enrichItineraryWithStays(itinerary = [], stays = [], catalog = null) {
   return itinerary.map((day) => {
     const dayNum = dayKey(day);
     const stay = findStayForDay(stays, dayNum);
-    if (!stay) return day;
+    const hasHotelEarly = Boolean(day.hotelMeta?.name || day.hotel);
+    if (!stay) {
+      if (!hasHotelEarly) {
+        return {
+          ...day,
+          meals: packageMealLabel('', { hasHotel: false }),
+          mealPlanKey: 'ep',
+        };
+      }
+      return day;
+    }
 
     const hotelOptions = hotelOptionsFromStay(stay, catalog).map(mapHotelMeta).filter(Boolean);
     const defaultHotel = hotelOptions.find((o) => o.isDefault) || hotelOptions[0] || null;
@@ -435,13 +482,18 @@ function enrichItineraryWithStays(itinerary = [], stays = [], catalog = null) {
     }
 
     const hotelName = defaultHotel?.name || day.hotelMeta?.name || day.hotel || '';
+    const mealKey = packageMealKey(stay.default_meal_plan, { hasHotel: Boolean(hotelName) });
+    const meals = packageMealLabel(stay.default_meal_plan, { hasHotel: Boolean(hotelName) });
     return {
       ...day,
       hotel: hotelName,
       accommodation: hotelName || day.accommodation || '',
-      hotelMeta: defaultHotel || day.hotelMeta,
+      hotelMeta: defaultHotel
+        ? { ...defaultHotel, meals, mealPlanKey: mealKey }
+        : day.hotelMeta,
       hotelOptions: hotelOptions.length ? hotelOptions : day.hotelOptions || [],
-      meals: formatMealPlanCode('map'),
+      meals,
+      mealPlanKey: mealKey,
       stayId: day.stayId || stay.id || null,
       stayNights: day.stayNights || Number(stay.nights) || 1,
     };

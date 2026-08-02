@@ -23,7 +23,8 @@ import { formatINR } from './quotationUtils';
 import {
   ensureMealPlanOptions,
   mealPlanNightlyRate,
-  pickDefaultMapMealPlan,
+  normalizeMealPlanKey,
+  pickPreferredMealPlan,
   resolveSelectedMealPlan,
 } from '../../lib/mealPlanDefaults';
 import { cn } from '../../lib/utils';
@@ -31,7 +32,7 @@ import { cn } from '../../lib/utils';
 const HOTEL_STEPS = [
   { key: 'hotel', label: 'Hotel', hint: 'Select your hotel' },
   { key: 'room', label: 'Room', hint: 'Choose room type' },
-  { key: 'meal', label: 'Meal Plan', hint: 'MAP default — change if needed' },
+  { key: 'meal', label: 'Meal Plan', hint: 'Package meal default — change if needed' },
 ];
 
 const BADGE_STYLES = [
@@ -373,11 +374,12 @@ function HotelListRow({ option, selected, loading, onSelect, showDay, index, bas
   );
 }
 
-function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0 }) {
+function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0, defaultMealPlanKey = 'map' }) {
   const image = room.images?.[0] || hotel?.thumbnailUrl || hotel?.images?.[0] || hotel?.image;
-  const mapPlan = pickDefaultMapMealPlan(ensureMealPlanOptions(room), room);
-  const price = mealPlanNightlyRate(mapPlan, room) || Number(room.pricePerNight || room.epPrice || 0);
+  const preferred = pickPreferredMealPlan(ensureMealPlanOptions(room), room, defaultMealPlanKey);
+  const price = mealPlanNightlyRate(preferred, room) || Number(room.pricePerNight || room.epPrice || 0);
   const rel = formatRelativePrice(price, basePrice, { isCurrent: false });
+  const mealKey = normalizeMealPlanKey(preferred?.key || defaultMealPlanKey) || 'map';
 
   return (
     <button
@@ -414,7 +416,7 @@ function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0 }) {
               </span>
             )}
             <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
-              MAP default
+              {mealKey.toUpperCase()} default
             </span>
             {room.rates?.ep > 0 && (
               <span className="rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
@@ -426,7 +428,9 @@ function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0 }) {
             <div>
               <p className="text-base font-black text-violet-700">
                 {price > 0 ? formatINR(price) : 'Not included'}
-                {price > 0 && <span className="text-[10px] font-medium text-slate-400"> / night MAP</span>}
+                {price > 0 && (
+                  <span className="text-[10px] font-medium text-slate-400"> / night {mealKey.toUpperCase()}</span>
+                )}
               </p>
               <p className={cn('text-xs font-bold mt-0.5', rel.tone)}>{rel.primary}</p>
             </div>
@@ -584,6 +588,8 @@ export default function PackageResourcePickerDrawer({
   nights = 1,
   destination = '',
   basePrice = 0,
+  /** Package API meal for this day (map/ep/…). Defaults picker + costing baseline. */
+  defaultMealPlanKey = 'map',
 }) {
   const [query, setQuery] = useState('');
   const [starFilter, setStarFilter] = useState(0); // 0 = all, 1-5 = star rating
@@ -637,8 +643,10 @@ export default function PackageResourcePickerDrawer({
 
   const mealPlans = selectedRoom ? ensureMealPlanOptions(selectedRoom) : [];
 
+  const packageMealKey = normalizeMealPlanKey(defaultMealPlanKey) || 'map';
+
   const resolvedMealPlan = selectedRoom
-    ? resolveSelectedMealPlan(selectedMealPlan, mealPlans, selectedRoom)
+    ? resolveSelectedMealPlan(selectedMealPlan, mealPlans, selectedRoom, packageMealKey)
     : null;
 
   const selectedMealNightly =
@@ -686,31 +694,27 @@ export default function PackageResourcePickerDrawer({
   const selectMealPlan = (plan, roomOverride = null) => {
     const room = roomOverride || selectedRoom;
     if (!packageHotel || !room || !plan) return;
+    const plans = ensureMealPlanOptions(room);
     const absolutePerNight = mealPlanNightlyRate(plan, room);
-    const packageUpgrade =
-      Number(packageHotel.priceDelta ?? packageHotel.upgrade_price ?? 0) || 0;
-    // Prefer current stay absolute rate; if unknown, use default package hotel catalog rate
-    // so upgrade deltas still compute when basePrice prop was 0.
-    const defaultOption =
-      options.find((o) => o.isDefault || o.is_default || o.is_selected) || options[0] || null;
-    const defaultAbsolute =
-      Number(defaultOption?.absolutePerNight ?? defaultOption?.startingPrice ?? defaultOption?.starting_price ?? 0) || 0;
-    const base =
-      Number(basePrice || 0) > 0
-        ? Number(basePrice)
-        : defaultAbsolute > 0
-          ? defaultAbsolute
-          : 0;
-    // Package baseCost already includes default stay.
-    // Prefer absolute delta vs current/default rate; if rates unknown, fall back to package upgrade only
-    // (never add full catalog rates on top of package price when we cannot compute a delta).
-    const costDeltaPerNight =
-      base > 0 && absolutePerNight > 0
-        ? Math.round((absolutePerNight - base) * 100) / 100
-        : packageUpgrade;
-    // One day-row = one night (day-wise seed model). Do not multiply by full stay here.
+    const packageMealPlan = pickPreferredMealPlan(plans, room, packageMealKey);
+    const packageMealAbs = mealPlanNightlyRate(packageMealPlan, room);
+    // Package upgrade_price is hotel-to-hotel at the package meal plan (usually MAP).
+    const hotelDelta =
+      Number(packageHotel.priceDelta ?? packageHotel.upgrade_price ?? packageHotel.perNight ?? 0) || 0;
+    // Extra / savings vs package meal on this room (EP↔MAP↔AP).
+    const mealDelta =
+      packageMealAbs > 0
+        ? Math.round((absolutePerNight - packageMealAbs) * 100) / 100
+        : 0;
+    const costDeltaPerNight = Math.round((hotelDelta + mealDelta) * 100) / 100;
     const totalCost = costDeltaPerNight;
     const catalogHotel = hotelDetail || packageHotel;
+    const includedRate =
+      packageMealAbs > 0
+        ? packageMealAbs
+        : Number(basePrice || 0) > 0
+          ? Number(basePrice)
+          : Number(packageHotel.startingPrice || packageHotel.absolutePerNight || 0) || 0;
 
     onSelect?.({
       ...packageHotel,
@@ -724,6 +728,7 @@ export default function PackageResourcePickerDrawer({
       startingPrice: absolutePerNight || packageHotel.startingPrice || catalogHotel.startingPrice || 0,
       tierName: room.name,
       meals: plan.label,
+      mealPlanKey: normalizeMealPlanKey(plan.key || plan.label) || packageMealKey,
       priceDelta: costDeltaPerNight,
       room: {
         id: room.id,
@@ -732,17 +737,17 @@ export default function PackageResourcePickerDrawer({
         rates: room.rates || null,
         bedType: room.bedType,
         maxOccupancy: room.maxOccupancy,
-        mealPlanOptions: ensureMealPlanOptions(room),
+        mealPlanOptions: plans,
       },
       mealPlan: {
-        key: plan.key,
+        key: normalizeMealPlanKey(plan.key || plan.label) || plan.key,
         label: plan.label,
         price: Number(plan.price || 0),
         absolutePrice: absolutePerNight,
       },
       perNight: costDeltaPerNight,
       absolutePerNight,
-      includedRate: base,
+      includedRate,
       totalCost,
       nights: 1,
     });
@@ -751,8 +756,12 @@ export default function PackageResourcePickerDrawer({
   const selectRoom = (room) => {
     const normalized = { ...room, mealPlanOptions: ensureMealPlanOptions(room) };
     setSelectedRoom(normalized);
-    const mapPlan = pickDefaultMapMealPlan(normalized.mealPlanOptions, normalized);
-    setSelectedMealPlan(mapPlan);
+    const preferred = pickPreferredMealPlan(
+      normalized.mealPlanOptions,
+      normalized,
+      packageMealKey
+    );
+    setSelectedMealPlan(preferred);
     setStep('meal');
   };
 
@@ -979,6 +988,7 @@ export default function PackageResourcePickerDrawer({
                           selected={selectedRoom?.id === room.id}
                           onSelect={selectRoom}
                           basePrice={basePrice}
+                          defaultMealPlanKey={packageMealKey}
                         />
                       ))}
                     </div>
@@ -1019,8 +1029,8 @@ export default function PackageResourcePickerDrawer({
                   </div>
 
                   <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 px-0.5">
-                    Meal plans · MAP selected by default · tap a plan to apply · {stayNights} night
-                    {stayNights !== 1 ? 's' : ''}
+                    Meal plans · package default {packageMealKey.toUpperCase()} · tap a plan to apply ·{' '}
+                    {stayNights} night{stayNights !== 1 ? 's' : ''}
                   </p>
                   <div className="space-y-3">
                     {mealPlans.map((plan) => (

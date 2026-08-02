@@ -28,6 +28,7 @@ import EmailComposerModal from '../email/EmailComposerModal';
 import { openWhatsApp } from '../../lib/whatsappContact';
 import { toast } from '../../context/ToastContext';
 import { cn } from '../../lib/utils';
+import { mealPlanFromCode, normalizeMealPlanKey } from '../../lib/mealPlanDefaults';
 
 function buildQuotationShareText({ lead, pkg, pricing, nights, daysCount, quoteNumber }) {
   const total = formatINR(pricing?.total || 0);
@@ -428,10 +429,22 @@ export default function PackageBuilderWorkspace({
   const handleReplaceHotel = (day, option) => {
     if (!day || !option) return;
     const roomName = option.room?.name || option.tierName || 'Standard Room';
+    const packageMeal = mealPlanFromCode(
+      option.mealPlan?.key ||
+        option.mealPlanKey ||
+        day.mealPlanKey ||
+        day.hotelMeta?.mealPlanKey ||
+        day.meals ||
+        'map',
+      'map'
+    );
     const mealLabel =
       option.mealPlan?.label ||
       option.meals ||
-      'MAP — Breakfast + Dinner';
+      packageMeal.label;
+    const mealKey =
+      normalizeMealPlanKey(option.mealPlan?.key || option.mealPlanKey || mealLabel) ||
+      packageMeal.key;
     // Cost contribution is upgrade delta only (package baseCost already includes default stay).
     const perNight = Number(option.perNight ?? option.priceDelta ?? 0);
     const absolutePerNight = Number(
@@ -446,8 +459,8 @@ export default function PackageBuilderWorkspace({
     // Keep original package-included rate stable across upgrades (for total itemization).
     const includedRate = Number(
       existing?.includedRate ??
-        existing?.hotel?.startingPrice ??
         option.includedRate ??
+        existing?.hotel?.startingPrice ??
         day?.hotelMeta?.startingPrice ??
         day?.hotelMeta?.includedRate ??
         0
@@ -456,12 +469,13 @@ export default function PackageBuilderWorkspace({
       ...option,
       tierName: roomName,
       meals: mealLabel,
+      mealPlanKey: mealKey,
       priceDelta: perNight,
       absolutePerNight,
       includedRate,
       startingPrice: absolutePerNight || option.startingPrice || 0,
       room: option.room || { name: roomName },
-      mealPlan: option.mealPlan || { key: 'map', label: mealLabel },
+      mealPlan: option.mealPlan || { key: mealKey, label: mealLabel },
     };
 
     const nextItinerary = itinerary.map((d) => {
@@ -493,7 +507,7 @@ export default function PackageBuilderWorkspace({
         startingPrice: absolutePerNight || option.startingPrice || 0,
       },
       room: option.room || { name: roomName },
-      mealPlan: option.mealPlan || { key: 'map', label: mealLabel },
+      mealPlan: option.mealPlan || { key: mealKey, label: mealLabel },
       perNight,
       absolutePerNight,
       includedRate,
@@ -942,6 +956,12 @@ export default function PackageBuilderWorkspace({
         nights={picker?.day?.stayNights || nights || 1}
         destination={hotelDestination || pkg?.destination || ''}
         basePrice={hotelBasePrice}
+        defaultMealPlanKey={
+          picker?.day?.mealPlanKey ||
+          picker?.day?.hotelMeta?.mealPlanKey ||
+          normalizeMealPlanKey(picker?.day?.meals || picker?.day?.hotelMeta?.meals) ||
+          'map'
+        }
       />
     </div>
   );

@@ -1,4 +1,4 @@
-/** Default meal plan for all package / hotel room selections. */
+/** Package nights are usually MAP; last/departure day is often EP in Uno packages. */
 export const DEFAULT_MEAL_PLAN_KEY = 'map';
 
 export const DEFAULT_MAP_MEAL_PLAN = {
@@ -9,17 +9,43 @@ export const DEFAULT_MAP_MEAL_PLAN = {
   meals: ['breakfast', 'dinner'],
 };
 
+const MEAL_PLAN_META = {
+  ep: { key: 'ep', label: 'EP (Room Only)', meals: [] },
+  cp: { key: 'cp', label: 'CP — Breakfast', meals: ['breakfast'] },
+  map: { key: 'map', label: 'MAP — Breakfast + Dinner', meals: ['breakfast', 'dinner'] },
+  ap: { key: 'ap', label: 'AP — All Meals', meals: ['breakfast', 'lunch', 'dinner'] },
+  ai: { key: 'ai', label: 'AI (All inclusive)', meals: ['breakfast', 'lunch', 'dinner'] },
+};
+
 const FALLBACK_MEAL_PLANS = [
-  { key: 'ep', label: 'EP (Room Only)', price: 0, absolutePrice: 0, meals: [] },
-  { key: 'cp', label: 'CP — Breakfast', price: 0, absolutePrice: 0, meals: ['breakfast'] },
+  { ...MEAL_PLAN_META.ep, price: 0, absolutePrice: 0 },
+  { ...MEAL_PLAN_META.cp, price: 0, absolutePrice: 0 },
   { ...DEFAULT_MAP_MEAL_PLAN },
-  { key: 'ap', label: 'AP — All Meals', price: 0, absolutePrice: 0, meals: ['breakfast', 'lunch', 'dinner'] },
+  { ...MEAL_PLAN_META.ap, price: 0, absolutePrice: 0 },
 ];
 
+/** Normalize API codes / labels → ep|cp|map|ap|ai. */
+export function normalizeMealPlanKey(codeOrLabel = '') {
+  const s = String(codeOrLabel || '').trim().toLowerCase();
+  if (!s) return '';
+  if (s === 'ep' || s.startsWith('ep ') || s.startsWith('ep(') || /\bep\b/.test(s) || s.includes('room only')) {
+    return 'ep';
+  }
+  if (s === 'cp' || s.startsWith('cp ') || s.startsWith('cp(') || /\bcp\b/.test(s)) return 'cp';
+  if (s === 'map' || s.startsWith('map ') || s.startsWith('map(') || /\bmap\b/.test(s)) return 'map';
+  if (s === 'ap' || s.startsWith('ap ') || s.startsWith('ap(') || /\bap\b/.test(s)) return 'ap';
+  if (s === 'ai' || /\ball\s*inclusive\b/.test(s)) return 'ai';
+  return '';
+}
+
+export function mealPlanFromCode(codeOrLabel = '', fallback = DEFAULT_MEAL_PLAN_KEY) {
+  const key = normalizeMealPlanKey(codeOrLabel) || fallback;
+  const meta = MEAL_PLAN_META[key] || MEAL_PLAN_META.map;
+  return { ...meta, price: 0, absolutePrice: 0 };
+}
+
 export function isMapMealPlan(plan = {}) {
-  const key = String(plan?.key || '').toLowerCase();
-  if (key === 'map') return true;
-  return /\bmap\b/i.test(String(plan?.label || ''));
+  return normalizeMealPlanKey(plan?.key || plan?.label) === 'map';
 }
 
 /** Nightly rate for a meal plan (absolute rack, else EP room + supplement). */
@@ -35,8 +61,7 @@ export function mealPlanNightlyRate(plan = {}, room = {}) {
 }
 
 /**
- * Prefer API meal options; always ensure MAP is present so SE lands on MAP
- * and can switch to EP/CP/AP. Fills MAP absolute from room.rates when missing.
+ * Prefer API meal options; ensure common plans exist. Fills absolutes from room.rates.
  */
 export function ensureMealPlanOptions(room = {}) {
   const raw =
@@ -47,23 +72,24 @@ export function ensureMealPlanOptions(room = {}) {
   const rates = room?.rates || {};
   const ep = Number(rates.ep || room.epPrice || room.pricePerNight || 0);
   const enrich = (plan) => {
-    const key = String(plan?.key || '').toLowerCase();
-    const fromRates = Number(rates[key] || 0);
+    const key = normalizeMealPlanKey(plan?.key || plan?.label);
+    const fromRates = key ? Number(rates[key] || 0) : 0;
     if (fromRates > 0 && !(Number(plan.absolutePrice) > 0)) {
       return {
         ...plan,
+        key: key || plan.key,
         absolutePrice: fromRates,
         price: ep > 0 ? Math.max(0, fromRates - ep) : Number(plan.price || 0),
       };
     }
-    // Supplement-only plans (absolute missing): derive rack = EP + supplement.
     if (!(Number(plan.absolutePrice) > 0) && ep > 0 && Number(plan.price || 0) > 0) {
       return {
         ...plan,
+        key: key || plan.key,
         absolutePrice: ep + Number(plan.price || 0),
       };
     }
-    return plan;
+    return key && !plan.key ? { ...plan, key } : plan;
   };
 
   const plans = raw.map(enrich);
@@ -80,7 +106,6 @@ export function ensureMealPlanOptions(room = {}) {
         : { ...DEFAULT_MAP_MEAL_PLAN };
     plans.splice(Math.min(2, plans.length), 0, mapPlan);
   } else {
-    // If MAP exists but has no price, try rates.map
     const idx = plans.findIndex(isMapMealPlan);
     if (idx >= 0) plans[idx] = enrich(plans[idx]);
   }
@@ -88,37 +113,49 @@ export function ensureMealPlanOptions(room = {}) {
   return plans;
 }
 
-/**
- * Prefer MAP from room mealPlanOptions; fall back to a synthetic MAP plan
- * so SE always lands on MAP and can switch to EP/CP/AP if needed.
- * Always prefer the priced MAP entry when duplicates / zero-price stubs exist.
- */
-export function pickDefaultMapMealPlan(mealPlanOptions = [], room = null) {
+/** Prefer package day's meal plan (MAP / EP / …); fall back to priced MAP. */
+export function pickPreferredMealPlan(mealPlanOptions = [], room = null, preferredKey = DEFAULT_MEAL_PLAN_KEY) {
   const plans = Array.isArray(mealPlanOptions) && mealPlanOptions.length
     ? mealPlanOptions
     : ensureMealPlanOptions(room || {});
-  const mapPlans = plans.filter(isMapMealPlan);
-  if (mapPlans.length) {
-    return [...mapPlans].sort(
+  const want = normalizeMealPlanKey(preferredKey) || DEFAULT_MEAL_PLAN_KEY;
+  const matches = plans.filter((p) => normalizeMealPlanKey(p?.key || p?.label) === want);
+  if (matches.length) {
+    return [...matches].sort(
       (a, b) => mealPlanNightlyRate(b, room || {}) - mealPlanNightlyRate(a, room || {})
     )[0];
   }
-  // Last resort: build from room rates so banner/confirm never stick to ₹0 MAP stub.
+  const mapMatches = plans.filter(isMapMealPlan);
+  if (mapMatches.length) {
+    return [...mapMatches].sort(
+      (a, b) => mealPlanNightlyRate(b, room || {}) - mealPlanNightlyRate(a, room || {})
+    )[0];
+  }
   const ensured = ensureMealPlanOptions(room || { mealPlanOptions: plans });
-  const ensuredMap = ensured.find(isMapMealPlan);
-  if (ensuredMap) return ensuredMap;
-  return { ...DEFAULT_MAP_MEAL_PLAN };
+  return ensured.find(isMapMealPlan) || { ...DEFAULT_MAP_MEAL_PLAN };
+}
+
+/**
+ * Prefer MAP from room mealPlanOptions; fall back to a synthetic MAP plan.
+ */
+export function pickDefaultMapMealPlan(mealPlanOptions = [], room = null) {
+  return pickPreferredMealPlan(mealPlanOptions, room, 'map');
 }
 
 /** Re-bind a selected plan to the priced entry from the current options list. */
-export function resolveSelectedMealPlan(selectedPlan, mealPlanOptions = [], room = null) {
+export function resolveSelectedMealPlan(
+  selectedPlan,
+  mealPlanOptions = [],
+  room = null,
+  preferredKey = DEFAULT_MEAL_PLAN_KEY
+) {
   const plans = Array.isArray(mealPlanOptions) && mealPlanOptions.length
     ? mealPlanOptions
     : ensureMealPlanOptions(room || {});
   if (selectedPlan) {
-    const key = String(selectedPlan.key || '').toLowerCase();
+    const key = normalizeMealPlanKey(selectedPlan.key || selectedPlan.label);
     const byKey = key
-      ? plans.find((p) => String(p?.key || '').toLowerCase() === key)
+      ? plans.find((p) => normalizeMealPlanKey(p?.key || p?.label) === key)
       : null;
     if (byKey) return byKey;
     const byLabel = plans.find(
@@ -127,5 +164,5 @@ export function resolveSelectedMealPlan(selectedPlan, mealPlanOptions = [], room
     );
     if (byLabel) return byLabel;
   }
-  return pickDefaultMapMealPlan(plans, room);
+  return pickPreferredMealPlan(plans, room, preferredKey);
 }
