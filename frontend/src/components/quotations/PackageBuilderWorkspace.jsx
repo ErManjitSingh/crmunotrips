@@ -428,7 +428,10 @@ export default function PackageBuilderWorkspace({
   const handleReplaceHotel = (day, option) => {
     if (!day || !option) return;
     const roomName = option.room?.name || option.tierName || 'Standard Room';
-    const mealLabel = option.mealPlan?.label || option.meals || day.meals || 'As per package';
+    const mealLabel =
+      option.mealPlan?.label ||
+      option.meals ||
+      'MAP — Breakfast + Dinner';
     // Cost contribution is upgrade delta only (package baseCost already includes default stay).
     const perNight = Number(option.perNight ?? option.priceDelta ?? 0);
     const absolutePerNight = Number(
@@ -455,7 +458,7 @@ export default function PackageBuilderWorkspace({
       includedRate,
       startingPrice: absolutePerNight || option.startingPrice || 0,
       room: option.room || { name: roomName },
-      mealPlan: option.mealPlan || { label: mealLabel },
+      mealPlan: option.mealPlan || { key: 'map', label: mealLabel },
     };
 
     const nextItinerary = itinerary.map((d) => {
@@ -487,7 +490,7 @@ export default function PackageBuilderWorkspace({
         startingPrice: option.startingPrice || absolutePerNight || 0,
       },
       room: option.room || { name: roomName },
-      mealPlan: option.mealPlan || { label: mealLabel },
+      mealPlan: option.mealPlan || { key: 'map', label: mealLabel },
       perNight,
       absolutePerNight,
       includedRate,

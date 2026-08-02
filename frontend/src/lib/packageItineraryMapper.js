@@ -1,3 +1,5 @@
+import { DEFAULT_MAP_MEAL_PLAN } from './mealPlanDefaults';
+
 function formatMealsLabel(meals = {}) {
   if (typeof meals === 'string') return meals.trim();
   const selected = [];
@@ -18,6 +20,11 @@ function formatMealPlanCode(code = '') {
     ai: 'AI (All inclusive)',
   };
   return map[key] || (code ? String(code).toUpperCase() : '');
+}
+
+/** Always prefer MAP as the package default meal plan label. */
+function defaultPackageMealLabel(_code = '') {
+  return formatMealPlanCode('map') || DEFAULT_MAP_MEAL_PLAN.label;
 }
 
 function formatNamedList(items = []) {
@@ -64,7 +71,7 @@ export function findStayForDay(stays = [], dayNumber) {
  */
 export function hotelOptionsFromStay(stay = {}) {
   if (!stay || typeof stay !== 'object') return [];
-  const meals = formatMealPlanCode(stay.default_meal_plan);
+  const meals = defaultPackageMealLabel(stay.default_meal_plan);
   const location = stay.destination_city || stay.destination_state || '';
   const roomFallback = stay.default_room_type_name || '';
   const options = [];
@@ -110,9 +117,7 @@ export function mapHotelOption(option = {}) {
   if (!option || typeof option !== 'object') return null;
   const name = pickHotelLabel(option);
   if (!name) return null;
-  const meals =
-    formatMealsLabel(option.meals) ||
-    formatMealPlanCode(option.meal_plan || option.default_meal_plan);
+  const meals = defaultPackageMealLabel(option.meal_plan || option.default_meal_plan);
   const startingPrice = Number(option.starting_price ?? option.startingPrice ?? 0);
   // True upgrade only — do not fall back to catalog starting_price (double-counts package base).
   const priceDelta = Number(
@@ -164,14 +169,7 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
   const legacyActivities = legacyActivityParts.join(' · ');
   const activities = [activitiesFromOptions, legacyActivities].filter(Boolean).join(' · ');
 
-  const meals =
-    defaultHotelOption?.meals ||
-    formatMealPlanCode(stay?.default_meal_plan) ||
-    formatMealsLabel(hotelOptionsRaw.find((o) => o.is_default || o.isDefault)?.meals) ||
-    (Array.isArray(itineraryDay.meals_selected) ? itineraryDay.meals_selected.join(', ') : '') ||
-    itineraryDay.dinner ||
-    itineraryDay.meals ||
-    '';
+  const meals = defaultPackageMealLabel(stay?.default_meal_plan);
 
   const transport = itineraryDay.transport || itineraryDay.cab_name || itineraryDay.transport_mode || '';
 
@@ -357,7 +355,11 @@ export function seedDayWiseHotelsFromItinerary(itinerary = []) {
           startingPrice: meta.startingPrice || 0,
         },
         room: { name: meta.tierName || 'Standard Room' },
-        mealPlan: { label: meta.meals || day.meals || 'As per package' },
+        mealPlan: {
+          key: DEFAULT_MAP_MEAL_PLAN.key,
+          label: DEFAULT_MAP_MEAL_PLAN.label,
+        },
+        meals: DEFAULT_MAP_MEAL_PLAN.label,
         // Package baseCost already includes default hotels — only upgrade deltas add cost.
         perNight: Number(meta.priceDelta || 0),
         totalCost: Number(meta.priceDelta || 0),

@@ -239,7 +239,7 @@ function applyCatalogToOption(option = {}, catalog = null, stay = null) {
 /** Hotels live on day-options `stays[]` — build default + alternatives for a night. */
 function hotelOptionsFromStay(stay = {}, catalog = null) {
   if (!stay || typeof stay !== 'object') return [];
-  const meals = formatMealPlanCode(stay.default_meal_plan);
+  const meals = formatMealPlanCode('map');
   const location = stay.destination_city || stay.destination_state || '';
   const roomFallback = stay.default_room_type_name || '';
   const options = [];
@@ -306,9 +306,7 @@ function mapHotelMeta(option = {}) {
       option.cover_image ||
       (Array.isArray(option.images) ? option.images[0] : '')
   );
-  const meals =
-    formatMealsLabel(option.meals) ||
-    formatMealPlanCode(option.meal_plan || option.default_meal_plan);
+  const meals = formatMealPlanCode('map');
   const startingPrice = Number(
     option.starting_price ?? option.startingPrice ?? 0
   );
@@ -359,12 +357,7 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null, catal
   const legacyActivities = legacyActivityParts.join(' · ');
   const activities = [activitiesFromOptions, legacyActivities].filter(Boolean).join(' · ');
 
-  const meals =
-    defaultHotelMeta?.meals ||
-    formatMealPlanCode(stay?.default_meal_plan) ||
-    (Array.isArray(itineraryDay.meals_selected) ? itineraryDay.meals_selected.join(', ') : '') ||
-    itineraryDay.dinner ||
-    '';
+  const meals = formatMealPlanCode('map');
 
   const transport = itineraryDay.transport || itineraryDay.cab_name || itineraryDay.transport_mode || '';
 

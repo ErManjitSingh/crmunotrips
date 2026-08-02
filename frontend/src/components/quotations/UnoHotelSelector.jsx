@@ -16,6 +16,7 @@ import {
 import API from '../../api/axios';
 import { Button } from '../ui/button';
 import { formatINR } from './quotationUtils';
+import { DEFAULT_MAP_MEAL_PLAN, pickDefaultMapMealPlan } from '../../lib/mealPlanDefaults';
 import { cn } from '../../lib/utils';
 
 const SUB_STEPS = [
@@ -23,6 +24,26 @@ const SUB_STEPS = [
   { key: 'room', label: 'Room', icon: BedDouble },
   { key: 'meal', label: 'Meal Plan', icon: UtensilsCrossed },
 ];
+
+const FALLBACK_MEAL_PLANS = [
+  { key: 'ep', label: 'EP (Room Only)', price: 0, absolutePrice: 0, meals: [] },
+  { key: 'cp', label: 'CP — Breakfast', price: 0, absolutePrice: 0, meals: ['breakfast'] },
+  { ...DEFAULT_MAP_MEAL_PLAN },
+  { key: 'ap', label: 'AP — All Meals', price: 0, absolutePrice: 0, meals: ['breakfast', 'lunch', 'dinner'] },
+];
+
+/** Prefer API meal options; always ensure MAP is available for SE to keep / switch. */
+function mealPlansForRoom(room) {
+  const plans = Array.isArray(room?.mealPlanOptions) && room.mealPlanOptions.length
+    ? [...room.mealPlanOptions]
+    : [...FALLBACK_MEAL_PLANS];
+  const hasMap = plans.some(
+    (p) =>
+      String(p?.key || '').toLowerCase() === 'map' || /\bmap\b/i.test(String(p?.label || ''))
+  );
+  if (!hasMap) plans.splice(2, 0, { ...DEFAULT_MAP_MEAL_PLAN });
+  return plans;
+}
 
 const AMENITY_ICONS = {
   wifi: Wifi,
@@ -358,7 +379,22 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
 
   const selectRoom = (room) => {
     const hotel = hotelDetail || value?.hotel;
-    onChange({ hotel, room, mealPlan: null, nights, totalCost: 0 });
+    const plans = mealPlansForRoom(room);
+    const mapPlan = pickDefaultMapMealPlan(plans);
+    const absolute = Number(mapPlan?.absolutePrice || 0);
+    const perNight =
+      absolute > 0
+        ? absolute
+        : Number(room?.pricePerNight || 0) + Number(mapPlan?.price || 0);
+    const totalCost = perNight * Math.max(1, nights);
+    onChange({
+      hotel,
+      room: { ...room, mealPlanOptions: plans },
+      mealPlan: mapPlan,
+      nights,
+      perNight,
+      totalCost,
+    });
     setSubStep('meal');
   };
 
@@ -518,12 +554,17 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
 
           <div>
             <h2 className="text-xl font-bold tracking-tight">Select Meal Plan</h2>
-            <p className="text-sm text-content-muted mt-1">Choose inclusions for {nights} night{nights !== 1 ? 's' : ''}</p>
+            <p className="text-sm text-content-muted mt-1">
+              MAP is selected by default — change if the guest wants another plan · {nights} night
+              {nights !== 1 ? 's' : ''}
+            </p>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">
-            {(value.room.mealPlanOptions || []).map((plan) => {
-              const selected = value?.mealPlan?.key === plan.key;
+            {mealPlansForRoom(value.room).map((plan) => {
+              const selected =
+                String(value?.mealPlan?.key || '').toLowerCase() ===
+                String(plan.key || '').toLowerCase();
               const absolute = Number(plan.absolutePrice || 0);
               const perNight =
                 absolute > 0

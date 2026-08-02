@@ -20,12 +20,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AppDrawer from '../ui/AppDrawer';
 import API from '../../api/axios';
 import { formatINR } from './quotationUtils';
+import { pickDefaultMapMealPlan } from '../../lib/mealPlanDefaults';
 import { cn } from '../../lib/utils';
 
 const HOTEL_STEPS = [
   { key: 'hotel', label: 'Hotel', hint: 'Select your hotel' },
   { key: 'room', label: 'Room', hint: 'Choose room type' },
-  { key: 'meal', label: 'Meal Plan', hint: 'Select meal plan' },
+  { key: 'meal', label: 'Meal Plan', hint: 'MAP default — change if needed' },
 ];
 
 const FALLBACK_MEAL_PLANS = [
@@ -437,7 +438,7 @@ function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0 }) {
   );
 }
 
-function MealPlanCard({ plan, roomPrice, nights, onSelect, basePrice = 0 }) {
+function MealPlanCard({ plan, roomPrice, nights, onSelect, basePrice = 0, selected = false }) {
   const absolute = Number(plan.absolutePrice || 0);
   const perNight = absolute > 0 ? absolute : Number(roomPrice || 0) + Number(plan.price || 0);
   const total = perNight * Math.max(1, nights);
@@ -448,7 +449,12 @@ function MealPlanCard({ plan, roomPrice, nights, onSelect, basePrice = 0 }) {
     <button
       type="button"
       onClick={() => onSelect(plan)}
-      className="w-full text-left rounded-2xl border border-slate-200 bg-white p-4 hover:border-violet-300 hover:shadow-sm transition-all"
+      className={cn(
+        'w-full text-left rounded-2xl border bg-white p-4 transition-all',
+        selected
+          ? 'border-violet-500 ring-2 ring-violet-500/20 shadow-sm'
+          : 'border-slate-200 hover:border-violet-300 hover:shadow-sm'
+      )}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -461,7 +467,11 @@ function MealPlanCard({ plan, roomPrice, nights, onSelect, basePrice = 0 }) {
                 : 'No meal supplement'}
           </p>
         </div>
-        <UtensilsCrossed className="w-4 h-4 text-violet-400 shrink-0" />
+        {selected ? (
+          <Check className="w-4 h-4 text-violet-600 shrink-0" />
+        ) : (
+          <UtensilsCrossed className="w-4 h-4 text-violet-400 shrink-0" />
+        )}
       </div>
       <div className="mt-3 pt-3 border-t border-slate-100 flex items-end justify-between gap-2">
         <div>
@@ -576,6 +586,7 @@ export default function PackageResourcePickerDrawer({
   const [packageHotel, setPackageHotel] = useState(null);
   const [hotelDetail, setHotelDetail] = useState(null);
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const [selectedMealPlan, setSelectedMealPlan] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState('');
   const isCab = mode === 'cab';
@@ -590,6 +601,7 @@ export default function PackageResourcePickerDrawer({
       setPackageHotel(null);
       setHotelDetail(null);
       setSelectedRoom(null);
+      setSelectedMealPlan(null);
       setLoadingDetail(false);
       setDetailError('');
     }
@@ -617,8 +629,21 @@ export default function PackageResourcePickerDrawer({
       ? buildFallbackRooms(packageHotel)
       : [];
 
-  const mealPlans =
-    selectedRoom?.mealPlanOptions?.length > 0 ? selectedRoom.mealPlanOptions : FALLBACK_MEAL_PLANS;
+  const mealPlans = (() => {
+    const plans =
+      selectedRoom?.mealPlanOptions?.length > 0
+        ? [...selectedRoom.mealPlanOptions]
+        : [...FALLBACK_MEAL_PLANS];
+    const hasMap = plans.some(
+      (p) =>
+        String(p?.key || '').toLowerCase() === 'map' || /\bmap\b/i.test(String(p?.label || ''))
+    );
+    if (!hasMap) {
+      const mapIdx = Math.min(2, plans.length);
+      plans.splice(mapIdx, 0, FALLBACK_MEAL_PLANS.find((p) => p.key === 'map') || FALLBACK_MEAL_PLANS[2]);
+    }
+    return plans;
+  })();
 
   const resetClose = () => {
     setQuery('');
@@ -626,6 +651,7 @@ export default function PackageResourcePickerDrawer({
     setPackageHotel(null);
     setHotelDetail(null);
     setSelectedRoom(null);
+    setSelectedMealPlan(null);
     setDetailError('');
     onClose?.();
   };
@@ -633,6 +659,7 @@ export default function PackageResourcePickerDrawer({
   const selectHotelOption = async (option) => {
     setPackageHotel(option);
     setSelectedRoom(null);
+    setSelectedMealPlan(null);
     setHotelDetail(null);
     setDetailError('');
     setLoadingDetail(true);
@@ -655,18 +682,14 @@ export default function PackageResourcePickerDrawer({
     }
   };
 
-  const selectRoom = (room) => {
-    setSelectedRoom(room);
-    setStep('meal');
-  };
-
-  const selectMealPlan = (plan) => {
-    if (!packageHotel || !selectedRoom) return;
+  const selectMealPlan = (plan, roomOverride = null) => {
+    const room = roomOverride || selectedRoom;
+    if (!packageHotel || !room) return;
     const absolute = Number(plan.absolutePrice || 0);
     const absolutePerNight =
       absolute > 0
         ? absolute
-        : Number(selectedRoom.pricePerNight || 0) + Number(plan.price || 0);
+        : Number(room.pricePerNight || 0) + Number(plan.price || 0);
     const packageUpgrade =
       Number(packageHotel.priceDelta ?? packageHotel.upgrade_price ?? 0) || 0;
     // Prefer current stay absolute rate; if unknown, use default package hotel catalog rate
@@ -702,15 +725,15 @@ export default function PackageResourcePickerDrawer({
       city: catalogHotel.city || packageHotel.city || '',
       slug: catalogHotel.slug || packageHotel.slug || '',
       startingPrice: packageHotel.startingPrice || catalogHotel.startingPrice || absolutePerNight || 0,
-      tierName: selectedRoom.name,
+      tierName: room.name,
       meals: plan.label,
       priceDelta: costDeltaPerNight,
       room: {
-        id: selectedRoom.id,
-        name: selectedRoom.name,
-        pricePerNight: Number(selectedRoom.pricePerNight || absolute || 0),
-        bedType: selectedRoom.bedType,
-        maxOccupancy: selectedRoom.maxOccupancy,
+        id: room.id,
+        name: room.name,
+        pricePerNight: Number(room.pricePerNight || absolute || 0),
+        bedType: room.bedType,
+        maxOccupancy: room.maxOccupancy,
       },
       mealPlan: {
         key: plan.key,
@@ -726,9 +749,25 @@ export default function PackageResourcePickerDrawer({
     });
   };
 
+  const selectRoom = (room) => {
+    setSelectedRoom(room);
+    const plans =
+      room?.mealPlanOptions?.length > 0 ? [...room.mealPlanOptions] : [...FALLBACK_MEAL_PLANS];
+    const hasMap = plans.some(
+      (p) =>
+        String(p?.key || '').toLowerCase() === 'map' || /\bmap\b/i.test(String(p?.label || ''))
+    );
+    if (!hasMap) {
+      plans.splice(Math.min(2, plans.length), 0, FALLBACK_MEAL_PLANS.find((p) => p.key === 'map'));
+    }
+    setSelectedMealPlan(pickDefaultMapMealPlan(plans));
+    setStep('meal');
+  };
+
   const continueDisabled =
     (step === 'hotel' && !packageHotel) ||
     (step === 'room' && !selectedRoom) ||
+    (step === 'meal' && !selectedMealPlan) ||
     loadingDetail;
 
   const handleContinue = () => {
@@ -737,12 +776,20 @@ export default function PackageResourcePickerDrawer({
       return;
     }
     if (step === 'room' && selectedRoom) {
-      setStep('meal');
+      selectRoom(selectedRoom);
+      return;
+    }
+    if (step === 'meal' && selectedMealPlan) {
+      selectMealPlan(selectedMealPlan);
     }
   };
 
   const footerPrimaryLabel =
-    step === 'hotel' ? 'Continue to Rooms →' : step === 'room' ? 'Continue to Meal Plan →' : 'Confirm stay';
+    step === 'hotel'
+      ? 'Continue to Rooms →'
+      : step === 'room'
+        ? 'Continue to Meal Plan →'
+        : `Confirm · ${selectedMealPlan?.label || 'MAP'}`;
 
   return (
     <AppDrawer
@@ -975,7 +1022,7 @@ export default function PackageResourcePickerDrawer({
                   </div>
 
                   <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 px-0.5">
-                    Meal plans · {stayNights} night{stayNights !== 1 ? 's' : ''}
+                    Meal plans · MAP selected by default · {stayNights} night{stayNights !== 1 ? 's' : ''}
                   </p>
                   <div className="space-y-3">
                     {mealPlans.map((plan) => (
@@ -984,7 +1031,11 @@ export default function PackageResourcePickerDrawer({
                         plan={plan}
                         roomPrice={selectedRoom.pricePerNight}
                         nights={stayNights}
-                        onSelect={selectMealPlan}
+                        selected={
+                          String(selectedMealPlan?.key || '').toLowerCase() ===
+                          String(plan.key || '').toLowerCase()
+                        }
+                        onSelect={setSelectedMealPlan}
                         basePrice={basePrice}
                       />
                     ))}
@@ -1008,16 +1059,14 @@ export default function PackageResourcePickerDrawer({
               >
                 Cancel
               </button>
-              {step !== 'meal' && (
-                <button
-                  type="button"
-                  disabled={continueDisabled}
-                  onClick={handleContinue}
-                  className="h-10 px-4 rounded-xl bg-violet-600 text-white text-sm font-bold shadow-md shadow-violet-600/25 hover:bg-violet-500 disabled:opacity-45 disabled:pointer-events-none"
-                >
-                  {footerPrimaryLabel}
-                </button>
-              )}
+              <button
+                type="button"
+                disabled={continueDisabled}
+                onClick={handleContinue}
+                className="h-10 px-4 rounded-xl bg-violet-600 text-white text-sm font-bold shadow-md shadow-violet-600/25 hover:bg-violet-500 disabled:opacity-45 disabled:pointer-events-none"
+              >
+                {footerPrimaryLabel}
+              </button>
             </div>
           </div>
         </>
