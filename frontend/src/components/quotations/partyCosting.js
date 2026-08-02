@@ -84,6 +84,7 @@ export function estimateMattressCost(dayWiseHotels = [], mattresses = 0) {
 
 /**
  * Scale unit (1 couple / 1 room / 1 cab) costs to lead party size.
+ * Hotel = absolute stay × rooms + mattress. Package residual is never billed.
  */
 export function applyPartyCosting({
   unitBaseCost = 0,
@@ -98,33 +99,11 @@ export function applyPartyCosting({
 } = {}) {
   const occ = resolvePartyOccupancy(lead);
   const perPersonRate = resolvePerPersonPackageRate(pkg);
-  const listed =
-    Number(pkg?.baseStartingPrice ?? pkg?.startingPrice ?? pkg?.basePrice ?? 0) || 0;
   const cabCount = resolveCabCount(occ.travelers, cabSeats);
   const mattressCost = estimateMattressCost(dayWiseHotels, occ.mattresses);
+  void unitBaseCost;
 
-  // Package share: always per-adult × adults when a listed package price exists.
-  // Hotel upgrades / peeled absolutes scale by rooms (+ mattress).
-  let baseCost;
-  let hotelCost;
-
-  if (listed > 0) {
-    const partyPackage = round2(perPersonRate * occ.adults);
-    const peeled = unitHotelCost > 0 && unitBaseCost < listed - 1;
-    if (peeled) {
-      // Unit residual is non-hotel package share for the listed unit (usually couple).
-      const residualPerPerson = round2(unitBaseCost / 2);
-      baseCost = round2(residualPerPerson * occ.adults);
-      hotelCost = round2(unitHotelCost * occ.rooms + mattressCost);
-    } else {
-      baseCost = partyPackage;
-      hotelCost = round2(unitHotelCost * occ.rooms + mattressCost);
-    }
-  } else {
-    baseCost = round2(unitBaseCost);
-    hotelCost = round2(unitHotelCost * occ.rooms + mattressCost);
-  }
-
+  const hotelCost = round2(Number(unitHotelCost || 0) * occ.rooms + mattressCost);
   const cabCost = round2(Number(unitCabCost || 0) * cabCount);
 
   return {
@@ -133,7 +112,7 @@ export function applyPartyCosting({
     cabCount,
     cabSeats: Math.max(1, Number(cabSeats) || 4),
     mattressCost,
-    baseCost,
+    baseCost: 0,
     hotelCost,
     cabCost,
     flightCost: round2(flightCost),

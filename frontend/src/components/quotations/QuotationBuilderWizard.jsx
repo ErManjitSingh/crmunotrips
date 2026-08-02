@@ -534,7 +534,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       // Hotel cost stays hotel-only (+ admin margin later); residual stays in baseCost.
       const rawPricing = {
         ...s.pricing,
-        baseCost: party.baseCost,
+        baseCost: 0,
         hotelCost: party.hotelCost,
         cabCost: party.cabCost,
         flightCost: 0,
@@ -644,7 +644,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     });
     // Hotel cost = hotel (+ mattress) only; package residual / flights stay separate.
     const rawPricing = {
-      baseCost: party.baseCost,
+      baseCost: 0,
       hotelCost: party.hotelCost,
       cabCost: party.cabCost,
       flightCost: party.flightCost,

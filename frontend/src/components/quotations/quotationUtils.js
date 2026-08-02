@@ -27,8 +27,8 @@ export function bakeCompanyMarginIntoLineCosts(pricing = {}, adminMarginPercent 
     ...pricing,
     hotelCost: bake(pricing.hotelCost),
     cabCost: bake(pricing.cabCost),
-    // Residual / flights used to ride hotel's margin via fold — keep margin, not the hotel label
-    baseCost: bake(pricing.baseCost),
+    // Residual package share is dropped from costing (not folded into hotel, not billed)
+    baseCost: 0,
     flightCost: bake(pricing.flightCost),
     activityCost: round2(Number(pricing.activityCost || 0)),
     adminMarginPercent: 0,
@@ -46,7 +46,6 @@ export function bakeCompanyMarginIntoLineCosts(pricing = {}, adminMarginPercent 
  * adminMarginPercent is only used if costs were NOT already baked (legacy quotes).
  */
 export function calculatePricing({
-  baseCost = 0,
   hotelCost = 0,
   cabCost = 0,
   flightCost = 0,
@@ -59,8 +58,8 @@ export function calculatePricing({
   adminMarginPercent = 0,
   companyMarginBaked = false,
 } = {}) {
+  // Package residual (baseCost) is intentionally excluded from quotation totals
   const costs =
-    Number(baseCost || 0) +
     Number(hotelCost || 0) +
     Number(cabCost || 0) +
     Number(flightCost || 0) +
@@ -117,23 +116,22 @@ export function foldPackageResidualIntoHotel(pricing = {}) {
 }
 
 /**
- * SE-facing breakdown. Hotel Cost is hotel (+ admin margin) only —
- * package residual and flights stay on their own lines when present.
+ * SE-facing breakdown. Hotel Cost = hotel rates + admin margin only.
+ * Package residual is never billed / shown.
  */
 export function getDisplayedCostBreakdown(pricing = {}) {
-  const calc = calculatePricing(pricing);
+  const calc = calculatePricing({ ...pricing, baseCost: 0 });
   const hotelCost = Number(pricing.hotelCost || 0);
   const transportCost = Number(pricing.cabCost || 0);
   const activityCost = Number(pricing.activityCost || 0);
-  const packageResidualCost = Number(pricing.baseCost || 0);
   const flightCost = Number(pricing.flightCost || 0);
 
   return {
     hotelCost,
     transportCost,
     activityCost,
-    packageResidualCost,
     flightCost,
+    packageResidualCost: 0,
     markup: calc.execMarkup,
     taxes: calc.taxes,
     discount: Math.max(0, Number(pricing.discount || 0)),

@@ -30,32 +30,23 @@ export function sumDayWiseHotelIncluded(selections = []) {
 }
 
 /**
- * Split package base vs hotel line so selected hotel rates appear in the total breakdown
- * without changing the grand total (package + upgrades).
+ * Itemize selected hotel rates into hotelCost.
+ * Package residual (sightseeing / leftover after cab+hotel peel) is dropped —
+ * it must never inflate Hotel Cost or sit as a separate Package Cost line.
  */
-export function resolvePackageHotelPricing(packageStartingPrice = 0, selections = []) {
-  const packageBase = Math.max(0, Number(packageStartingPrice) || 0);
+export function resolvePackageHotelPricing(_packageStartingPrice = 0, selections = []) {
   const upgradeCost = sumDayWiseHotelCost(selections);
   const absoluteCost = sumDayWiseHotelAbsolute(selections);
   const includedCost = sumDayWiseHotelIncluded(selections);
 
-  // Itemize hotel rates into hotelCost when we can safely peel them out of package base.
-  if (absoluteCost > 0 && includedCost > 0 && includedCost <= packageBase) {
-    return {
-      baseCost: Math.round((packageBase - includedCost) * 100) / 100,
-      hotelCost: Math.round(absoluteCost * 100) / 100,
-    };
-  }
+  // Prefer absolute selected stay value; fall back to included / upgrade delta.
+  const hotelCost = Math.round(
+    (absoluteCost > 0 ? absoluteCost : includedCost > 0 ? includedCost : upgradeCost) * 100
+  ) / 100;
 
-  // Package price missing — use absolute selected hotel rates alone.
-  if (absoluteCost > 0 && packageBase === 0) {
-    return { baseCost: 0, hotelCost: Math.round(absoluteCost * 100) / 100 };
-  }
-
-  // Fallback: upgrade-only (avoid double-counting discounted packages).
   return {
-    baseCost: packageBase,
-    hotelCost: Math.round(upgradeCost * 100) / 100,
+    baseCost: 0,
+    hotelCost,
   };
 }
 

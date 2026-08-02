@@ -65,7 +65,6 @@ export default function PackageBuilderPriceSidebar({
   const rows = [
     { key: 'hotelCost', label: 'Hotel Cost' },
     { key: 'transportCost', label: 'Cab Cost' },
-    { key: 'packageResidualCost', label: 'Package Cost' },
     { key: 'flightCost', label: 'Flight Cost' },
     { key: 'activityCost', label: 'Activities Cost' },
   ];
@@ -135,10 +134,7 @@ export default function PackageBuilderPriceSidebar({
 
           {rows.map(({ key, label }) => {
             const amount = breakdown[key] || 0;
-            if (
-              (key === 'activityCost' || key === 'packageResidualCost' || key === 'flightCost') &&
-              Number(amount) === 0
-            ) {
+            if ((key === 'activityCost' || key === 'flightCost') && Number(amount) === 0) {
               return null;
             }
             return (

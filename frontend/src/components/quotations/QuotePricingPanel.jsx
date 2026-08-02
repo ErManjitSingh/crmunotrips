@@ -4,7 +4,6 @@ import { resolvePartyOccupancy } from './partyCosting';
 const COST_FIELDS = [
   { key: 'hotelCost', label: 'Hotel Cost', color: 'border-amber-400/30 bg-amber-500/5' },
   { key: 'transportCost', label: 'Cab Cost', color: 'border-emerald-400/30 bg-emerald-500/5' },
-  { key: 'packageResidualCost', label: 'Package Cost', color: 'border-sky-400/30 bg-sky-500/5' },
   { key: 'flightCost', label: 'Flight Cost', color: 'border-cyan-400/30 bg-cyan-500/5' },
   { key: 'activityCost', label: 'Activities Cost', color: 'border-indigo-400/30 bg-indigo-500/5' },
 ];
@@ -43,10 +42,7 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false,
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {COST_FIELDS.map(({ key, label, color }) => {
           const amount = breakdown[key];
-          if (
-            (key === 'activityCost' || key === 'packageResidualCost' || key === 'flightCost') &&
-            Number(amount || 0) === 0
-          ) {
+          if ((key === 'activityCost' || key === 'flightCost') && Number(amount || 0) === 0) {
             return null;
           }
           return (
