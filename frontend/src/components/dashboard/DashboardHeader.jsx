@@ -30,9 +30,14 @@ function toInputDate(d) {
 }
 
 export function getDefaultDashboardFilters() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const today = `${yyyy}-${mm}-${dd}`;
   return {
-    dateFrom: '',
-    dateTo: '',
+    dateFrom: today,
+    dateTo: today,
     source: '',
   };
 }

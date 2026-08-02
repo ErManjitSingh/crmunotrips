@@ -62,7 +62,8 @@ export default function RecentUpdatesRemindersRow({
     : FALLBACK_UPDATES
   ).slice(0, 4);
 
-  const stages = (conversionProgress?.length ? conversionProgress : DEFAULT_STATUS).slice(0, 5);
+  const stages = (conversionProgress?.length ? conversionProgress : DEFAULT_STATUS);
+  const statusTotal = stages.reduce((s, row) => s + (Number(row.count) || 0), 0);
   const followups = (upcomingFollowups || []).slice(0, 3);
 
   return (
@@ -121,30 +122,35 @@ export default function RecentUpdatesRemindersRow({
         </div>
 
         <div className="mt-3 space-y-1.5">
-          <p className="text-[9px] font-bold uppercase tracking-wide text-content-muted">Lead Status</p>
-          {stages.map((stage) => (
-            <div key={stage.stage} className="flex items-center gap-2">
-              <span
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ backgroundColor: stage.color || '#8b5cf6' }}
-              />
-              <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-content-secondary">
-                {stage.stage}
-              </span>
-              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 sm:w-24">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${Math.max(8, Math.min(100, Number(stage.count) ? 20 + Number(stage.count) * 8 : 8))}%`,
-                    backgroundColor: stage.color || '#8b5cf6',
-                  }}
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-content-muted">Lead Status</p>
+            <p className="text-[10px] font-bold tabular-nums text-content-primary">Total {statusTotal}</p>
+          </div>
+          <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-0.5 scrollbar-thin">
+            {stages.map((stage) => (
+              <div key={stage.stage} className={`flex items-center gap-2 ${Number(stage.count) ? '' : 'opacity-40'}`}>
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: stage.color || '#8b5cf6' }}
                 />
+                <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-content-secondary">
+                  {stage.stage}
+                </span>
+                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 sm:w-24">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${statusTotal ? Math.max(4, Math.min(100, (Number(stage.count) / statusTotal) * 100)) : 0}%`,
+                      backgroundColor: stage.color || '#8b5cf6',
+                    }}
+                  />
+                </div>
+                <span className="w-6 text-right text-[11px] font-bold tabular-nums text-content-primary">
+                  {stage.count ?? 0}
+                </span>
               </div>
-              <span className="w-6 text-right text-[11px] font-bold tabular-nums text-content-primary">
-                {stage.count ?? 0}
-              </span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         <div className="mt-4 border-t border-subtle pt-3">

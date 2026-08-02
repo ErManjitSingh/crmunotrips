@@ -200,6 +200,62 @@ function mapStatusBucket(statusCounts) {
   return { fresh, followUpPending, interested, negotiation, connected, lost, conversions };
 }
 
+/**
+ * Mutually exclusive status slices — every lead counted once.
+ * Sum of values === total leads in the selected period.
+ */
+function buildExclusiveStatusDistribution(statusCounts = {}) {
+  const stages = [
+    { name: 'New / Fresh', key: 'new', color: '#3B82F6', pick: (c) => c.new || 0 },
+    { name: 'Connected', key: 'connected', color: '#10B981', pick: (c) => c.contacted || 0 },
+    { name: 'Working', key: 'working', color: '#06B6D4', pick: (c) => c.working_progress || 0 },
+    { name: 'Follow-up', key: 'follow_up', color: '#F59E0B', pick: (c) => c.follow_up || 0 },
+    { name: 'Quotation Sent', key: 'quotation', color: '#6366F1', pick: (c) => c.quotation_sent || 0 },
+    { name: 'Negotiation', key: 'negotiation', color: '#F97316', pick: (c) => c.negotiation || 0 },
+    { name: 'Reactivated', key: 'reactivated', color: '#14B8A6', pick: (c) => c.reactivated || 0 },
+    { name: 'Converted', key: 'converted', color: '#059669', pick: (c) => c.converted || 0 },
+    {
+      name: 'Lost',
+      key: 'lost',
+      color: '#EF4444',
+      pick: (c) => (c.lost || 0) + (c.booked_from_another_company || 0),
+    },
+  ];
+
+  const rows = stages.map((s) => ({
+    name: s.name,
+    key: s.key,
+    color: s.color,
+    value: Math.max(0, Number(s.pick(statusCounts)) || 0),
+  }));
+  const total = rows.reduce((sum, r) => sum + r.value, 0);
+  const interested =
+    (statusCounts.contacted || 0) +
+    (statusCounts.working_progress || 0) +
+    (statusCounts.follow_up || 0) +
+    (statusCounts.quotation_sent || 0) +
+    (statusCounts.negotiation || 0);
+
+  return {
+    items: rows.map((r) => ({
+      ...r,
+      pct: total ? Math.round((r.value / total) * 1000) / 10 : 0,
+    })),
+    summary: {
+      total,
+      arrived: total,
+      fresh: statusCounts.new || 0,
+      connected: statusCounts.contacted || 0,
+      interested,
+      converted: statusCounts.converted || 0,
+      lost: (statusCounts.lost || 0) + (statusCounts.booked_from_another_company || 0),
+      followUp: statusCounts.follow_up || 0,
+      quotation: statusCounts.quotation_sent || 0,
+      negotiation: statusCounts.negotiation || 0,
+    },
+  };
+}
+
 function changeMeta(current, previous) {
   const change = pctChange(current, previous);
   return {
@@ -350,6 +406,7 @@ async function buildAdminDashboard(options = {}) {
     hotLeadsCount,
     highBudgetLeadsCount,
     periodTotalLeads,
+    periodHotCount,
     prevTotalLeads,
     periodStatusAgg,
     prevStatusAgg,
@@ -425,6 +482,10 @@ async function buildAdminDashboard(options = {}) {
     Lead.countDocuments(activeLeadScope({ $or: [{ isHot: true }, { leadScore: 'hot' }] }, branchId)),
     Lead.countDocuments(activeLeadScope({ budget: { $gte: 60000 } }, branchId)),
     Lead.countDocuments(periodLeadScope),
+    Lead.countDocuments({
+      ...periodLeadScope,
+      $or: [{ isHot: true }, { leadScore: 'hot' }],
+    }),
     Lead.countDocuments(prevLeadScope),
     Lead.aggregate([{ $match: periodLeadScope }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
     Lead.aggregate([{ $match: prevLeadScope }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
@@ -627,31 +688,25 @@ async function buildAdminDashboard(options = {}) {
     }))
     .sort((a, b) => b.value - a.value);
 
-  // Status distribution = current lead pipeline statuses only (never mix FollowUp docs).
-  // All-time: live statusCounts. Filtered period: statuses of leads created in range.
+  // Status distribution = exclusive pipeline slices for the selected period (sum === arrived).
+  // All-time uses live statuses; filtered period uses leads created in that range.
+  const distributionCounts = isAllTime ? statusCounts : periodStatusCounts;
+  const distributionBuilt = buildExclusiveStatusDistribution(distributionCounts);
+  const statusDistribution = distributionBuilt.items;
+  const statusDistributionSummary = {
+    ...distributionBuilt.summary,
+    hot: isAllTime ? hotLeadsCount : periodHotCount,
+    periodLabel: isAllTime
+      ? 'All Time'
+      : `${periodStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – ${periodEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+  };
+
   const distributionBuckets = isAllTime ? mapStatusBucket(statusCounts) : periodBuckets;
   const valueBuckets = { ...distributionBuckets };
   const changeBuckets = isAllTime ? momBuckets : periodBuckets;
   const changeTotal = isAllTime ? momTotalLeads : periodTotalLeads;
   const changeRevenue = isAllTime ? momRevenue : periodRevenue;
   const changeConvRate = isAllTime ? momConversionRate : periodConversionRate;
-
-  const statusDistributionTotal =
-    valueBuckets.fresh +
-    valueBuckets.followUpPending +
-    valueBuckets.interested +
-    valueBuckets.connected +
-    valueBuckets.lost;
-  const statusDistribution = [
-    { name: 'New', key: 'fresh', value: valueBuckets.fresh, color: '#22C55E' },
-    { name: 'Follow Up', key: 'followUp', value: valueBuckets.followUpPending, color: '#F59E0B' },
-    { name: 'Interested', key: 'interested', value: valueBuckets.interested, color: '#8B5CF6' },
-    { name: 'Connected', key: 'connected', value: valueBuckets.connected, color: '#10B981' },
-    { name: 'Lost', key: 'lost', value: valueBuckets.lost, color: '#EF4444' },
-  ].map((item) => ({
-    ...item,
-    pct: statusDistributionTotal ? Math.round((item.value / statusDistributionTotal) * 1000) / 10 : 0,
-  }));
 
   const withValue = (meta, value) => ({ ...meta, value });
   const sameDayPrev = startOfDay(prevStart).getTime() === startOfDay(prevEnd).getTime();
@@ -801,6 +856,7 @@ async function buildAdminDashboard(options = {}) {
       generatedAt: new Date().toISOString(),
       kpis: reportKpis,
       statusDistribution,
+      statusDistributionSummary,
       leadsBySource: leadsBySourcePeriod,
       monthlyLeadTrend,
       conversionRateTrend,
@@ -1002,11 +1058,12 @@ async function buildExecutiveDashboard(userId, options = {}) {
   ]);
 
   const statusCounts = Object.fromEntries(statusAgg.map((s) => [s._id, s.count]));
+  const statusDist = buildExclusiveStatusDistribution(statusCounts);
   const enrichedRecent = recentLeadsRaw.map(enrichLead);
   const monthlyRevenue = monthlyRevenueAgg[0]?.total || 0;
   const totalLeadValue = totalLeadValueAgg[0]?.total || 0;
   const lastMonthRevenue = lastMonthRevenueAgg[0]?.total || 0;
-  const totalAssigned = Object.values(statusCounts).reduce((s, n) => s + n, 0);
+  const totalAssigned = statusDist.summary.total;
   const monthlyTargets = await getMonthlyTargets(execId);
   const primaryTarget =
     Number(monthlyTargets.totalSalesTarget) > 0
@@ -1014,17 +1071,12 @@ async function buildExecutiveDashboard(userId, options = {}) {
       : Number(monthlyTargets.revenueTarget) || 0;
   const targetStats = buildTargetProgress(monthlyRevenue, primaryTarget);
 
-  const pipelineOverview = [
-    { name: 'New Leads', value: statusCounts.new || 0, color: '#3B82F6' },
-    { name: 'Connected', value: statusCounts.contacted || 0, color: '#8B5CF6' },
-    {
-      name: 'Follow-up',
-      value: (statusCounts.follow_up || 0) + (statusCounts.negotiation || 0),
-      color: '#F59E0B',
-    },
-    { name: 'Hot Leads', value: hotLeads, color: '#F97316' },
-    { name: 'Converted', value: convertedCount, color: '#10B981' },
-  ].filter((item) => item.value > 0);
+  const pipelineOverview = statusDist.items
+    .filter((item) => item.value > 0)
+    .map((item) => ({ name: item.name, value: item.value, color: item.color }));
+  if (hotLeads > 0) {
+    pipelineOverview.push({ name: 'Hot Leads', value: hotLeads, color: '#F97316' });
+  }
 
   const leadSources = sourceAgg
     .map((s, i) => ({
@@ -1120,17 +1172,18 @@ async function buildExecutiveDashboard(userId, options = {}) {
       scheduledAt: f.scheduledAt,
       priority: f.priority || 'medium',
     })),
-    conversionProgress: [
-      { stage: 'New', count: statusCounts.new || 0, color: '#0EA5E9' },
-      { stage: 'Connected', count: statusCounts.contacted || 0, color: '#10B981' },
-      {
-        stage: 'Follow-up',
-        count: (statusCounts.follow_up || 0) + (statusCounts.negotiation || 0),
-        color: '#F59E0B',
-      },
-      { stage: 'Quotation', count: statusCounts.quotation_sent || 0, color: '#6366F1' },
-      { stage: 'Converted', count: convertedCount, color: '#10B981' },
-    ],
+    conversionProgress: statusDist.items.map((item) => ({
+      stage: item.name,
+      count: item.value,
+      color: item.color,
+      key: item.key,
+      pct: item.pct,
+    })),
+    statusDistributionSummary: {
+      ...statusDist.summary,
+      hot: hotLeads,
+      periodLabel: 'My leads',
+    },
     target: {
       ...targetStats,
       revenueTarget: Number(monthlyTargets.revenueTarget) || 0,

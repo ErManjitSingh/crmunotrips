@@ -74,7 +74,9 @@ export default function Dashboard() {
   if (isLoading && !stats) return <DashboardSkeleton />;
   if (!stats) return null;
 
-  const statusTotal = (report?.statusDistribution || []).reduce((s, d) => s + (d.value || 0), 0);
+  const statusTotal =
+    report?.statusDistributionSummary?.total ??
+    (report?.statusDistribution || []).reduce((s, d) => s + (d.value || 0), 0);
   const sourceTotal =
     stats.totalLeads ||
     (report?.leadsBySource || []).reduce((s, d) => s + (d.value || 0), 0);
@@ -117,7 +119,11 @@ export default function Dashboard() {
         </div>
         <div className="min-w-0 lg:col-span-1 xl:col-span-3">
           <Suspense fallback={<PanelSkeleton />}>
-            <LeadStatusDonut data={report?.statusDistribution || []} total={statusTotal} />
+            <LeadStatusDonut
+              data={report?.statusDistribution || []}
+              total={statusTotal}
+              summary={report?.statusDistributionSummary || null}
+            />
           </Suspense>
         </div>
         <div className="min-w-0 lg:col-span-2 xl:col-span-4">
