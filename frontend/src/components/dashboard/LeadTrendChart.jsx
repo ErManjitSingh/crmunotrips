@@ -35,7 +35,7 @@ export default function LeadTrendChart({ stats }) {
   return (
     <DashboardPanel
       title="Monthly Lead Trend"
-      subtitle="Leads generated vs converted"
+      subtitle="Generated · Connected · Converted"
       action={
         <span className="rounded-full border border-subtle bg-surface-elevated/60 px-2.5 py-1 text-[11px] font-medium text-content-muted">
           Last 6 Months
@@ -69,6 +69,22 @@ export default function LeadTrendChart({ stats }) {
               >
                 <LabelList
                   dataKey="leadsGenerated"
+                  position="top"
+                  className="hidden sm:block"
+                  style={{ fill: tick, fontSize: 10 }}
+                />
+              </Line>
+              <Line
+                type="monotone"
+                dataKey="connectedLeads"
+                name="Connected Leads"
+                stroke="#F59E0B"
+                strokeWidth={2.75}
+                dot={{ r: 3, fill: '#F59E0B', strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+              >
+                <LabelList
+                  dataKey="connectedLeads"
                   position="top"
                   className="hidden sm:block"
                   style={{ fill: tick, fontSize: 10 }}

@@ -420,6 +420,7 @@ async function buildAdminDashboard(options = {}) {
     momRevenue,
     monthlyLeadAgg,
     monthlyConvertedAgg,
+    monthlyConnectedAgg,
     monthlyBookingAgg,
     monthlyPaymentAgg,
     topDestinationAgg,
@@ -516,6 +517,24 @@ async function buildAdminDashboard(options = {}) {
         $match: activeLeadScope(
           {
             status: 'converted',
+            createdAt: { $gte: trendStart, $lte: periodEnd },
+            ...sourceFilter,
+          },
+          branchId
+        ),
+      },
+      {
+        $group: {
+          _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+    Lead.aggregate([
+      {
+        $match: activeLeadScope(
+          {
+            status: 'contacted',
             createdAt: { $gte: trendStart, $lte: periodEnd },
             ...sourceFilter,
           },
@@ -630,6 +649,9 @@ async function buildAdminDashboard(options = {}) {
   const convertedMap = Object.fromEntries(
     monthlyConvertedAgg.map((r) => [monthKey(r._id.year, r._id.month), r.count])
   );
+  const connectedMap = Object.fromEntries(
+    monthlyConnectedAgg.map((r) => [monthKey(r._id.year, r._id.month), r.count])
+  );
   const bookingMap = Object.fromEntries(
     monthlyBookingAgg.map((r) => [monthKey(r._id.year, r._id.month), r.count])
   );
@@ -641,6 +663,7 @@ async function buildAdminDashboard(options = {}) {
     label: b.label,
     month: b.label,
     leadsGenerated: leadMap[b.key] || 0,
+    connectedLeads: connectedMap[b.key] || 0,
     convertedLeads: convertedMap[b.key] || 0,
   }));
 
@@ -839,6 +862,7 @@ async function buildAdminDashboard(options = {}) {
     kpiSparklines: {
       totalLeads: monthlyLeadTrend.map((m) => m.leadsGenerated),
       newLeads: monthlyLeadTrend.map((m) => m.leadsGenerated),
+      connected: monthlyLeadTrend.map((m) => m.connectedLeads),
       followUps: [pendingFollowups],
       converted: monthlyLeadTrend.map((m) => m.convertedLeads),
       conversionRate: conversionRateTrend.map((m) => m.rate),
