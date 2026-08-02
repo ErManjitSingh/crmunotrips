@@ -75,7 +75,7 @@ export default function LeadCustomerPanel({ lead }) {
           label="Hotel"
           value={String(lead.hotelCategory || '—').replace(/_/g, ' ')}
         />
-        <InfoRow label="Budget" value={lead.budget ? `₹${Number(lead.budget).toLocaleString('en-IN')}` : 'Not set'} />
+        <InfoRow label="Meal Plan" value={(lead.mealPlan || lead.mealPreference || 'map').toString().toUpperCase()} />
         <InfoRow label="Intent" value={lead.priority || '—'} />
         <InfoRow label="Source" value={formatSource(lead)} />
         <InfoRow label="Package Type" value={lead.leadType?.replace(/_/g, ' ') || '—'} />

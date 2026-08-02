@@ -149,20 +149,11 @@ function formatDateTime(iso) {
   });
 }
 
-function formatBudget(lead) {
-  if (lead?.budgetRange && lead.budgetRange !== 'custom') {
-    const map = {
-      under_20000: 'Under ₹20,000',
-      '20000_40000': '₹20,000 – 40,000',
-      '40000_60000': '₹40,000 – 60,000',
-      '60000_100000': '₹60,000 – 1,00,000',
-      above_100000: 'Above ₹1,00,000',
-    };
-    return map[lead.budgetRange] || lead.budgetRange;
-  }
-  const amount = Number(lead?.budget || 0);
-  if (!amount) return '—';
-  return `₹ ${amount.toLocaleString('en-IN')}`;
+function formatMealPlan(lead) {
+  const key = String(lead?.mealPlan || lead?.mealPreference || 'map')
+    .trim()
+    .toLowerCase();
+  return ['ep', 'cp', 'map', 'ap'].includes(key) ? key.toUpperCase() : 'MAP';
 }
 
 function formatTravelers(lead) {
@@ -594,8 +585,8 @@ export default function MobileExecutiveLeads({
                   <div className="mt-3 flex items-end gap-2 rounded-xl bg-slate-50 px-3 py-2.5">
                     <div className="min-w-0 flex-1 grid grid-cols-3 gap-2">
                       <div>
-                        <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Budget</p>
-                        <p className="mt-0.5 truncate text-[11px] font-bold text-slate-800">{formatBudget(lead)}</p>
+                        <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Meal Plan</p>
+                        <p className="mt-0.5 truncate text-[11px] font-bold text-slate-800">{formatMealPlan(lead)}</p>
                       </div>
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Travelers</p>

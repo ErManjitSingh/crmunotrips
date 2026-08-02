@@ -214,7 +214,7 @@ export default function MobileLeadDetailSummary({
             />
             <OverviewRow label="Travel Date" value={formatTravelRange(lead)} />
             <OverviewRow label="Travelers" value={formatTravelers(lead)} />
-            <OverviewRow label="Budget" value={formatBudget(lead)} valueClass="text-violet-700" />
+            <OverviewRow label="Meal Plan" value={(lead?.mealPlan || lead?.mealPreference || 'map').toString().toUpperCase()} valueClass="text-violet-700" />
 
             <Link
               to={fullProfileHref}

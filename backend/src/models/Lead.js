@@ -135,6 +135,13 @@ const leadSchema = new mongoose.Schema(
     leadSource: { type: String },
     sourceLabel: { type: String },
     hotelCategory: { type: String },
+    /** Preferred meal plan for hotel pricing — ep|cp|map|ap (default MAP). */
+    mealPlan: {
+      type: String,
+      enum: ['ep', 'cp', 'map', 'ap'],
+      default: 'map',
+      index: true,
+    },
     mealPreference: { type: String },
     transportRequirement: { type: String },
     specialRequirements: { type: String },

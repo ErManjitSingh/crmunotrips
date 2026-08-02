@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, Inbox } from 'lucide-react';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
 import DashboardPanel from './DashboardPanel';
-import { CustomerCell, DestinationChip, BudgetBadge, TravelDateCell, SourceBadge } from '../sales-manager/LeadListBadges';
+import { CustomerCell, DestinationChip, MealPlanBadge, TravelDateCell, SourceBadge } from '../sales-manager/LeadListBadges';
 import { LEAD_LIST_TH, LEAD_LIST_TD, leadListRowClass } from '../leads/leadListStyles';
 
 export default function RecentLeadsTable({
@@ -23,7 +23,7 @@ export default function RecentLeadsTable({
   const columns = [
     { key: 'customer', label: 'Customer' },
     { key: 'destination', label: 'Destination' },
-    { key: 'budget', label: 'Budget' },
+    { key: 'mealPlan', label: 'Meal Plan' },
     { key: 'travelDate', label: 'Travel Date' },
     ...(showAgent
       ? [{ key: 'agent', label: 'Agent' }]
@@ -61,7 +61,7 @@ export default function RecentLeadsTable({
                 <DestinationChip name={lead.destination} />
               </td>
               <td className={LEAD_LIST_TD}>
-                <BudgetBadge amount={lead.budget} />
+                <MealPlanBadge mealPlan={lead.mealPlan} mealPreference={lead.mealPreference} />
               </td>
               <td className={LEAD_LIST_TD}>
                 <TravelDateCell date={lead.travelDate} />

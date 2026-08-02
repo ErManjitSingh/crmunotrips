@@ -169,6 +169,21 @@ export const HOTEL_CATEGORY_OPTIONS = [
   { value: '5_star', label: '5 Star' },
 ];
 
+/** Lead meal plan — drives hotel pricing in quotations (default MAP). */
+export const MEAL_PLAN_OPTIONS = [
+  { value: 'ep', label: 'EP' },
+  { value: 'cp', label: 'CP' },
+  { value: 'map', label: 'MAP' },
+  { value: 'ap', label: 'AP' },
+];
+
+export const MEAL_PLAN_LABELS = {
+  ep: 'EP (Room Only)',
+  cp: 'CP — Breakfast',
+  map: 'MAP — Breakfast + Dinner',
+  ap: 'AP — All Meals',
+};
+
 export const CAB_TYPE_OPTIONS = [
   { value: 'sedan', label: 'Sedan' },
   { value: 'suv', label: 'SUV' },
@@ -203,6 +218,7 @@ export const defaultWizardValues = {
   children: 0,
   infants: 0,
   hotelCategory: '3_star',
+  mealPlan: 'map',
   requirements: '',
   budgetRange: '',
   customBudget: '',

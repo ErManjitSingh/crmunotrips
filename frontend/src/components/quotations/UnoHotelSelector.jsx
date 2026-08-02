@@ -19,7 +19,7 @@ import { formatINR } from './quotationUtils';
 import {
   ensureMealPlanOptions,
   mealPlanNightlyRate,
-  pickDefaultMapMealPlan,
+  pickPreferredMealPlan,
 } from '../../lib/mealPlanDefaults';
 import { cn } from '../../lib/utils';
 
@@ -299,7 +299,13 @@ function SelectedHotelBanner({ hotel }) {
   );
 }
 
-export default function UnoHotelSelector({ destination, value, onChange, nights = 1 }) {
+export default function UnoHotelSelector({
+  destination,
+  value,
+  onChange,
+  nights = 1,
+  preferredMealPlanKey = 'map',
+}) {
   const [subStep, setSubStep] = useState('hotel');
   const [hotels, setHotels] = useState([]);
   const [loadingHotels, setLoadingHotels] = useState(false);
@@ -364,14 +370,14 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
   const selectRoom = (room) => {
     const hotel = hotelDetail || value?.hotel;
     const plans = ensureMealPlanOptions(room);
-    const mapPlan = pickDefaultMapMealPlan(plans, room);
-    const perNight = mealPlanNightlyRate(mapPlan, room);
+    const preferred = pickPreferredMealPlan(plans, room, preferredMealPlanKey || 'map');
+    const perNight = mealPlanNightlyRate(preferred, room);
     const totalCost = perNight * Math.max(1, nights);
     onChange({
       hotel,
       room: { ...room, mealPlanOptions: plans },
       mealPlan: {
-        ...mapPlan,
+        ...preferred,
         absolutePrice: perNight,
       },
       nights,

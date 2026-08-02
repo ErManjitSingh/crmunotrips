@@ -8,6 +8,7 @@ const LEAD_LIST_SELECT = [
   'alternatePhone',
   'destination',
   'budget',
+  'mealPlan',
   'status',
   'source',
   'sourceLabel',
@@ -52,7 +53,7 @@ const LEAD_LIST_SELECT = [
 ].join(' ');
 
 /** Detail view — excludes notes string and reactivation stageHistory */
-const LEAD_DETAIL_SELECT = `${LEAD_LIST_SELECT} city state travelDate returnDate tourDays pickupPoint dropPoint numberOfRooms roomsWithMattress cabType budgetRange leadType companyName hotelCategory mealPreference transportRequirement specialRequirements statusReason priority channel assigneeRole assignedManager teamId lastContactedAt lastContactMethod executiveLastViewedAt smartScore`;
+const LEAD_DETAIL_SELECT = `${LEAD_LIST_SELECT} city state travelDate returnDate tourDays pickupPoint dropPoint numberOfRooms roomsWithMattress cabType budgetRange leadType companyName hotelCategory mealPlan mealPreference transportRequirement specialRequirements statusReason priority channel assigneeRole assignedManager teamId lastContactedAt lastContactMethod executiveLastViewedAt smartScore`;
 
 const LEAD_DETAIL_POPULATE = [
   { path: 'assignedTo', select: 'name email' },

@@ -338,7 +338,7 @@ export default function LeadDetailHeader({
           <div className="mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
             <TravelChip icon={CalendarDays} label="Travel Date" value={formatTravelRange(lead)} tone="violet" />
             <TravelChip icon={Users} label="Travelers" value={formatTravelers(lead)} tone="sky" />
-            <TravelChip icon={Sparkles} label="Budget" value={formatBudget(lead)} tone="rose" />
+            <TravelChip icon={Sparkles} label="Meal Plan" value={(lead?.mealPlan || lead?.mealPreference || 'map').toString().toUpperCase()} tone="rose" />
           </div>
 
           {showPayment ? (

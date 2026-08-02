@@ -23,7 +23,7 @@ import {
   LeadIdPill,
   SourceBadge,
   DestinationChip,
-  BudgetBadge,
+  MealPlanBadge,
   ExecutiveBadge,
   ManagerStatusBadge,
   CustomerCell,
@@ -162,9 +162,12 @@ export default function TeamLeadsPage() {
         header: 'Destination',
         cell: (i) => <DestinationChip name={i.getValue()} />,
       }),
-      columnHelper.accessor('budget', {
-        header: 'Budget',
-        cell: (i) => <BudgetBadge amount={i.getValue()} />,
+      columnHelper.accessor((row) => row.mealPlan || row.mealPreference || 'map', {
+        id: 'mealPlan',
+        header: 'Meal Plan',
+        cell: ({ row }) => (
+          <MealPlanBadge mealPlan={row.original.mealPlan} mealPreference={row.original.mealPreference} />
+        ),
       }),
       columnHelper.accessor('sourceLabel', {
         header: 'Source',

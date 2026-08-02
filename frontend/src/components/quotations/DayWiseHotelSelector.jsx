@@ -59,7 +59,13 @@ export function isDayWiseHotelsComplete(selections = [], nights = 1) {
   });
 }
 
-export default function DayWiseHotelSelector({ destination, nights = 1, value = [], onChange }) {
+export default function DayWiseHotelSelector({
+  destination,
+  nights = 1,
+  value = [],
+  onChange,
+  preferredMealPlanKey = 'map',
+}) {
   const stayNights = Math.max(1, Number(nights) || 1);
   const dayNumbers = useMemo(
     () => Array.from({ length: stayNights }, (_, index) => index + 1),
@@ -198,6 +204,7 @@ export default function DayWiseHotelSelector({ destination, nights = 1, value = 
           key={`night-${activeDay}`}
           destination={destination}
           nights={1}
+          preferredMealPlanKey={preferredMealPlanKey}
           value={activeSelection}
           onChange={(selection) => updateDaySelection(activeDay, selection)}
         />

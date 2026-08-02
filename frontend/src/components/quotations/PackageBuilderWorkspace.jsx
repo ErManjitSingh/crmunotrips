@@ -957,6 +957,7 @@ export default function PackageBuilderWorkspace({
         destination={hotelDestination || pkg?.destination || ''}
         basePrice={hotelBasePrice}
         defaultMealPlanKey={
+          normalizeMealPlanKey(lead?.mealPlan || lead?.mealPreference) ||
           picker?.day?.mealPlanKey ||
           picker?.day?.hotelMeta?.mealPlanKey ||
           normalizeMealPlanKey(picker?.day?.meals || picker?.day?.hotelMeta?.meals) ||

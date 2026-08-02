@@ -1,22 +1,22 @@
-import { LEAD_SOURCES, defaultWizardValues } from './constants';
+import { LEAD_SOURCES, MEAL_PLAN_LABELS, defaultWizardValues } from './constants';
+import { normalizeMealPlanKey } from '../../lib/mealPlanDefaults';
 
 const sourceLabel = (value) => LEAD_SOURCES.find((s) => s.value === value)?.label || value;
-const BUDGET_RANGES = {
-  under_20000: { label: 'Under 20,000', min: 0, max: 20000 },
-  '20000_40000': { label: '20,000 - 40,000', min: 20000, max: 40000 },
-  '40000_60000': { label: '40,000 - 60,000', min: 40000, max: 60000 },
-  '60000_100000': { label: '60,000 - 100,000', min: 60000, max: 100000 },
-  above_100000: { label: 'Above 100,000', min: 100001, max: 150000 },
-  custom: { label: 'Custom Budget', min: null, max: null },
-};
 
-function inferBudgetRange(budget) {
-  const n = Number(budget) || 0;
-  if (n < 20000) return 'under_20000';
-  if (n <= 40000) return '20000_40000';
-  if (n <= 60000) return '40000_60000';
-  if (n <= 100000) return '60000_100000';
-  return 'above_100000';
+export function formatLeadMealPlan(leadOrKey) {
+  if (leadOrKey && typeof leadOrKey === 'object') {
+    const key = normalizeMealPlanKey(leadOrKey.mealPlan || leadOrKey.mealPreference) || 'map';
+    return MEAL_PLAN_LABELS[key] || key.toUpperCase();
+  }
+  const key = normalizeMealPlanKey(leadOrKey) || 'map';
+  return MEAL_PLAN_LABELS[key] || key.toUpperCase();
+}
+
+export function shortLeadMealPlan(leadOrKey) {
+  if (leadOrKey && typeof leadOrKey === 'object') {
+    return (normalizeMealPlanKey(leadOrKey.mealPlan || leadOrKey.mealPreference) || 'map').toUpperCase();
+  }
+  return (normalizeMealPlanKey(leadOrKey) || 'map').toUpperCase();
 }
 
 /** Inclusive tour days from start → end dates. */
@@ -34,6 +34,7 @@ export function leadToWizardValues(lead) {
   const infants = lead.infants ?? 0;
   const travelDate = lead.travelDate ? String(lead.travelDate).split('T')[0] : '';
   const returnDate = lead.returnDate ? String(lead.returnDate).split('T')[0] : '';
+  const mealPlan = normalizeMealPlanKey(lead.mealPlan || lead.mealPreference) || 'map';
 
   return {
     ...defaultWizardValues,
@@ -63,10 +64,8 @@ export function leadToWizardValues(lead) {
     leadType: lead.leadType || 'fit',
     companyName: lead.companyName || '',
     hotelCategory: lead.hotelCategory || '3_star',
+    mealPlan,
     requirements: lead.specialRequirements || '',
-    budget: lead.budget || '',
-    budgetRange: lead.budgetRange || inferBudgetRange(lead.budget || 0),
-    customBudget: lead.budgetRange === 'custom' ? String(lead.budget || '') : '',
     alternatePhone: lead.alternatePhone || '',
   };
 }
@@ -75,13 +74,10 @@ export function wizardValuesToPayload(values) {
   const travelers =
     Number(values.adults || 0) + Number(values.children || 0) + Number(values.infants || 0);
 
-  const numericBudget =
-    values.budgetRange === 'custom'
-      ? Number(values.customBudget) || 0
-      : Number(values.budget) || 0;
-
   const tourDays =
     Number(values.tourDays) || calcTourDays(values.travelDate, values.returnDate) || 0;
+
+  const mealPlan = normalizeMealPlanKey(values.mealPlan) || 'map';
 
   return {
     name: values.name,
@@ -115,8 +111,10 @@ export function wizardValuesToPayload(values) {
     source: values.leadSource,
     sourceLabel: sourceLabel(values.leadSource),
     priority: values.priority,
-    budget: numericBudget,
-    budgetRange: values.budgetRange || (numericBudget > 0 ? inferBudgetRange(numericBudget) : 'custom'),
+    budget: 0,
+    budgetRange: 'custom',
+    mealPlan,
+    mealPreference: mealPlan.toUpperCase(),
     hotelCategory: values.hotelCategory || undefined,
     specialRequirements: values.requirements || undefined,
     status: 'new',

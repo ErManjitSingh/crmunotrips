@@ -13,7 +13,7 @@ import VirtualizedRoleTable from '../ui/VirtualizedRoleTable';
 import { Button } from '../ui/button';
 import PriorityBadge from '../sales-manager/PriorityBadge';
 import {
-  DestinationChip, BudgetBadge, ExecutiveBadge, ManagerStatusBadge, CustomerCell, FILTER_THEMES,
+  DestinationChip, MealPlanBadge, ExecutiveBadge, ManagerStatusBadge, CustomerCell, FILTER_THEMES,
 } from '../sales-manager/LeadListBadges';
 import { ExecutiveStallIndicator, executiveStallRowClass } from '../sales-manager/ExecutiveStallIndicator';
 import ManagerLeadKpiStrip from '../sales-manager/ManagerLeadKpiStrip';
@@ -153,7 +153,13 @@ export default function LeaderTeamLeadsPage() {
     }),
     columnHelper.accessor('destination', { header: 'Destination', cell: (i) => <DestinationChip name={i.getValue()} /> }),
     columnHelper.accessor('assignedTo', { header: 'Executive', cell: (i) => <ExecutiveBadge name={i.getValue()?.name} /> }),
-    columnHelper.accessor('budget', { header: 'Budget', cell: (i) => <BudgetBadge amount={i.getValue()} /> }),
+    columnHelper.accessor((row) => row.mealPlan || row.mealPreference || 'map', {
+      id: 'mealPlan',
+      header: 'Meal Plan',
+      cell: ({ row }) => (
+        <MealPlanBadge mealPlan={row.original.mealPlan} mealPreference={row.original.mealPreference} />
+      ),
+    }),
     columnHelper.accessor('status', {
       header: 'Status',
       cell: ({ row }) => <ManagerStatusBadge status={row.original.status} lead={row.original} />,

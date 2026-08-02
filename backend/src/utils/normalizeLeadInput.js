@@ -34,6 +34,20 @@ function computeLeadScoreByBudget(budget) {
   return 'low';
 }
 
+const MEAL_PLAN_KEYS = new Set(['ep', 'cp', 'map', 'ap']);
+
+function normalizeMealPlan(raw, fallback = 'map') {
+  const s = String(raw || '')
+    .trim()
+    .toLowerCase();
+  if (MEAL_PLAN_KEYS.has(s)) return s;
+  if (s.includes('room only') || /\bep\b/.test(s)) return 'ep';
+  if (/\bcp\b/.test(s)) return 'cp';
+  if (/\bmap\b/.test(s)) return 'map';
+  if (/\bap\b/.test(s)) return 'ap';
+  return fallback;
+}
+
 /**
  * Sanitize lead create/update body from API / wizard payload.
  */
@@ -41,6 +55,7 @@ function normalizeLeadInput(body = {}, { isUpdate = false } = {}) {
   const source = normalizeSource(body);
 
   const budget = Number(body.budget) || 0;
+  const mealPlan = normalizeMealPlan(body.mealPlan || body.mealPreference, 'map');
   const normalized = {
     name: body.name?.trim(),
     email: body.email?.trim() || undefined,
@@ -73,7 +88,8 @@ function normalizeLeadInput(body = {}, { isUpdate = false } = {}) {
     priority: body.priority || 'medium',
     notes: body.notes || body.specialRequirements || '',
     hotelCategory: body.hotelCategory,
-    mealPreference: body.mealPreference,
+    mealPlan,
+    mealPreference: body.mealPreference || mealPlan.toUpperCase(),
     transportRequirement: body.cabType?.trim() || body.transportRequirement,
     specialRequirements: body.specialRequirements,
     followUpRemarks: body.followUpRemarks,
@@ -126,6 +142,7 @@ function normalizeLeadInput(body = {}, { isUpdate = false } = {}) {
 module.exports = {
   normalizeLeadInput,
   normalizeSource,
+  normalizeMealPlan,
   LEAD_SOURCES,
   computeLeadScoreByBudget,
 };

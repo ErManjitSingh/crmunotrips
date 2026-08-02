@@ -18,7 +18,7 @@ import {
   LeadIdPill,
   SourceBadge,
   DestinationChip,
-  BudgetBadge,
+  MealPlanBadge,
   ManagerStatusBadge,
   CustomerCell,
   FILTER_THEMES,
@@ -34,7 +34,7 @@ const AUTO_RULES = [
 ];
 
 const theme = FILTER_THEMES.unassigned;
-const columns = ['Lead ID', 'Customer', 'Destination', 'Budget', 'Source', 'Intent', 'Status', 'Actions'];
+const columns = ['Lead ID', 'Customer', 'Destination', 'Meal Plan', 'Source', 'Intent', 'Status', 'Actions'];
 
 export default function LeadAssignmentPage() {
   const [leads, setLeads] = useState([]);
@@ -242,7 +242,7 @@ export default function LeadAssignmentPage() {
                         <td className={LEAD_LIST_TD}><LeadIdPill id={lead.leadId} /></td>
                         <td className={LEAD_LIST_TD}><div className="flex items-center gap-1 min-w-0 flex-wrap"><CustomerCell name={lead.name} lead={lead} /><PriorityBadge lead={lead} /></div></td>
                         <td className={LEAD_LIST_TD}><DestinationChip name={lead.destination} /></td>
-                        <td className={LEAD_LIST_TD}><BudgetBadge amount={lead.budget} /></td>
+                        <td className={LEAD_LIST_TD}><MealPlanBadge mealPlan={lead.mealPlan} mealPreference={lead.mealPreference} /></td>
                         <td className={LEAD_LIST_TD}><SourceBadge source={lead.source} label={lead.sourceLabel} /></td>
                         <td className={LEAD_LIST_TD}><PriorityBadge lead={lead} /></td>
                         <td className={LEAD_LIST_TD}><ManagerStatusBadge status={lead.status} /></td>

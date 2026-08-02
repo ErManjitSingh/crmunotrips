@@ -8,11 +8,11 @@ import {
   ChevronDown,
   Filter,
   Flame,
-  IndianRupee,
   MapPin,
   Menu,
   MessageCircle,
   Phone,
+  UtensilsCrossed,
   Plus,
   Search,
   SlidersHorizontal,
@@ -302,7 +302,7 @@ export default function MobileLeadList({
                         <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1.5">
                           <p className="flex min-w-0 items-center gap-1 text-[8px] text-slate-500"><Phone className="h-3 w-3 shrink-0 text-blue-500" /><span className="truncate">{lead.phone || 'No phone'}</span></p>
                           <p className="flex min-w-0 items-center gap-1 text-[8px] text-slate-500"><MapPin className="h-3 w-3 shrink-0 text-orange-500" /><span className="truncate">{lead.destination || 'No destination'}</span></p>
-                          <p className="flex min-w-0 items-center gap-1 text-[8px] text-slate-500"><IndianRupee className="h-3 w-3 shrink-0 text-emerald-500" /><span className="truncate">{formatCurrency(lead.budget)}</span></p>
+                          <p className="flex min-w-0 items-center gap-1 text-[8px] text-slate-500"><UtensilsCrossed className="h-3 w-3 shrink-0 text-amber-500" /><span className="truncate">{String(lead.mealPlan || lead.mealPreference || 'map').toUpperCase()}</span></p>
                           <p className="flex min-w-0 items-center gap-1 text-[8px] text-slate-500"><UserCheck className="h-3 w-3 shrink-0 text-violet-500" /><span className="truncate">{lead.assignedTo?.name || 'Unassigned'}</span></p>
                         </div>
                       </div>

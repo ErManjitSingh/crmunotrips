@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWizardForm } from '../WizardFormContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, User, Phone, MapPin, Plane, Calendar, IndianRupee,
+  Search, User, Phone, MapPin, Plane, Calendar, UtensilsCrossed,
   Mail, Building2, Compass, Zap, Shield, TrendingUp, MessageCircle,
 } from 'lucide-react';
 import { checkLeadDuplicate } from '../../../services/leadEnterpriseApi';
@@ -12,8 +12,8 @@ import { useAuth } from '../../../context/AuthContext';
 import { useSelector } from 'react-redux';
 import WizardField, { WizardInput, IconInput, IconSelect, WizardTextarea } from '../WizardField';
 import {
-  INDIAN_STATES, DESTINATIONS, LEAD_TYPES, LEAD_SOURCES, PRIORITIES, BUDGET_RANGE_OPTIONS,
-  HOTEL_CATEGORY_OPTIONS, CAB_TYPE_OPTIONS, filterPickupDropSuggestions, INTENT_LABEL,
+  INDIAN_STATES, DESTINATIONS, LEAD_TYPES, LEAD_SOURCES, PRIORITIES,
+  HOTEL_CATEGORY_OPTIONS, CAB_TYPE_OPTIONS, MEAL_PLAN_OPTIONS, filterPickupDropSuggestions, INTENT_LABEL,
   getLeadSourcesForRole, defaultLeadSourceForRole,
 } from '../constants';
 import { calcTourDays } from '../leadWizardUtils';
@@ -93,7 +93,6 @@ export default function StepLeadForm({ isEdit, leadId }) {
   const name = watch('name');
   const destination = watch('destination') || '';
   const leadType = watch('leadType') || 'fit';
-  const budgetRange = watch('budgetRange') || '';
   const priority = watch('priority');
   const leadSource = watch('leadSource');
   const branchId = watch('branchId');
@@ -413,7 +412,7 @@ export default function StepLeadForm({ isEdit, leadId }) {
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-900">Travel Information</h3>
-            <p className="text-sm text-slate-500 mt-0.5">Destination, dates, rooms and budget</p>
+            <p className="text-sm text-slate-500 mt-0.5">Destination, dates, rooms and meal plan</p>
           </div>
         </div>
 
@@ -603,39 +602,15 @@ export default function StepLeadForm({ isEdit, leadId }) {
               </WizardField>
             ))}
 
-            <WizardField label="Budget range" className="col-span-2 sm:col-span-2">
-              <IconSelect
-                {...register('budgetRange')}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setValue('budgetRange', next);
-                  const picked = BUDGET_RANGE_OPTIONS.find((b) => b.value === next);
-                  if (picked && next !== 'custom') {
-                    setValue('budget', picked.amount);
-                    setValue('customBudget', '');
-                  }
-                }}
-              >
-                <option value="">Select</option>
-                {BUDGET_RANGE_OPTIONS.map((b) => (
-                  <option key={b.value} value={b.value}>{b.label}</option>
+            <WizardField label="Meal plan" className="col-span-2 sm:col-span-3">
+              <IconSelect icon={UtensilsCrossed} {...register('mealPlan')}>
+                {MEAL_PLAN_OPTIONS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </IconSelect>
-            </WizardField>
-
-            <WizardField
-              label={budgetRange === 'custom' ? 'Custom ₹' : 'Budget ₹'}
-              error={errors.budget?.message}
-              hint="Optional"
-              className="col-span-2 sm:col-span-1"
-            >
-              <IconInput
-                icon={IndianRupee}
-                {...register(budgetRange === 'custom' ? 'customBudget' : 'budget')}
-                type="number"
-                min={0}
-                error={errors.budget}
-              />
+              <p className="mt-1 text-[10px] text-slate-500">
+                Default MAP — hotel prices follow this plan in quotations
+              </p>
             </WizardField>
           </div>
 

@@ -19,7 +19,7 @@ import {
   ExecContactCell,
   ExecDestinationCell,
   ExecDateCell,
-  ExecBudgetCell,
+  ExecMealPlanCell,
   ExecStatusCell,
   ExecPriorityCell,
   ExecFollowUpCell,
@@ -183,9 +183,12 @@ export default function MyLeadsPage() {
       header: 'Travel Date',
       cell: (i) => <ExecDateCell date={i.getValue()} />,
     }),
-    columnHelper.accessor('budget', {
-      header: 'Budget',
-      cell: (i) => <ExecBudgetCell amount={i.getValue()} />,
+    columnHelper.accessor((row) => row.mealPlan || row.mealPreference || 'map', {
+      id: 'mealPlan',
+      header: 'Meal Plan',
+      cell: ({ row }) => (
+        <ExecMealPlanCell mealPlan={row.original.mealPlan} mealPreference={row.original.mealPreference} />
+      ),
     }),
     columnHelper.accessor('status', {
       header: 'Status',

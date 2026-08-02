@@ -254,6 +254,16 @@ export function ExecBudgetCell({ amount }) {
   );
 }
 
+export function ExecMealPlanCell({ mealPlan, mealPreference }) {
+  const key = String(mealPlan || mealPreference || 'map')
+    .trim()
+    .toLowerCase();
+  const label = ['ep', 'cp', 'map', 'ap'].includes(key) ? key.toUpperCase() : 'MAP';
+  return (
+    <span className="text-sm font-bold text-amber-700 whitespace-nowrap">{label}</span>
+  );
+}
+
 export function ExecStatusCell({ lead }) {
   const status = lead?.status || 'new';
   const isActiveReactivated =

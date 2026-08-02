@@ -12,6 +12,8 @@ import { buildListParams, unwrapPagination } from '../../utils/apiHelpers';
 import { fetchUnoPublicPackages, fetchUnoPublicPackageDetail, matchesPackageNameSearch } from '../../lib/unoPublicPackages';
 import { logSelectedPackageDebug } from '../../lib/logPackageDebug';
 import { resolvePackageItinerary, seedDayWiseHotelsFromItinerary } from '../../lib/packageItineraryMapper';
+import { normalizeMealPlanKey } from '../../lib/mealPlanDefaults';
+import { shortLeadMealPlan } from '../lead-wizard/leadWizardUtils';
 import { resolvePackageCabs, resolvePackageCabPricing } from '../../lib/packageCabMapper';
 import InclusionExclusionEditor, { cleanInclusionExclusionLines } from './InclusionExclusionEditor';
 import { resolvePackageHotelPricing } from './DayWiseHotelSelector';
@@ -501,8 +503,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setCustomExclusions(normalized.exclusions?.length ? [...normalized.exclusions] : ['']);
     setCustomizeTab('itinerary');
 
-    // Seed day-wise hotels from API hotel_options (same hotels shown in itinerary)
-    const seededHotels = seedDayWiseHotelsFromItinerary(itinerary);
+    // Seed day-wise hotels using lead meal plan (default MAP) for hotel pricing
+    const leadMealKey = normalizeMealPlanKey(selectedLead?.mealPlan || selectedLead?.mealPreference) || 'map';
+    const seededHotels = seedDayWiseHotelsFromItinerary(itinerary, leadMealKey);
     setDayWiseHotels(seededHotels);
 
     // Auto-select default package cab from day-options
@@ -990,7 +993,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
                 {selectedLead && (
                   <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 px-3.5 py-3 text-sm sm:px-4">
                     <p className="font-semibold text-content-primary">{selectedLead.name}</p>
-                    <p className="mt-0.5 text-xs text-content-muted">{selectedLead.destination} · {formatINR(selectedLead.budget)}</p>
+                    <p className="mt-0.5 text-xs text-content-muted">{selectedLead.destination} · {shortLeadMealPlan(selectedLead)}</p>
                   </div>
                 )}
                 <div className="relative">
