@@ -11,6 +11,7 @@ const {
   sanitizeImages,
   unoFetch,
 } = require('./unoHotelsApiClient');
+const { getUnoHotelDetail } = require('./unoHotelsHotelService');
 
 const LIST_CACHE_TTL_MS = 10 * 60 * 1000;
 const DETAIL_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -256,6 +257,143 @@ function applyCatalogToOption(option = {}, catalog = null, stay = null) {
     price_delta: priceDelta,
     upgrade_price: priceDelta,
   };
+}
+
+function pickStayRoom(rooms = [], stay = {}, meta = {}) {
+  const list = Array.isArray(rooms) ? rooms : [];
+  if (!list.length) return null;
+  const roomId = stay.default_room_type_id || meta.roomTypeId || null;
+  const roomName = String(stay.default_room_type_name || meta.tierName || '')
+    .trim()
+    .toLowerCase();
+  return (
+    list.find((r) => roomId && String(r.id) === String(roomId)) ||
+    list.find((r) => roomName && String(r.name || '').trim().toLowerCase() === roomName) ||
+    list.find((r) => roomName && String(r.name || '').toLowerCase().includes(roomName)) ||
+    list[0] ||
+    null
+  );
+}
+
+function pickStayMealPlan(room = null, mealKey = 'map') {
+  const key = packageMealKey(mealKey, { hasHotel: true });
+  const plans = Array.isArray(room?.mealPlanOptions) ? room.mealPlanOptions : [];
+  const matched =
+    plans.find((p) => String(p?.key || '').toLowerCase() === key) ||
+    plans.find((p) => new RegExp(`\\b${key}\\b`, 'i').test(String(p?.label || ''))) ||
+    null;
+  if (matched) {
+    const absolute =
+      Number(matched.absolutePrice || 0) ||
+      Number(room?.pricePerNight || 0) + Number(matched.price || 0) ||
+      0;
+    return {
+      key: String(matched.key || key).toLowerCase(),
+      label: matched.label || packageMealLabel(key, { hasHotel: true }),
+      price: Number(matched.price || 0),
+      absolutePrice: absolute,
+      meals: matched.meals || [],
+    };
+  }
+  return {
+    key,
+    label: packageMealLabel(key, { hasHotel: true }),
+    price: 0,
+    absolutePrice: Number(room?.rates?.[key] || room?.pricePerNight || 0) || 0,
+    meals: key === 'map' ? ['breakfast', 'dinner'] : key === 'cp' ? ['breakfast'] : [],
+  };
+}
+
+/**
+ * Fill each itinerary night with package-selected hotel room + meal plan rates
+ * from Uno Hotels detail API (https://api.unohotelsandresorts.com/docs).
+ */
+async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
+  const days = Array.isArray(itinerary) ? itinerary : [];
+  if (!days.length) return days;
+
+  const detailCache = new Map();
+  const loadDetail = async (city, slug) => {
+    const key = `${String(city || '').trim().toLowerCase()}||${String(slug || '').trim().toLowerCase()}`;
+    if (!city || !slug) return null;
+    if (detailCache.has(key)) return detailCache.get(key);
+    try {
+      const detail = await getUnoHotelDetail({ city, slug });
+      detailCache.set(key, detail);
+      return detail;
+    } catch {
+      detailCache.set(key, null);
+      return null;
+    }
+  };
+
+  const hydrated = [];
+  for (const day of days) {
+    const stay = findStayForDay(stays, day.day);
+    const meta = day.hotelMeta || null;
+    const hasHotel = Boolean(meta?.name || day.hotel);
+
+    if (!hasHotel) {
+      hydrated.push({
+        ...day,
+        meals: packageMealLabel('', { hasHotel: false }),
+        mealPlanKey: 'ep',
+      });
+      continue;
+    }
+
+    if (!stay) {
+      hydrated.push(day);
+      continue;
+    }
+
+    const mealKey = packageMealKey(stay.default_meal_plan, { hasHotel: true });
+    const city = meta?.city || stay.destination_city || '';
+    const slug = meta?.slug || '';
+    const detail = await loadDetail(city, slug);
+    const room = pickStayRoom(detail?.rooms || [], stay, meta || {});
+    const mealPlan = pickStayMealPlan(room, mealKey);
+    const absolute = Number(mealPlan.absolutePrice || 0) || Number(meta?.startingPrice || 0) || 0;
+    const epRate =
+      Number(room?.epPrice || room?.rates?.ep || room?.pricePerNight || 0) || 0;
+
+    hydrated.push({
+      ...day,
+      hotel: meta?.name || day.hotel || stay.default_hotel_name || '',
+      accommodation: meta?.name || day.accommodation || stay.default_hotel_name || '',
+      meals: mealPlan.label,
+      mealPlanKey: mealPlan.key,
+      hotelMeta: {
+        ...(meta || {}),
+        tierName: room?.name || stay.default_room_type_name || meta?.tierName || '',
+        roomTypeId: room?.id || stay.default_room_type_id || meta?.roomTypeId || null,
+        meals: mealPlan.label,
+        mealPlanKey: mealPlan.key,
+        mealPlan,
+        room: room
+          ? {
+              id: room.id,
+              name: room.name,
+              pricePerNight: absolute || Number(room.pricePerNight || 0),
+              epPrice: epRate,
+              rates: room.rates || null,
+              mealPlanOptions: room.mealPlanOptions || [],
+              bedType: room.bedType,
+              maxOccupancy: room.maxOccupancy,
+            }
+          : {
+              id: stay.default_room_type_id || null,
+              name: stay.default_room_type_name || meta?.tierName || 'Standard Room',
+            },
+        absolutePerNight: absolute,
+        includedRate: absolute || Number(meta?.startingPrice || 0) || 0,
+        startingPrice: absolute || Number(meta?.startingPrice || 0) || 0,
+        selectedFromPackage: true,
+      },
+    });
+  }
+
+  return hydrated;
 }
 
 /** Hotels live on day-options `stays[]` — build default + alternatives for a night. */
@@ -611,11 +749,12 @@ async function attachItineraryFromDayOptions(mapped, slug, itineraryDaysFromPack
 
     if (days.length > 0 || packageItineraryDays.length > 0 || stays.length > 0) {
       const catalog = await resolveHotelCatalog(stays);
-      mapped.itinerary = enrichItineraryWithStays(
+      const merged = enrichItineraryWithStays(
         buildMergedItinerary(packageItineraryDays, days, stays, catalog),
         stays,
         catalog
       );
+      mapped.itinerary = await hydrateItinerarySelectedStays(merged, stays);
       mapped.hotelCatalogSize = catalog.size;
       return mapped;
     }
@@ -900,7 +1039,7 @@ async function fetchUnoPackageById(packageId) {
 
 async function getUnoPackageById(packageId) {
   return cacheService.getOrSet(
-    `uno:packages:detail:v5:${packageId}`,
+    `uno:packages:detail:v6:${packageId}`,
     () => fetchUnoPackageById(packageId),
     DETAIL_CACHE_TTL_MS
   );

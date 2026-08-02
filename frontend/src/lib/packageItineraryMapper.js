@@ -393,41 +393,77 @@ export function resolvePackageItinerary(source = {}) {
 }
 
 /** Seed DayWiseHotelSelector / snapshot shape from itinerary hotelMeta. */
-/** Seed DayWiseHotelSelector / snapshot shape from itinerary hotelMeta. */
 export function seedDayWiseHotelsFromItinerary(itinerary = []) {
   return (Array.isArray(itinerary) ? itinerary : [])
     .filter((day) => day?.hotelMeta?.name || day?.hotel)
     .map((day) => {
       const meta = day.hotelMeta || { name: day.hotel };
       const meal = mealPlanFromCode(
-        meta.mealPlanKey || meta.meals || day.mealPlanKey || day.meals,
+        meta.mealPlan?.key ||
+          meta.mealPlanKey ||
+          meta.meals ||
+          day.mealPlanKey ||
+          day.meals,
         'map'
       );
+      const mealPlan = meta.mealPlan?.key
+        ? {
+            key: normalizeMealPlanKey(meta.mealPlan.key) || meal.key,
+            label: meta.mealPlan.label || meal.label,
+            price: Number(meta.mealPlan.price || 0),
+            absolutePrice: Number(meta.mealPlan.absolutePrice || 0),
+          }
+        : { key: meal.key, label: meal.label, price: 0, absolutePrice: 0 };
+      const absolutePerNight = Number(
+        meta.absolutePerNight ||
+          mealPlan.absolutePrice ||
+          meta.startingPrice ||
+          0
+      );
+      const room = meta.room?.name
+        ? {
+            id: meta.room.id || meta.roomTypeId || null,
+            name: meta.room.name,
+            pricePerNight: Number(
+              meta.room.pricePerNight || absolutePerNight || 0
+            ),
+            epPrice: Number(meta.room.epPrice || meta.room.rates?.ep || 0),
+            rates: meta.room.rates || null,
+            mealPlanOptions: meta.room.mealPlanOptions || [],
+            bedType: meta.room.bedType,
+            maxOccupancy: meta.room.maxOccupancy,
+          }
+        : {
+            id: meta.roomTypeId || null,
+            name: meta.tierName || 'Standard Room',
+            pricePerNight: absolutePerNight,
+          };
+
       return {
         day: day.day,
         hotel: {
-          id: meta.id,
+          id: meta.id || meta.hotelId,
           name: meta.name || day.hotel,
           image: meta.image || '',
           images: meta.images || [],
           starCategory: meta.starRating || 0,
           starRating: meta.starRating || 0,
           location: meta.location || '',
-          startingPrice: meta.startingPrice || 0,
+          city: meta.city || '',
+          slug: meta.slug || '',
+          startingPrice: absolutePerNight || meta.startingPrice || 0,
         },
-        room: { name: meta.tierName || 'Standard Room' },
-        mealPlan: {
-          key: meal.key,
-          label: meal.label,
-        },
-        meals: meal.label,
+        room,
+        mealPlan,
+        meals: mealPlan.label || meal.label,
         // Package baseCost already includes default hotels — only upgrade deltas add cost.
         perNight: Number(meta.priceDelta || 0),
         totalCost: Number(meta.priceDelta || 0),
-        absolutePerNight: Number(meta.startingPrice || 0),
-        includedRate: Number(meta.startingPrice || 0),
+        absolutePerNight,
+        includedRate: Number(meta.includedRate || absolutePerNight || meta.startingPrice || 0),
         nights: 1,
         fromPackage: true,
+        selectedFromPackage: true,
         hotelOptions: day.hotelOptions || [],
       };
     })

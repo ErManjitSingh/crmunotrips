@@ -92,7 +92,12 @@ function HotelCard({ meta, options = [], onOpenPicker, emptyLabel }) {
               </span>
             )}
             {meta?.tierName && <span>{meta.tierName}</span>}
-            {meta?.meals && <span>· {meta.meals}</span>}
+            {meta?.room?.name && meta.room.name !== meta.tierName && (
+              <span>· {meta.room.name}</span>
+            )}
+            {(meta?.mealPlan?.label || meta?.meals) && (
+              <span>· {meta.mealPlan?.label || meta.meals}</span>
+            )}
             {priceDelta > 0 ? (
               <span className="font-semibold text-emerald-600">
                 · +{formatINR(priceDelta)}/night upgrade
@@ -186,6 +191,9 @@ function SortableDayCard({
           images: hotelSel.hotel.images,
           starRating: hotelSel.hotel.starRating || hotelSel.hotel.starCategory,
           meals: hotelSel.mealPlan?.label || day.meals,
+          mealPlan: hotelSel.mealPlan,
+          mealPlanKey: hotelSel.mealPlan?.key,
+          room: hotelSel.room,
           tierName: hotelSel.room?.name,
           location: hotelSel.hotel.location,
           priceDelta: hotelSel.perNight,
