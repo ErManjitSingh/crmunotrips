@@ -114,11 +114,21 @@ export function resolvePackageCabPricing(packageBaseAfterHotels = 0, selectedCab
   // Prefer absolute selected fare; fall back to included + upgrade.
   const cabAbsolute = selectedAbs > 0 ? selectedAbs : included + upgrade;
 
+  // Always itemize cab when we know the absolute fare and can peel default cab from package.
   if (included > 0 && included <= packageBase + 0.01) {
     return {
       baseCost: Math.round((packageBase - included) * 100) / 100,
       cabCost: Math.round(cabAbsolute * 100) / 100,
       includedCabFare: included,
+    };
+  }
+
+  // Absolute known but cannot peel (package base too small / missing) — still show cab line.
+  if (cabAbsolute > 0 && packageBase <= 0) {
+    return {
+      baseCost: 0,
+      cabCost: Math.round(cabAbsolute * 100) / 100,
+      includedCabFare: 0,
     };
   }
 

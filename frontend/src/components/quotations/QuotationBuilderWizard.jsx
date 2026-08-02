@@ -515,10 +515,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         normalized.baseStartingPrice ?? normalized.startingPrice ?? 0
       );
       const adminMarginPct = Number(normalized.destinationMarginPercent || 0) || 0;
-      const unit = resolvePackageHotelPricing(packageStart, seededHotels);
-      const transport = resolvePackageCabPricing(unit.baseCost, defaultCab, packageCabs);
+      // Peel cab first from full package so Cab Cost stays visible; then hotels from remainder.
+      const transport = resolvePackageCabPricing(packageStart, defaultCab, packageCabs);
+      const unit = resolvePackageHotelPricing(transport.baseCost, seededHotels);
       const party = applyPartyCosting({
-        unitBaseCost: transport.baseCost,
+        unitBaseCost: unit.baseCost,
         unitHotelCost: unit.hotelCost,
         unitCabCost: transport.cabCost,
         lead: selectedLead,
@@ -610,8 +611,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       selectedPkgDetail?.baseStartingPrice ?? selectedPkgDetail?.startingPrice ?? 0
     );
     const packageCabs = resolvePackageCabs(selectedPkgDetail || {});
-    const unit = resolvePackageHotelPricing(packageAnchor, dayWiseHotels);
-    const transport = resolvePackageCabPricing(unit.baseCost, selectedUnoCab, packageCabs);
+    // Peel cab first from full package so Cab Cost stays visible; then hotels from remainder.
+    const transport = resolvePackageCabPricing(packageAnchor, selectedUnoCab, packageCabs);
+    const unit = resolvePackageHotelPricing(transport.baseCost, dayWiseHotels);
     const flightCost = flights
       .filter((f) => state.selectedFlightIds.includes(f._id))
       .reduce((s, f) => s + (f.cost || 0), 0);
@@ -625,7 +627,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           0
       ) || 0;
     const party = applyPartyCosting({
-      unitBaseCost: transport.baseCost,
+      unitBaseCost: unit.baseCost,
       unitHotelCost: unit.hotelCost,
       unitCabCost: transport.cabCost,
       flightCost,
