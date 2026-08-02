@@ -13,7 +13,7 @@ const endOfDay = (d = new Date()) => {
 };
 
 const LEAD_POPULATE = [
-  { path: 'assignedTo', select: 'name email' },
+  { path: 'assignedTo', select: 'name email phone' },
   { path: 'assignedManager', select: 'name email' },
   { path: 'assignedTeamLeader', select: 'name email' },
   { path: 'createdBy', select: 'name email' },
@@ -54,11 +54,11 @@ const FOLLOWUP_LIST_POPULATE = [
 const QUOTATION_POPULATE = [
   {
     path: 'lead',
-    populate: [{ path: 'assignedTo', select: 'name email' }],
+    populate: [{ path: 'assignedTo', select: 'name email phone' }],
   },
   { path: 'package' },
-  { path: 'createdBy', select: 'name email role' },
-  { path: 'createdByExecutive', select: 'name email' },
+  { path: 'createdBy', select: 'name email role phone' },
+  { path: 'createdByExecutive', select: 'name email phone' },
   { path: 'teamLeader', select: 'name email' },
   { path: 'approvedBy', select: 'name email' },
 ];

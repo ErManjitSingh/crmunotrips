@@ -44,8 +44,8 @@ export const COMPANY_INFO = {
   name: 'UNO TRIPS',
   tagline: 'Travel made simple',
   logoUrl: '/homelogo.webp',
-  phone: '+91 98765 43210',
-  email: 'quotes@unotrips.com',
+  phone: '+91 8353057000',
+  email: 'info@unotrips.com',
   website: 'unotrips.com',
-  address: '2nd Floor, Sheril Villa, Near East End Hotel NH-22 Bye-Pass, Panthaghati, Shimla, Himachal Pradesh 171009',
+  address: 'Verma Building, Kamla Nagar, Sanjauli, Shimla, Himachal Pradesh 171006',
 };

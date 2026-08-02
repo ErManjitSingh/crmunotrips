@@ -347,11 +347,24 @@ export function resolveQuoteVehicles(quote) {
   return [];
 }
 
+function formatExecPhone(raw) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length === 10) return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+  }
+  return String(raw).trim();
+}
+
+/** Trip expert = lead's sales executive (assigned), then quote creator */
 export function resolveTripPlanner(quote) {
-  const exec = quote.createdByExecutive || quote.createdBy;
+  const lead = resolveQuoteLead(quote);
+  const assigned = lead?.assignedTo && typeof lead.assignedTo === 'object' ? lead.assignedTo : null;
+  const exec = assigned || quote.createdByExecutive || quote.createdBy;
   return {
     name: quote.tripPlanner?.name || exec?.name || 'Travel Desk',
-    phone: quote.tripPlanner?.phone || exec?.phone || '',
+    phone: formatExecPhone(quote.tripPlanner?.phone || exec?.phone || ''),
   };
 }
 
