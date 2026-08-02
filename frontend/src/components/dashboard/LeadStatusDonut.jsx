@@ -47,13 +47,6 @@ export default function LeadStatusDonut({ data = [], total = 0, summary = null }
       pct: d.pct ?? 0,
       color: d.color,
     }));
-  const legendRows = rows.map((d) => ({
-    name: d.name,
-    key: d.key,
-    value: Number(d.value) || 0,
-    pct: d.pct ?? 0,
-    color: d.color,
-  }));
   const periodLabel = summary?.periodLabel || 'Selected period';
   const top = chartData[0];
 
@@ -103,119 +96,70 @@ export default function LeadStatusDonut({ data = [], total = 0, summary = null }
       {!chartData.length ? (
         <p className="py-8 text-center text-sm text-content-muted">No leads in this period</p>
       ) : (
-        <div className="flex min-w-0 flex-col gap-4">
-          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-stretch">
-            <div className="relative mx-auto h-[140px] w-[140px] shrink-0 sm:mx-0 sm:h-[160px] sm:w-[160px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={44}
-                    outerRadius={66}
-                    paddingAngle={3}
-                    dataKey="value"
-                    strokeWidth={0}
-                  >
-                    {chartData.map((item) => (
-                      <Cell key={item.key || item.name} fill={item.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<DonutTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Total</p>
-                <p className="text-xl font-bold text-slate-900 metric-tabular">
-                  {Number(displayTotal).toLocaleString('en-IN')}
-                </p>
-              </div>
-            </div>
-
-            {/* Same legend style as Leads by Source */}
-            <div className="min-w-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5 max-h-[200px] scrollbar-thin">
-              {chartData.map((item, i) => (
-                <motion.div
-                  key={item.key || item.name}
-                  initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  className="min-w-0"
+        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-stretch">
+          <div className="relative mx-auto h-[140px] w-[140px] shrink-0 sm:mx-0 sm:h-[160px] sm:w-[160px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={44}
+                  outerRadius={66}
+                  paddingAngle={3}
+                  dataKey="value"
+                  strokeWidth={0}
                 >
-                  <div className="mb-1 flex items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white shadow-sm"
-                      style={{ background: item.color }}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700" title={item.name}>
-                      {item.name}
-                    </span>
-                    <span className="shrink-0 text-xs font-semibold text-slate-500 metric-tabular">
-                      {Number(item.value).toLocaleString('en-IN')}
-                    </span>
-                    <span className="w-11 shrink-0 text-right text-sm font-bold text-slate-900 metric-tabular">
-                      {item.pct}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(100, Math.max(2, item.pct || 0))}%`,
-                        background: item.color,
-                      }}
-                    />
-                  </div>
-                </motion.div>
-              ))}
+                  {chartData.map((item) => (
+                    <Cell key={item.key || item.name} fill={item.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<DonutTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Total</p>
+              <p className="text-xl font-bold text-slate-900 metric-tabular">
+                {Number(displayTotal).toLocaleString('en-IN')}
+              </p>
             </div>
           </div>
 
-          {/* Full breakdown written below — including zero statuses */}
-          <div className="border-t border-subtle pt-3">
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-              What happened to these leads
-            </p>
-            <div className="space-y-2.5">
-              {legendRows.map((item, i) => (
-                <motion.div
-                  key={`all-${item.key || item.name}`}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 + i * 0.03 }}
-                  className={`min-w-0 ${Number(item.value) > 0 ? '' : 'opacity-45'}`}
-                >
-                  <div className="mb-1 flex items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white shadow-sm"
-                      style={{ background: item.color }}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700" title={item.name}>
-                      {item.name}
-                    </span>
-                    <span className="shrink-0 text-xs font-semibold text-slate-500 metric-tabular">
-                      {Number(item.value).toLocaleString('en-IN')}
-                    </span>
-                    <span className="w-11 shrink-0 text-right text-sm font-bold text-slate-900 metric-tabular">
-                      {item.pct}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(100, Math.max(item.value ? 2 : 0, item.pct || 0))}%`,
-                        background: item.color,
-                      }}
-                    />
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-            <p className="mt-2 text-[10px] text-slate-400">
-              Hot is a priority flag (can overlap statuses). Interested = connected + working + follow-up + quotation + negotiation.
-            </p>
+          <div className="min-w-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5 max-h-[200px] scrollbar-thin">
+            {chartData.map((item, i) => (
+              <motion.div
+                key={item.key || item.name}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className="min-w-0"
+              >
+                <div className="mb-1 flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white shadow-sm"
+                    style={{ background: item.color }}
+                  />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700" title={item.name}>
+                    {item.name}
+                  </span>
+                  <span className="shrink-0 text-xs font-semibold text-slate-500 metric-tabular">
+                    {Number(item.value).toLocaleString('en-IN')}
+                  </span>
+                  <span className="w-11 shrink-0 text-right text-sm font-bold text-slate-900 metric-tabular">
+                    {item.pct}%
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${Math.min(100, Math.max(2, item.pct || 0))}%`,
+                      background: item.color,
+                    }}
+                  />
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       )}
