@@ -49,7 +49,7 @@ const {
 const { setReactivationStage } = require('../services/reactivationService');
 const { logLeadActivity } = require('../services/leadActivityService');
 const { logLeadTransfer } = require('../services/leadTransferService');
-const { stampExecutiveAssignment } = require('../services/leadExecutiveStallService');
+const { stampPendingAcceptance } = require('../services/leadExecutiveStallService');
 const { invalidateExecutiveLeadIdsCache } = require('../services/executiveScopeService');
 const { logAudit, diffLeadChanges } = require('../services/leadAuditService');
 const { applyLeadMetrics } = require('../services/leadScoringService');
@@ -97,7 +97,7 @@ async function resolveReactivationExecutive(req, executiveId) {
 async function assignReactivatedLeadToExecutive(lead, executive, actor, note = '') {
   lead.assignedTo = executive._id;
   lead.assigneeRole = 'sales_executive';
-  stampExecutiveAssignment(lead);
+  stampPendingAcceptance(lead, lead);
 
   if (actor.role === 'team_leader') {
     const team = await Team.findOne({ teamLeader: actor._id }).select('_id');
@@ -824,6 +824,7 @@ const assignLeads = asyncHandler(async (req, res) => {
     assigneeName: assignee.name,
     leadIds: ids,
     assignedBy: req.user,
+    assigneeRole,
   }).catch(() => {});
 
   res.json({

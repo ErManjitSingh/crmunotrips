@@ -35,7 +35,7 @@ const {
 } = require('../utils/queryHelpers');
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
 const { sumConvertedPackageRevenue } = require('../utils/convertedPackageRevenue');
-const { stampExecutiveAssignment } = require('../services/leadExecutiveStallService');
+const { stampPendingAcceptance } = require('../services/leadExecutiveStallService');
 const { getOrSetFresh, cacheKey } = require('../services/dashboardCacheService');
 const {
   findManagerLeadsPaginated,
@@ -112,7 +112,7 @@ const assignLeads = asyncHandler(async (req, res) => {
     if (!executive) throw new ApiError(404, 'Executive not found');
     patch.assignedTo = executive._id;
     patch.assigneeRole = 'sales_executive';
-    stampExecutiveAssignment(patch);
+    stampPendingAcceptance(patch);
   }
 
   if (req.body.teamId) {

@@ -15,6 +15,8 @@ const API = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+let lastRateLimitToastAt = 0;
+
 API.interceptors.request.use((config) => {
   const token = authStorage.getToken();
   const selectedBranchId =
@@ -59,7 +61,17 @@ API.interceptors.response.use(
         window.location.href = '/login';
       }
     } else if (!error.config?.skipErrorToast) {
-      toast.error(getApiErrorMessage(error));
+      const status = error.response?.status;
+      const msg = getApiErrorMessage(error);
+      // Background polls retry often — don't spam the same rate-limit toast
+      if (status === 429 || /too many requests/i.test(msg || '')) {
+        const now = Date.now();
+        if (now - lastRateLimitToastAt < 60_000) {
+          return Promise.reject(error);
+        }
+        lastRateLimitToastAt = now;
+      }
+      toast.error(msg);
     }
     return Promise.reject(error);
   }

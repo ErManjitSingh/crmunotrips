@@ -12,7 +12,7 @@ function stampExecutiveAssignment(target = {}) {
   return target;
 }
 
-/** SOP: 2-min accept window + first-contact deadline */
+/** SOP: accept within LEAD_ACCEPT_MINUTES + first-contact deadline */
 function stampPendingAcceptance(target = {}, leadLike = {}) {
   const now = new Date();
   stampExecutiveAssignment(target);

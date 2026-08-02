@@ -281,6 +281,10 @@ export default function MyLeadsPage() {
         onSourceChange={setSourceFilter}
         onRefresh={fetchLeads}
         onOpenLead={(lead) => navigate(`/sales-executive/leads/${lead._id}/view`)}
+        onAcceptChanged={() => {
+          invalidateLeadLists(queryClient);
+          fetchLeads();
+        }}
       />
 
       <div className="hidden lg:block">

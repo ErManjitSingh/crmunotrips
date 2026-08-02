@@ -28,6 +28,8 @@ import { useSidebarCounts } from '../../hooks/useSidebarCounts';
 import { beginLeadCall } from '../../lib/callSession';
 import { getLeadSourceShortLabel, LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
 import { DESTINATIONS, LEAD_STATUSES } from '../leads/constants';
+import LeadListAcceptButton from '../leads/LeadListAcceptButton';
+import { LEAD_ACCEPT_MINUTES } from '../../constants/salesSop';
 import { cn } from '../../lib/utils';
 import { toast } from '../../context/ToastContext';
 
@@ -223,6 +225,7 @@ export default function MobileExecutiveLeads({
   onRefresh,
   onOpenLead,
   onOpenMenu,
+  onAcceptChanged,
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -266,6 +269,11 @@ export default function MobileExecutiveLeads({
     if (!sourceFilter) return leads;
     return leads.filter((l) => String(l.source || '') === sourceFilter);
   }, [leads, sourceFilter]);
+
+  const pendingAcceptCount = useMemo(
+    () => visibleLeads.filter((l) => l.assignmentAcceptance === 'pending' && !l.returnedToPool).length,
+    [visibleLeads],
+  );
 
   return (
     <div className="min-h-full bg-[#f7f7fb] pb-28 lg:hidden">
@@ -488,6 +496,16 @@ export default function MobileExecutiveLeads({
         </div>
 
         <section className="space-y-3">
+          {pendingAcceptCount > 0 ? (
+            <div className="rounded-2xl border border-amber-300 bg-amber-50 px-3.5 py-3 text-amber-950 shadow-sm">
+              <p className="text-[13px] font-bold">
+                Accept {pendingAcceptCount} lead{pendingAcceptCount > 1 ? 's' : ''} within {LEAD_ACCEPT_MINUTES} min
+              </p>
+              <p className="mt-0.5 text-[11px] text-amber-900/80">
+                Unaccepted leads return to the unassigned pool automatically.
+              </p>
+            </div>
+          ) : null}
           {loading ? (
             <div className="rounded-2xl border border-slate-100 bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
               Loading leads…
@@ -600,21 +618,30 @@ export default function MobileExecutiveLeads({
                         </p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      aria-label="Call"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!lead.phone || lead.contactMasked) {
-                          toast.error('Phone not available');
-                          return;
-                        }
-                        beginLeadCall({ leadId: lead._id, leadName: lead.name, phone: lead.phone });
-                      }}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-white text-violet-600 shadow-sm"
-                    >
-                      <Phone className="h-4 w-4" />
-                    </button>
+                    {lead.assignmentAcceptance === 'pending' && !lead.returnedToPool && !lead.contactMasked ? (
+                      <LeadListAcceptButton
+                        lead={lead}
+                        className="!rounded-xl !h-9"
+                        onAccepted={() => onAcceptChanged?.(lead)}
+                        onExpired={() => onAcceptChanged?.(lead)}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        aria-label="Call"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!lead.phone || lead.contactMasked) {
+                            toast.error('Phone not available');
+                            return;
+                          }
+                          beginLeadCall({ leadId: lead._id, leadName: lead.name, phone: lead.phone });
+                        }}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-white text-violet-600 shadow-sm"
+                      >
+                        <Phone className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </article>
               );
