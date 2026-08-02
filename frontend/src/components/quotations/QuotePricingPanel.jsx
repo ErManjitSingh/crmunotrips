@@ -5,10 +5,10 @@ const COST_FIELDS = [
   { key: 'hotelCost', label: 'Hotel Cost', color: 'border-amber-400/30 bg-amber-500/5' },
   { key: 'transportCost', label: 'Cab Cost', color: 'border-emerald-400/30 bg-emerald-500/5' },
   { key: 'activityCost', label: 'Activities Cost', color: 'border-indigo-400/30 bg-indigo-500/5' },
+  { key: 'packageInclusions', label: 'Package inclusions', color: 'border-slate-400/30 bg-slate-500/5' },
 ];
 
 export default function QuotePricingPanel({ pricing, onChange, readOnly = false, lead = null }) {
-  const computed = calculatePricing(pricing || {});
   const breakdown = getDisplayedCostBreakdown(pricing || {});
   const party = pricing?.party || resolvePartyOccupancy(lead || {});
   const adults = Math.max(1, Number(party.adults) || 1);
@@ -40,14 +40,30 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false,
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {COST_FIELDS.map(({ key, label, color }) => (
-          <div key={key} className={`p-3 rounded-xl border ${color}`}>
-            <label className="text-[10px] uppercase font-semibold text-content-muted">{label}</label>
+        {COST_FIELDS.map(({ key, label, color }) => {
+          const amount = breakdown[key];
+          if (key === 'activityCost' && Number(amount || 0) === 0) return null;
+          if (key === 'packageInclusions' && Number(amount || 0) === 0) return null;
+          return (
+            <div key={key} className={`p-3 rounded-xl border ${color}`}>
+              <label className="text-[10px] uppercase font-semibold text-content-muted">{label}</label>
+              <p className="text-lg font-bold text-content-primary metric-tabular mt-1">
+                {formatINR(amount, { zeroLabel: 'Not included' })}
+              </p>
+            </div>
+          );
+        })}
+
+        {Number(breakdown.adminMarginPercent || 0) > 0 && (
+          <div className="p-3 rounded-xl border border-indigo-400/30 bg-indigo-500/5">
+            <label className="text-[10px] uppercase font-semibold text-content-muted">
+              Company margin ({breakdown.adminMarginPercent}%)
+            </label>
             <p className="text-lg font-bold text-content-primary metric-tabular mt-1">
-              {formatINR(breakdown[key], { zeroLabel: 'Not included' })}
+              {formatINR(breakdown.adminMarkup)}
             </p>
           </div>
-        ))}
+        )}
 
         <div className="p-3 rounded-xl border border-green-400/30 bg-green-500/5">
           <label className="text-[10px] uppercase font-semibold text-content-muted">Your margin %</label>

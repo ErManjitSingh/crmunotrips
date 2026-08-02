@@ -147,18 +147,41 @@ export default function PackageBuilderPriceSidebar({
             );
           })}
 
+          {Number(breakdown.packageInclusions || 0) > 0 ? (
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50/80 border border-slate-100 px-2 py-1.5">
+              <span className="text-xs font-semibold text-slate-600">Package inclusions</span>
+              <span className="min-w-[108px] h-8 inline-flex items-center justify-end px-2 text-sm font-semibold metric-tabular text-slate-800">
+                {formatINR(breakdown.packageInclusions)}
+              </span>
+            </div>
+          ) : null}
+
           <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
-            <span className="text-[11px] font-semibold text-slate-600">Subtotal</span>
+            <span className="text-[11px] font-semibold text-slate-600">Subtotal (before margin)</span>
             <span className="text-sm font-bold metric-tabular text-slate-800">
               {formatINR(breakdown.costsBeforeMargin || 0)}
             </span>
           </div>
 
+          {Number(breakdown.adminMarginPercent || 0) > 0 ? (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-indigo-100 bg-indigo-50/70 px-2 py-1.5">
+              <div>
+                <span className="text-xs font-semibold text-indigo-800">
+                  Company margin ({breakdown.adminMarginPercent}%)
+                </span>
+                <p className="text-[10px] text-indigo-700/70">Applied on subtotal only</p>
+              </div>
+              <span className="text-sm font-bold metric-tabular text-indigo-900">
+                {formatINR(breakdown.adminMarkup || 0)}
+              </span>
+            </div>
+          ) : null}
+
           <div className="rounded-lg border border-green-100 bg-green-50/70 px-2 py-2 space-y-1.5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <span className="text-xs font-semibold text-green-800">Your margin %</span>
-                <p className="text-[10px] text-green-700/70">Optional — add your own margin</p>
+                <p className="text-[10px] text-green-700/70">Optional — on top of company margin</p>
               </div>
               <input
                 type="number"

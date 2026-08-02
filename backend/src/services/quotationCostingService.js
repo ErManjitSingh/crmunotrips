@@ -107,6 +107,7 @@ function calculateQuotationPricing({
   const discount = toNumber(pricingInput.discount);
   const gstEnabled = Boolean(pricingInput.gstEnabled);
 
+  // Raw cost sum only — admin/exec margins applied once below (never per hotel/cab line)
   const costs =
     categoryTotals.baseCost +
     categoryTotals.hotelCost +
@@ -114,7 +115,7 @@ function calculateQuotationPricing({
     categoryTotals.flightCost +
     categoryTotals.activityCost;
 
-  // Hidden admin margin on costs, then optional executive margin on top
+  // Admin margin once on total costs, then optional executive margin on after-admin
   const adminMarkup =
     adminMarginPercent > 0
       ? Math.round(costs * (adminMarginPercent / 100) * 100) / 100

@@ -38,9 +38,12 @@ const quotationSchema = new mongoose.Schema(
       gstEnabled: { type: Boolean, default: false },
       markup: { type: Number, default: 0 },
       markupPercent: { type: Number, default: 0 },
+      /** Destination / company margin % — applied once on cost total */
+      adminMarginPercent: { type: Number, default: 0 },
       discount: { type: Number, default: 0 },
       total: { type: Number, default: 0 },
       profitMargin: { type: Number, default: 0 },
+      party: { type: mongoose.Schema.Types.Mixed },
     },
     costing: {
       lineItems: [{ type: mongoose.Schema.Types.Mixed }],
@@ -49,6 +52,7 @@ const quotationSchema = new mongoose.Schema(
       gstEnabled: { type: Boolean, default: false },
       markup: { type: Number, default: 0 },
       markupPercent: { type: Number, default: 0 },
+      adminMarginPercent: { type: Number, default: 0 },
       discount: { type: Number, default: 0 },
       grandTotal: { type: Number, default: 0 },
       profitMargin: { type: Number, default: 0 },

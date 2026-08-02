@@ -1,5 +1,12 @@
 import { expandDestinationMatchTerms } from '../../lib/destinationFamilies';
 
+/**
+ * Quotation costing formula (single source of truth):
+ * 1. Sum raw costs (hotel + cab + activities + package residual + flights) — NO margin on lines
+ * 2. Apply admin destination margin % once on that total
+ * 3. Optional executive "Your margin %" on after-admin total
+ * 4. Discount → GST → final
+ */
 export function calculatePricing({
   baseCost = 0,
   hotelCost = 0,
@@ -20,7 +27,7 @@ export function calculatePricing({
     Number(flightCost || 0) +
     Number(activityCost || 0);
 
-  // Hidden admin destination margin — applied on cost total first
+  // Admin destination margin — once on cost total only (never on hotel/cab lines)
   const adminPct = Math.max(0, Number(adminMarginPercent) || 0);
   const adminMarkup =
     adminPct > 0 ? Math.round(costs * (adminPct / 100) * 100) / 100 : 0;
@@ -60,43 +67,53 @@ export function calculatePricing({
     packageCost,
     packageBeforeDisc,
     youSave,
-  };
-}
-
-/** Fold residual package/flight share into hotel so UI only shows Hotel + Cab. */
-export function foldPackageResidualIntoHotel(pricing = {}) {
-  const residual =
-    Number(pricing.baseCost || 0) + Number(pricing.flightCost || 0);
-  return {
-    ...pricing,
-    hotelCost: Math.round((Number(pricing.hotelCost || 0) + residual) * 100) / 100,
-    baseCost: 0,
-    flightCost: 0,
+    costsBeforeMargin: costs,
   };
 }
 
 /**
- * Customer-facing costing rows: Hotel + Cab + Activities + Your margin + Discount + GST.
- * Admin destination margin is applied in calculatePricing but not shown here.
+ * Keep hotel / cab / residual as separate raw cost buckets.
+ * Do NOT fold residual into hotel — that made Hotel Cost look "margined".
+ */
+export function foldPackageResidualIntoHotel(pricing = {}) {
+  return {
+    ...pricing,
+    hotelCost: Math.round(Number(pricing.hotelCost || 0) * 100) / 100,
+    baseCost: Math.round(Number(pricing.baseCost || 0) * 100) / 100,
+    flightCost: Math.round(Number(pricing.flightCost || 0) * 100) / 100,
+  };
+}
+
+/**
+ * Customer-facing costing rows:
+ * Hotel + Cab + Activities (+ Package inclusions if residual) → Subtotal → margins → Final
+ * Admin margin is applied in calculatePricing on the sum only.
  */
 export function getDisplayedCostBreakdown(pricing = {}) {
   const calc = calculatePricing(pricing);
   const hotelCost = Number(pricing.hotelCost || 0);
   const transportCost = Number(pricing.cabCost || 0);
   const activityCost = Number(pricing.activityCost || 0);
+  const packageInclusions =
+    Math.round(
+      (Number(pricing.baseCost || 0) + Number(pricing.flightCost || 0)) * 100
+    ) / 100;
 
   return {
     hotelCost,
     transportCost,
     activityCost,
+    packageInclusions,
     markup: calc.execMarkup,
+    adminMarkup: calc.adminMarkup,
     taxes: calc.taxes,
     discount: Math.max(0, Number(pricing.discount || 0)),
     youSave: calc.youSave,
     packageCost: calc.packageCost,
     subtotalBeforeDiscount: calc.subtotal,
     finalTotal: calc.total,
-    costsBeforeMargin: hotelCost + transportCost + activityCost,
+    costsBeforeMargin: calc.costsBeforeMargin,
+    adminMarginPercent: Math.max(0, Number(pricing.adminMarginPercent) || 0),
   };
 }
 
