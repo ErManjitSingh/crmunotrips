@@ -194,9 +194,10 @@ function mapStatusBucket(statusCounts) {
   const followUpPending = statusCounts.follow_up || 0;
   const interested = INTERESTED_STATUSES.reduce((s, k) => s + (statusCounts[k] || 0), 0);
   const negotiation = statusCounts.negotiation || 0;
+  const connected = statusCounts.contacted || 0;
   const lost = LOST_STATUSES.reduce((s, k) => s + (statusCounts[k] || 0), 0);
   const conversions = statusCounts.converted || 0;
-  return { fresh, followUpPending, interested, negotiation, lost, conversions };
+  return { fresh, followUpPending, interested, negotiation, connected, lost, conversions };
 }
 
 function changeMeta(current, previous) {
@@ -639,13 +640,13 @@ async function buildAdminDashboard(options = {}) {
     valueBuckets.fresh +
     valueBuckets.followUpPending +
     valueBuckets.interested +
-    valueBuckets.negotiation +
+    valueBuckets.connected +
     valueBuckets.lost;
   const statusDistribution = [
     { name: 'New', key: 'fresh', value: valueBuckets.fresh, color: '#22C55E' },
     { name: 'Follow Up', key: 'followUp', value: valueBuckets.followUpPending, color: '#F59E0B' },
     { name: 'Interested', key: 'interested', value: valueBuckets.interested, color: '#8B5CF6' },
-    { name: 'Negotiation', key: 'negotiation', value: valueBuckets.negotiation, color: '#F97316' },
+    { name: 'Connected', key: 'connected', value: valueBuckets.connected, color: '#10B981' },
     { name: 'Lost', key: 'lost', value: valueBuckets.lost, color: '#EF4444' },
   ].map((item) => ({
     ...item,
@@ -666,7 +667,7 @@ async function buildAdminDashboard(options = {}) {
       valueBuckets.followUpPending
     ),
     interested: withValue(changeMeta(changeBuckets.interested, prevBuckets.interested), valueBuckets.interested),
-    negotiation: withValue(changeMeta(changeBuckets.negotiation, prevBuckets.negotiation), valueBuckets.negotiation),
+    connected: withValue(changeMeta(changeBuckets.connected, prevBuckets.connected), valueBuckets.connected),
     lostLeads: withValue(changeMeta(changeBuckets.lost, prevBuckets.lost), valueBuckets.lost),
     conversions: withValue(changeMeta(changeBuckets.conversions, prevBuckets.conversions), valueBuckets.conversions),
     revenue: withValue(changeMeta(changeRevenue, prevRevenue), periodRevenue),
@@ -691,10 +692,9 @@ async function buildAdminDashboard(options = {}) {
 
   const salesFunnel = [
     { stage: 'New Lead', count: statusCounts.new || 0 },
-    { stage: 'Contacted', count: statusCounts.contacted || 0 },
+    { stage: 'Connected', count: statusCounts.contacted || 0 },
     { stage: 'Follow Up', count: (statusCounts.follow_up || 0) + (statusCounts.negotiation || 0) },
     { stage: 'Quotation Sent', count: statusCounts.quotation_sent || 0 },
-    { stage: 'Negotiation', count: statusCounts.negotiation || 0 },
     { stage: 'Converted', count: convertedLeads },
   ];
 
@@ -1122,7 +1122,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
     })),
     conversionProgress: [
       { stage: 'New', count: statusCounts.new || 0, color: '#0EA5E9' },
-      { stage: 'Contacted', count: statusCounts.contacted || 0, color: '#8B5CF6' },
+      { stage: 'Connected', count: statusCounts.contacted || 0, color: '#10B981' },
       {
         stage: 'Follow-up',
         count: (statusCounts.follow_up || 0) + (statusCounts.negotiation || 0),
@@ -1590,10 +1590,9 @@ async function buildReportsAnalytics(options = {}) {
   const statusMap = Object.fromEntries(statusAgg.map((s) => [s._id, s.count]));
   const funnelStages = [
     { stage: 'Lead Created', key: null },
-    { stage: 'Contacted', key: 'contacted' },
+    { stage: 'Connected', key: 'contacted' },
     { stage: 'Follow Up', key: 'follow_up' },
     { stage: 'Quotation Sent', key: 'quotation_sent' },
-    { stage: 'Negotiation', key: 'negotiation' },
     { stage: 'Converted', key: 'converted' },
   ];
 
@@ -1611,8 +1610,6 @@ async function buildReportsAnalytics(options = {}) {
         (statusMap.follow_up || 0) + (statusMap.negotiation || 0) + convertedLeads;
     } else if (f.key === 'quotation_sent') {
       count = (statusMap.quotation_sent || 0) + (statusMap.negotiation || 0) + convertedLeads;
-    } else if (f.key === 'negotiation') {
-      count = (statusMap.negotiation || 0) + convertedLeads;
     } else if (f.key === 'converted') {
       count = convertedLeads;
     }
