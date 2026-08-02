@@ -25,10 +25,20 @@ function extractWebsiteRoomRates(rates) {
 
 function buildMealPlanOptions(mealPlans = {}, rates = null) {
   const fromRates = extractWebsiteRoomRates(rates);
+  const breakfast = Number(mealPlans.breakfast) || 0;
+  const lunch = Number(mealPlans.lunch) || 0;
+  const dinner = Number(mealPlans.dinner) || 0;
+
   if (fromRates) {
     const positives = [fromRates.ep, fromRates.cp, fromRates.map, fromRates.ap].filter((n) => n > 0);
     const base = fromRates.ep > 0 ? fromRates.ep : positives.length ? Math.min(...positives) : 0;
-    return [
+    // Prefer explicit MAP rack; if missing, estimate EP/CP + dinner supplement.
+    let mapAbs = Number(fromRates.map) || 0;
+    if (!(mapAbs > 0) && base > 0) {
+      if (breakfast || dinner) mapAbs = base + breakfast + dinner;
+      else if (fromRates.cp > 0 && dinner) mapAbs = fromRates.cp + dinner;
+    }
+    const plans = [
       {
         key: 'ep',
         label: 'EP (Room Only)',
@@ -46,8 +56,8 @@ function buildMealPlanOptions(mealPlans = {}, rates = null) {
       {
         key: 'map',
         label: 'MAP — Breakfast + Dinner',
-        price: Math.max(0, fromRates.map - base),
-        absolutePrice: fromRates.map,
+        price: Math.max(0, mapAbs - base),
+        absolutePrice: mapAbs,
         meals: ['breakfast', 'dinner'],
       },
       {
@@ -57,18 +67,30 @@ function buildMealPlanOptions(mealPlans = {}, rates = null) {
         absolutePrice: fromRates.ap,
         meals: ['breakfast', 'lunch', 'dinner'],
       },
-    ].filter((plan) => Number(plan.absolutePrice) > 0);
+    ];
+    // Keep any plan with a real rack rate; always keep MAP so CRM can default to it.
+    return plans.filter(
+      (plan) => Number(plan.absolutePrice) > 0 || plan.key === 'map'
+    );
   }
-
-  const breakfast = Number(mealPlans.breakfast) || 0;
-  const lunch = Number(mealPlans.lunch) || 0;
-  const dinner = Number(mealPlans.dinner) || 0;
 
   return [
     { key: 'ep', label: 'EP (Room Only)', price: 0, absolutePrice: 0, meals: [] },
     { key: 'cp', label: 'CP — Breakfast', price: breakfast, absolutePrice: 0, meals: ['breakfast'] },
-    { key: 'map', label: 'MAP — Breakfast + Dinner', price: breakfast + dinner, absolutePrice: 0, meals: ['breakfast', 'dinner'] },
-    { key: 'ap', label: 'AP — All Meals', price: breakfast + lunch + dinner, absolutePrice: 0, meals: ['breakfast', 'lunch', 'dinner'] },
+    {
+      key: 'map',
+      label: 'MAP — Breakfast + Dinner',
+      price: breakfast + dinner,
+      absolutePrice: 0,
+      meals: ['breakfast', 'dinner'],
+    },
+    {
+      key: 'ap',
+      label: 'AP — All Meals',
+      price: breakfast + lunch + dinner,
+      absolutePrice: 0,
+      meals: ['breakfast', 'lunch', 'dinner'],
+    },
   ];
 }
 

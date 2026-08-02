@@ -20,20 +20,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AppDrawer from '../ui/AppDrawer';
 import API from '../../api/axios';
 import { formatINR } from './quotationUtils';
-import { pickDefaultMapMealPlan } from '../../lib/mealPlanDefaults';
+import {
+  ensureMealPlanOptions,
+  mealPlanNightlyRate,
+  pickDefaultMapMealPlan,
+} from '../../lib/mealPlanDefaults';
 import { cn } from '../../lib/utils';
 
 const HOTEL_STEPS = [
   { key: 'hotel', label: 'Hotel', hint: 'Select your hotel' },
   { key: 'room', label: 'Room', hint: 'Choose room type' },
   { key: 'meal', label: 'Meal Plan', hint: 'MAP default — change if needed' },
-];
-
-const FALLBACK_MEAL_PLANS = [
-  { key: 'ep', label: 'EP (Room Only)', price: 0, absolutePrice: 0, meals: [] },
-  { key: 'cp', label: 'CP — Breakfast', price: 0, absolutePrice: 0, meals: ['breakfast'] },
-  { key: 'map', label: 'MAP — Breakfast + Dinner', price: 0, absolutePrice: 0, meals: ['breakfast', 'dinner'] },
-  { key: 'ap', label: 'AP — All Meals', price: 0, absolutePrice: 0, meals: ['breakfast', 'lunch', 'dinner'] },
 ];
 
 const BADGE_STYLES = [
@@ -377,7 +374,8 @@ function HotelListRow({ option, selected, loading, onSelect, showDay, index, bas
 
 function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0 }) {
   const image = room.images?.[0] || hotel?.thumbnailUrl || hotel?.images?.[0] || hotel?.image;
-  const price = Number(room.pricePerNight || room.epPrice || 0);
+  const mapPlan = pickDefaultMapMealPlan(ensureMealPlanOptions(room), room);
+  const price = mealPlanNightlyRate(mapPlan, room) || Number(room.pricePerNight || room.epPrice || 0);
   const rel = formatRelativePrice(price, basePrice, { isCurrent: false });
 
   return (
@@ -414,6 +412,9 @@ function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0 }) {
                 <Users className="w-3 h-3" /> Max {room.maxOccupancy}
               </span>
             )}
+            <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+              MAP default
+            </span>
             {room.rates?.ep > 0 && (
               <span className="rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
                 EP {formatINR(room.rates.ep)}
@@ -424,7 +425,7 @@ function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0 }) {
             <div>
               <p className="text-base font-black text-violet-700">
                 {price > 0 ? formatINR(price) : 'Not included'}
-                {price > 0 && <span className="text-[10px] font-medium text-slate-400"> / night</span>}
+                {price > 0 && <span className="text-[10px] font-medium text-slate-400"> / night MAP</span>}
               </p>
               <p className={cn('text-xs font-bold mt-0.5', rel.tone)}>{rel.primary}</p>
             </div>
@@ -438,9 +439,8 @@ function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0 }) {
   );
 }
 
-function MealPlanCard({ plan, roomPrice, nights, onSelect, basePrice = 0, selected = false }) {
-  const absolute = Number(plan.absolutePrice || 0);
-  const perNight = absolute > 0 ? absolute : Number(roomPrice || 0) + Number(plan.price || 0);
+function MealPlanCard({ plan, room, nights, onSelect, basePrice = 0, selected = false }) {
+  const perNight = mealPlanNightlyRate(plan, room);
   const total = perNight * Math.max(1, nights);
   const rel = formatRelativePrice(perNight, basePrice, { isCurrent: false });
   const hasSupplement = Number(plan.price || 0) > 0;
@@ -541,29 +541,33 @@ async function fetchHotelDetailForOption(option, destination) {
 
 function buildFallbackRooms(option) {
   if (option.rooms?.length) {
-    return option.rooms.map((room, index) => ({
-      id: room.id || room._id || `${option.id || option.name}-room-${index}`,
-      name: room.name || room.roomType || `Room ${index + 1}`,
-      description: room.description || 'Hotel room option',
-      pricePerNight: Number(room.pricePerNight ?? room.baseRate ?? room.price ?? 0),
-      mealPlanOptions: room.mealPlanOptions?.length ? room.mealPlanOptions : FALLBACK_MEAL_PLANS,
-      images: room.images || option.images || (option.image ? [option.image] : []),
-      bedType: room.bedType,
-      maxOccupancy: room.maxOccupancy,
-      fromPackage: true,
-    }));
+    return option.rooms.map((room, index) => {
+      const mapped = {
+        id: room.id || room._id || `${option.id || option.name}-room-${index}`,
+        name: room.name || room.roomType || `Room ${index + 1}`,
+        description: room.description || 'Hotel room option',
+        pricePerNight: Number(room.pricePerNight ?? room.baseRate ?? room.price ?? 0),
+        rates: room.rates || null,
+        epPrice: Number(room.epPrice || room.pricePerNight || 0),
+        images: room.images || option.images || (option.image ? [option.image] : []),
+        bedType: room.bedType,
+        maxOccupancy: room.maxOccupancy,
+        fromPackage: true,
+        mealPlanOptions: room.mealPlanOptions || [],
+      };
+      return { ...mapped, mealPlanOptions: ensureMealPlanOptions(mapped) };
+    });
   }
-  return [
-    {
-      id: option.roomTypeId || `pkg-room-${option.id || option.name}`,
-      name: option.tierName || 'Standard Room',
-      description: 'Package room option',
-      pricePerNight: Number(option.startingPrice || option.absolutePerNight || option.priceDelta || 0),
-      mealPlanOptions: FALLBACK_MEAL_PLANS,
-      images: option.images || (option.image ? [option.image] : []),
-      fromPackage: true,
-    },
-  ];
+  const fallback = {
+    id: option.roomTypeId || `pkg-room-${option.id || option.name}`,
+    name: option.tierName || 'Standard Room',
+    description: 'Package room option',
+    pricePerNight: Number(option.startingPrice || option.absolutePerNight || option.priceDelta || 0),
+    images: option.images || (option.image ? [option.image] : []),
+    fromPackage: true,
+    mealPlanOptions: [],
+  };
+  return [{ ...fallback, mealPlanOptions: ensureMealPlanOptions(fallback) }];
 }
 
 export default function PackageResourcePickerDrawer({
@@ -623,27 +627,18 @@ export default function PackageResourcePickerDrawer({
     });
   }, [options, query, starFilter]);
 
-  const rooms = hotelDetail?.rooms?.length
+  const rooms = (hotelDetail?.rooms?.length
     ? hotelDetail.rooms
     : packageHotel
       ? buildFallbackRooms(packageHotel)
-      : [];
+      : []
+  ).map((room) => ({ ...room, mealPlanOptions: ensureMealPlanOptions(room) }));
 
-  const mealPlans = (() => {
-    const plans =
-      selectedRoom?.mealPlanOptions?.length > 0
-        ? [...selectedRoom.mealPlanOptions]
-        : [...FALLBACK_MEAL_PLANS];
-    const hasMap = plans.some(
-      (p) =>
-        String(p?.key || '').toLowerCase() === 'map' || /\bmap\b/i.test(String(p?.label || ''))
-    );
-    if (!hasMap) {
-      const mapIdx = Math.min(2, plans.length);
-      plans.splice(mapIdx, 0, FALLBACK_MEAL_PLANS.find((p) => p.key === 'map') || FALLBACK_MEAL_PLANS[2]);
-    }
-    return plans;
-  })();
+  const mealPlans = selectedRoom ? ensureMealPlanOptions(selectedRoom) : [];
+
+  const selectedMealNightly = selectedRoom
+    ? mealPlanNightlyRate(selectedMealPlan || pickDefaultMapMealPlan(mealPlans, selectedRoom), selectedRoom)
+    : 0;
 
   const resetClose = () => {
     setQuery('');
@@ -684,12 +679,8 @@ export default function PackageResourcePickerDrawer({
 
   const selectMealPlan = (plan, roomOverride = null) => {
     const room = roomOverride || selectedRoom;
-    if (!packageHotel || !room) return;
-    const absolute = Number(plan.absolutePrice || 0);
-    const absolutePerNight =
-      absolute > 0
-        ? absolute
-        : Number(room.pricePerNight || 0) + Number(plan.price || 0);
+    if (!packageHotel || !room || !plan) return;
+    const absolutePerNight = mealPlanNightlyRate(plan, room);
     const packageUpgrade =
       Number(packageHotel.priceDelta ?? packageHotel.upgrade_price ?? 0) || 0;
     // Prefer current stay absolute rate; if unknown, use default package hotel catalog rate
@@ -708,7 +699,7 @@ export default function PackageResourcePickerDrawer({
     // Prefer absolute delta vs current/default rate; if rates unknown, fall back to package upgrade only
     // (never add full catalog rates on top of package price when we cannot compute a delta).
     const costDeltaPerNight =
-      base > 0
+      base > 0 && absolutePerNight > 0
         ? Math.round((absolutePerNight - base) * 100) / 100
         : packageUpgrade;
     // One day-row = one night (day-wise seed model). Do not multiply by full stay here.
@@ -724,22 +715,24 @@ export default function PackageResourcePickerDrawer({
       location: catalogHotel.location || packageHotel.location || '',
       city: catalogHotel.city || packageHotel.city || '',
       slug: catalogHotel.slug || packageHotel.slug || '',
-      startingPrice: packageHotel.startingPrice || catalogHotel.startingPrice || absolutePerNight || 0,
+      startingPrice: absolutePerNight || packageHotel.startingPrice || catalogHotel.startingPrice || 0,
       tierName: room.name,
       meals: plan.label,
       priceDelta: costDeltaPerNight,
       room: {
         id: room.id,
         name: room.name,
-        pricePerNight: Number(room.pricePerNight || absolute || 0),
+        pricePerNight: Number(room.pricePerNight || absolutePerNight || 0),
+        rates: room.rates || null,
         bedType: room.bedType,
         maxOccupancy: room.maxOccupancy,
+        mealPlanOptions: ensureMealPlanOptions(room),
       },
       mealPlan: {
         key: plan.key,
         label: plan.label,
         price: Number(plan.price || 0),
-        absolutePrice: absolute,
+        absolutePrice: absolutePerNight,
       },
       perNight: costDeltaPerNight,
       absolutePerNight,
@@ -750,17 +743,10 @@ export default function PackageResourcePickerDrawer({
   };
 
   const selectRoom = (room) => {
-    setSelectedRoom(room);
-    const plans =
-      room?.mealPlanOptions?.length > 0 ? [...room.mealPlanOptions] : [...FALLBACK_MEAL_PLANS];
-    const hasMap = plans.some(
-      (p) =>
-        String(p?.key || '').toLowerCase() === 'map' || /\bmap\b/i.test(String(p?.label || ''))
-    );
-    if (!hasMap) {
-      plans.splice(Math.min(2, plans.length), 0, FALLBACK_MEAL_PLANS.find((p) => p.key === 'map'));
-    }
-    setSelectedMealPlan(pickDefaultMapMealPlan(plans));
+    const normalized = { ...room, mealPlanOptions: ensureMealPlanOptions(room) };
+    setSelectedRoom(normalized);
+    const mapPlan = pickDefaultMapMealPlan(normalized.mealPlanOptions, normalized);
+    setSelectedMealPlan(mapPlan);
     setStep('meal');
   };
 
@@ -1012,30 +998,37 @@ export default function PackageResourcePickerDrawer({
                     <div className="min-w-0">
                       <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Selected room</p>
                       <p className="text-sm font-bold text-slate-900 truncate">{selectedRoom.name}</p>
+                      <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">
+                        {selectedMealPlan?.label || 'MAP — Breakfast + Dinner'}
+                      </p>
                     </div>
                     <p className="text-sm font-black text-violet-700 shrink-0">
-                      {formatINR(selectedRoom.pricePerNight || 0, { zeroLabel: 'Not included' })}
-                      {Number(selectedRoom.pricePerNight || 0) > 0 && (
+                      {formatINR(selectedMealNightly || 0, { zeroLabel: 'Not included' })}
+                      {selectedMealNightly > 0 && (
                         <span className="text-[10px] font-medium text-slate-400"> /night</span>
                       )}
                     </p>
                   </div>
 
                   <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 px-0.5">
-                    Meal plans · MAP selected by default · {stayNights} night{stayNights !== 1 ? 's' : ''}
+                    Meal plans · MAP selected by default · tap a plan to apply · {stayNights} night
+                    {stayNights !== 1 ? 's' : ''}
                   </p>
                   <div className="space-y-3">
                     {mealPlans.map((plan) => (
                       <MealPlanCard
                         key={plan.key || plan.label}
                         plan={plan}
-                        roomPrice={selectedRoom.pricePerNight}
+                        room={selectedRoom}
                         nights={stayNights}
                         selected={
                           String(selectedMealPlan?.key || '').toLowerCase() ===
                           String(plan.key || '').toLowerCase()
                         }
-                        onSelect={setSelectedMealPlan}
+                        onSelect={(nextPlan) => {
+                          setSelectedMealPlan(nextPlan);
+                          selectMealPlan(nextPlan);
+                        }}
                         basePrice={basePrice}
                       />
                     ))}

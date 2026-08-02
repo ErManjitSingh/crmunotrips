@@ -435,7 +435,10 @@ export default function PackageBuilderWorkspace({
     // Cost contribution is upgrade delta only (package baseCost already includes default stay).
     const perNight = Number(option.perNight ?? option.priceDelta ?? 0);
     const absolutePerNight = Number(
-      option.absolutePerNight ?? option.startingPrice ?? 0
+      option.absolutePerNight ??
+        option.mealPlan?.absolutePrice ??
+        option.startingPrice ??
+        0
     );
     const stayNights = 1;
     const totalCost = Number(option.totalCost ?? perNight);
@@ -487,7 +490,7 @@ export default function PackageBuilderWorkspace({
         location: option.location || '',
         city: option.city || '',
         slug: option.slug || '',
-        startingPrice: option.startingPrice || absolutePerNight || 0,
+        startingPrice: absolutePerNight || option.startingPrice || 0,
       },
       room: option.room || { name: roomName },
       mealPlan: option.mealPlan || { key: 'map', label: mealLabel },

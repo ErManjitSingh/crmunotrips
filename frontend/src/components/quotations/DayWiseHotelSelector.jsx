@@ -84,6 +84,9 @@ export default function DayWiseHotelSelector({ destination, nights = 1, value = 
       return;
     }
     const perNight = Number(selection.perNight || 0);
+    const absolutePerNight = Number(
+      selection.absolutePerNight ?? selection.mealPlan?.absolutePrice ?? perNight ?? 0
+    );
     const next = value.filter((item) => item.day !== day);
     next.push({
       day,
@@ -91,6 +94,7 @@ export default function DayWiseHotelSelector({ destination, nights = 1, value = 
       room: selection.room,
       mealPlan: selection.mealPlan,
       perNight,
+      absolutePerNight,
       totalCost: selection.mealPlan ? perNight : 0,
       nights: 1,
     });
@@ -113,6 +117,7 @@ export default function DayWiseHotelSelector({ destination, nights = 1, value = 
         room: source.room,
         mealPlan: source.mealPlan,
         perNight: source.perNight,
+        absolutePerNight: source.absolutePerNight,
         totalCost: source.perNight,
         nights: 1,
       }))
@@ -183,12 +188,13 @@ export default function DayWiseHotelSelector({ destination, nights = 1, value = 
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 flex items-center justify-between gap-4">
           <span>
             Night {activeDay}: {activeSelection.hotel?.name} · {activeSelection.room?.name}
+            {activeSelection.mealPlan?.label ? ` · ${activeSelection.mealPlan.label}` : ''}
           </span>
           <span className="font-semibold shrink-0">
-            {formatINR(activeSelection.perNight || activeSelection.absolutePerNight, {
+            {formatINR(activeSelection.absolutePerNight || activeSelection.perNight, {
               zeroLabel: 'Not included',
             })}
-            {Number(activeSelection.perNight || activeSelection.absolutePerNight || 0) > 0 ? '/night' : ''}
+            {Number(activeSelection.absolutePerNight || activeSelection.perNight || 0) > 0 ? '/night' : ''}
           </span>
         </div>
       )}

@@ -16,7 +16,11 @@ import {
 import API from '../../api/axios';
 import { Button } from '../ui/button';
 import { formatINR } from './quotationUtils';
-import { DEFAULT_MAP_MEAL_PLAN, pickDefaultMapMealPlan } from '../../lib/mealPlanDefaults';
+import {
+  ensureMealPlanOptions,
+  mealPlanNightlyRate,
+  pickDefaultMapMealPlan,
+} from '../../lib/mealPlanDefaults';
 import { cn } from '../../lib/utils';
 
 const SUB_STEPS = [
@@ -24,26 +28,6 @@ const SUB_STEPS = [
   { key: 'room', label: 'Room', icon: BedDouble },
   { key: 'meal', label: 'Meal Plan', icon: UtensilsCrossed },
 ];
-
-const FALLBACK_MEAL_PLANS = [
-  { key: 'ep', label: 'EP (Room Only)', price: 0, absolutePrice: 0, meals: [] },
-  { key: 'cp', label: 'CP — Breakfast', price: 0, absolutePrice: 0, meals: ['breakfast'] },
-  { ...DEFAULT_MAP_MEAL_PLAN },
-  { key: 'ap', label: 'AP — All Meals', price: 0, absolutePrice: 0, meals: ['breakfast', 'lunch', 'dinner'] },
-];
-
-/** Prefer API meal options; always ensure MAP is available for SE to keep / switch. */
-function mealPlansForRoom(room) {
-  const plans = Array.isArray(room?.mealPlanOptions) && room.mealPlanOptions.length
-    ? [...room.mealPlanOptions]
-    : [...FALLBACK_MEAL_PLANS];
-  const hasMap = plans.some(
-    (p) =>
-      String(p?.key || '').toLowerCase() === 'map' || /\bmap\b/i.test(String(p?.label || ''))
-  );
-  if (!hasMap) plans.splice(2, 0, { ...DEFAULT_MAP_MEAL_PLAN });
-  return plans;
-}
 
 const AMENITY_ICONS = {
   wifi: Wifi,
@@ -379,20 +363,20 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
 
   const selectRoom = (room) => {
     const hotel = hotelDetail || value?.hotel;
-    const plans = mealPlansForRoom(room);
-    const mapPlan = pickDefaultMapMealPlan(plans);
-    const absolute = Number(mapPlan?.absolutePrice || 0);
-    const perNight =
-      absolute > 0
-        ? absolute
-        : Number(room?.pricePerNight || 0) + Number(mapPlan?.price || 0);
+    const plans = ensureMealPlanOptions(room);
+    const mapPlan = pickDefaultMapMealPlan(plans, room);
+    const perNight = mealPlanNightlyRate(mapPlan, room);
     const totalCost = perNight * Math.max(1, nights);
     onChange({
       hotel,
       room: { ...room, mealPlanOptions: plans },
-      mealPlan: mapPlan,
+      mealPlan: {
+        ...mapPlan,
+        absolutePrice: perNight,
+      },
       nights,
       perNight,
+      absolutePerNight: perNight,
       totalCost,
     });
     setSubStep('meal');
@@ -401,13 +385,17 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
   const selectMealPlan = (mealPlan) => {
     const hotel = hotelDetail || value?.hotel;
     const room = value?.room;
-    const absolute = Number(mealPlan?.absolutePrice || 0);
-    const perNight =
-      absolute > 0
-        ? absolute
-        : Number(room?.pricePerNight || 0) + Number(mealPlan?.price || 0);
+    const perNight = mealPlanNightlyRate(mealPlan, room);
     const totalCost = perNight * Math.max(1, nights);
-    onChange({ hotel, room, mealPlan, nights, perNight, totalCost });
+    onChange({
+      hotel,
+      room,
+      mealPlan: { ...mealPlan, absolutePrice: perNight },
+      nights,
+      perNight,
+      absolutePerNight: perNight,
+      totalCost,
+    });
   };
 
   const activeHotel = hotelDetail || value?.hotel;
@@ -561,15 +549,11 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">
-            {mealPlansForRoom(value.room).map((plan) => {
+            {ensureMealPlanOptions(value.room).map((plan) => {
               const selected =
                 String(value?.mealPlan?.key || '').toLowerCase() ===
                 String(plan.key || '').toLowerCase();
-              const absolute = Number(plan.absolutePrice || 0);
-              const perNight =
-                absolute > 0
-                  ? absolute
-                  : Number(value.room.pricePerNight || 0) + Number(plan.price || 0);
+              const perNight = mealPlanNightlyRate(plan, value.room);
               const total = perNight * Math.max(1, nights);
               return (
                 <button
@@ -594,7 +578,7 @@ export default function UnoHotelSelector({ destination, value, onChange, nights 
                   <p className="text-xs text-content-muted mt-1">
                     {Number(plan.price || 0) > 0
                       ? `+ ${formatINR(plan.price)} vs EP`
-                      : absolute > 0
+                      : Number(plan.absolutePrice || 0) > 0 && String(plan.key).toLowerCase() === 'ep'
                         ? 'Room only — no meals'
                         : 'Included in room rate'}
                   </p>

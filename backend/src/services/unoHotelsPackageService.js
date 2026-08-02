@@ -441,7 +441,7 @@ function enrichItineraryWithStays(itinerary = [], stays = [], catalog = null) {
       accommodation: hotelName || day.accommodation || '',
       hotelMeta: defaultHotel || day.hotelMeta,
       hotelOptions: hotelOptions.length ? hotelOptions : day.hotelOptions || [],
-      meals: defaultHotel?.meals || day.meals || formatMealPlanCode(stay.default_meal_plan),
+      meals: formatMealPlanCode('map'),
       stayId: day.stayId || stay.id || null,
       stayNights: day.stayNights || Number(stay.nights) || 1,
     };
