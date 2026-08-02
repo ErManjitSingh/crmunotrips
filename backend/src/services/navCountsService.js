@@ -261,12 +261,26 @@ async function buildSalesManagerNavCounts(userId, { branchId } = {}) {
 /** Single aggregation for executive lead sidebar counts — replaces 8+ countDocuments */
 async function aggregateExecutiveLeadCounts(userId, branchId) {
   const match = withBranch({ assignedTo: userId, isDeleted: { $ne: true } }, branchId);
+  const { startOfToday, endOfToday } = todayRange();
   const [row] = await Lead.aggregate([
     { $match: match },
     {
       $facet: {
-        all: [{ $count: 'n' }],
-        new: [{ $match: { status: 'new' } }, { $count: 'n' }],
+        all: [
+          { $match: { status: { $nin: ['lost', 'booked_from_another_company'] } } },
+          { $count: 'n' },
+        ],
+        new: [
+          {
+            $match: {
+              $or: [
+                { createdAt: { $gte: startOfToday, $lte: endOfToday } },
+                { assignedAt: { $gte: startOfToday, $lte: endOfToday } },
+              ],
+            },
+          },
+          { $count: 'n' },
+        ],
         contacted: [{ $match: { status: 'contacted' } }, { $count: 'n' }],
         followUp: [{ $match: { status: { $in: ['follow_up', 'negotiation'] } } }, { $count: 'n' }],
         hot: [

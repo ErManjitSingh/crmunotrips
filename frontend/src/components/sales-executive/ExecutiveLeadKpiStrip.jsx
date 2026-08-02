@@ -1,13 +1,24 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, CalendarClock, Trophy, Flame } from 'lucide-react';
+import { Users, Sparkles, Phone, Trophy } from 'lucide-react';
 import { useSidebarCounts } from '../../hooks/useSidebarCounts';
 import { cn } from '../../lib/utils';
 
 const CARDS = [
   {
+    key: 'all',
+    label: 'Total Leads',
+    path: '/sales-executive/leads/all',
+    icon: Users,
+    card: 'bg-gradient-to-br from-slate-700 via-slate-800 to-violet-900 shadow-slate-700/35',
+    iconWrap: 'bg-white/20 text-white ring-1 ring-white/30',
+    labelClass: 'text-white/80',
+    valueClass: 'text-white',
+    blob: 'bg-white/15',
+  },
+  {
     key: 'new',
-    label: 'Today Lead',
+    label: 'Fresh / Today',
     path: '/sales-executive/leads/new',
     icon: Sparkles,
     card: 'bg-gradient-to-br from-[#5D5FEF] via-[#6D5FF0] to-[#7C3AED] shadow-[#5D5FEF]/35',
@@ -17,22 +28,11 @@ const CARDS = [
     blob: 'bg-white/15',
   },
   {
-    key: 'hot',
-    label: 'Hot Leads',
-    path: '/sales-executive/leads/hot',
-    icon: Flame,
-    card: 'bg-gradient-to-br from-orange-500 via-orange-500 to-rose-500 shadow-orange-500/35',
-    iconWrap: 'bg-white/20 text-white ring-1 ring-white/30',
-    labelClass: 'text-white/85',
-    valueClass: 'text-white',
-    blob: 'bg-white/15',
-  },
-  {
-    key: 'followupsDue',
-    label: 'Follow-ups Due',
-    path: '/sales-executive/follow-ups',
-    icon: CalendarClock,
-    card: 'bg-gradient-to-br from-sky-500 via-sky-500 to-blue-600 shadow-sky-500/35',
+    key: 'contacted',
+    label: 'Connected',
+    path: '/sales-executive/leads/contacted',
+    icon: Phone,
+    card: 'bg-gradient-to-br from-emerald-500 via-emerald-500 to-teal-600 shadow-emerald-500/35',
     iconWrap: 'bg-white/20 text-white ring-1 ring-white/30',
     labelClass: 'text-white/85',
     valueClass: 'text-white',
@@ -43,7 +43,7 @@ const CARDS = [
     label: 'Converted',
     path: '/sales-executive/leads/converted',
     icon: Trophy,
-    card: 'bg-gradient-to-br from-emerald-500 via-emerald-500 to-teal-600 shadow-emerald-500/35',
+    card: 'bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 shadow-orange-500/35',
     iconWrap: 'bg-white/20 text-white ring-1 ring-white/30',
     labelClass: 'text-white/85',
     valueClass: 'text-white',
@@ -53,7 +53,6 @@ const CARDS = [
 
 function getCount(counts, key) {
   if (!counts) return 0;
-  if (key === 'followupsDue') return counts.followups?.due ?? 0;
   return counts.leads?.[key] ?? 0;
 }
 

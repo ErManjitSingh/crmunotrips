@@ -23,8 +23,8 @@ export const salesExecutiveNavItems = [
     label: 'My Leads',
     icon: Users,
     children: [
-      { path: '/sales-executive/leads/new', label: 'Today Lead', icon: Sparkles, badgeKey: 'leads.new' },
-      { path: '/sales-executive/leads/all', label: 'All Leads', icon: List, countKey: 'leads.all' },
+      { path: '/sales-executive/leads/new', label: 'Fresh / Today', icon: Sparkles, badgeKey: 'leads.new' },
+      { path: '/sales-executive/leads/all', label: 'Total Leads', icon: List, countKey: 'leads.all' },
       { path: '/sales-executive/whatsapp', label: 'WhatsApp Leads', icon: MessageCircle },
       { path: '/sales-executive/leads/contacted', label: 'Connected Leads', icon: Phone, countKey: 'leads.contacted' },
       { path: '/sales-executive/leads/follow-up', label: 'Follow-up Leads', icon: CalendarClock, countKey: 'leads.followUp' },

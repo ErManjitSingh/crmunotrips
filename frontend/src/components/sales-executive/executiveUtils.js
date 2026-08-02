@@ -7,7 +7,7 @@ export const LEAD_FILTERS = {
     desc: 'Leads waiting to be reassigned',
     icon: 'Undo2',
   },
-  new: { title: 'Today Lead', desc: 'Fresh inquiries assigned to you — act fast', icon: 'Sparkles' },
+  new: { title: 'Fresh / Today Leads', desc: 'Leads created or assigned to you today', icon: 'Sparkles' },
   contacted: { title: 'Connected Leads', desc: 'Leads where the call was picked / connected', icon: 'Phone' },
   'follow-up': { title: 'Follow-up Leads', desc: 'Active pipeline requiring nurturing', icon: 'CalendarClock' },
   hot: { title: 'Hot Leads', desc: 'High budget, urgent travel, or repeat customers', icon: 'Flame' },

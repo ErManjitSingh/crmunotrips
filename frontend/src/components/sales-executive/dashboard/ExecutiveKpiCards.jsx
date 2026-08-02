@@ -1,14 +1,26 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, Phone, CalendarClock, Flame, FileText, IndianRupee, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import {
+  Users,
+  Sparkles,
+  Phone,
+  CalendarClock,
+  Flame,
+  FileText,
+  IndianRupee,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+} from 'lucide-react';
 import { formatCurrency } from '../executiveUtils';
 
+/** Primary lead KPIs first: Total · Fresh (today) · Connected */
 const cards = [
   { key: 'myLeads', label: 'Total Leads', icon: Users, iconBg: 'bg-violet-100 text-violet-600', path: '/sales-executive/leads/all' },
+  { key: 'todayLeads', label: 'Fresh / Today', icon: Sparkles, iconBg: 'bg-sky-100 text-sky-600', path: '/sales-executive/leads/new' },
   { key: 'connectedLeads', label: 'Connected Leads', icon: Phone, iconBg: 'bg-emerald-100 text-emerald-600', path: '/sales-executive/leads/contacted' },
   { key: 'todayFollowups', label: "Today's Follow-ups", icon: CalendarClock, iconBg: 'bg-blue-100 text-blue-600', path: '/sales-executive/follow-ups' },
   { key: 'hotLeads', label: 'Hot Leads', icon: Flame, iconBg: 'bg-orange-100 text-orange-600', path: '/sales-executive/leads/hot' },
-  { key: 'quotationsSent', label: 'Quotations Sent', icon: FileText, iconBg: 'bg-emerald-100 text-emerald-700', path: '/sales-executive/quotations' },
   { key: 'monthlyRevenue', label: 'Monthly Revenue', icon: IndianRupee, iconBg: 'bg-rose-100 text-rose-600', format: formatCurrency },
 ];
 

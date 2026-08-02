@@ -88,7 +88,18 @@ function assertResubmissionReasonIfNeeded(status, reason) {
 }
 
 function buildExecutiveLeadFilter(filter) {
-  if (filter === 'new') return { status: 'new' };
+  if (filter === 'new') {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return {
+      $or: [
+        { createdAt: { $gte: start, $lte: end } },
+        { assignedAt: { $gte: start, $lte: end } },
+      ],
+    };
+  }
   if (filter === 'contacted') return { status: 'contacted' };
   if (filter === 'follow-up') return { status: { $in: ['follow_up', 'negotiation'] } };
   if (filter === 'converted') return { status: 'converted' };

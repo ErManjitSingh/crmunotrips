@@ -831,6 +831,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
 
   const [
     myLeads,
+    todayLeads,
     connectedLeads,
     hotLeads,
     convertedCount,
@@ -859,6 +860,13 @@ async function buildExecutiveDashboard(userId, options = {}) {
     destinationWise,
   ] = await Promise.all([
     Lead.countDocuments({ ...leadScope, status: { $nin: ['lost', 'booked_from_another_company'] } }),
+    Lead.countDocuments({
+      ...leadScope,
+      $or: [
+        { createdAt: { $gte: todayStart, $lte: todayEnd } },
+        { assignedAt: { $gte: todayStart, $lte: todayEnd } },
+      ],
+    }),
     Lead.countDocuments({ ...leadScope, status: 'contacted' }),
     Lead.countDocuments({ ...leadScope, isHot: true, status: { $nin: ['converted', 'lost', 'booked_from_another_company'] } }),
     Lead.countDocuments({ ...leadScope, status: 'converted' }),
@@ -1048,6 +1056,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
     emailStats,
     kpis: {
       myLeads,
+      todayLeads,
       connectedLeads,
       todayFollowups: todayFollowupCount,
       hotLeads,
@@ -1058,6 +1067,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
     },
     kpiTrends: {
       myLeads: { change: pctChange(myLeads, lastMonthLeads), period: 'from last month' },
+      todayLeads: { change: 0, period: 'today' },
       connectedLeads: { change: 0, period: 'live' },
       todayFollowups: { change: pctChange(todayFollowups.length, yesterdayFollowups), period: 'from yesterday' },
       hotLeads: { change: pctChange(hotLeads, yesterdayHotLeads), period: 'from yesterday' },

@@ -11,7 +11,7 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
-  TrendingUp,
+  Sparkles,
   Upload,
   UserRoundCheck,
   Users,
@@ -24,8 +24,8 @@ import RecentUpdatesRemindersRow from './RecentUpdatesRemindersRow';
 
 const KPI_CARDS = [
   { key: 'myLeads', label: 'Total Leads', icon: Users, tone: 'bg-blue-500', spark: '#7c3aed' },
+  { key: 'todayLeads', label: 'Fresh / Today', icon: Sparkles, tone: 'bg-sky-500', spark: '#0ea5e9' },
   { key: 'connectedLeads', label: 'Connected', icon: Phone, tone: 'bg-emerald-500', spark: '#10b981' },
-  { key: 'totalLeadValue', label: 'Total Value', icon: IndianRupee, tone: 'bg-emerald-600', spark: '#059669', currency: true },
   { key: 'convertedLeads', label: 'Converted', icon: UserRoundCheck, tone: 'bg-orange-500', spark: '#f97316' },
   { key: 'todayFollowups', label: 'Follow-ups', icon: Phone, tone: 'bg-blue-500', spark: '#3b82f6' },
   { key: 'monthlyRevenue', label: 'Revenue', icon: IndianRupee, tone: 'bg-rose-500', spark: '#f43f5e', currency: true },
@@ -191,7 +191,9 @@ export default function MobileExecutiveDashboard({
                     ? '/sales-executive/follow-ups'
                     : card.key === 'connectedLeads'
                       ? '/sales-executive/leads/contacted'
-                      : '/sales-executive/leads/all'
+                      : card.key === 'todayLeads'
+                        ? '/sales-executive/leads/new'
+                        : '/sales-executive/leads/all'
                 }
                 className="min-w-0 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm"
               >

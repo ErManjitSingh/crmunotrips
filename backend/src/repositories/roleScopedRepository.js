@@ -79,7 +79,18 @@ function buildManagerLeadFilter(query = {}) {
 }
 
 function buildExecutiveLeadFilter(filterKey) {
-  if (filterKey === 'new') return { status: 'new' };
+  if (filterKey === 'new') {
+    // Today / Fresh leads — created or assigned today (not just status=new)
+    const start = startOfDay();
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+    return {
+      $or: [
+        { createdAt: { $gte: start, $lte: end } },
+        { assignedAt: { $gte: start, $lte: end } },
+      ],
+    };
+  }
   if (filterKey === 'contacted') return { status: 'contacted' };
   if (filterKey === 'follow-up') return { status: { $in: ['follow_up', 'negotiation'] } };
   if (filterKey === 'converted') return { status: 'converted' };
@@ -196,9 +207,20 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
 
   const owned = withActiveLead({
     assignedTo: userId,
-    ...statusExtras,
-    ...searchPart,
   });
+  // Avoid clobbering $or when Today filter + search both use it
+  const andParts = [];
+  if (statusExtras.$or) {
+    andParts.push({ $or: statusExtras.$or });
+  } else {
+    Object.assign(owned, statusExtras);
+  }
+  if (searchPart.$or) {
+    andParts.push({ $or: searchPart.$or });
+  } else {
+    Object.assign(owned, searchPart);
+  }
+  if (andParts.length) owned.$and = andParts;
   Object.assign(owned, withBranch({}, options.branchId));
 
   if (filterKey === 'hot') {
