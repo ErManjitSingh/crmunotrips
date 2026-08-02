@@ -32,11 +32,10 @@ function loadEnv(file) {
 loadEnv(resolve(backendRoot, '.env'));
 
 function isMetaConversation(conv = {}) {
-  const inbound = String(conv.inboundAdSource || '').toLowerCase();
   const meta = conv.inboundAdMeta || {};
   const url = String(meta.sourceUrl || meta.source_url || '').toLowerCase();
   const ctwa = String(meta.ctwaClid || meta.ctwa_clid || '').trim();
-  if (inbound === 'facebook_ad') return true;
+  // Require real Meta CTWA signal — do not trust bare inboundAdSource alone
   if (ctwa) return true;
   if (/facebook|fb\.me|fb\.com|instagram|meta\.com|ig\.me/i.test(url)) return true;
   return false;
