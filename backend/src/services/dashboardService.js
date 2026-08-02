@@ -176,6 +176,29 @@ function buildLastNMonthBuckets(n, endDate = new Date()) {
   return buckets;
 }
 
+/** Trend months from July of the season year through endDate (Jul → current). */
+function buildMonthBucketsFromJuly(endDate = new Date()) {
+  const end = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+  let startYear = end.getFullYear();
+  // Before July → use previous year's July (season still running into H1)
+  if (end.getMonth() < 6) startYear -= 1;
+  const start = new Date(startYear, 6, 1); // July = month index 6
+  const buckets = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    buckets.push({
+      key: monthKey(cursor.getFullYear(), cursor.getMonth() + 1),
+      label: MONTH_LABELS[cursor.getMonth()],
+      year: cursor.getFullYear(),
+      month: cursor.getMonth() + 1,
+      start: startOfDay(cursor),
+      end: endOfDay(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)),
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return buckets;
+}
+
 async function sumRevenueInRange(branchId, start, end) {
   const rows = await Payment.aggregate([
     {
@@ -379,7 +402,7 @@ async function buildAdminDashboard(options = {}) {
     branchId
   );
   const liveLeadScope = activeLeadScope({ ...sourceFilter }, branchId);
-  const monthBuckets = buildLastNMonthBuckets(6, periodEnd);
+  const monthBuckets = buildMonthBucketsFromJuly(periodEnd);
   const trendStart = monthBuckets[0].start;
 
   const yesterdayStart = startOfDay(new Date(todayStart.getTime() - 24 * 60 * 60 * 1000));

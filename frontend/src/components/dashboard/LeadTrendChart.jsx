@@ -38,7 +38,7 @@ export default function LeadTrendChart({ stats }) {
       subtitle="Generated · Connected · Converted"
       action={
         <span className="rounded-full border border-subtle bg-surface-elevated/60 px-2.5 py-1 text-[11px] font-medium text-content-muted">
-          Last 6 Months
+          From July
         </span>
       }
       className="h-full"
