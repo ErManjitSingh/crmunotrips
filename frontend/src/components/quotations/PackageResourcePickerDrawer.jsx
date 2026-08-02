@@ -462,7 +462,7 @@ function MealPlanCard({ plan, room, nights, onSelect, basePrice = 0, selected = 
           <p className="text-[11px] text-slate-500 mt-1">
             {hasSupplement
               ? `+ ${formatINR(plan.price)} vs EP room-only`
-              : absolute > 0
+              : Number(plan.absolutePrice || 0) > 0
                 ? 'Room only rate'
                 : 'No meal supplement'}
           </p>
