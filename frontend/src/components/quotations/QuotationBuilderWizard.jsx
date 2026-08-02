@@ -18,7 +18,7 @@ import { resolvePackageHotelPricing } from './DayWiseHotelSelector';
 import { buildSelectedCabSnapshot } from './UnoCabSelector';
 import { parsePackageNights } from './UnoHotelSelector';
 import { WIZARD_STEPS } from './constants';
-import { calculatePricing, defaultItineraryDay, defaultWizardState, foldPackageResidualIntoHotel, bakeCompanyMarginIntoLineCosts, formatINR, matchesResourceDestination } from './quotationUtils';
+import { calculatePricing, defaultItineraryDay, defaultWizardState, bakeCompanyMarginIntoLineCosts, formatINR, matchesResourceDestination } from './quotationUtils';
 import { applyPartyCosting } from './partyCosting';
 import { buildSelectedHotelsSnapshot } from './quotePdfHelpers';
 import { hydrateWizardFromQuote } from './quotationHydrate';
@@ -531,7 +531,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         cabSeats: defaultCab?.seatingCapacity || 4,
         dayWiseHotels: seededHotels,
       });
-      const rawPricing = foldPackageResidualIntoHotel({
+      // Hotel cost stays hotel-only (+ admin margin later); residual stays in baseCost.
+      const rawPricing = {
         ...s.pricing,
         baseCost: party.baseCost,
         hotelCost: party.hotelCost,
@@ -549,7 +550,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           cabSeats: party.cabSeats,
           perPersonRate: party.perPersonRate,
         },
-      });
+      };
       const nextPricing = bakeCompanyMarginIntoLineCosts(rawPricing, adminMarginPct);
       return {
         ...s,
@@ -641,7 +642,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       cabSeats: selectedUnoCab?.seatingCapacity || 4,
       dayWiseHotels,
     });
-    const rawPricing = foldPackageResidualIntoHotel({
+    // Hotel cost = hotel (+ mattress) only; package residual / flights stay separate.
+    const rawPricing = {
       baseCost: party.baseCost,
       hotelCost: party.hotelCost,
       cabCost: party.cabCost,
@@ -651,21 +653,21 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       discount: Number(state.pricing.discount || 0) || 0,
       gstEnabled: Boolean(state.pricing.gstEnabled),
       markup: 0,
-    });
-    const folded = bakeCompanyMarginIntoLineCosts(rawPricing, adminMarginPct);
-    const calc = calculatePricing(folded);
+    };
+    const baked = bakeCompanyMarginIntoLineCosts(rawPricing, adminMarginPct);
+    const calc = calculatePricing(baked);
 
     setState((s) => {
       const nextPricing = {
         ...s.pricing,
-        baseCost: folded.baseCost,
-        hotelCost: folded.hotelCost,
-        cabCost: folded.cabCost,
-        flightCost: folded.flightCost,
-        activityCost: folded.activityCost,
+        baseCost: baked.baseCost,
+        hotelCost: baked.hotelCost,
+        cabCost: baked.cabCost,
+        flightCost: baked.flightCost,
+        activityCost: baked.activityCost,
         adminMarginPercent: 0,
-        companyMarginBaked: folded.companyMarginBaked,
-        companyMarginBakedPercent: folded.companyMarginBakedPercent,
+        companyMarginBaked: baked.companyMarginBaked,
+        companyMarginBakedPercent: baked.companyMarginBakedPercent,
         taxes: calc.taxes,
         markup: calc.markup,
         total: calc.total,

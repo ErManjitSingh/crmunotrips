@@ -5,8 +5,9 @@ function round2(n) {
 }
 
 /**
- * Bake company (admin) margin into hotel + cab line costs so SE only sees
- * higher "raw" hotel/cab — no separate company-margin row on the total.
+ * Bake company (admin) margin into cost lines so SE only sees higher "raw"
+ * amounts — no separate company-margin row on the total.
+ * Hotel line stays hotel-only (never includes package residual / flights).
  * Caller must pass UNBAKED raw line costs (wizard recomputes from package each time).
  */
 export function bakeCompanyMarginIntoLineCosts(pricing = {}, adminMarginPercent = 0) {
@@ -21,13 +22,14 @@ export function bakeCompanyMarginIntoLineCosts(pricing = {}, adminMarginPercent 
   }
 
   const factor = 1 + pct / 100;
+  const bake = (n) => round2(Number(n || 0) * factor);
   return {
     ...pricing,
-    hotelCost: round2(Number(pricing.hotelCost || 0) * factor),
-    cabCost: round2(Number(pricing.cabCost || 0) * factor),
-    // Residual package share stays unmargined until folded into hotel, then baked with hotel
-    baseCost: round2(Number(pricing.baseCost || 0)),
-    flightCost: round2(Number(pricing.flightCost || 0)),
+    hotelCost: bake(pricing.hotelCost),
+    cabCost: bake(pricing.cabCost),
+    // Residual / flights used to ride hotel's margin via fold — keep margin, not the hotel label
+    baseCost: bake(pricing.baseCost),
+    flightCost: bake(pricing.flightCost),
     activityCost: round2(Number(pricing.activityCost || 0)),
     adminMarginPercent: 0,
     companyMarginBaked: true,
@@ -107,34 +109,31 @@ export function calculatePricing({
 }
 
 /**
- * Fold residual package/flight share into hotel so costing only shows Hotel + Cab (+ activities).
- * Residual is leftover package base after peeling hotel+cab rates — not a separate API field.
+ * @deprecated Residual/flights must NOT be folded into hotelCost.
+ * Kept as identity so older call sites stay safe until removed.
  */
 export function foldPackageResidualIntoHotel(pricing = {}) {
-  const residual =
-    Number(pricing.baseCost || 0) + Number(pricing.flightCost || 0);
-  return {
-    ...pricing,
-    hotelCost: round2(Number(pricing.hotelCost || 0) + residual),
-    baseCost: 0,
-    flightCost: 0,
-  };
+  return { ...pricing };
 }
 
 /**
- * SE-facing breakdown: Hotel + Cab + Activities only.
- * Company margin is baked into hotel/cab; residual package share is folded into hotel.
+ * SE-facing breakdown. Hotel Cost is hotel (+ admin margin) only —
+ * package residual and flights stay on their own lines when present.
  */
 export function getDisplayedCostBreakdown(pricing = {}) {
   const calc = calculatePricing(pricing);
   const hotelCost = Number(pricing.hotelCost || 0);
   const transportCost = Number(pricing.cabCost || 0);
   const activityCost = Number(pricing.activityCost || 0);
+  const packageResidualCost = Number(pricing.baseCost || 0);
+  const flightCost = Number(pricing.flightCost || 0);
 
   return {
     hotelCost,
     transportCost,
     activityCost,
+    packageResidualCost,
+    flightCost,
     markup: calc.execMarkup,
     taxes: calc.taxes,
     discount: Math.max(0, Number(pricing.discount || 0)),
