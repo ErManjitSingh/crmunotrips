@@ -117,7 +117,12 @@ const listConversations = asyncHandler(async (req, res) => {
   if (executiveOnly || status) {
     const leadFilter = leadScopeFilter(req);
     if (status) leadFilter.status = status;
-    scopedLeadIds = await Lead.find(leadFilter).select('_id').lean();
+    // Cap IDs so inbox never loads unbounded lead id sets under load
+    scopedLeadIds = await Lead.find(leadFilter)
+      .select('_id')
+      .sort({ updatedAt: -1 })
+      .limit(5000)
+      .lean();
     const ids = scopedLeadIds.map((l) => l._id);
     if (!ids.length) {
       return res.json(paginatedResponse([], { page, limit, total: 0 }));

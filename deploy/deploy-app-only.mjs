@@ -96,12 +96,9 @@ npm run build
 
 echo "==> PM2 restart app-unotrips-api only..."
 cd "$APP"
-if pm2 describe app-unotrips-api >/dev/null 2>&1; then
-  pm2 restart app-unotrips-api --update-env
-else
-  pm2 start "$APP/deploy/ecosystem.app.config.cjs" --update-env 2>/dev/null \\
-    || pm2 start src/server.js --name app-unotrips-api --cwd "$APP/backend" --update-env
-fi
+mkdir -p "$APP/logs"
+# startOrReload applies ecosystem (incl. 1G memory) without long downtime
+pm2 startOrReload "$APP/deploy/ecosystem.app.config.cjs" --update-env
 pm2 save
 
 ${disableTesting ? `

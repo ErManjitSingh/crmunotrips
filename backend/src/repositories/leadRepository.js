@@ -137,13 +137,7 @@ async function findLeadsPaginated(query = {}, { branchId } = {}) {
     filter._id = { $in: ids.length ? ids : [] };
   }
 
-  // Accept SLA disabled — clear leftover pending flags (do not return to pool)
-  try {
-    const { processExpiredAcceptances } = require('../services/leadAcceptanceService');
-    await processExpiredAcceptances();
-  } catch {
-    /* non-blocking */
-  }
+  // Expired acceptances are handled by notificationScheduler — not on every list request
 
   const useCursor = Boolean(query.cursor);
   const listFilter = useCursor

@@ -1,7 +1,8 @@
 const cacheService = require('./cacheService');
 
 const DEFAULT_TTL_MS = 60 * 1000;
-const NAV_COUNTS_TTL_MS = 15 * 1000;
+/** Align with frontend nav poll (~45–60s) so Redis absorbs concurrent users */
+const NAV_COUNTS_TTL_MS = 45 * 1000;
 
 function wantsFreshData(req) {
   const value = req?.query?.fresh;

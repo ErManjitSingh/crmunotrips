@@ -166,13 +166,7 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
   const { page, limit, skip } = parsePagination(query);
   const sort = parseSort(query, { createdAt: -1 });
 
-  // Accept SLA disabled — clear leftover pending flags (do not return to pool)
-  try {
-    const { processExpiredAcceptances } = require('../services/leadAcceptanceService');
-    await processExpiredAcceptances();
-  } catch {
-    /* non-blocking */
-  }
+  // Expired acceptances are handled by notificationScheduler — not on every list request
 
   const searchPart = buildLeadSearchFilter(query.search);
   const statusExtras = buildExecutiveLeadFilter(filterKey);

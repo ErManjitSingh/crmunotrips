@@ -16,8 +16,9 @@ export function useSidebarCounts(enabled = true) {
   const query = useQuery({
     queryKey: ['nav-counts', String(userId || ''), user?.role, selectedBranchId || 'all'],
     queryFn: async () => {
+      // Do NOT send fresh=1 on poll — that busts Redis and stampedes Mongo under load.
+      // Manual refresh (appRefresh / invalidate) can still pass fresh when needed.
       const { data } = await API.get('/nav-counts', {
-        params: { fresh: 1 },
         skipSuccessToast: true,
         skipErrorToast: true,
       });
@@ -27,8 +28,8 @@ export function useSidebarCounts(enabled = true) {
     staleTime: NAV_COUNTS_STALE_MS,
     gcTime: GC_TIME_MS,
     refetchInterval: NAV_COUNTS_REFETCH_MS,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     retry: 1,
   });
@@ -44,7 +45,10 @@ export function useSidebarCounts(enabled = true) {
       debounceRef.current = setTimeout(() => refresh(), 1500);
     };
     const onVisible = () => {
-      if (document.visibilityState === 'visible') refresh();
+      // Soft refetch only when data is stale — do not force cache bust
+      if (document.visibilityState === 'visible') {
+        queryClient.refetchQueries({ queryKey: ['nav-counts'], type: 'active' });
+      }
     };
     window.addEventListener('notifications:unread', onUnread);
     document.addEventListener('visibilitychange', onVisible);
@@ -53,7 +57,7 @@ export function useSidebarCounts(enabled = true) {
       document.removeEventListener('visibilitychange', onVisible);
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [enabled, userId, refresh]);
+  }, [enabled, userId, refresh, queryClient]);
 
   return query.data ?? null;
 }
