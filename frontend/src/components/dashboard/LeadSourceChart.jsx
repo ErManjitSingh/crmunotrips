@@ -39,11 +39,10 @@ function DonutTooltip({ active, payload }) {
     <div className="rounded-xl border border-subtle bg-white px-3 py-2 text-sm shadow-lg">
       <p className="font-semibold text-slate-900">{item.name}</p>
       <p className="text-slate-500">
-        {Number(item.value).toLocaleString('en-IN')} leads · {item.payload.pct}%
+        {Number(item.value).toLocaleString('en-IN')} leads
       </p>
       <p className="text-amber-600 font-medium">
         Connected: {connected.toLocaleString('en-IN')}
-        {item.value > 0 ? ` · ${Math.round((connected / item.value) * 1000) / 10}%` : ''}
       </p>
     </div>
   );
@@ -83,7 +82,7 @@ export default function LeadSourceChart({ data = [], total }) {
       title="Leads by Source"
       subtitle={
         top
-          ? `Top: ${top.name} · ${connectedTotal.toLocaleString('en-IN')} connected`
+          ? `Top: ${top.name} (${Number(top.value).toLocaleString('en-IN')} leads) · ${connectedTotal.toLocaleString('en-IN')} connected`
           : 'Where your leads come from'
       }
       className="h-full"
@@ -120,9 +119,8 @@ export default function LeadSourceChart({ data = [], total }) {
         <div className="min-w-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5 max-h-[220px] scrollbar-thin">
           <div className="mb-1 flex items-center gap-2 px-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
             <span className="min-w-0 flex-1">Source</span>
-            <span className="w-10 shrink-0 text-right">Leads</span>
-            <span className="w-14 shrink-0 text-right text-amber-600/80">Connected</span>
-            <span className="w-11 shrink-0 text-right">%</span>
+            <span className="w-12 shrink-0 text-right">Leads</span>
+            <span className="w-16 shrink-0 text-right text-amber-600/80">Connected</span>
           </div>
           {chartData.map((item, i) => (
             <motion.div
@@ -140,24 +138,18 @@ export default function LeadSourceChart({ data = [], total }) {
                 <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700" title={item.name}>
                   {item.name}
                 </span>
-                <span className="w-10 shrink-0 text-right text-xs font-semibold text-slate-500 metric-tabular">
+                <span className="w-12 shrink-0 text-right text-sm font-bold text-slate-900 metric-tabular">
                   {Number(item.value).toLocaleString('en-IN')}
                 </span>
-                <span
-                  className="w-14 shrink-0 text-right text-xs font-bold text-amber-600 metric-tabular"
-                  title={`${item.connectedPct}% of this source connected`}
-                >
+                <span className="w-16 shrink-0 text-right text-sm font-bold text-amber-600 metric-tabular">
                   {Number(item.connected).toLocaleString('en-IN')}
-                </span>
-                <span className="w-11 shrink-0 text-right text-sm font-bold text-slate-900 metric-tabular">
-                  {item.pct}%
                 </span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
-                    width: `${Math.min(100, Math.max(2, item.pct || 0))}%`,
+                    width: `${Math.min(100, Math.max(2, (item.value / Math.max(chartTotal, 1)) * 100))}%`,
                     background: item.color,
                   }}
                 />
