@@ -36,6 +36,8 @@ function snapshotCosting1(quotation) {
     baseCost,
     markupPercent: toNum(pricing.markupPercent || costing.markupPercent),
     adminMarginPercent: toNum(pricing.adminMarginPercent || costing.adminMarginPercent),
+    companyMarginBaked: Boolean(pricing.companyMarginBaked),
+    companyMarginBakedPercent: toNum(pricing.companyMarginBakedPercent),
     profitMargin: toNum(pricing.profitMargin || costing.profitMargin),
     taxes: toNum(pricing.taxes || costing.taxes),
     discount: toNum(pricing.discount || costing.discount),
@@ -48,11 +50,16 @@ function snapshotCosting1(quotation) {
 function buildCosting2({ quotation, markupPercent, actor }) {
   const c1 = quotation.costing1 || snapshotCosting1(quotation);
   const baseCost = toNum(c1.baseCost);
-  const adminPct = Math.max(0, toNum(c1.adminMarginPercent || quotation.pricing?.adminMarginPercent));
+  const baked = Boolean(
+    quotation.pricing?.companyMarginBaked || c1.companyMarginBaked
+  );
+  // When company margin is already inside hotel/cab lines, do not apply again
+  const adminPct = baked
+    ? 0
+    : Math.max(0, toNum(c1.adminMarginPercent || quotation.pricing?.adminMarginPercent));
   const pct = Math.max(0, toNum(markupPercent));
   const disc = toNum(c1.discount);
 
-  // Same as calculatePricing: admin once on costs → exec on after-admin → discount → GST
   const adminMarkup =
     adminPct > 0 ? Math.round(baseCost * (adminPct / 100) * 100) / 100 : 0;
   const afterAdmin = baseCost + adminMarkup;
@@ -67,7 +74,10 @@ function buildCosting2({ quotation, markupPercent, actor }) {
     label: 'Costing 2',
     baseCost,
     markupPercent: pct,
-    adminMarginPercent: adminPct,
+    adminMarginPercent: baked
+      ? toNum(quotation.pricing?.companyMarginBakedPercent || c1.companyMarginBakedPercent)
+      : adminPct,
+    companyMarginBaked: baked,
     markup,
     adminMarkup,
     execMarkup,

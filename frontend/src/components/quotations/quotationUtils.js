@@ -1,11 +1,47 @@
 import { expandDestinationMatchTerms } from '../../lib/destinationFamilies';
 
+function round2(n) {
+  return Math.round(Number(n || 0) * 100) / 100;
+}
+
 /**
- * Quotation costing formula (single source of truth):
- * 1. Sum raw costs (hotel + cab + activities + package residual + flights) — NO margin on lines
- * 2. Apply admin destination margin % once on that total
- * 3. Optional executive "Your margin %" on after-admin total
- * 4. Discount → GST → final
+ * Bake company (admin) margin into hotel + cab line costs so SE only sees
+ * higher "raw" hotel/cab — no separate company-margin row on the total.
+ * Caller must pass UNBAKED raw line costs (wizard recomputes from package each time).
+ */
+export function bakeCompanyMarginIntoLineCosts(pricing = {}, adminMarginPercent = 0) {
+  const pct = Math.max(0, Number(adminMarginPercent) || 0);
+  if (pct <= 0) {
+    return {
+      ...pricing,
+      adminMarginPercent: 0,
+      companyMarginBaked: false,
+      companyMarginBakedPercent: 0,
+    };
+  }
+
+  const factor = 1 + pct / 100;
+  return {
+    ...pricing,
+    hotelCost: round2(Number(pricing.hotelCost || 0) * factor),
+    cabCost: round2(Number(pricing.cabCost || 0) * factor),
+    // Package inclusions / activities stay unmargined; margin lives in hotel+cab only
+    baseCost: round2(Number(pricing.baseCost || 0)),
+    flightCost: round2(Number(pricing.flightCost || 0)),
+    activityCost: round2(Number(pricing.activityCost || 0)),
+    adminMarginPercent: 0,
+    companyMarginBaked: true,
+    companyMarginBakedPercent: pct,
+  };
+}
+
+/**
+ * Quotation costing formula:
+ * 1. Line costs (hotel/cab/…) — company margin already baked into these when set
+ * 2. Optional executive "Your margin %" on the sum
+ * 3. Discount → GST → final
+ *
+ * adminMarginPercent is only used if costs were NOT already baked (legacy quotes).
  */
 export function calculatePricing({
   baseCost = 0,
@@ -19,6 +55,7 @@ export function calculatePricing({
   gstEnabled = false,
   markupPercent = 0,
   adminMarginPercent = 0,
+  companyMarginBaked = false,
 } = {}) {
   const costs =
     Number(baseCost || 0) +
@@ -27,30 +64,28 @@ export function calculatePricing({
     Number(flightCost || 0) +
     Number(activityCost || 0);
 
-  // Admin destination margin — once on cost total only (never on hotel/cab lines)
-  const adminPct = Math.max(0, Number(adminMarginPercent) || 0);
+  // Legacy only: if lines were not baked, apply admin % once on the sum (hidden from SE UI)
+  const adminPct =
+    companyMarginBaked ? 0 : Math.max(0, Number(adminMarginPercent) || 0);
   const adminMarkup =
-    adminPct > 0 ? Math.round(costs * (adminPct / 100) * 100) / 100 : 0;
+    adminPct > 0 ? round2(costs * (adminPct / 100)) : 0;
   const afterAdmin = costs + adminMarkup;
 
-  // Executive margin — optional, on top of admin-adjusted total
   const execPct = Math.max(0, Number(markupPercent) || 0);
   const execMarkup =
     execPct > 0
-      ? Math.round(afterAdmin * (execPct / 100) * 100) / 100
+      ? round2(afterAdmin * (execPct / 100))
       : Math.max(0, Number(markup) || 0);
 
   const computedMarkup = adminMarkup + execMarkup;
   const disc = Math.max(0, Number(discount) || 0);
   const packageBeforeDisc = afterAdmin + execMarkup;
   const packageCost = Math.max(0, packageBeforeDisc - disc);
-  const computedTaxes = gstEnabled
-    ? Math.round(packageCost * 0.05 * 100) / 100
-    : 0;
+  const computedTaxes = gstEnabled ? round2(packageCost * 0.05) : 0;
 
   const total = Math.max(0, packageCost + computedTaxes);
   const listWithGst = gstEnabled
-    ? Math.round(packageBeforeDisc * 0.05 * 100) / 100 + packageBeforeDisc
+    ? round2(packageBeforeDisc * 0.05) + packageBeforeDisc
     : packageBeforeDisc;
   const youSave = disc;
   const profit = computedMarkup - disc;
@@ -71,33 +106,28 @@ export function calculatePricing({
   };
 }
 
-/**
- * Keep hotel / cab / residual as separate raw cost buckets.
- * Do NOT fold residual into hotel — that made Hotel Cost look "margined".
- */
+/** Normalize cost buckets (residual stays separate — not folded into hotel). */
 export function foldPackageResidualIntoHotel(pricing = {}) {
   return {
     ...pricing,
-    hotelCost: Math.round(Number(pricing.hotelCost || 0) * 100) / 100,
-    baseCost: Math.round(Number(pricing.baseCost || 0) * 100) / 100,
-    flightCost: Math.round(Number(pricing.flightCost || 0) * 100) / 100,
+    hotelCost: round2(pricing.hotelCost),
+    baseCost: round2(pricing.baseCost),
+    flightCost: round2(pricing.flightCost),
   };
 }
 
 /**
- * Customer-facing costing rows:
- * Hotel + Cab + Activities (+ Package inclusions if residual) → Subtotal → margins → Final
- * Admin margin is applied in calculatePricing on the sum only.
+ * SE-facing breakdown: hotel/cab already include company margin (baked).
+ * Never expose company margin as its own row.
  */
 export function getDisplayedCostBreakdown(pricing = {}) {
   const calc = calculatePricing(pricing);
   const hotelCost = Number(pricing.hotelCost || 0);
   const transportCost = Number(pricing.cabCost || 0);
   const activityCost = Number(pricing.activityCost || 0);
-  const packageInclusions =
-    Math.round(
-      (Number(pricing.baseCost || 0) + Number(pricing.flightCost || 0)) * 100
-    ) / 100;
+  const packageInclusions = round2(
+    Number(pricing.baseCost || 0) + Number(pricing.flightCost || 0)
+  );
 
   return {
     hotelCost,
@@ -105,7 +135,6 @@ export function getDisplayedCostBreakdown(pricing = {}) {
     activityCost,
     packageInclusions,
     markup: calc.execMarkup,
-    adminMarkup: calc.adminMarkup,
     taxes: calc.taxes,
     discount: Math.max(0, Number(pricing.discount || 0)),
     youSave: calc.youSave,
@@ -113,7 +142,6 @@ export function getDisplayedCostBreakdown(pricing = {}) {
     subtotalBeforeDiscount: calc.subtotal,
     finalTotal: calc.total,
     costsBeforeMargin: calc.costsBeforeMargin,
-    adminMarginPercent: Math.max(0, Number(pricing.adminMarginPercent) || 0),
   };
 }
 
@@ -181,6 +209,8 @@ export const defaultPricing = {
   markup: 0,
   markupPercent: 0,
   adminMarginPercent: 0,
+  companyMarginBaked: false,
+  companyMarginBakedPercent: 0,
   discount: 0,
   total: 0,
   profitMargin: 0,

@@ -18,7 +18,7 @@ import { resolvePackageHotelPricing } from './DayWiseHotelSelector';
 import { buildSelectedCabSnapshot } from './UnoCabSelector';
 import { parsePackageNights } from './UnoHotelSelector';
 import { WIZARD_STEPS } from './constants';
-import { calculatePricing, defaultItineraryDay, defaultWizardState, foldPackageResidualIntoHotel, formatINR, matchesResourceDestination } from './quotationUtils';
+import { calculatePricing, defaultItineraryDay, defaultWizardState, foldPackageResidualIntoHotel, bakeCompanyMarginIntoLineCosts, formatINR, matchesResourceDestination } from './quotationUtils';
 import { applyPartyCosting } from './partyCosting';
 import { buildSelectedHotelsSnapshot } from './quotePdfHelpers';
 import { hydrateWizardFromQuote } from './quotationHydrate';
@@ -510,7 +510,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setSelectedUnoCab(defaultCab);
 
     setState((s) => {
-      // Cost on unmargined package base; apply admin destination margin as markup %
+      // Raw package base; company margin is baked into hotel/cab line costs (hidden from SE)
       const packageStart = Number(
         normalized.baseStartingPrice ?? normalized.startingPrice ?? 0
       );
@@ -530,15 +530,13 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         cabSeats: defaultCab?.seatingCapacity || 4,
         dayWiseHotels: seededHotels,
       });
-      const nextPricing = foldPackageResidualIntoHotel({
+      const rawPricing = foldPackageResidualIntoHotel({
         ...s.pricing,
         baseCost: party.baseCost,
         hotelCost: party.hotelCost,
         cabCost: party.cabCost,
         flightCost: 0,
         activityCost: 0,
-        // Admin margin hidden + auto; SE markup starts at 0 (they can add their own)
-        adminMarginPercent: adminMarginPct,
         markupPercent: Number(s.pricing.markupPercent || 0) || 0,
         party: {
           adults: party.adults,
@@ -551,6 +549,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           perPersonRate: party.perPersonRate,
         },
       });
+      const nextPricing = bakeCompanyMarginIntoLineCosts(rawPricing, adminMarginPct);
       return {
         ...s,
         pricing: {
@@ -606,7 +605,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   };
 
   useEffect(() => {
-    // Unmargined package base; admin margin stays in adminMarginPercent (hidden)
+    // Unmargined package base; company margin baked into hotel/cab lines (hidden from SE)
     const packageAnchor = Number(
       selectedPkgDetail?.baseStartingPrice ?? selectedPkgDetail?.startingPrice ?? 0
     );
@@ -621,7 +620,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       .reduce((s, a) => s + (a.price || 0), 0);
     const adminMarginPct =
       Number(
-        selectedPkgDetail?.destinationMarginPercent ?? state.pricing.adminMarginPercent ?? 0
+        selectedPkgDetail?.destinationMarginPercent ??
+          state.pricing.companyMarginBakedPercent ??
+          0
       ) || 0;
     const party = applyPartyCosting({
       unitBaseCost: transport.baseCost,
@@ -638,18 +639,18 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       cabSeats: selectedUnoCab?.seatingCapacity || 4,
       dayWiseHotels,
     });
-    const folded = foldPackageResidualIntoHotel({
+    const rawPricing = foldPackageResidualIntoHotel({
       baseCost: party.baseCost,
       hotelCost: party.hotelCost,
       cabCost: party.cabCost,
       flightCost: party.flightCost,
       activityCost: party.activityCost,
-      adminMarginPercent: adminMarginPct,
       markupPercent: Number(state.pricing.markupPercent || 0) || 0,
       discount: Number(state.pricing.discount || 0) || 0,
       gstEnabled: Boolean(state.pricing.gstEnabled),
       markup: 0,
     });
+    const folded = bakeCompanyMarginIntoLineCosts(rawPricing, adminMarginPct);
     const calc = calculatePricing(folded);
 
     setState((s) => {
@@ -660,7 +661,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         cabCost: folded.cabCost,
         flightCost: folded.flightCost,
         activityCost: folded.activityCost,
-        adminMarginPercent: adminMarginPct,
+        adminMarginPercent: 0,
+        companyMarginBaked: folded.companyMarginBaked,
+        companyMarginBakedPercent: folded.companyMarginBakedPercent,
         taxes: calc.taxes,
         markup: calc.markup,
         total: calc.total,
@@ -684,7 +687,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         Number(prev.cabCost || 0) === Number(nextPricing.cabCost || 0) &&
         Number(prev.flightCost || 0) === Number(nextPricing.flightCost || 0) &&
         Number(prev.activityCost || 0) === Number(nextPricing.activityCost || 0) &&
-        Number(prev.adminMarginPercent || 0) === Number(nextPricing.adminMarginPercent || 0) &&
+        Number(prev.companyMarginBakedPercent || 0) ===
+          Number(nextPricing.companyMarginBakedPercent || 0) &&
         Number(prev.taxes || 0) === Number(nextPricing.taxes || 0) &&
         Number(prev.markup || 0) === Number(nextPricing.markup || 0) &&
         Number(prev.total || 0) === Number(nextPricing.total || 0) &&
@@ -707,7 +711,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     state.pricing.discount,
     state.pricing.gstEnabled,
     state.pricing.markupPercent,
-    state.pricing.adminMarginPercent,
     dayWiseHotels,
   ]);
 

@@ -38,8 +38,10 @@ const quotationSchema = new mongoose.Schema(
       gstEnabled: { type: Boolean, default: false },
       markup: { type: Number, default: 0 },
       markupPercent: { type: Number, default: 0 },
-      /** Destination / company margin % — applied once on cost total */
+      /** Destination / company margin % — legacy; prefer baked into line costs */
       adminMarginPercent: { type: Number, default: 0 },
+      companyMarginBaked: { type: Boolean, default: false },
+      companyMarginBakedPercent: { type: Number, default: 0 },
       discount: { type: Number, default: 0 },
       total: { type: Number, default: 0 },
       profitMargin: { type: Number, default: 0 },

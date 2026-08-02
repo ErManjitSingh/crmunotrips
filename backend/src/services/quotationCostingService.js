@@ -103,11 +103,14 @@ function calculateQuotationPricing({
 
   const markupInput = toNumber(pricingInput.markup);
   const markupPercent = toNumber(pricingInput.markupPercent);
-  const adminMarginPercent = toNumber(pricingInput.adminMarginPercent);
+  const companyMarginBaked = Boolean(pricingInput.companyMarginBaked);
+  const adminMarginPercent = companyMarginBaked
+    ? 0
+    : toNumber(pricingInput.adminMarginPercent);
   const discount = toNumber(pricingInput.discount);
   const gstEnabled = Boolean(pricingInput.gstEnabled);
 
-  // Raw cost sum only — admin/exec margins applied once below (never per hotel/cab line)
+  // Raw cost sum only — company margin is either baked into lines or applied once below
   const costs =
     categoryTotals.baseCost +
     categoryTotals.hotelCost +
@@ -115,7 +118,7 @@ function calculateQuotationPricing({
     categoryTotals.flightCost +
     categoryTotals.activityCost;
 
-  // Admin margin once on total costs, then optional executive margin on after-admin
+  // Admin margin once on total costs (skipped when already baked into hotel/cab lines)
   const adminMarkup =
     adminMarginPercent > 0
       ? Math.round(costs * (adminMarginPercent / 100) * 100) / 100
@@ -143,7 +146,11 @@ function calculateQuotationPricing({
       gstEnabled,
       markup,
       markupPercent,
-      adminMarginPercent,
+      adminMarginPercent: companyMarginBaked
+        ? toNumber(pricingInput.companyMarginBakedPercent)
+        : adminMarginPercent,
+      companyMarginBaked,
+      companyMarginBakedPercent: toNumber(pricingInput.companyMarginBakedPercent),
       discount,
       total,
       profitMargin,
@@ -158,7 +165,10 @@ function calculateQuotationPricing({
       gstEnabled,
       markup,
       markupPercent,
-      adminMarginPercent,
+      adminMarginPercent: companyMarginBaked
+        ? toNumber(pricingInput.companyMarginBakedPercent)
+        : adminMarginPercent,
+      companyMarginBaked,
       discount,
       grandTotal: total,
       profitMargin,
