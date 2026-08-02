@@ -1,5 +1,4 @@
 import { calculatePricing, formatINR, getDisplayedCostBreakdown } from './quotationUtils';
-import { cleanInclusionExclusionLines } from './InclusionExclusionEditor';
 import { resolvePartyOccupancy } from './partyCosting';
 
 const COST_FIELDS = [
@@ -8,17 +7,10 @@ const COST_FIELDS = [
   { key: 'activityCost', label: 'Activities Cost', color: 'border-indigo-400/30 bg-indigo-500/5' },
 ];
 
-export default function QuotePricingPanel({
-  pricing,
-  onChange,
-  readOnly = false,
-  lead = null,
-  inclusions = [],
-}) {
+export default function QuotePricingPanel({ pricing, onChange, readOnly = false, lead = null }) {
   const breakdown = getDisplayedCostBreakdown(pricing || {});
   const party = pricing?.party || resolvePartyOccupancy(lead || {});
   const adults = Math.max(1, Number(party.adults) || 1);
-  const inclusionLines = cleanInclusionExclusionLines(inclusions);
 
   const apply = (partial) => {
     const next = { ...pricing, ...partial };
@@ -59,35 +51,6 @@ export default function QuotePricingPanel({
             </div>
           );
         })}
-
-        {(Number(breakdown.packageInclusions || 0) > 0 || inclusionLines.length > 0) && (
-          <div className="p-3 rounded-xl border border-slate-400/30 bg-slate-500/5 col-span-2 sm:col-span-2 lg:col-span-2">
-            <div className="flex items-start justify-between gap-3">
-              <label className="text-[10px] uppercase font-semibold text-content-muted">
-                Package inclusions
-              </label>
-              <p className="text-lg font-bold text-content-primary metric-tabular">
-                {Number(breakdown.packageInclusions || 0) > 0
-                  ? formatINR(breakdown.packageInclusions)
-                  : '—'}
-              </p>
-            </div>
-            {inclusionLines.length > 0 ? (
-              <ul className="mt-2 max-h-28 overflow-y-auto space-y-1 border-t border-slate-200/70 pt-2">
-                {inclusionLines.map((line, idx) => (
-                  <li key={`${idx}-${line.slice(0, 24)}`} className="flex items-start gap-1.5 text-[11px] text-slate-600">
-                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-500" />
-                    <span>{line}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-[11px] text-slate-400 border-t border-slate-200/70 pt-2">
-                Residual package cost after hotel &amp; cab.
-              </p>
-            )}
-          </div>
-        )}
 
         <div className="p-3 rounded-xl border border-green-400/30 bg-green-500/5">
           <label className="text-[10px] uppercase font-semibold text-content-muted">Your margin %</label>
@@ -160,7 +123,9 @@ export default function QuotePricingPanel({
         </div>
         <div className="p-5 rounded-2xl border border-violet-400/30 bg-gradient-to-br from-violet-500/15 to-fuchsia-500/10">
           <p className="text-xs font-semibold uppercase text-violet-600">Profit Margin</p>
-          <p className="text-3xl font-black text-violet-700 dark:text-violet-300 metric-tabular mt-1">{computed.profitMargin}%</p>
+          <p className="text-3xl font-black text-violet-700 dark:text-violet-300 metric-tabular mt-1">
+            {calculatePricing(pricing || {}).profitMargin}%
+          </p>
         </div>
       </div>
     </div>

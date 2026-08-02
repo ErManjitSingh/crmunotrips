@@ -303,15 +303,7 @@ export default function QuotationDetailDrawer({
                   </p>
                 </div>
               )}
-              <QuotePricingPanel
-                pricing={quote.pricing}
-                readOnly
-                inclusions={
-                  quote.packageSnapshot?.inclusions ||
-                  quote.package?.inclusions ||
-                  []
-                }
-              />
+              <QuotePricingPanel pricing={quote.pricing} readOnly />
             </section>
 
             {quote.timeline?.length > 0 && (
