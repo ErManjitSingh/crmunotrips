@@ -20,7 +20,7 @@ import {
 const leadPerm = { module: 'leads', action: 'view' };
 const analyticsRoles = ['admin', 'sales_manager', 'team_leader'];
 const systemRoles = ['admin', 'sales_manager'];
-const followupRoles = ['admin', 'sales_manager', 'team_leader', 'sales_executive'];
+const followupRoles = ['admin', 'sales_manager', 'team_leader', 'sales_executive', 'lead_provider'];
 
 /** Grouped Lead Management sidebar — HubSpot-style sections */
 export const leadManagementSections = [

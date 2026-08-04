@@ -296,7 +296,7 @@ function App() {
               }
             >
               <Route index element={<RoleDashboardRedirect />} />
-              <Route path="admin/dashboard" element={<RoleRoute roles={['admin']}><Dashboard /></RoleRoute>} />
+              <Route path="admin/dashboard" element={<RoleRoute roles={['admin', 'lead_provider']}><Dashboard /></RoleRoute>} />
               <Route path="accountant/dashboard" element={<RoleRoute roles={['accountant']}><RoleDashboard roleKey="accountant" description="Financial reports and quotation approvals" /></RoleRoute>} />
               <Route path="operations/dashboard" element={<RoleRoute roles={['operations_manager']}><RoleDashboard roleKey="operations_manager" description="Packages, inventory, and operations" /></RoleRoute>} />
               <Route path="leads" element={<PermissionRoute module="leads"><Leads /></PermissionRoute>} />

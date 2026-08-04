@@ -105,10 +105,10 @@ const PANEL_CONFIG = {
   lead_provider: {
     accent: 'brand',
     tabs: [
+      { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { path: '/leads', label: 'Leads', icon: Users },
       { path: '/leads/new', label: 'Add', icon: Plus, primary: true },
       { path: '/whatsapp', label: 'WhatsApp', icon: MessageCircle },
-      { path: '/team/sales-teams', label: 'Teams', icon: UsersRound },
       { path: '/profile', label: 'Profile', icon: User },
     ],
   },

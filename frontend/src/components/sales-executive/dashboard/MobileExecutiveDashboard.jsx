@@ -12,6 +12,7 @@ import {
   Search,
   SlidersHorizontal,
   Sparkles,
+  Clock3,
   Upload,
   UserRoundCheck,
   Users,
@@ -26,8 +27,9 @@ const KPI_CARDS = [
   { key: 'myLeads', label: 'Total Leads', icon: Users, tone: 'bg-blue-500', spark: '#7c3aed' },
   { key: 'todayLeads', label: 'Fresh / Today', icon: Sparkles, tone: 'bg-sky-500', spark: '#0ea5e9' },
   { key: 'connectedLeads', label: 'Connected', icon: Phone, tone: 'bg-emerald-500', spark: '#10b981' },
+  { key: 'followUpPending', label: 'F/U Pending', icon: Clock3, tone: 'bg-amber-500', spark: '#f59e0b' },
   { key: 'convertedLeads', label: 'Converted', icon: UserRoundCheck, tone: 'bg-orange-500', spark: '#f97316' },
-  { key: 'todayFollowups', label: 'Follow-ups', icon: Phone, tone: 'bg-blue-500', spark: '#3b82f6' },
+  { key: 'todayFollowups', label: "Today's F/U", icon: Phone, tone: 'bg-blue-500', spark: '#3b82f6' },
   { key: 'monthlyRevenue', label: 'Revenue', icon: IndianRupee, tone: 'bg-rose-500', spark: '#f43f5e', currency: true },
 ];
 
@@ -187,7 +189,7 @@ export default function MobileExecutiveDashboard({
               <Link
                 key={card.key}
                 to={
-                  card.key === 'todayFollowups'
+                  card.key === 'todayFollowups' || card.key === 'followUpPending'
                     ? '/sales-executive/follow-ups'
                     : card.key === 'connectedLeads'
                       ? '/sales-executive/leads/contacted'

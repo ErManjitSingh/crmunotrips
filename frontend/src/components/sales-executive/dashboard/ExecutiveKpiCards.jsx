@@ -5,8 +5,8 @@ import {
   Sparkles,
   Phone,
   CalendarClock,
+  Clock3,
   Flame,
-  FileText,
   IndianRupee,
   TrendingUp,
   TrendingDown,
@@ -14,11 +14,12 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../executiveUtils';
 
-/** Primary lead KPIs first: Total · Fresh (today) · Connected */
+/** Primary lead KPIs: Total · Fresh · Connected · Follow-up Pending · Today · Hot · Revenue */
 const cards = [
   { key: 'myLeads', label: 'Total Leads', icon: Users, iconBg: 'bg-violet-100 text-violet-600', path: '/sales-executive/leads/all' },
   { key: 'todayLeads', label: 'Fresh / Today', icon: Sparkles, iconBg: 'bg-sky-100 text-sky-600', path: '/sales-executive/leads/new' },
   { key: 'connectedLeads', label: 'Connected Leads', icon: Phone, iconBg: 'bg-emerald-100 text-emerald-600', path: '/sales-executive/leads/contacted' },
+  { key: 'followUpPending', label: 'Follow-up Pending', icon: Clock3, iconBg: 'bg-amber-100 text-amber-600', path: '/sales-executive/follow-ups' },
   { key: 'todayFollowups', label: "Today's Follow-ups", icon: CalendarClock, iconBg: 'bg-blue-100 text-blue-600', path: '/sales-executive/follow-ups' },
   { key: 'hotLeads', label: 'Hot Leads', icon: Flame, iconBg: 'bg-orange-100 text-orange-600', path: '/sales-executive/leads/hot' },
   { key: 'monthlyRevenue', label: 'Monthly Revenue', icon: IndianRupee, iconBg: 'bg-rose-100 text-rose-600', format: formatCurrency },
@@ -48,7 +49,7 @@ export default function ExecutiveKpiCards({ kpis, trends }) {
   if (!kpis) return null;
 
   return (
-    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
+    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
       {cards.map(({ key, label, icon: Icon, iconBg, format, path }, i) => {
         const value = kpis[key];
         const Wrapper = path ? Link : 'div';

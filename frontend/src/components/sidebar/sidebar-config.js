@@ -114,7 +114,7 @@ export const teamManagementItems = [
 ];
 
 export const mainNavItems = [
-  { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin'] },
+  { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'lead_provider'] },
   {
     id: 'lead-management',
     label: 'Lead Management',

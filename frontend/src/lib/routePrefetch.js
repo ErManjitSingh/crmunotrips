@@ -2,6 +2,7 @@ const prefetched = new Set();
 
 const routeLoaders = {
   '/dashboard': () => import('../pages/Dashboard'),
+  '/admin/dashboard': () => import('../pages/Dashboard'),
   '/leads': () => import('../pages/Leads'),
   '/leads/new-leads': () => import('../pages/Leads'),
   '/leads/unassigned': () => import('../pages/Leads'),

@@ -28,7 +28,7 @@ export const ROLE_DASHBOARD_PATHS = {
   accountant: '/accountant/dashboard',
   operations_manager: '/operations-manager/dashboard',
   hr_admin: '/hr/dashboard',
-  lead_provider: '/leads',
+  lead_provider: '/admin/dashboard',
 };
 
 export const ROLE_LABELS = {
