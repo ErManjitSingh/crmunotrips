@@ -1,15 +1,19 @@
 export function isNavItemActive(pathname, path) {
-  const basePath = String(path || '').split('?')[0];
-  if (basePath === '/' || basePath === '/admin/dashboard') {
-    return pathname === '/' || pathname === '/admin/dashboard';
+  const basePath = String(path || "").split("?")[0];
+  if (basePath === "/" || basePath === "/admin/dashboard") {
+    return pathname === "/" || pathname === "/admin/dashboard";
   }
-  if (basePath === '/leads') return pathname === '/leads';
-  if (basePath === '/hr/dashboard') return pathname === '/hr/dashboard' || pathname === '/hr';
-  if (basePath === '/team/sales-targets') {
-    return pathname === '/team/sales-targets';
+  if (basePath === "/lead-provider/dashboard") {
+    return pathname === "/lead-provider/dashboard";
   }
-  if (basePath === '/team') {
-    return pathname === '/team';
+  if (basePath === "/leads") return pathname === "/leads";
+  if (basePath === "/hr/dashboard")
+    return pathname === "/hr/dashboard" || pathname === "/hr";
+  if (basePath === "/team/sales-targets") {
+    return pathname === "/team/sales-targets";
+  }
+  if (basePath === "/team") {
+    return pathname === "/team";
   }
   return pathname === basePath || pathname.startsWith(`${basePath}/`);
 }
@@ -37,7 +41,11 @@ export function filterNavItemsBySearch(items, query) {
       const sections = item.sections
         .map((section) => {
           const sectionMatch = matchesQuery(section.label, q);
-          const filteredItems = filterSectionItems(section.items, q, groupMatch || sectionMatch);
+          const filteredItems = filterSectionItems(
+            section.items,
+            q,
+            groupMatch || sectionMatch,
+          );
           if (groupMatch || sectionMatch || filteredItems.length) {
             return {
               ...section,
@@ -55,7 +63,9 @@ export function filterNavItemsBySearch(items, query) {
 
     if (item.children) {
       const groupMatch = matchesQuery(item.label, q);
-      const filteredChildren = item.children.filter((c) => matchesQuery(c.label, q));
+      const filteredChildren = item.children.filter((c) =>
+        matchesQuery(c.label, q),
+      );
       if (groupMatch || filteredChildren.length) {
         acc.push({
           ...item,
@@ -78,7 +88,7 @@ export function injectSectionHeaders(items) {
 
   for (const item of items) {
     if (item.section && item.section !== lastSection) {
-      result.push({ type: 'section', label: item.section });
+      result.push({ type: "section", label: item.section });
       lastSection = item.section;
     }
     result.push(item);
