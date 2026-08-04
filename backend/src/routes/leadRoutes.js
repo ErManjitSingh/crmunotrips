@@ -56,13 +56,13 @@ const {
 router.use(protect);
 
 router.get('/check-duplicate', checkDuplicate);
-router.get('/recycle-bin', listRecycleBin);
-router.get('/analytics/aging', getAgingAnalytics);
-router.get('/analytics/sources', getSourceAnalyticsHandler);
-router.get('/analytics/executives', getExecutivePerformanceHandler);
-router.get('/analytics/kpis', getKpis);
-router.get('/analytics/sla', getSlaAnalytics);
-router.get('/audit-log', listAuditLog);
+router.get('/analytics/aging', authorize('admin', 'sales_manager', 'lead_provider'), getAgingAnalytics);
+router.get('/analytics/sources', authorize('admin', 'sales_manager', 'lead_provider'), getSourceAnalyticsHandler);
+router.get('/analytics/executives', authorize('admin', 'sales_manager', 'lead_provider'), getExecutivePerformanceHandler);
+router.get('/analytics/kpis', authorize('admin', 'sales_manager', 'lead_provider'), getKpis);
+router.get('/analytics/sla', authorize('admin', 'sales_manager', 'lead_provider'), getSlaAnalytics);
+router.get('/audit-log', authorize('admin', 'sales_manager'), listAuditLog);
+router.get('/recycle-bin', authorize('admin', 'sales_manager', 'lead_provider'), listRecycleBin);
 router.post('/bulk-status', requirePermission('leads', 'edit'), bulkUpdateStatus);
 router.post('/bulk-export', requirePermission('leads', 'view'), bulkExportLeads);
 router.post('/merge', authorize('admin', 'sales_manager'), mergeDuplicateLeads);

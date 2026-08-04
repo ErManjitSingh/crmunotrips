@@ -605,7 +605,10 @@ function App() {
                   <Route
                     path="leads"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <Leads />
                       </PermissionRoute>
                     }
@@ -613,7 +616,10 @@ function App() {
                   <Route
                     path="leads/inbox/new"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <Leads />
                       </PermissionRoute>
                     }
@@ -621,7 +627,10 @@ function App() {
                   <Route
                     path="leads/new-leads"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <Leads />
                       </PermissionRoute>
                     }
@@ -629,7 +638,10 @@ function App() {
                   <Route
                     path="leads/returned"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <Leads />
                       </PermissionRoute>
                     }
@@ -637,7 +649,10 @@ function App() {
                   <Route
                     path="leads/hot"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <Leads />
                       </PermissionRoute>
                     }
@@ -645,7 +660,10 @@ function App() {
                   <Route
                     path="leads/unassigned"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <Leads />
                       </PermissionRoute>
                     }
@@ -653,7 +671,10 @@ function App() {
                   <Route
                     path="leads/assigned"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <Leads />
                       </PermissionRoute>
                     }
@@ -661,7 +682,10 @@ function App() {
                   <Route
                     path="leads/converted"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <Leads />
                       </PermissionRoute>
                     }
@@ -669,7 +693,10 @@ function App() {
                   <Route
                     path="leads/lost"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <Leads />
                       </PermissionRoute>
                     }
@@ -677,7 +704,10 @@ function App() {
                   <Route
                     path="leads/duplicates"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <Leads />
                       </PermissionRoute>
                     }
@@ -685,7 +715,10 @@ function App() {
                   <Route
                     path="leads/reactivated"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <ReactivatedLeadsPage />
                       </PermissionRoute>
                     }
@@ -693,7 +726,10 @@ function App() {
                   <Route
                     path="leads/analytics"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <LeadAnalytics />
                       </PermissionRoute>
                     }
@@ -701,7 +737,10 @@ function App() {
                   <Route
                     path="leads/sla"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <SlaMonitor />
                       </PermissionRoute>
                     }
@@ -709,7 +748,10 @@ function App() {
                   <Route
                     path="leads/recycle-bin"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <RecycleBin />
                       </PermissionRoute>
                     }
@@ -725,7 +767,11 @@ function App() {
                   <Route
                     path="leads/new"
                     element={
-                      <PermissionRoute module="leads" action="create">
+                      <PermissionRoute
+                        module="leads"
+                        action="create"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <LeadForm />
                       </PermissionRoute>
                     }
@@ -733,7 +779,11 @@ function App() {
                   <Route
                     path="leads/:id/edit"
                     element={
-                      <PermissionRoute module="leads" action="edit">
+                      <PermissionRoute
+                        module="leads"
+                        action="edit"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <LeadForm />
                       </PermissionRoute>
                     }
@@ -741,7 +791,10 @@ function App() {
                   <Route
                     path="leads/:id"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <LeadDetail />
                       </PermissionRoute>
                     }
@@ -749,7 +802,10 @@ function App() {
                   <Route
                     path="followups"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <Followups />
                       </PermissionRoute>
                     }
@@ -757,7 +813,10 @@ function App() {
                   <Route
                     path="reminders"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <Reminders />
                       </PermissionRoute>
                     }
@@ -765,7 +824,10 @@ function App() {
                   <Route
                     path="whatsapp"
                     element={
-                      <PermissionRoute module="leads">
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
                         <WhatsAppLeads />
                       </PermissionRoute>
                     }

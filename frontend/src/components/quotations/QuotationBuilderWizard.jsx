@@ -298,9 +298,15 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           `/sales-executive/leads/${initialLeadId}`,
         ].filter(Boolean);
 
-        // Prefer dedicated lead fetch when list won't include the ID
+        const leadDetailPath = config.leadsPath?.startsWith('/sales-executive')
+          ? `/sales-executive/leads/${initialLeadId}`
+          : config.leadsPath?.startsWith('/team-leader')
+            ? `/team-leader/leads/${initialLeadId}`
+            : config.leadsPath?.startsWith('/sales-manager')
+              ? `/sales-manager/leads/${initialLeadId}`
+              : `/leads/${initialLeadId}`;
         try {
-          const { data } = await API.get(`/leads/${initialLeadId}`, { skipErrorToast: true });
+          const { data } = await API.get(leadDetailPath, { skipErrorToast: true });
           if (!cancelled && data?._id) {
             setLeads((prev) => (prev.some((l) => l._id === data._id) ? prev : [data, ...prev]));
             setState((s) => ({ ...s, leadId: data._id }));

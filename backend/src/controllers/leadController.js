@@ -58,7 +58,30 @@ const {
   getLeaderLeadScopeFilter,
   getExecutiveIdsForLeader,
 } = require('../services/teamScopeService');
+const {
+  getLeadViewerExtraFilter,
+  isRestrictedLeadViewer,
+} = require('../services/leadAccessScope');
+const {
+  findExecutiveLeadsPaginated,
+  findTeamLeaderLeadsPaginated,
+} = require('../repositories/roleScopedRepository');
 const Team = require('../models/Team');
+
+async function loadAccessibleLeadCore(req, leadId) {
+  const extraFilter = await getLeadViewerExtraFilter(req);
+  return loadLeadCore(leadId, { branchId: req.branchId, extraFilter });
+}
+
+async function findAccessibleLeadDoc(req, leadId, extra = {}) {
+  const viewerFilter = await getLeadViewerExtraFilter(req);
+  return Lead.findOne({
+    _id: leadId,
+    ...(req.branchId ? { branchId: req.branchId } : {}),
+    ...viewerFilter,
+    ...extra,
+  });
+}
 
 const LOST_LEAD_STATUSES = ['lost', 'booked_from_another_company'];
 const WORKING_PIPELINE_STATUSES = ['working_progress', 'follow_up', 'quotation_sent', 'negotiation', 'reactivated', 'converted'];
@@ -142,12 +165,26 @@ function ensureLeadQualifiedForPipeline() {
 }
 
 const listLeads = asyncHandler(async (req, res) => {
+  const role = req.user.role;
+  if (role === 'sales_executive') {
+    const result = await findExecutiveLeadsPaginated(req.user._id, req.query, {
+      branchId: req.branchId,
+    });
+    return res.json(result);
+  }
+  if (role === 'team_leader') {
+    const squadFilter = await getLeaderLeadScopeFilter(req.user._id);
+    const result = await findTeamLeaderLeadsPaginated(squadFilter, req.query, {
+      branchId: req.branchId,
+    });
+    return res.json(result);
+  }
   const result = await findLeadsPaginated(req.query, { branchId: req.branchId });
   res.json(result);
 });
 
 const getLead = asyncHandler(async (req, res) => {
-  const lead = await loadLeadCore(req.params.id, { branchId: req.branchId });
+  const lead = await loadAccessibleLeadCore(req, req.params.id);
   if (!lead) throw new ApiError(404, 'Lead not found');
 
   const paymentSummary = await getLeadPaymentSummary(lead._id);
@@ -166,12 +203,16 @@ const getLead = asyncHandler(async (req, res) => {
 });
 
 const getLeadPaymentReceiptDoc = asyncHandler(async (req, res) => {
-  const data = await getLeadPaymentReceipt(req.params.id, { branchId: req.branchId });
+  const extraFilter = await getLeadViewerExtraFilter(req);
+  const data = await getLeadPaymentReceipt(req.params.id, {
+    branchId: req.branchId,
+    extraFilter,
+  });
   res.json(data);
 });
 
 const sendLeadPaymentReceipt = asyncHandler(async (req, res) => {
-  const lead = await loadLeadCore(req.params.id, { branchId: req.branchId });
+  const lead = await loadAccessibleLeadCore(req, req.params.id);
   if (!lead) throw new ApiError(404, 'Lead not found');
 
   let payment = await Payment.findOne({ lead: lead._id }).sort({ createdAt: -1 });
@@ -197,27 +238,45 @@ const sendLeadPaymentReceipt = asyncHandler(async (req, res) => {
 });
 
 const getLeadFollowups = asyncHandler(async (req, res) => {
-  const lead = await loadLeadCore(req.params.id, { branchId: req.branchId });
+  const lead = await loadAccessibleLeadCore(req, req.params.id);
   if (!lead) throw new ApiError(404, 'Lead not found');
   const result = await loadLeadFollowups(lead._id, { branchId: req.branchId, query: req.query });
   res.json(result);
 });
 
 const getLeadQuotations = asyncHandler(async (req, res) => {
-  const lead = await loadLeadCore(req.params.id, { branchId: req.branchId });
+  const lead = await loadAccessibleLeadCore(req, req.params.id);
   if (!lead) throw new ApiError(404, 'Lead not found');
   const result = await loadLeadQuotations(lead._id, { branchId: req.branchId, query: req.query });
   res.json(result);
 });
 
 const getLeadNotesList = asyncHandler(async (req, res) => {
-  const lead = await loadLeadCore(req.params.id, { branchId: req.branchId });
+  const lead = await loadAccessibleLeadCore(req, req.params.id);
   if (!lead) throw new ApiError(404, 'Lead not found');
   const result = await loadLeadNotes(lead._id, { query: req.query });
   res.json(result);
 });
 
 const listLostLeads = asyncHandler(async (req, res) => {
+  const role = req.user.role;
+  if (role === 'sales_executive') {
+    const result = await findExecutiveLeadsPaginated(
+      req.user._id,
+      { ...req.query, filter: 'lost' },
+      { branchId: req.branchId }
+    );
+    return res.json(result);
+  }
+  if (role === 'team_leader') {
+    const squadFilter = await getLeaderLeadScopeFilter(req.user._id);
+    const result = await findTeamLeaderLeadsPaginated(
+      squadFilter,
+      { ...req.query, filter: 'lost' },
+      { branchId: req.branchId }
+    );
+    return res.json(result);
+  }
   const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 100 });
   const filter = {
     ...(req.branchId ? { branchId: req.branchId } : {}),
@@ -239,6 +298,18 @@ const listLostLeads = asyncHandler(async (req, res) => {
 });
 
 const getListKpis = asyncHandler(async (req, res) => {
+  if (isRestrictedLeadViewer(req.user.role)) {
+    return res.json({
+      todayLeads: 0,
+      newLeads: 0,
+      unassignedLeads: 0,
+      assignedLeads: 0,
+      followUpPending: 0,
+      lostLeads: 0,
+      convertedLeads: 0,
+      duplicateLeads: 0,
+    });
+  }
   const data = await getLeadListKpis(req.branchId);
   res.json(data);
 });
@@ -448,7 +519,7 @@ const clearAllLeads = asyncHandler(async (req, res) => {
 });
 
 const updateLead = asyncHandler(async (req, res) => {
-  const lead = await Lead.findOne({ _id: req.params.id, ...(req.branchId ? { branchId: req.branchId } : {}) });
+  const lead = await findAccessibleLeadDoc(req, req.params.id);
   if (!lead) throw new ApiError(404, 'Lead not found');
 
   if (req.body.status && !LEAD_STATUSES.includes(req.body.status)) {
@@ -589,11 +660,7 @@ const updateLead = asyncHandler(async (req, res) => {
 });
 
 const deleteLead = asyncHandler(async (req, res) => {
-  const lead = await Lead.findOne({
-    _id: req.params.id,
-    ...(req.branchId ? { branchId: req.branchId } : {}),
-    isDeleted: { $ne: true },
-  });
+  const lead = await findAccessibleLeadDoc(req, req.params.id, { isDeleted: { $ne: true } });
   if (!lead) throw new ApiError(404, 'Lead not found');
   if (LOST_LEAD_STATUSES.includes(lead.status)) {
     throw new ApiError(400, 'Lost leads cannot be deleted');
@@ -899,7 +966,7 @@ const addLeadNote = asyncHandler(async (req, res) => {
   const { text } = req.body;
   if (!text?.trim()) throw new ApiError(400, 'Note text is required');
 
-  const lead = await Lead.findOne({ _id: req.params.id, ...(req.branchId ? { branchId: req.branchId } : {}) });
+  const lead = await findAccessibleLeadDoc(req, req.params.id);
   if (!lead) throw new ApiError(404, 'Lead not found');
 
   const note = await LeadNote.create({

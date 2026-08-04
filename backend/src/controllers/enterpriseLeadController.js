@@ -54,10 +54,13 @@ const checkDuplicate = asyncHandler(async (req, res) => {
 });
 
 const getTimeline = asyncHandler(async (req, res) => {
+  const { getLeadViewerExtraFilter } = require('../services/leadAccessScope');
+  const viewerFilter = await getLeadViewerExtraFilter(req);
   const lead = await Lead.findOne({
     _id: req.params.id,
     ...(req.branchId ? { branchId: req.branchId } : {}),
     isDeleted: { $ne: true },
+    ...viewerFilter,
   }).select('_id');
   if (!lead) throw new ApiError(404, 'Lead not found');
 
@@ -327,10 +330,14 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
   if (!Array.isArray(leadIds) || !leadIds.length) throw new ApiError(400, 'leadIds required');
   if (!status) throw new ApiError(400, 'status required');
 
+  const { getLeadViewerExtraFilter } = require('../services/leadAccessScope');
+  const viewerFilter = await getLeadViewerExtraFilter(req);
+
   const filter = {
     _id: { $in: leadIds },
     isDeleted: { $ne: true },
     ...(req.branchId ? { branchId: req.branchId } : {}),
+    ...viewerFilter,
   };
 
   const leads = await Lead.find(filter);
@@ -360,10 +367,14 @@ const bulkExportLeads = asyncHandler(async (req, res) => {
   const { leadIds } = req.body;
   if (!Array.isArray(leadIds) || !leadIds.length) throw new ApiError(400, 'leadIds required');
 
+  const { getLeadViewerExtraFilter } = require('../services/leadAccessScope');
+  const viewerFilter = await getLeadViewerExtraFilter(req);
+
   const filter = {
     _id: { $in: leadIds },
     isDeleted: { $ne: true },
     ...(req.branchId ? { branchId: req.branchId } : {}),
+    ...viewerFilter,
   };
 
   const leads = await Lead.find(filter).populate(LEAD_POPULATE).lean();

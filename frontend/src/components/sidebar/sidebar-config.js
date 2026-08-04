@@ -148,6 +148,7 @@ export const mainNavItems = [
     label: "Lead Management",
     icon: Users,
     badgeKey: "leads.unassigned",
+    roles: ["admin", "lead_provider"],
     sections: leadManagementSections,
   },
   {
