@@ -225,6 +225,10 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
   if (filterKey === 'all' || !filterKey || filterKey === 'package-shared' || filterKey === 'package_shared') {
     if (query.status) owned.status = query.status;
     if (query.destination) owned.destination = query.destination;
+    if (query.state) owned.state = query.state;
+    if (query.statusReason) {
+      owned.statusReason = { $regex: String(query.statusReason).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+    }
     if (query.priority === 'hot') owned.isHot = true;
     else if (query.priority) owned.priority = query.priority;
   }

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { X, UserPlus, Briefcase, Crown, Users } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { X, UserPlus, Briefcase, Crown, Users, Search } from 'lucide-react';
 import { Button } from '../ui/button';
 import AppModal from '../ui/AppModal';
 import Avatar from '../ui/Avatar';
@@ -25,11 +25,13 @@ export default function AdminAssignLeadModal({
   const defaultRole = roleOptions[0]?.value || 'sales_executive';
   const [role, setRole] = useState(defaultRole);
   const [assigneeId, setAssigneeId] = useState('');
+  const [userSearch, setUserSearch] = useState('');
 
   useEffect(() => {
     if (open) {
       setRole(defaultRole);
       setAssigneeId('');
+      setUserSearch('');
     }
   }, [open, defaultRole]);
 
@@ -40,9 +42,21 @@ export default function AdminAssignLeadModal({
         ? assignees?.teamLeaders || []
         : assignees?.salesExecutives || [];
 
+  const filteredPeople = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    if (!q) return people;
+    return people.filter((person) => {
+      const name = String(person.name || '').toLowerCase();
+      const email = String(person.email || '').toLowerCase();
+      const phone = String(person.phone || '').toLowerCase();
+      return name.includes(q) || email.includes(q) || phone.includes(q);
+    });
+  }, [people, userSearch]);
+
   const handleClose = () => {
     setRole(defaultRole);
     setAssigneeId('');
+    setUserSearch('');
     onClose();
   };
 
@@ -57,6 +71,7 @@ export default function AdminAssignLeadModal({
   const handleRoleChange = (nextRole) => {
     setRole(nextRole);
     setAssigneeId('');
+    setUserSearch('');
   };
 
   return (
@@ -117,34 +132,49 @@ export default function AdminAssignLeadModal({
             ) : people.length === 0 ? (
               <p className="text-sm text-amber-600 py-2">No active users found for this role.</p>
             ) : (
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {people.map((person) => {
-                  const selected = assigneeId === person._id;
-                  return (
-                    <button
-                      key={person._id}
-                      type="button"
-                      onClick={() => setAssigneeId(person._id)}
-                      className={cn(
-                        'w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all',
-                        selected
-                          ? 'border-brand-500/40 bg-brand-500/10 ring-2 ring-brand-500/20'
-                          : 'border-subtle hover:bg-surface-elevated'
-                      )}
-                    >
-                      <Avatar name={person.name} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-content-primary truncate">{person.name}</p>
-                        <p className="text-xs text-content-muted truncate">{person.email || person.roleName}</p>
-                      </div>
-                      {selected && (
-                        <span className="text-[10px] font-bold uppercase text-brand-600 bg-brand-500/15 px-2 py-0.5 rounded-full shrink-0">
-                          Selected
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
+                  <input
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder="Search user by name, email, or phone…"
+                    className="w-full h-10 pl-9 pr-3 rounded-xl border border-subtle bg-white text-sm outline-none focus:ring-2 focus:ring-violet-500/30"
+                  />
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {filteredPeople.length === 0 ? (
+                    <p className="text-sm text-content-muted py-2">No users match “{userSearch.trim()}”.</p>
+                  ) : (
+                    filteredPeople.map((person) => {
+                      const selected = assigneeId === person._id;
+                      return (
+                        <button
+                          key={person._id}
+                          type="button"
+                          onClick={() => setAssigneeId(person._id)}
+                          className={cn(
+                            'w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all',
+                            selected
+                              ? 'border-brand-500/40 bg-brand-500/10 ring-2 ring-brand-500/20'
+                              : 'border-subtle hover:bg-surface-elevated'
+                          )}
+                        >
+                          <Avatar name={person.name} size="sm" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-content-primary truncate">{person.name}</p>
+                            <p className="text-xs text-content-muted truncate">{person.email || person.roleName}</p>
+                          </div>
+                          {selected && (
+                            <span className="text-[10px] font-bold uppercase text-brand-600 bg-brand-500/15 px-2 py-0.5 rounded-full shrink-0">
+                              Selected
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             )}
           </div>

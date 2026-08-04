@@ -96,7 +96,7 @@ export default function LeadActionsMenu({
             </DropdownMenuItem>
             {canChangeStatus && onChangeStatus && (
               <DropdownMenuItem onClick={() => onChangeStatus(lead)} className="flex items-center gap-2 cursor-pointer">
-                <RefreshCw className="w-4 h-4" /> Lead status
+                <RefreshCw className="w-4 h-4" /> Lead follow up
               </DropdownMenuItem>
             )}
             <DropdownMenuItem asChild>

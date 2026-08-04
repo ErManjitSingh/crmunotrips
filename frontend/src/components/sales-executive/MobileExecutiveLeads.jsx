@@ -27,7 +27,8 @@ import { useSidebar } from '../../context/SidebarContext';
 import { useSidebarCounts } from '../../hooks/useSidebarCounts';
 import { beginLeadCall } from '../../lib/callSession';
 import { getLeadSourceShortLabel, LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
-import { DESTINATIONS, LEAD_STATUSES } from '../leads/constants';
+import { DESTINATIONS, INDIAN_STATES } from '../leads/constants';
+import { LEAD_FOLLOW_UP_OUTCOMES } from '../../constants/leadFollowUpOutcomes';
 import { cn } from '../../lib/utils';
 import { toast } from '../../context/ToastContext';
 
@@ -207,6 +208,8 @@ export default function MobileExecutiveLeads({
   onStatusChange,
   destinationFilter = '',
   onDestinationChange,
+  stateFilter = '',
+  onStateChange,
   priorityFilter = '',
   onPriorityChange,
   sourceFilter = '',
@@ -245,11 +248,12 @@ export default function MobileExecutiveLeads({
     onSearchChange?.('');
     onStatusChange?.('');
     onDestinationChange?.('');
+    onStateChange?.('');
     onPriorityChange?.('');
     onSourceChange?.('');
   };
 
-  const hasFilters = Boolean(search || statusFilter || destinationFilter || priorityFilter || sourceFilter);
+  const hasFilters = Boolean(search || statusFilter || destinationFilter || stateFilter || priorityFilter || sourceFilter);
   const userInitial = initials(user?.name || 'A').slice(0, 1);
 
   const visibleLeads = useMemo(() => {
@@ -399,9 +403,15 @@ export default function MobileExecutiveLeads({
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </FilterSelect>
+                <FilterSelect icon={MapPin} value={stateFilter} onChange={onStateChange}>
+                  <option value="">All States</option>
+                  {INDIAN_STATES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </FilterSelect>
                 <FilterSelect icon={List} value={statusFilter} onChange={onStatusChange}>
-                  <option value="">All Status</option>
-                  {LEAD_STATUSES.map((s) => (
+                  <option value="">Lead follow up</option>
+                  {LEAD_FOLLOW_UP_OUTCOMES.map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </FilterSelect>

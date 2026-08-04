@@ -15,6 +15,7 @@ import Avatar from '../ui/Avatar';
 import { STATUS_STYLES, formatBudget } from '../sales-manager/managerUtils';
 import { CustomerCell } from '../sales-manager/LeadListBadges';
 import { getLeadStatusLabel } from '../../lib/leadStatusLabel';
+import { LEAD_FOLLOW_UP_OUTCOMES } from '../../constants/leadFollowUpOutcomes';
 
 function formatCreatedAt(date) {
   if (!date) return null;
@@ -269,19 +270,32 @@ export function ExecStatusCell({ lead }) {
   const isActiveReactivated =
     lead?.reactivation?.isReactivated &&
     ['follow_up', 'working_progress', 'contacted', 'negotiation', 'quotation_sent'].includes(status);
-  const label = isActiveReactivated ? 'Active' : getLeadStatusLabel(status);
+  const reason = String(lead?.statusReason || '').trim();
+  const reasonKey = reason.split('—')[0].trim();
+  const outcome =
+    LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.value === reasonKey) ||
+    LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.lostReason === reasonKey) ||
+    (status === 'converted'
+      ? LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.value === 'converted')
+      : status === 'working_progress'
+        ? LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.value === 'working_progress')
+        : null);
+  const label = isActiveReactivated
+    ? 'Active'
+    : outcome?.label || getLeadStatusLabel(status);
   const styleKey = isActiveReactivated ? 'active' : status;
 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ring-1 ring-inset whitespace-nowrap',
+        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ring-1 ring-inset whitespace-nowrap max-w-[180px] truncate',
         STATUS_STYLES[styleKey] || STATUS_STYLES.new
       )}
+      title={label}
     >
       <span
         className={cn(
-          'w-1.5 h-1.5 rounded-full',
+          'w-1.5 h-1.5 rounded-full shrink-0',
           status === 'new' && 'animate-pulse',
           STATUS_DOT[isActiveReactivated ? 'reactivated' : status] || 'bg-sky-500'
         )}

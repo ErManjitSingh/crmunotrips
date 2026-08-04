@@ -4,28 +4,13 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import API from '../../api/axios';
 import { Button } from '../ui/button';
-import { ActionModal } from './LeadActionsMenu';
 import { LeadDetailLayout } from '../lead-detail';
 import AddFollowUpModal from '../followups/AddFollowUpModal';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/followupApi';
 import { useLeadActivities } from '../../features/leads/hooks/useLeadActivities';
 import { isLeadStatusLocked } from '../../utils/leadUtils';
-import LostReasonSelect from '../leads/LostReasonSelect';
 import PostConvertCommercialModal from '../leads/PostConvertCommercialModal';
-import PaymentScreenshotField from '../leads/PaymentScreenshotField';
-import { toast } from '../../context/ToastContext';
-
-const STATUSES = [
-  'new',
-  'contacted',
-  'working_progress',
-  'follow_up',
-  'quotation_sent',
-  'negotiation',
-  'converted',
-  'lost',
-  'booked_from_another_company',
-];
+import LeadFollowUpOutcomeModal from './LeadFollowUpOutcomeModal';
 
 export default function ExecutiveLeadDetailPage() {
   const { id } = useParams();
@@ -37,11 +22,6 @@ export default function ExecutiveLeadDetailPage() {
   const [highlightQuotationId] = useState(location.state?.quotationId || null);
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
-  const [modalStatus, setModalStatus] = useState('contacted');
-  const [modalStatusReason, setModalStatusReason] = useState('');
-  const [advanceAmount, setAdvanceAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('upi');
-  const [paymentShots, setPaymentShots] = useState([]);
   const [markingCallDone, setMarkingCallDone] = useState(false);
   const [commercialOpen, setCommercialOpen] = useState(false);
 
@@ -118,48 +98,16 @@ export default function ExecutiveLeadDetailPage() {
     );
   }
 
-  const handleChangeStatus = async () => {
-    if (!id) return;
-    const payload = {
-      status: modalStatus,
-      statusReason: modalStatusReason,
-    };
-    if (modalStatus === 'converted') {
-      const advance = Number(advanceAmount);
-      if (!Number.isFinite(advance) || advance < 0) {
-        return;
-      }
-      if (!paymentShots.length) {
-        toast.error('Upload payment screenshot before converting');
-        return;
-      }
-      payload.advanceAmount = advance;
-      payload.paymentMethod = paymentMethod;
-      payload.sendReceipt = true;
-      payload.paymentScreenshots = paymentShots.map((f) => ({
-        base64: f.base64,
-        name: f.name,
-      }));
-      payload.paymentScreenshotBase64 = paymentShots[0]?.base64;
-      payload.paymentScreenshotName = paymentShots[0]?.name;
-    }
+  const handleFollowUpOutcome = async (payload, meta = {}) => {
     await API.put(`/sales-executive/leads/${id}`, payload);
-    const becameConverted = modalStatus === 'converted';
+    if (meta.comment && ['lost', 'booked_from_another_company'].includes(payload.status)) {
+      await API.post(`/sales-executive/leads/${id}/notes`, { text: meta.comment }).catch(() => {});
+    }
+    const becameConverted = payload.status === 'converted';
     setStatusModalOpen(false);
-    setModalStatusReason('');
-    setAdvanceAmount('');
-    setPaymentShots([]);
     await loadLead();
     if (becameConverted) setCommercialOpen(true);
   };
-  const reasonRequired = ['lost', 'booked_from_another_company'].includes(modalStatus);
-  const convertAdvanceInvalid =
-    modalStatus === 'converted' && (
-      !advanceAmount
-      || Number(advanceAmount) < 0
-      || Number.isNaN(Number(advanceAmount))
-      || !paymentShots.length
-    );
 
   const handleColdCallDone = async () => {
     if (!id || markingCallDone) return;
@@ -212,11 +160,7 @@ export default function ExecutiveLeadDetailPage() {
         onScheduleFollowUp={() => setFollowUpModalOpen(true)}
         onContactLogged={loadLead}
         onEmailSent={loadLead}
-        onChangeStatus={!isLeadStatusLocked(lead.status) ? () => {
-          setModalStatus(lead.status || 'new');
-          setModalStatusReason(lead.statusReason || '');
-          setStatusModalOpen(true);
-        } : undefined}
+        onChangeStatus={!isLeadStatusLocked(lead.status) ? () => setStatusModalOpen(true) : undefined}
         canChangeStatus={!isLeadStatusLocked(lead.status)}
         canEditLead
         editHref={`/sales-executive/leads/${id}/edit`}
@@ -234,91 +178,17 @@ export default function ExecutiveLeadDetailPage() {
         }}
       />
 
-      <ActionModal open={statusModalOpen} title="Lead status" onClose={() => setStatusModalOpen(false)}>
-        <select
-          value={modalStatus}
-          onChange={(e) => setModalStatus(e.target.value)}
-          className="w-full rounded-xl border border-subtle bg-white p-3 text-sm mb-4"
-        >
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
-          ))}
-        </select>
-        {modalStatus === 'converted' && (
-          <div className="mb-4 space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/80 p-3">
-            <p className="text-xs font-semibold text-emerald-800">
-              Enter advance / token received. Customer will get a payment voucher by email.
-            </p>
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Advance / Token (₹)</label>
-              <input
-                type="number"
-                min={0}
-                value={advanceAmount}
-                onChange={(e) => setAdvanceAmount(e.target.value)}
-                placeholder="e.g. 15000"
-                className="mt-1 w-full rounded-xl border border-subtle bg-white p-3 text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Payment mode</label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-subtle bg-white p-3 text-sm"
-              >
-                <option value="upi">UPI</option>
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="cheque">Cheque</option>
-              </select>
-            </div>
-            <PaymentScreenshotField
-              required
-              value={paymentShots}
-              onChange={({ files, error }) => {
-                if (error) toast.error(error);
-                setPaymentShots(files || []);
-              }}
-            />
-          </div>
-        )}
-        {['lost', 'booked_from_another_company'].includes(modalStatus) ? (
-          <LostReasonSelect
-            value={modalStatusReason}
-            onChange={setModalStatusReason}
-            className="mb-4"
-          />
-        ) : (
-          <textarea
-            value={modalStatusReason}
-            onChange={(e) => setModalStatusReason(e.target.value)}
-            rows={3}
-            placeholder="Reason for status change (optional)"
-            className="w-full rounded-xl border border-subtle bg-white p-3 text-sm mb-4"
-          />
-        )}
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => {
-            setStatusModalOpen(false);
-            setModalStatusReason('');
-            setAdvanceAmount('');
-            setPaymentShots([]);
-          }}>Cancel</Button>
-          <Button
-            onClick={handleChangeStatus}
-            disabled={(reasonRequired && !modalStatusReason.trim()) || convertAdvanceInvalid}
-          >
-            {modalStatus === 'converted' ? 'Convert & Send Voucher' : 'Update'}
-          </Button>
-        </div>
-      </ActionModal>
+      <LeadFollowUpOutcomeModal
+        open={statusModalOpen}
+        lead={lead}
+        onClose={() => setStatusModalOpen(false)}
+        onSubmit={handleFollowUpOutcome}
+      />
+
       <PostConvertCommercialModal
         open={commercialOpen}
         leadId={id}
         onClose={() => setCommercialOpen(false)}
-        onSaved={() => loadLead()}
       />
     </motion.div>
   );

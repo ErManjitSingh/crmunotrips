@@ -8,7 +8,6 @@ import { isLeadStatusLocked } from '../../utils/leadUtils';
 import { useRoleLeadsQuery } from '../../hooks/useRoleLeadsQuery';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import ExecutivePageShell from './ExecutivePageShell';
-import { Button } from '../ui/button';
 import ExecutiveLeadKpiStrip from './ExecutiveLeadKpiStrip';
 import ExecutiveLeadsFilterBar from './ExecutiveLeadsFilterBar';
 import MobileExecutiveLeads from './MobileExecutiveLeads';
@@ -25,32 +24,19 @@ import {
   ExecFollowUpCell,
 } from './ExecutiveLeadListCells';
 import { LEAD_FILTERS } from './executiveUtils';
-import LeadActionsMenu, { ActionModal } from './LeadActionsMenu';
+import LeadActionsMenu from './LeadActionsMenu';
 import { invalidateLeadLists } from '../../lib/queryInvalidation';
 import VirtualizedRoleTable from '../ui/VirtualizedRoleTable';
 import AddFollowUpModal from '../followups/AddFollowUpModal';
 import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/followupApi';
 import ConvertedLeadsTable from '../leads/ConvertedLeadsTable';
-import LostReasonSelect from '../leads/LostReasonSelect';
 import PostConvertCommercialModal from '../leads/PostConvertCommercialModal';
-import PaymentScreenshotField from '../leads/PaymentScreenshotField';
+import LeadFollowUpOutcomeModal from './LeadFollowUpOutcomeModal';
+import { getFollowUpOutcome } from '../../constants/leadFollowUpOutcomes';
 import { useSidebarCounts } from '../../hooks/useSidebarCounts';
 import { resolveListTotal } from '../../lib/resolveListTotal';
-import { toast } from '../../context/ToastContext';
 
 const ICONS = { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Undo2 };
-
-const STATUSES = [
-  'new',
-  'contacted',
-  'working_progress',
-  'follow_up',
-  'quotation_sent',
-  'negotiation',
-  'converted',
-  'lost',
-  'booked_from_another_company',
-];
 
 const columnHelper = createColumnHelper();
 
@@ -62,15 +48,11 @@ export default function MyLeadsPage() {
   const debouncedSearch = useDebouncedValue(search, 500);
   const [statusFilter, setStatusFilter] = useState('');
   const [destinationFilter, setDestinationFilter] = useState('');
+  const [stateFilter, setStateFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 25 });
   const [modal, setModal] = useState(null);
-  const [modalStatus, setModalStatus] = useState('contacted');
-  const [modalStatusReason, setModalStatusReason] = useState('');
-  const [advanceAmount, setAdvanceAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('upi');
-  const [paymentShots, setPaymentShots] = useState([]);
   const [commercialLeadId, setCommercialLeadId] = useState(null);
   const meta = LEAD_FILTERS[filter] || LEAD_FILTERS.new;
   const Icon = ICONS[meta.icon] || Sparkles;
@@ -78,13 +60,21 @@ export default function MyLeadsPage() {
   const isAllView = filter === 'all';
   const isConvertedView = filter === 'converted';
 
+  const outcomeMeta = statusFilter ? getFollowUpOutcome(statusFilter) : null;
+  const outcomeReasonKey = outcomeMeta?.lostReason || outcomeMeta?.value || '';
+
   const { data, isLoading } = useRoleLeadsQuery({
     endpoint: '/sales-executive/leads',
     filter,
     search: debouncedSearch,
     skipDebounce: true,
-    status: isAllView ? statusFilter : '',
+    status: isAllView && outcomeMeta ? outcomeMeta.status : '',
+    statusReason:
+      isAllView && outcomeReasonKey && !['converted', 'working_progress'].includes(statusFilter)
+        ? outcomeReasonKey
+        : '',
     destination: destinationFilter,
+    state: stateFilter,
     priority: priorityFilter,
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
@@ -110,56 +100,30 @@ export default function MyLeadsPage() {
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
-  }, [filter, debouncedSearch, statusFilter, destinationFilter, priorityFilter]);
+  }, [filter, debouncedSearch, statusFilter, destinationFilter, stateFilter, priorityFilter]);
 
   useEffect(() => {
     setStatusFilter('');
     setDestinationFilter('');
+    setStateFilter('');
     setPriorityFilter('');
     setSourceFilter('');
   }, [filter]);
 
-  const handleChangeStatus = async () => {
+  const handleFollowUpOutcome = async (payload, meta = {}) => {
     if (!modal?.lead) return;
-    const payload = {
-      status: modalStatus,
-      statusReason: modalStatusReason,
-    };
-    if (modalStatus === 'converted') {
-      const advance = Number(advanceAmount);
-      if (!Number.isFinite(advance) || advance < 0) return;
-      if (!paymentShots.length) {
-        toast.error('Upload payment screenshot before converting');
-        return;
-      }
-      payload.advanceAmount = advance;
-      payload.paymentMethod = paymentMethod;
-      payload.sendReceipt = true;
-      payload.paymentScreenshots = paymentShots.map((f) => ({
-        base64: f.base64,
-        name: f.name,
-      }));
-      payload.paymentScreenshotBase64 = paymentShots[0]?.base64;
-      payload.paymentScreenshotName = paymentShots[0]?.name;
-    }
     await API.put(`/sales-executive/leads/${modal.lead._id}`, payload);
-    const becameConverted = modalStatus === 'converted';
+    if (meta.comment && ['lost', 'booked_from_another_company'].includes(payload.status)) {
+      await API.post(`/sales-executive/leads/${modal.lead._id}/notes`, {
+        text: meta.comment,
+      }).catch(() => {});
+    }
+    const becameConverted = payload.status === 'converted';
     const convertedId = modal.lead._id;
     setModal(null);
-    setModalStatusReason('');
-    setAdvanceAmount('');
-    setPaymentShots([]);
     fetchLeads();
     if (becameConverted) setCommercialLeadId(convertedId);
   };
-  const reasonRequired = ['lost', 'booked_from_another_company'].includes(modalStatus);
-  const convertAdvanceInvalid =
-    modalStatus === 'converted' && (
-      !advanceAmount
-      || Number(advanceAmount) < 0
-      || Number.isNaN(Number(advanceAmount))
-      || !paymentShots.length
-    );
 
   const columns = useMemo(() => [
     columnHelper.accessor('leadId', {
@@ -224,8 +188,6 @@ export default function MyLeadsPage() {
             onScheduleFollowUp={(lead) => { setModal({ type: 'followup', lead }); }}
             onChangeStatus={(lead) => {
               setModal({ type: 'status', lead });
-              setModalStatus(lead.status);
-              setModalStatusReason(lead.statusReason || '');
             }}
           />
         </div>
@@ -248,6 +210,8 @@ export default function MyLeadsPage() {
         onStatusChange={setStatusFilter}
         destinationFilter={destinationFilter}
         onDestinationChange={setDestinationFilter}
+        stateFilter={stateFilter}
+        onStateChange={setStateFilter}
         priorityFilter={priorityFilter}
         onPriorityChange={setPriorityFilter}
         sourceFilter={sourceFilter}
@@ -282,6 +246,8 @@ export default function MyLeadsPage() {
         onStatusChange={setStatusFilter}
         destinationFilter={destinationFilter}
         onDestinationChange={setDestinationFilter}
+        stateFilter={stateFilter}
+        onStateChange={setStateFilter}
         priorityFilter={priorityFilter}
         onPriorityChange={setPriorityFilter}
         showStatusFilter={isAllView}
@@ -326,86 +292,12 @@ export default function MyLeadsPage() {
     </ExecutivePageShell>
       </div>
 
-      <ActionModal open={modal?.type === 'status'} title="Lead status" onClose={() => setModal(null)}>
-        <select
-          value={modalStatus}
-          onChange={(e) => setModalStatus(e.target.value)}
-          className="w-full rounded-xl border border-subtle bg-surface-elevated p-3 text-sm mb-4"
-        >
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
-          ))}
-        </select>
-        {modalStatus === 'converted' && (
-          <div className="mb-4 space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/80 p-3">
-            <p className="text-xs font-semibold text-emerald-800">
-              Enter advance / token received. Customer will get a payment voucher by email.
-            </p>
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Advance / Token (₹)</label>
-              <input
-                type="number"
-                min={0}
-                value={advanceAmount}
-                onChange={(e) => setAdvanceAmount(e.target.value)}
-                placeholder="e.g. 15000"
-                className="mt-1 w-full rounded-xl border border-subtle bg-white p-3 text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Payment mode</label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-subtle bg-white p-3 text-sm"
-              >
-                <option value="upi">UPI</option>
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="cheque">Cheque</option>
-              </select>
-            </div>
-            <PaymentScreenshotField
-              required
-              value={paymentShots}
-              onChange={({ files, error }) => {
-                if (error) toast.error(error);
-                setPaymentShots(files || []);
-              }}
-            />
-          </div>
-        )}
-        {['lost', 'booked_from_another_company'].includes(modalStatus) ? (
-          <LostReasonSelect
-            value={modalStatusReason}
-            onChange={setModalStatusReason}
-            className="mb-4"
-          />
-        ) : (
-          <textarea
-            value={modalStatusReason}
-            onChange={(e) => setModalStatusReason(e.target.value)}
-            rows={3}
-            placeholder="Reason for status change (optional)"
-            className="w-full rounded-xl border border-subtle bg-white dark:bg-slate-900 p-3 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
-          />
-        )}
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => {
-            setModal(null);
-            setModalStatusReason('');
-            setAdvanceAmount('');
-            setPaymentShots([]);
-          }}>Cancel</Button>
-          <Button
-            onClick={handleChangeStatus}
-            disabled={(reasonRequired && !modalStatusReason.trim()) || convertAdvanceInvalid}
-          >
-            {modalStatus === 'converted' ? 'Convert & Send Voucher' : 'Update'}
-          </Button>
-        </div>
-      </ActionModal>
+      <LeadFollowUpOutcomeModal
+        open={modal?.type === 'status'}
+        lead={modal?.lead}
+        onClose={() => setModal(null)}
+        onSubmit={handleFollowUpOutcome}
+      />
 
       <AddFollowUpModal
         open={modal?.type === 'followup'}

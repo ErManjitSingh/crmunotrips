@@ -503,6 +503,17 @@ export default function StepLeadForm({ isEdit, leadId }) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <WizardField label="Budget (₹)" error={errors.budget?.message}>
+              <IconInput
+                icon={TrendingUp}
+                {...register('budget')}
+                type="number"
+                min={0}
+                step={1000}
+                placeholder="e.g. 75000"
+                error={errors.budget}
+              />
+            </WizardField>
             <WizardField label="Cab type">
               <IconSelect {...register('cabType')}>
                 {CAB_TYPE_OPTIONS.map((c) => (

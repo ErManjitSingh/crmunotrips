@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, SlidersHorizontal, Plus } from 'lucide-react';
-import { LEAD_STATUSES, DESTINATIONS } from '../leads/constants';
+import { DESTINATIONS, INDIAN_STATES } from '../leads/constants';
+import { LEAD_FOLLOW_UP_OUTCOMES } from '../../constants/leadFollowUpOutcomes';
 import { executiveInput } from './executivePageStyles';
 
 const PRIORITY_OPTIONS = [
@@ -20,17 +21,19 @@ export default function ExecutiveLeadsFilterBar({
   onStatusChange,
   destinationFilter,
   onDestinationChange,
+  stateFilter = '',
+  onStateChange,
   priorityFilter,
   onPriorityChange,
   showStatusFilter = true,
   showAddLead = true,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const activeExtraFilters = statusFilter || destinationFilter || priorityFilter;
+  const activeExtraFilters = statusFilter || destinationFilter || priorityFilter || stateFilter;
 
   return (
     <div className="rounded-2xl border border-subtle bg-white dark:bg-slate-900 shadow-sm p-4">
-      <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+      <div className="flex flex-col lg:flex-row gap-3 lg:items-center flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
           <input
@@ -52,14 +55,25 @@ export default function ExecutiveLeadsFilterBar({
           ))}
         </select>
 
+        <select
+          value={stateFilter}
+          onChange={(e) => onStateChange?.(e.target.value)}
+          className={`h-10 px-3 min-w-[160px] ${executiveInput}`}
+        >
+          <option value="">All states</option>
+          {INDIAN_STATES.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+
         {showStatusFilter && (
           <select
             value={statusFilter}
             onChange={(e) => onStatusChange(e.target.value)}
-            className={`h-10 px-3 min-w-[140px] ${executiveInput}`}
+            className={`h-10 px-3 min-w-[180px] ${executiveInput}`}
           >
-            <option value="">Status</option>
-            {LEAD_STATUSES.map((s) => (
+            <option value="">Lead follow up</option>
+            {LEAD_FOLLOW_UP_OUTCOMES.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
@@ -110,6 +124,7 @@ export default function ExecutiveLeadsFilterBar({
             onClick={() => {
               onStatusChange('');
               onDestinationChange('');
+              onStateChange?.('');
               onPriorityChange('');
             }}
             className="text-sm font-medium text-[#5D5FEF] hover:text-[#4F51E0]"

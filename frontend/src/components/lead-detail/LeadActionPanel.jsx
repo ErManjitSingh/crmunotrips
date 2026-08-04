@@ -63,7 +63,7 @@ export default function LeadActionPanel({
             onClick={onChangeStatus}
             className="w-full rounded-xl justify-start gap-2.5 h-auto py-2.5 bg-orange-50 text-orange-700 border-orange-100 hover:bg-orange-100 font-semibold"
           >
-            <CalendarPlus className="w-4 h-4" /> Lead status
+            <CalendarPlus className="w-4 h-4" /> Lead follow up
           </Button>
         )}
       </div>

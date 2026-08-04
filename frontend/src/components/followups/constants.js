@@ -25,6 +25,7 @@ export const CALL_PICKED_OUTCOMES = [
   { value: 'interested_quotation', label: 'Interested — needs quotation' },
   { value: 'requested_callback', label: 'Requested callback later' },
   { value: 'price_negotiation', label: 'Price negotiation ongoing' },
+  { value: 'budget_issues', label: 'Budget issues / Costing issue' },
   { value: 'ready_to_book', label: 'Ready to book' },
   { value: 'not_interested', label: 'Not interested' },
   { value: 'converted', label: 'Converted to customer' },

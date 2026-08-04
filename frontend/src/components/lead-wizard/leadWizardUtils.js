@@ -111,7 +111,7 @@ export function wizardValuesToPayload(values) {
     source: values.leadSource,
     sourceLabel: sourceLabel(values.leadSource),
     priority: values.priority,
-    budget: 0,
+    budget: Number(values.budget) > 0 ? Number(values.budget) : 0,
     budgetRange: 'custom',
     mealPlan,
     mealPreference: mealPlan.toUpperCase(),

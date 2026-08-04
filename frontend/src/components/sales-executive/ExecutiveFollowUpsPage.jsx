@@ -43,6 +43,14 @@ function withEffectiveStatus(f) {
   return { ...f, effectiveStatus };
 }
 
+function toDatetimeLocalValue(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function startOfMonth() {
   const d = new Date();
   d.setDate(1);
@@ -145,9 +153,12 @@ export default function ExecutiveFollowUpsPage() {
   };
 
   const handleReschedule = async () => {
+    if (!rescheduleAt) {
+      return;
+    }
     await updateExecutiveFollowUp(modal._id, {
       action: 'reschedule',
-      scheduledAt: rescheduleAt ? new Date(rescheduleAt).toISOString() : undefined,
+      scheduledAt: new Date(rescheduleAt).toISOString(),
       remarks,
     });
     setModal(null);
@@ -341,7 +352,7 @@ export default function ExecutiveFollowUpsPage() {
                 onReschedule={() => {
                   setModal({ ...f, action: 'reschedule' });
                   setRemarks('');
-                  setRescheduleAt('');
+                  setRescheduleAt(toDatetimeLocalValue(f.scheduledAt));
                 }}
                 onRemarks={() => {
                   setModal({ ...f, action: 'remarks' });
@@ -373,6 +384,7 @@ export default function ExecutiveFollowUpsPage() {
             type="datetime-local"
             value={rescheduleAt}
             onChange={(e) => setRescheduleAt(e.target.value)}
+            required
             className={`w-full ${executiveInput} p-3 mb-3`}
           />
         )}
@@ -393,6 +405,7 @@ export default function ExecutiveFollowUpsPage() {
                   ? handleRemarksOnly
                   : handleComplete
             }
+            disabled={modal?.action === 'reschedule' && !rescheduleAt}
             className="bg-[#5D5FEF] hover:bg-[#4f51e5] text-white border-0"
           >
             {modal?.action === 'reschedule' ? 'Reschedule' : 'Save'}

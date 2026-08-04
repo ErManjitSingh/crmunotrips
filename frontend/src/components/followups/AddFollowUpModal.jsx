@@ -51,12 +51,19 @@ export default function AddFollowUpModal({
     setError('');
     if (editData) {
       const d = new Date(editData.scheduledAt);
+      const pad = (n) => String(n).padStart(2, '0');
+      const localDate = Number.isNaN(d.getTime())
+        ? ''
+        : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      const localTime = Number.isNaN(d.getTime())
+        ? '10:00'
+        : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
       setForm({
         lead: editData.lead?._id || fixedLeadId || '',
         type: editData.type || 'call',
         category: editData.category || 'call_picked',
-        date: d.toISOString().split('T')[0],
-        time: d.toTimeString().slice(0, 5),
+        date: localDate,
+        time: localTime,
         priority: editData.priority || 'medium',
         remarks: editData.notes || '',
         coldReason: editData.coldReason || '',
