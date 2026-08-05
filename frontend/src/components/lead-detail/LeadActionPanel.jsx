@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Phone, CalendarPlus, UserCheck, Pencil } from 'lucide-react';
-import { Button } from '../ui/button';
+import { Phone, UserCheck, Pencil } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { DETAIL_CARD } from './leadDetailUtils';
 
@@ -13,9 +12,7 @@ const actions = [
 export default function LeadActionPanel({
   onLogCallNote,
   onAssign,
-  onChangeStatus,
   canEditLead = true,
-  canChangeStatus = true,
   editHref,
 }) {
   return (
@@ -56,16 +53,6 @@ export default function LeadActionPanel({
             </button>
           );
         })}
-        {canChangeStatus && onChangeStatus && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onChangeStatus}
-            className="w-full rounded-xl justify-start gap-2.5 h-auto py-2.5 bg-orange-50 text-orange-700 border-orange-100 hover:bg-orange-100 font-semibold"
-          >
-            <CalendarPlus className="w-4 h-4" /> Lead follow up
-          </Button>
-        )}
       </div>
     </div>
   );

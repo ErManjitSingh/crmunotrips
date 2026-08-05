@@ -128,7 +128,7 @@ export default function LeadContactActions({
           <ActionTile
             icon={CalendarPlus}
             label="Lead follow up"
-            description="Set reminder"
+            description="Outcome & reminder"
             tone="amber"
             onClick={onScheduleFollowUp}
           />
@@ -160,9 +160,6 @@ export default function LeadContactActions({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            {onChangeStatus ? (
-              <DropdownMenuItem onClick={onChangeStatus}>Lead status</DropdownMenuItem>
-            ) : null}
             {onLogCallNote ? (
               <DropdownMenuItem onClick={onLogCallNote}>Log Call Note</DropdownMenuItem>
             ) : null}

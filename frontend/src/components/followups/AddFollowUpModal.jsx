@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import AppModal from '../ui/AppModal';
+import PaymentScreenshotField from '../leads/PaymentScreenshotField';
 import {
   FOLLOWUP_PRIORITIES,
   FOLLOWUP_CATEGORY_OPTIONS,
@@ -10,6 +11,12 @@ import {
   CALL_PICKED_OUTCOMES,
 } from './constants';
 import { COLD_LEAD_REASONS } from '../lead-wizard/constants';
+import {
+  LEAD_FOLLOW_UP_OUTCOMES,
+  getFollowUpOutcome,
+  resolveOutcomeFromLead,
+} from '../../constants/leadFollowUpOutcomes';
+import { toast } from '../../context/ToastContext';
 
 const emptyForm = {
   lead: '',
@@ -22,6 +29,7 @@ const emptyForm = {
   coldReason: '',
   notPickedReason: '',
   pickedOutcome: '',
+  leadOutcome: '',
 };
 
 function plusFourHoursLocal() {
@@ -33,6 +41,38 @@ function plusFourHoursLocal() {
   };
 }
 
+function buildLeadStatusPayload(selected, comment, convertFields = {}) {
+  if (!selected) return null;
+  const statusReason = selected.lostReason || selected.value;
+  const note = String(comment || '').trim();
+  const payload = {
+    status: selected.status,
+    statusReason:
+      note && !['lost', 'booked_from_another_company', 'converted'].includes(selected.status)
+        ? `${statusReason} — ${note}`
+        : statusReason,
+  };
+
+  if (['lost', 'booked_from_another_company'].includes(selected.status)) {
+    payload.statusReason = selected.lostReason || selected.value;
+  }
+
+  if (selected.status === 'converted') {
+    payload.advanceAmount = Number(convertFields.advanceAmount);
+    payload.paymentMethod = convertFields.paymentMethod || 'upi';
+    payload.sendReceipt = true;
+    payload.paymentScreenshots = (convertFields.paymentShots || []).map((f) => ({
+      base64: f.base64,
+      name: f.name,
+    }));
+    payload.paymentScreenshotBase64 = convertFields.paymentShots?.[0]?.base64;
+    payload.paymentScreenshotName = convertFields.paymentShots?.[0]?.name;
+    if (note) payload.statusReason = note;
+  }
+
+  return payload;
+}
+
 export default function AddFollowUpModal({
   open,
   onClose,
@@ -41,14 +81,23 @@ export default function AddFollowUpModal({
   editData = null,
   fixedLeadId = null,
   fixedLeadName = null,
+  /** When true, shows Outcome * (lead status) on top — keeps all existing schedule fields */
+  showLeadOutcome = false,
+  lead = null,
 }) {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('upi');
+  const [paymentShots, setPaymentShots] = useState([]);
 
   useEffect(() => {
     if (!open) return;
     setError('');
+    setAdvanceAmount('');
+    setPaymentMethod('upi');
+    setPaymentShots([]);
     if (editData) {
       const d = new Date(editData.scheduledAt);
       const pad = (n) => String(n).padStart(2, '0');
@@ -69,12 +118,27 @@ export default function AddFollowUpModal({
         coldReason: editData.coldReason || '',
         notPickedReason: editData.notPickedReason || (editData.category === 'call_not_picked' ? editData.outcome : '') || '',
         pickedOutcome: editData.pickedOutcome || (editData.category === 'call_picked' ? editData.outcome : '') || '',
+        leadOutcome: resolveOutcomeFromLead(lead) || '',
       });
     } else {
       const today = new Date().toISOString().split('T')[0];
-      setForm({ ...emptyForm, lead: fixedLeadId || '', date: today });
+      setForm({
+        ...emptyForm,
+        lead: fixedLeadId || '',
+        date: today,
+        leadOutcome: showLeadOutcome ? resolveOutcomeFromLead(lead) || '' : '',
+      });
     }
-  }, [editData, open, fixedLeadId]);
+  }, [editData, open, fixedLeadId, lead, showLeadOutcome]);
+
+  const selectedLeadOutcome = showLeadOutcome ? getFollowUpOutcome(form.leadOutcome) : null;
+  const isConverted = selectedLeadOutcome?.status === 'converted';
+  const convertInvalid =
+    isConverted &&
+    (!advanceAmount ||
+      Number(advanceAmount) < 0 ||
+      Number.isNaN(Number(advanceAmount)) ||
+      !paymentShots.length);
 
   const applyCategoryDefaults = (nextCategory) => {
     if (nextCategory === 'cold') {
@@ -102,6 +166,14 @@ export default function AddFollowUpModal({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (showLeadOutcome && !form.leadOutcome) {
+      setError('Please select an outcome');
+      return;
+    }
+    if (convertInvalid) {
+      setError('Enter advance and upload payment screenshot to convert');
+      return;
+    }
     if (!form.date) {
       setError('Please select follow-up date');
       return;
@@ -132,8 +204,12 @@ export default function AddFollowUpModal({
       const coldLabel = COLD_LEAD_REASONS.find((r) => r.value === form.coldReason)?.label;
       const notPickedLabel = CALL_NOT_PICKED_REASONS.find((r) => r.value === form.notPickedReason)?.label;
       const pickedLabel = CALL_PICKED_OUTCOMES.find((r) => r.value === form.pickedOutcome)?.label;
+      const leadOutcomeLabel = selectedLeadOutcome?.label;
 
       let remarks = form.remarks?.trim() || '';
+      if (showLeadOutcome && leadOutcomeLabel) {
+        remarks = [remarks, `Outcome: ${leadOutcomeLabel}`].filter(Boolean).join(' — ');
+      }
       if (form.category === 'cold') {
         remarks = [remarks, coldLabel ? `Cold reason: ${coldLabel}` : '']
           .filter(Boolean)
@@ -148,6 +224,14 @@ export default function AddFollowUpModal({
           .join(' — ') || `Call picked — ${pickedLabel}`;
       }
 
+      const statusUpdate = showLeadOutcome
+        ? buildLeadStatusPayload(selectedLeadOutcome, form.remarks, {
+            advanceAmount,
+            paymentMethod,
+            paymentShots,
+          })
+        : null;
+
       await onSubmit({
         ...form,
         lead: fixedLeadId || form.lead,
@@ -161,6 +245,8 @@ export default function AddFollowUpModal({
           : form.category === 'call_picked'
             ? form.pickedOutcome
             : undefined,
+        statusUpdate,
+        leadOutcome: form.leadOutcome || undefined,
       });
       if (!editData) {
         const today = new Date().toISOString().split('T')[0];
@@ -207,6 +293,68 @@ export default function AddFollowUpModal({
                 <option key={l._id} value={l._id}>{l.name} — {l.destination}</option>
               ))}
             </select>
+          </div>
+        )}
+
+        {showLeadOutcome && (
+          <div>
+            <label className="text-xs font-medium text-content-muted mb-1 block">Outcome *</label>
+            <select
+              value={form.leadOutcome}
+              onChange={(e) => setForm({ ...form, leadOutcome: e.target.value })}
+              required
+              className="input-premium w-full h-11 rounded-xl font-medium"
+            >
+              <option value="">Select follow-up outcome…</option>
+              {LEAD_FOLLOW_UP_OUTCOMES.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {showLeadOutcome && isConverted && (
+          <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/80 p-3">
+            <p className="text-xs font-semibold text-emerald-800">
+              Enter advance / token received. Customer will get a payment voucher by email.
+            </p>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                Advance / Token (₹)
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={advanceAmount}
+                onChange={(e) => setAdvanceAmount(e.target.value)}
+                placeholder="e.g. 15000"
+                className="mt-1 w-full rounded-xl border border-subtle bg-white p-3 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                Payment mode
+              </label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-subtle bg-white p-3 text-sm"
+              >
+                <option value="upi">UPI</option>
+                <option value="cash">Cash</option>
+                <option value="card">Card</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="cheque">Cheque</option>
+              </select>
+            </div>
+            <PaymentScreenshotField
+              required
+              value={paymentShots}
+              onChange={({ files, error: shotError }) => {
+                if (shotError) toast.error(shotError);
+                setPaymentShots(files || []);
+              }}
+            />
           </div>
         )}
 
@@ -355,8 +503,8 @@ export default function AddFollowUpModal({
           <Button type="button" variant="secondary" className="flex-1 rounded-xl" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button type="submit" variant="violet" className="flex-1 rounded-xl" disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
+          <Button type="submit" variant="violet" className="flex-1 rounded-xl" disabled={saving || convertInvalid}>
+            {saving ? 'Saving…' : isConverted ? 'Convert & Save' : 'Save'}
           </Button>
         </div>
       </form>

@@ -126,9 +126,7 @@ export default function LeadDetailLayout({
           <LeadActionPanel
             onLogCallNote={onLogCallNote}
             onAssign={onAssign}
-            onChangeStatus={onChangeStatus}
             canEditLead={canEditLead}
-            canChangeStatus={canChangeStatus}
             editHref={editHref}
           />
           {sidebarExtra}

@@ -304,8 +304,19 @@ export default function MyLeadsPage() {
         onClose={() => setModal(null)}
         fixedLeadId={modal?.lead?._id}
         fixedLeadName={modal?.lead?.name}
+        lead={modal?.lead}
+        showLeadOutcome={modal?.lead ? !isLeadStatusLocked(modal.lead.status) : false}
         onSubmit={async (data) => {
-          await createExecutiveFollowUp(buildFollowUpPayload({ ...data, lead: modal.lead._id }));
+          if (data.statusUpdate) {
+            await handleFollowUpOutcome(data.statusUpdate, {
+              outcome: getFollowUpOutcome(data.leadOutcome),
+              comment: data.remarks || '',
+            });
+          }
+          const { statusUpdate, leadOutcome, ...followUpData } = data;
+          void statusUpdate;
+          void leadOutcome;
+          await createExecutiveFollowUp(buildFollowUpPayload({ ...followUpData, lead: modal.lead._id }));
           setModal(null);
           fetchLeads();
         }}

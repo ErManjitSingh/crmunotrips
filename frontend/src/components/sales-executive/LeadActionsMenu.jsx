@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import {
   MoreVertical, Eye, Phone, MessageCircle, Pencil,
-  CalendarClock, RefreshCw, FileText,
+  CalendarClock, FileText,
 } from 'lucide-react';
 import {
   DropdownMenuRoot,
@@ -94,11 +94,6 @@ export default function LeadActionsMenu({
             <DropdownMenuItem onClick={() => onScheduleFollowUp?.(lead)} className="flex items-center gap-2 cursor-pointer">
               <CalendarClock className="w-4 h-4" /> Lead follow up
             </DropdownMenuItem>
-            {canChangeStatus && onChangeStatus && (
-              <DropdownMenuItem onClick={() => onChangeStatus(lead)} className="flex items-center gap-2 cursor-pointer">
-                <RefreshCw className="w-4 h-4" /> Lead follow up
-              </DropdownMenuItem>
-            )}
             <DropdownMenuItem asChild>
               <Link
                 to={`/sales-executive/quotations/new?leadId=${lead._id}`}

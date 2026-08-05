@@ -10,7 +10,7 @@ import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/foll
 import { useLeadActivities } from '../../features/leads/hooks/useLeadActivities';
 import { isLeadStatusLocked } from '../../utils/leadUtils';
 import PostConvertCommercialModal from '../leads/PostConvertCommercialModal';
-import LeadFollowUpOutcomeModal from './LeadFollowUpOutcomeModal';
+import { getFollowUpOutcome } from '../../constants/leadFollowUpOutcomes';
 
 export default function ExecutiveLeadDetailPage() {
   const { id } = useParams();
@@ -21,7 +21,6 @@ export default function ExecutiveLeadDetailPage() {
   const [flashMessage, setFlashMessage] = useState(location.state?.message || '');
   const [highlightQuotationId] = useState(location.state?.quotationId || null);
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
-  const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [markingCallDone, setMarkingCallDone] = useState(false);
   const [commercialOpen, setCommercialOpen] = useState(false);
 
@@ -98,15 +97,11 @@ export default function ExecutiveLeadDetailPage() {
     );
   }
 
-  const handleFollowUpOutcome = async (payload, meta = {}) => {
+  const applyLeadOutcome = async (payload, meta = {}) => {
     await API.put(`/sales-executive/leads/${id}`, payload);
     if (meta.comment && ['lost', 'booked_from_another_company'].includes(payload.status)) {
       await API.post(`/sales-executive/leads/${id}/notes`, { text: meta.comment }).catch(() => {});
     }
-    const becameConverted = payload.status === 'converted';
-    setStatusModalOpen(false);
-    await loadLead();
-    if (becameConverted) setCommercialOpen(true);
   };
 
   const handleColdCallDone = async () => {
@@ -160,8 +155,6 @@ export default function ExecutiveLeadDetailPage() {
         onScheduleFollowUp={() => setFollowUpModalOpen(true)}
         onContactLogged={loadLead}
         onEmailSent={loadLead}
-        onChangeStatus={!isLeadStatusLocked(lead.status) ? () => setStatusModalOpen(true) : undefined}
-        canChangeStatus={!isLeadStatusLocked(lead.status)}
         canEditLead
         editHref={`/sales-executive/leads/${id}/edit`}
       />
@@ -171,18 +164,24 @@ export default function ExecutiveLeadDetailPage() {
         onClose={() => setFollowUpModalOpen(false)}
         fixedLeadId={lead._id}
         fixedLeadName={lead.name}
+        lead={lead}
+        showLeadOutcome={!isLeadStatusLocked(lead.status)}
         onSubmit={async (data) => {
-          await createExecutiveFollowUp(buildFollowUpPayload({ ...data, lead: lead._id }));
+          const becameConverted = data.statusUpdate?.status === 'converted';
+          if (data.statusUpdate) {
+            await applyLeadOutcome(data.statusUpdate, {
+              outcome: getFollowUpOutcome(data.leadOutcome),
+              comment: data.remarks || '',
+            });
+          }
+          const { statusUpdate, leadOutcome, ...followUpData } = data;
+          void statusUpdate;
+          void leadOutcome;
+          await createExecutiveFollowUp(buildFollowUpPayload({ ...followUpData, lead: lead._id }));
           setFollowUpModalOpen(false);
           await loadLead();
+          if (becameConverted) setCommercialOpen(true);
         }}
-      />
-
-      <LeadFollowUpOutcomeModal
-        open={statusModalOpen}
-        lead={lead}
-        onClose={() => setStatusModalOpen(false)}
-        onSubmit={handleFollowUpOutcome}
       />
 
       <PostConvertCommercialModal

@@ -266,7 +266,27 @@ const addCallNote = asyncHandler(async (req, res) => {
   let nextFollowUp = null;
   if (scheduleNextCall !== false && scheduleNextCall !== 'false') {
     try {
+      const FollowUp = require('../models/FollowUp');
       const { createFollowUpForLead } = require('../services/followUpService');
+      const { syncLeadFollowUpDates } = require('../utils/followUpHelpers');
+
+      // 2nd/3rd call: complete prior auto "+2 hrs" reminders so the new timing becomes nextFollowUp
+      await FollowUp.updateMany(
+        {
+          lead: lead._id,
+          status: 'pending',
+          type: 'call',
+          notes: { $regex: /^Auto next call/i },
+        },
+        {
+          $set: {
+            status: 'completed',
+            completedAt: now,
+            outcome: 'auto_replaced',
+          },
+        }
+      );
+
       const scheduledAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
       const followCategory = !callConnected
         ? 'call_not_picked'
@@ -285,6 +305,7 @@ const addCallNote = asyncHandler(async (req, res) => {
         },
         user: req.user,
       });
+      await syncLeadFollowUpDates(lead._id);
     } catch (err) {
       console.error('[addCallNote] next follow-up failed:', err.message);
     }
