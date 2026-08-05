@@ -511,7 +511,7 @@ function resolveCity(option, destination) {
 
 async function fetchHotelDetailForOption(option, destination) {
   let city = resolveCity(option, destination);
-  let slug = option.slug || option.raw?.slug || '';
+  let slug = option.slug || option.hotel_slug || option.raw?.slug || option.raw?.hotel_slug || '';
 
   if (city && slug) {
     const res = await API.get('/uno-hotels/detail', {

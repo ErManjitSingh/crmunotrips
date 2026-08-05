@@ -7,7 +7,9 @@ function round2(n) {
 /**
  * Bake company (admin) margin into cost lines so SE only sees higher "raw"
  * amounts — no separate company-margin row on the total.
- * Hotel line stays hotel-only (never includes package residual / flights).
+ *
+ * Formula: Hotel Cost = Σ(day-wise absolute rates) × rooms (+ mattress),
+ * then × (1 + adminMargin%). Same bake for cab / flight.
  * Caller must pass UNBAKED raw line costs (wizard recomputes from package each time).
  */
 export function bakeCompanyMarginIntoLineCosts(pricing = {}, adminMarginPercent = 0) {

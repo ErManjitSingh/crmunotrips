@@ -220,7 +220,15 @@ async function resolveHotelCatalog(stays = []) {
 function applyCatalogToOption(option = {}, catalog = null, stay = null) {
   const hotelId = String(option.hotel_id || option.id || '');
   const hotel = hotelId && catalog ? catalog.get(hotelId) : null;
-  if (!hotel) return option;
+  if (!hotel) {
+    const slug = option.slug || option.hotel_slug || '';
+    return {
+      ...option,
+      slug,
+      hotel_slug: slug || option.hotel_slug || '',
+      city: option.city || stay?.destination_city || '',
+    };
+  }
 
   const thumb = sanitizeImageUrl(hotel.thumbnail_url);
   const images = sanitizeImages(hotel.images || (thumb ? [thumb] : []));
@@ -235,6 +243,8 @@ function applyCatalogToOption(option = {}, catalog = null, stay = null) {
   );
   // True package upgrade only — never fall back to catalog rate (that double-counts vs package baseCost).
   const priceDelta = Number(option.price_delta ?? option.upgrade_price ?? 0) || 0;
+  // Day-options API uses hotel_slug; catalog uses slug — keep both so detail hydrate never misses.
+  const slug = hotel.slug || option.slug || option.hotel_slug || '';
 
   return {
     ...option,
@@ -248,8 +258,9 @@ function applyCatalogToOption(option = {}, catalog = null, stay = null) {
     stars: hotel.star_category ?? option.stars,
     rating: hotel.rating ?? option.rating,
     location,
-    city: hotel.city || option.city,
-    slug: hotel.slug || option.slug,
+    city: hotel.city || option.city || stay?.destination_city || '',
+    slug,
+    hotel_slug: slug || option.hotel_slug || '',
     amenities: hotel.amenities || option.amenities,
     address: hotel.address || option.address,
     starting_price: startingPrice,
@@ -348,14 +359,41 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
     }
 
     const mealKey = packageMealKey(stay.default_meal_plan, { hasHotel: true });
-    const city = meta?.city || stay.destination_city || '';
-    const slug = meta?.slug || '';
+    const info =
+      stay.default_hotel_info && typeof stay.default_hotel_info === 'object'
+        ? stay.default_hotel_info
+        : {};
+    const matchedOpt = (Array.isArray(stay.hotel_options) ? stay.hotel_options : []).find(
+      (o) =>
+        (meta?.hotelId && String(o.hotel_id) === String(meta.hotelId)) ||
+        (meta?.id && String(o.hotel_id || o.id) === String(meta.id)) ||
+        (meta?.name &&
+          String(o.hotel_name || o.name || '')
+            .trim()
+            .toLowerCase() === String(meta.name).trim().toLowerCase())
+    );
+    const city =
+      meta?.city ||
+      matchedOpt?.city ||
+      info.city ||
+      stay.destination_city ||
+      '';
+    const slug =
+      meta?.slug ||
+      matchedOpt?.hotel_slug ||
+      matchedOpt?.slug ||
+      info.hotel_slug ||
+      info.slug ||
+      '';
     const detail = await loadDetail(city, slug);
     const room = pickStayRoom(detail?.rooms || [], stay, meta || {});
     const mealPlan = pickStayMealPlan(room, mealKey);
     const absolute = Number(mealPlan.absolutePrice || 0) || Number(meta?.startingPrice || 0) || 0;
     const epRate =
       Number(room?.epPrice || room?.rates?.ep || room?.pricePerNight || 0) || 0;
+    const mealKeyForBed = String(mealPlan.key || mealKey || 'map').toLowerCase();
+    const extraBedPerNight =
+      Number(room?.extraBedRates?.[mealKeyForBed] || 0) || 0;
 
     hydrated.push({
       ...day,
@@ -365,6 +403,8 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
       mealPlanKey: mealPlan.key,
       hotelMeta: {
         ...(meta || {}),
+        city: city || meta?.city || '',
+        slug: slug || meta?.slug || '',
         tierName: room?.name || stay.default_room_type_name || meta?.tierName || '',
         roomTypeId: room?.id || stay.default_room_type_id || meta?.roomTypeId || null,
         meals: mealPlan.label,
@@ -377,9 +417,11 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
               pricePerNight: absolute || Number(room.pricePerNight || 0),
               epPrice: epRate,
               rates: room.rates || null,
+              extraBedRates: room.extraBedRates || null,
               mealPlanOptions: room.mealPlanOptions || [],
               bedType: room.bedType,
               maxOccupancy: room.maxOccupancy,
+              extraBedRate: extraBedPerNight,
             }
           : {
               id: stay.default_room_type_id || null,
@@ -388,6 +430,7 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
         absolutePerNight: absolute,
         includedRate: absolute || Number(meta?.startingPrice || 0) || 0,
         startingPrice: absolute || Number(meta?.startingPrice || 0) || 0,
+        extraBedPerNight,
         selectedFromPackage: true,
       },
     });
@@ -406,6 +449,13 @@ function hotelOptionsFromStay(stay = {}, catalog = null) {
   const options = [];
   const defaultHotelId = stay.default_hotel_id || null;
 
+  const defaultInfo =
+    stay.default_hotel_info && typeof stay.default_hotel_info === 'object'
+      ? stay.default_hotel_info
+      : {};
+  const defaultSlug = defaultInfo.hotel_slug || defaultInfo.slug || '';
+  const defaultCity = defaultInfo.city || stay.destination_city || '';
+
   if (stay.default_hotel_name || defaultHotelId) {
     options.push(
       applyCatalogToOption(
@@ -423,6 +473,12 @@ function hotelOptionsFromStay(stay = {}, catalog = null) {
           price_delta: Number(stay.default_upgrade_price || 0),
           is_default: true,
           location,
+          city: defaultCity,
+          slug: defaultSlug,
+          hotel_slug: defaultSlug,
+          image_url: defaultInfo.thumbnail_url || '',
+          images: Array.isArray(defaultInfo.images) ? defaultInfo.images : [],
+          star_rating: defaultInfo.star_category,
         },
         catalog,
         stay
@@ -434,6 +490,7 @@ function hotelOptionsFromStay(stay = {}, catalog = null) {
     if (defaultHotelId && opt.hotel_id && opt.hotel_id === defaultHotelId) continue;
     const name = pickHotelLabel(opt);
     if (!name && !opt.hotel_id) continue;
+    const optSlug = opt.hotel_slug || opt.slug || '';
     options.push(
       applyCatalogToOption(
         {
@@ -448,6 +505,9 @@ function hotelOptionsFromStay(stay = {}, catalog = null) {
           price_delta: Number(opt.upgrade_price ?? opt.price_delta ?? 0),
           is_default: false,
           location,
+          city: opt.city || stay.destination_city || '',
+          slug: optSlug,
+          hotel_slug: optSlug,
         },
         catalog,
         stay
@@ -481,6 +541,7 @@ function mapHotelMeta(option = {}) {
   );
   // Upgrade delta only — package baseCost already includes the default hotel.
   const priceDelta = Number(option.price_delta ?? option.upgrade_price ?? 0) || 0;
+  const slug = option.slug || option.hotel_slug || '';
   return {
     id: option.hotel_id || option.id || name,
     hotelId: option.hotel_id || option.id || null,
@@ -492,7 +553,7 @@ function mapHotelMeta(option = {}) {
     ),
     location: option.location || option.city || option.area || '',
     city: option.city || '',
-    slug: option.slug || '',
+    slug,
     meals,
     mealPlanKey: mealKey,
     startingPrice,

@@ -9,7 +9,10 @@ export function sumDayWiseHotelCost(selections = []) {
   return selections.reduce((sum, item) => sum + Number(item.totalCost || item.perNight || 0), 0);
 }
 
-/** Absolute selected stay value (rack / meal rate × nights). */
+/**
+ * Day-wise hotel total: sum each night's absolute room+meal rate.
+ * Each selection is one hotel night (nights defaults to 1).
+ */
 export function sumDayWiseHotelAbsolute(selections = []) {
   return selections.reduce((sum, item) => {
     const nights = Math.max(1, Number(item.nights) || 1);
@@ -30,19 +33,13 @@ export function sumDayWiseHotelIncluded(selections = []) {
 }
 
 /**
- * Itemize selected hotel rates into hotelCost.
- * Package residual (sightseeing / leftover after cab+hotel peel) is dropped —
- * it must never inflate Hotel Cost or sit as a separate Package Cost line.
+ * Hotel Cost = Σ day-wise absolute hotel rates only.
+ * Admin margin is applied later via bakeCompanyMarginIntoLineCosts.
+ * Package residual / upgrade deltas must never inflate this line.
  */
 export function resolvePackageHotelPricing(_packageStartingPrice = 0, selections = []) {
-  const upgradeCost = sumDayWiseHotelCost(selections);
   const absoluteCost = sumDayWiseHotelAbsolute(selections);
-  const includedCost = sumDayWiseHotelIncluded(selections);
-
-  // Prefer absolute selected stay value; fall back to included / upgrade delta.
-  const hotelCost = Math.round(
-    (absoluteCost > 0 ? absoluteCost : includedCost > 0 ? includedCost : upgradeCost) * 100
-  ) / 100;
+  const hotelCost = Math.round(Math.max(0, absoluteCost) * 100) / 100;
 
   return {
     baseCost: 0,

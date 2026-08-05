@@ -152,6 +152,7 @@ export function mapHotelOption(option = {}) {
   const priceDelta = Number(
     option.price_delta ?? option.priceDelta ?? option.upgrade_price ?? 0
   ) || 0;
+  const slug = option.slug || option.hotel_slug || '';
   return {
     id: option.id || option.hotel_id || option.hotelId || name,
     name,
@@ -159,6 +160,8 @@ export function mapHotelOption(option = {}) {
     images: Array.isArray(option.images) ? option.images.filter(Boolean) : [],
     starRating: Number(option.star_rating || option.stars || option.rating || option.starCategory || 0),
     location: option.location || option.city || option.area || '',
+    city: option.city || '',
+    slug,
     meals,
     mealPlanKey: mealKey,
     mealsRaw: option.meals || null,
@@ -469,7 +472,7 @@ export function seedDayWiseHotelsFromItinerary(itinerary = [], preferredMealKey 
           starRating: meta.starRating || 0,
           location: meta.location || '',
           city: meta.city || '',
-          slug: meta.slug || '',
+          slug: meta.slug || meta.hotel_slug || '',
           startingPrice: absolutePerNight || meta.startingPrice || 0,
         },
         room,
@@ -479,6 +482,7 @@ export function seedDayWiseHotelsFromItinerary(itinerary = [], preferredMealKey 
         totalCost: Number(meta.priceDelta || 0),
         absolutePerNight,
         includedRate: Number(meta.includedRate || absolutePerNight || meta.startingPrice || 0),
+        extraBedPerNight: Number(meta.extraBedPerNight || room?.extraBedRate || 0) || 0,
         nights: 1,
         fromPackage: true,
         selectedFromPackage: true,

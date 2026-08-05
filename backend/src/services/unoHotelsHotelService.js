@@ -23,6 +23,18 @@ function extractWebsiteRoomRates(rates) {
   return { ep, cp, map: mapRate, ap };
 }
 
+function extractWebsiteExtraBedRates(rates) {
+  if (!rates || typeof rates !== 'object') return null;
+  const bed = rates.website?.extra_bed || rates.extra_bed || null;
+  if (!bed || typeof bed !== 'object') return null;
+  const ep = Number(bed.ep || 0);
+  const cp = Number(bed.cp || 0);
+  const mapRate = Number(bed.map || 0);
+  const ap = Number(bed.ap || 0);
+  if (!ep && !cp && !mapRate && !ap) return null;
+  return { ep, cp, map: mapRate, ap };
+}
+
 function buildMealPlanOptions(mealPlans = {}, rates = null) {
   const fromRates = extractWebsiteRoomRates(rates);
   const breakfast = Number(mealPlans.breakfast) || 0;
@@ -122,6 +134,7 @@ function mapHotelSummary(hotel = {}) {
 
 function mapRoom(room = {}) {
   const rateMap = extractWebsiteRoomRates(room.rates);
+  const extraBedRates = extractWebsiteExtraBedRates(room.rates);
   const pricePerNight = Number(
     room.price_per_night || rateMap?.ep || rateMap?.cp || rateMap?.map || rateMap?.ap || 0
   );
@@ -139,6 +152,7 @@ function mapRoom(room = {}) {
     pricePerNight,
     epPrice: Number(rateMap?.ep || pricePerNight || 0),
     rates: rateMap,
+    extraBedRates,
     available: room.available !== false,
     availableCount: room.available_count,
     mealPlanOptions: buildMealPlanOptions(room.meal_plans, room.rates),
