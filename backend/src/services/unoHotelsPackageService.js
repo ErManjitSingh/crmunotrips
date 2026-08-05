@@ -322,7 +322,7 @@ function pickStayMealPlan(room = null, mealKey = 'map') {
  * Day-options often ship stale hotel_slug values that 404 on /hotels/{city}/{slug}.
  * When that happens we resolve via hotel id / name search so absolute rates still load.
  */
-async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
+async function hydrateItinerarySelectedStays(itinerary = [], stays = [], catalog = null) {
   const days = Array.isArray(itinerary) ? itinerary : [];
   if (!days.length) return days;
 
@@ -344,60 +344,94 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
   };
 
   const searchHotel = async (city, name, hotelId) => {
-    const q = String(name || '').trim();
     const cityKey = String(city || '').trim();
-    if (!cityKey || (!q && !hotelId)) return null;
-    const cacheKey = `${cityKey.toLowerCase()}||${String(hotelId || '').toLowerCase()}||${q.toLowerCase()}`;
+    const rawName = String(name || '').trim();
+    if ((!cityKey && !rawName) || (!rawName && !hotelId)) return null;
+
+    // Full package labels often include city ("emerald inn munnar") and return 0 hits —
+    // try progressively shorter queries across city variants.
+    const queries = [];
+    if (rawName) {
+      queries.push(rawName);
+      const noComma = rawName.split(',')[0].trim();
+      if (noComma && noComma !== rawName) queries.push(noComma);
+      const words = noComma
+        .split(/\s+/)
+        .map((w) => w.trim())
+        .filter((w) => w && !/^(hotel|the|resort|inn|by)$/i.test(w));
+      if (words.length >= 2) queries.push(words.slice(0, 2).join(' '));
+      if (words.length >= 1) queries.push(words[0]);
+      // Keep a version with Hotel prefix stripped but meaningful tokens kept
+      const stripped = noComma.replace(/^(hotel|the)\s+/i, '').trim();
+      if (stripped && stripped !== noComma) queries.push(stripped);
+    }
+
+    const cities = [...new Set([cityKey, cityKey.split(',')[0].trim()].filter(Boolean))];
+    // Some UNO hotels are filed under a sibling city label
+    if (/leh/i.test(cityKey)) cities.push('Ladakh', 'Leh Ladakh');
+    if (/ladakh/i.test(cityKey)) cities.push('Leh', 'Leh Ladakh');
+    if (/munnar/i.test(cityKey)) cities.push('Munnar');
+    if (/alleppey|alappuzha/i.test(cityKey)) cities.push('Alleppey', 'Alappuzha');
+
+    const cacheKey = `${cityKey.toLowerCase()}||${String(hotelId || '').toLowerCase()}||${rawName.toLowerCase()}`;
     if (searchCache.has(cacheKey)) return searchCache.get(cacheKey);
 
-    try {
-      const raw = await unoFetch('/v1/hotels/search', {
-        query: {
-          city: cityKey,
-          q: q || undefined,
-          limit: 10,
-          sort: 'popular',
-        },
-      });
-      const list = unwrapListPayload(raw) || [];
-      const idHit =
-        hotelId && list.find((h) => String(h.id) === String(hotelId));
-      const nameHit =
-        q &&
-        list.find(
-          (h) =>
-            String(h.name || '')
-              .trim()
-              .toLowerCase() === q.toLowerCase()
-        );
-      const softHit =
-        q &&
-        list.find((h) =>
-          String(h.name || '')
-            .toLowerCase()
-            .includes(q.toLowerCase().slice(0, Math.min(12, q.length)))
-        );
-      const hit = idHit || nameHit || softHit || list[0] || null;
-      searchCache.set(cacheKey, hit);
-      return hit;
-    } catch {
-      searchCache.set(cacheKey, null);
-      return null;
+    const needle = rawName.toLowerCase();
+    const qList = [...new Set(queries.map((x) => String(x || '').trim()).filter((x) => x.length >= 2))];
+
+    for (const tryCity of cities.length ? cities : ['']) {
+      for (const q of qList) {
+        try {
+          const raw = await unoFetch('/v1/hotels/search', {
+            query: {
+              ...(tryCity ? { city: tryCity } : {}),
+              q,
+              limit: 10,
+              sort: 'popular',
+            },
+          });
+          const list = unwrapListPayload(raw) || [];
+          if (!list.length) continue;
+
+          const idHit =
+            hotelId && list.find((h) => String(h.id) === String(hotelId));
+          const exactHit =
+            needle &&
+            list.find((h) => {
+              const hn = String(h.name || '').trim().toLowerCase();
+              return hn === needle || hn === needle.split(',')[0].trim();
+            });
+          const softHit =
+            needle &&
+            list.find((h) => {
+              const hn = String(h.name || '').toLowerCase();
+              return (
+                hn.includes(q.toLowerCase()) ||
+                q.toLowerCase().includes(hn) ||
+                needle.includes(hn) ||
+                hn.includes(needle.slice(0, Math.min(10, needle.length)))
+              );
+            });
+          const hit = idHit || exactHit || softHit || null;
+          if (hit) {
+            searchCache.set(cacheKey, hit);
+            return hit;
+          }
+        } catch {
+          /* try next */
+        }
+      }
     }
+
+    searchCache.set(cacheKey, null);
+    return null;
   };
 
   const resolveDetail = async ({ city, slug, hotelId, name }) => {
     let detail = await loadDetail(city, slug);
     if (detail) return detail;
 
-    // Stale package hotel_slug → resolve live catalog slug via search
-    const hit = await searchHotel(city, name, hotelId);
-    if (hit?.city && hit?.slug) {
-      detail = await loadDetail(hit.city, hit.slug);
-      if (detail) return detail;
-    }
-
-    // Last resort: try hotel-id detail endpoints some UNO builds expose
+    // Prefer hotel-id endpoints when package slug is stale / 404
     if (hotelId) {
       for (const path of [`/v1/hotels/id/${hotelId}`, `/v1/hotels/${hotelId}`]) {
         try {
@@ -407,16 +441,23 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
             detail = await loadDetail(hotel.city, hotel.slug);
             if (detail) return detail;
           }
-          if (hotel?.rooms) {
+          if (Array.isArray(hotel?.rooms) && hotel.rooms.length) {
             return {
               ...mapHotelSummary(hotel),
-              rooms: (hotel.rooms || []).map(mapRoom),
+              rooms: hotel.rooms.map(mapRoom),
             };
           }
         } catch {
           /* try next */
         }
       }
+    }
+
+    // Stale package hotel_slug → resolve live catalog slug via shortened name search
+    const hit = await searchHotel(city, name, hotelId);
+    if (hit?.city && hit?.slug) {
+      detail = await loadDetail(hit.city, hit.slug);
+      if (detail) return detail;
     }
 
     return null;
@@ -456,19 +497,6 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
             .trim()
             .toLowerCase() === String(meta.name).trim().toLowerCase())
     );
-    const city =
-      meta?.city ||
-      matchedOpt?.city ||
-      info.city ||
-      stay.destination_city ||
-      '';
-    const slug =
-      meta?.slug ||
-      matchedOpt?.hotel_slug ||
-      matchedOpt?.slug ||
-      info.hotel_slug ||
-      info.slug ||
-      '';
     const hotelId =
       meta?.hotelId ||
       meta?.id ||
@@ -476,6 +504,25 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
       stay.default_hotel_id ||
       null;
     const hotelName = meta?.name || day.hotel || stay.default_hotel_name || '';
+    const catalogHotel =
+      hotelId && catalog && typeof catalog.get === 'function'
+        ? catalog.get(String(hotelId))
+        : null;
+    const city =
+      catalogHotel?.city ||
+      meta?.city ||
+      matchedOpt?.city ||
+      info.city ||
+      stay.destination_city ||
+      '';
+    const slug =
+      catalogHotel?.slug ||
+      meta?.slug ||
+      matchedOpt?.hotel_slug ||
+      matchedOpt?.slug ||
+      info.hotel_slug ||
+      info.slug ||
+      '';
 
     const detail = await resolveDetail({
       city,
@@ -915,7 +962,7 @@ async function attachItineraryFromDayOptions(mapped, slug, itineraryDaysFromPack
         stays,
         catalog
       );
-      mapped.itinerary = await hydrateItinerarySelectedStays(merged, stays);
+      mapped.itinerary = await hydrateItinerarySelectedStays(merged, stays, catalog);
       mapped.hotelCatalogSize = catalog.size;
       return mapped;
     }
@@ -1200,7 +1247,7 @@ async function fetchUnoPackageById(packageId) {
 
 async function getUnoPackageById(packageId) {
   return cacheService.getOrSet(
-    `uno:packages:detail:v6:${packageId}`,
+    `uno:packages:detail:v7:${packageId}`,
     () => fetchUnoPackageById(packageId),
     DETAIL_CACHE_TTL_MS
   );
