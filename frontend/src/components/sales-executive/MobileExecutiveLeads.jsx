@@ -26,9 +26,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
 import { useSidebarCounts } from '../../hooks/useSidebarCounts';
 import { beginLeadCall } from '../../lib/callSession';
-import { getLeadSourceShortLabel, LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
+import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
 import { DESTINATIONS, INDIAN_STATES } from '../leads/constants';
 import { LEAD_FOLLOW_UP_OUTCOMES } from '../../constants/leadFollowUpOutcomes';
+import { SourceBadge } from '../sales-manager/LeadListBadges';
 import { cn } from '../../lib/utils';
 import { toast } from '../../context/ToastContext';
 
@@ -604,9 +605,13 @@ export default function MobileExecutiveLeads({
                       </div>
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Source</p>
-                        <p className="mt-0.5 truncate text-[11px] font-bold text-slate-800">
-                          {getLeadSourceShortLabel(lead.source, lead.sourceLabel)}
-                        </p>
+                        <div className="mt-0.5 truncate text-[11px] font-bold text-slate-800">
+                          <SourceBadge
+                            source={lead.source}
+                            label={lead.sourceLabel}
+                            sourceShort={lead.sourceShort}
+                          />
+                        </div>
                       </div>
                     </div>
                     <button

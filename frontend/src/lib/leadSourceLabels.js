@@ -87,6 +87,30 @@ function resolveKey(raw) {
   return '';
 }
 
+/** Canonical source key (dpw, dpw_wa, call_lead, …) or '' */
+export function resolveLeadSourceKey(source, sourceLabel) {
+  return resolveKey(sourceLabel) || resolveKey(source) || '';
+}
+
+/**
+ * Channel for UI icons: whatsapp | call | form | other
+ * Form covers website / Meta lead-form (DPW, DPW2) — not Facebook brand.
+ */
+export function getLeadSourceChannel(source, sourceLabel) {
+  const key = resolveLeadSourceKey(source, sourceLabel);
+  if (key === 'dpw_wa' || key === 'dpw2_wa') return 'whatsapp';
+  if (key === 'dpw_call' || key === 'dpw2_call' || key === 'call_lead') return 'call';
+  if (key === 'dpw' || key === 'dpw2') return 'form';
+
+  const blob = `${source || ''} ${sourceLabel || ''}`.toLowerCase();
+  if (/(^|[\s_])wa([\s_]|$)|whatsapp|ctwa/.test(blob)) return 'whatsapp';
+  if (/\bcall\b|phone|walk[\s_-]?in/.test(blob)) return 'call';
+  if (/facebook|instagram|fb[\s_-]?lead|lead[\s_-]?form|form|website|google/.test(blob)) {
+    return 'form';
+  }
+  return 'other';
+}
+
 export function getLeadSourceShortLabel(source, sourceLabel) {
   const explicit = String(sourceLabel || '').trim();
   if (explicit) {

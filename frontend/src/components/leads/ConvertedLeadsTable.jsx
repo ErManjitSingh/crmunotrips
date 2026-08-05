@@ -7,9 +7,9 @@ import {
   Users,
 } from 'lucide-react';
 import TablePagination from '../ui/TablePagination';
-import { getLeadSourceShortLabel } from '../../lib/leadSourceLabels';
 import { cn } from '../../lib/utils';
 import LeadCallStats from './LeadCallStats';
+import { SourceBadge } from '../sales-manager/LeadListBadges';
 import { TooltipProvider } from '../ui/tooltip';
 
 function formatMoney(n) {
@@ -133,8 +133,6 @@ function ConvertedLeadRow({ lead, detailHref, onClick }) {
   const rooms = Number(lead.numberOfRooms || 1);
   const bookingId = pay.bookingNumber || pay.invoiceNumber || lead.leadId || String(lead._id).slice(-8);
   const salesBy = lead.assignedTo?.name || lead.createdBy?.name || '—';
-  const source = getLeadSourceShortLabel(lead.source || lead.leadSource, lead.sourceLabel) || 'CRM';
-
   return (
     <article
       role="button"
@@ -170,7 +168,11 @@ function ConvertedLeadRow({ lead, detailHref, onClick }) {
       {/* Source */}
       <div className="space-y-2">
         <span className="inline-flex rounded-md bg-violet-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-violet-700">
-          {source}
+          <SourceBadge
+            source={lead.source || lead.leadSource}
+            label={lead.sourceLabel}
+            sourceShort={lead.sourceShort}
+          />
         </span>
         <p className="text-[12px] text-slate-600">
           Sales by: <span className="font-bold text-slate-900">{salesBy}</span>

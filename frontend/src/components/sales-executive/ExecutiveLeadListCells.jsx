@@ -9,7 +9,6 @@ import {
   Star,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { getLeadSourceShortLabel } from '../../lib/leadSourceLabels';
 import { beginLeadCall } from '../../lib/callSession';
 import Avatar from '../ui/Avatar';
 import { STATUS_STYLES, formatBudget } from '../sales-manager/managerUtils';
