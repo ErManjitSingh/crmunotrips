@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Building2, LogIn, LogOut, Clock } from 'lucide-react';
 import API from '../../api/axios';
@@ -17,7 +18,8 @@ function formatTime(iso) {
 }
 
 export default function AttendanceCheckInCard({ onChanged }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
@@ -58,9 +60,12 @@ export default function AttendanceCheckInCard({ onChanged }) {
     setActing(true);
     try {
       await API.post('/attendance/check-out', {}, { successMessage: 'Checked out successfully' });
-      load();
-      onChanged?.();
-    } finally {
+      try {
+        await logout();
+      } finally {
+        navigate('/login', { replace: true });
+      }
+    } catch {
       setActing(false);
     }
   };
@@ -118,7 +123,7 @@ export default function AttendanceCheckInCard({ onChanged }) {
               disabled={acting}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold disabled:opacity-60"
             >
-              <LogOut className="w-4 h-4" /> Check Out
+              <LogOut className="w-4 h-4" /> {acting ? 'Checking out…' : 'Check Out'}
             </button>
           )}
           {status?.canCheckIn && (
