@@ -147,10 +147,11 @@ async function getTodayStatus(userId) {
   return {
     date: dayStart,
     requiresCheckIn,
-    checkedIn: Boolean(record),
+    checkedIn: Boolean(record && !record.checkOut),
     checkedOut: Boolean(record?.checkOut),
     record: record ? formatRecord(record) : null,
-    canCheckIn: requiresCheckIn && !record,
+    // After check-out, allow another check-in the same day so Check Out can appear again
+    canCheckIn: requiresCheckIn && (!record || Boolean(record.checkOut)),
     canCheckOut: requiresCheckIn && Boolean(record && !record.checkOut),
   };
 }
@@ -170,11 +171,24 @@ async function checkIn(userId, workMode = 'office') {
 
   const dayStart = startOfCalendarDay();
   const existing = await Attendance.findOne({ userId, date: dayStart });
+  const now = new Date();
+
+  // Same-day return after check-out: reopen attendance so Check Out is available again
+  if (existing?.checkOut) {
+    existing.checkIn = now;
+    existing.checkOut = null;
+    existing.totalHours = null;
+    existing.workMode = workMode;
+    existing.status = deriveStatus(now);
+    existing.isAutoCheckout = false;
+    await existing.save();
+    return formatRecord(existing.toObject());
+  }
+
   if (existing) {
     throw new ApiError(409, 'You have already checked in today');
   }
 
-  const now = new Date();
   const record = await Attendance.create({
     userId,
     branchId: user.branchId || null,

@@ -43,7 +43,9 @@ export default function AttendanceLoginModal({ open, onSuccess }) {
           <span className="font-semibold text-content-primary">Office Check-in</span>
         </button>
 
-        <p className="text-xs text-content-muted mt-5">You can check in only once per day.</p>
+        <p className="text-xs text-content-muted mt-5">
+          After check-out you can check in again the same day if you return to work.
+        </p>
       </div>
     </AppModal>
   );
