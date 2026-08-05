@@ -11,7 +11,7 @@ const {
   sanitizeImages,
   unoFetch,
 } = require('./unoHotelsApiClient');
-const { getUnoHotelDetail } = require('./unoHotelsHotelService');
+const { getUnoHotelDetail, mapHotelSummary, mapRoom } = require('./unoHotelsHotelService');
 
 const LIST_CACHE_TTL_MS = 10 * 60 * 1000;
 const DETAIL_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -318,12 +318,17 @@ function pickStayMealPlan(room = null, mealKey = 'map') {
 /**
  * Fill each itinerary night with package-selected hotel room + meal plan rates
  * from Uno Hotels detail API (https://api.unohotelsandresorts.com/docs).
+ *
+ * Day-options often ship stale hotel_slug values that 404 on /hotels/{city}/{slug}.
+ * When that happens we resolve via hotel id / name search so absolute rates still load.
  */
 async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
   const days = Array.isArray(itinerary) ? itinerary : [];
   if (!days.length) return days;
 
   const detailCache = new Map();
+  const searchCache = new Map();
+
   const loadDetail = async (city, slug) => {
     const key = `${String(city || '').trim().toLowerCase()}||${String(slug || '').trim().toLowerCase()}`;
     if (!city || !slug) return null;
@@ -336,6 +341,85 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
       detailCache.set(key, null);
       return null;
     }
+  };
+
+  const searchHotel = async (city, name, hotelId) => {
+    const q = String(name || '').trim();
+    const cityKey = String(city || '').trim();
+    if (!cityKey || (!q && !hotelId)) return null;
+    const cacheKey = `${cityKey.toLowerCase()}||${String(hotelId || '').toLowerCase()}||${q.toLowerCase()}`;
+    if (searchCache.has(cacheKey)) return searchCache.get(cacheKey);
+
+    try {
+      const raw = await unoFetch('/v1/hotels/search', {
+        query: {
+          city: cityKey,
+          q: q || undefined,
+          limit: 10,
+          sort: 'popular',
+        },
+      });
+      const list = unwrapListPayload(raw) || [];
+      const idHit =
+        hotelId && list.find((h) => String(h.id) === String(hotelId));
+      const nameHit =
+        q &&
+        list.find(
+          (h) =>
+            String(h.name || '')
+              .trim()
+              .toLowerCase() === q.toLowerCase()
+        );
+      const softHit =
+        q &&
+        list.find((h) =>
+          String(h.name || '')
+            .toLowerCase()
+            .includes(q.toLowerCase().slice(0, Math.min(12, q.length)))
+        );
+      const hit = idHit || nameHit || softHit || list[0] || null;
+      searchCache.set(cacheKey, hit);
+      return hit;
+    } catch {
+      searchCache.set(cacheKey, null);
+      return null;
+    }
+  };
+
+  const resolveDetail = async ({ city, slug, hotelId, name }) => {
+    let detail = await loadDetail(city, slug);
+    if (detail) return detail;
+
+    // Stale package hotel_slug → resolve live catalog slug via search
+    const hit = await searchHotel(city, name, hotelId);
+    if (hit?.city && hit?.slug) {
+      detail = await loadDetail(hit.city, hit.slug);
+      if (detail) return detail;
+    }
+
+    // Last resort: try hotel-id detail endpoints some UNO builds expose
+    if (hotelId) {
+      for (const path of [`/v1/hotels/id/${hotelId}`, `/v1/hotels/${hotelId}`]) {
+        try {
+          const raw = await unoFetch(path);
+          const hotel = unwrapPayload(raw);
+          if (hotel?.city && hotel?.slug) {
+            detail = await loadDetail(hotel.city, hotel.slug);
+            if (detail) return detail;
+          }
+          if (hotel?.rooms) {
+            return {
+              ...mapHotelSummary(hotel),
+              rooms: (hotel.rooms || []).map(mapRoom),
+            };
+          }
+        } catch {
+          /* try next */
+        }
+      }
+    }
+
+    return null;
   };
 
   const hydrated = [];
@@ -385,7 +469,23 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
       info.hotel_slug ||
       info.slug ||
       '';
-    const detail = await loadDetail(city, slug);
+    const hotelId =
+      meta?.hotelId ||
+      meta?.id ||
+      matchedOpt?.hotel_id ||
+      stay.default_hotel_id ||
+      null;
+    const hotelName = meta?.name || day.hotel || stay.default_hotel_name || '';
+
+    const detail = await resolveDetail({
+      city,
+      slug,
+      hotelId,
+      name: hotelName,
+    });
+    const resolvedCity = detail?.city || city;
+    const resolvedSlug = detail?.slug || slug;
+
     const room = pickStayRoom(detail?.rooms || [], stay, meta || {});
     const mealPlan = pickStayMealPlan(room, mealKey);
     const absolute = Number(mealPlan.absolutePrice || 0) || Number(meta?.startingPrice || 0) || 0;
@@ -403,8 +503,8 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = []) {
       mealPlanKey: mealPlan.key,
       hotelMeta: {
         ...(meta || {}),
-        city: city || meta?.city || '',
-        slug: slug || meta?.slug || '',
+        city: resolvedCity || meta?.city || '',
+        slug: resolvedSlug || meta?.slug || '',
         tierName: room?.name || stay.default_room_type_name || meta?.tierName || '',
         roomTypeId: room?.id || stay.default_room_type_id || meta?.roomTypeId || null,
         meals: mealPlan.label,

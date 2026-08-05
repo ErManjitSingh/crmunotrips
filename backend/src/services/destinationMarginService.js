@@ -238,12 +238,18 @@ async function resolveMarginForDestination(destinationText = '') {
 
 async function resolveMarginForPackage(pkg) {
   if (!pkg) return null;
-  const destination =
-    pkg.destination ||
-    pkg.destinationName ||
-    pkg.routing ||
-    '';
-  return resolveMarginForDestination(destination);
+  // Prefer state (Margin Control is state-wise), then destination / city aliases.
+  const candidates = [
+    pkg.state,
+    pkg.destination,
+    pkg.destinationName,
+    pkg.routing,
+  ].filter(Boolean);
+  for (const text of candidates) {
+    const hit = await resolveMarginForDestination(text);
+    if (hit?.marginPercent) return hit;
+  }
+  return null;
 }
 
 function decoratePackageWithMargin(pkg, marginEntry) {

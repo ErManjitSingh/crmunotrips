@@ -17,7 +17,7 @@ export function sumDayWiseHotelAbsolute(selections = []) {
   return selections.reduce((sum, item) => {
     const nights = Math.max(1, Number(item.nights) || 1);
     const absolute = Number(
-      item.absolutePerNight ?? item.hotel?.startingPrice ?? item.includedRate ?? 0
+      item.absolutePerNight || item.hotel?.startingPrice || item.includedRate || 0
     );
     return sum + absolute * nights;
   }, 0);
