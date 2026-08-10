@@ -10,6 +10,7 @@ const ACTIVE_LEAD_STATUSES = [
   'new',
   'contacted',
   'working_progress',
+  'qualified',
   'follow_up',
   'quotation_sent',
   'negotiation',

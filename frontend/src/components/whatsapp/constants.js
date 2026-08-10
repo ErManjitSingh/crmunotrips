@@ -1,21 +1,24 @@
 export const STATUS_FILTERS = [
   { key: '', label: 'All' },
   { key: 'new', label: 'New' },
-  { key: 'working_progress', label: 'Working Progress' },
-  { key: 'follow_up', label: 'Follow Up' },
+  { key: 'contacted', label: 'Contacted' },
+  { key: 'working_progress', label: 'Working' },
+  { key: 'qualified', label: 'Qualified' },
+  { key: 'follow_up', label: 'Follow-up' },
 ];
 
 export const LEAD_STATUSES = [
-  { value: 'new', label: 'New Lead' },
-  { value: 'contacted', label: 'Connected' },
-  { value: 'working_progress', label: 'Working Progress' },
-  { value: 'follow_up', label: 'Follow Up' },
-  { value: 'quotation_sent', label: 'Quotation Sent' },
+  { value: 'new', label: 'New' },
+  { value: 'contacted', label: 'Contacted' },
+  { value: 'working_progress', label: 'Working' },
+  { value: 'qualified', label: 'Qualified' },
+  { value: 'quotation_sent', label: 'Quotation' },
+  { value: 'follow_up', label: 'Follow-up' },
+  { value: 'converted', label: 'Booking' },
+  { value: 'lost', label: 'Lost' },
   { value: 'negotiation', label: 'Negotiation' },
   { value: 'reactivated', label: 'Reactivated' },
-  { value: 'converted', label: 'Converted' },
-  { value: 'lost', label: 'Lost' },
-  { value: 'booked_from_another_company', label: 'Booked From Another Company' },
+  { value: 'booked_from_another_company', label: 'Booked Elsewhere' },
 ];
 
 export const MESSAGE_STATUS_ICON = {

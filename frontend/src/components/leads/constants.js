@@ -1,14 +1,15 @@
 export const LEAD_STATUSES = [
-  { value: 'new', label: 'New Lead' },
-  { value: 'contacted', label: 'Connected' },
-  { value: 'working_progress', label: 'Working Progress' },
-  { value: 'follow_up', label: 'Follow Up' },
-  { value: 'quotation_sent', label: 'Quotation Sent' },
-  { value: 'negotiation', label: 'Negotiation' },
-  { value: 'reactivated', label: 'Reactivated' },
-  { value: 'converted', label: 'Converted' },
-  { value: 'lost', label: 'Lost' },
-  { value: 'booked_from_another_company', label: 'Booked From Another Company' },
+  { value: 'new', label: 'New', meaning: 'Lead just received' },
+  { value: 'contacted', label: 'Contacted', meaning: 'Executive has spoken / message exchanged' },
+  { value: 'working_progress', label: 'Working', meaning: 'Customer interested; requirements not confirmed' },
+  { value: 'qualified', label: 'Qualified', meaning: 'Genuine buyer + requirements confirmed' },
+  { value: 'quotation_sent', label: 'Quotation', meaning: 'Price / package sent' },
+  { value: 'follow_up', label: 'Follow-up', meaning: 'Waiting for customer decision' },
+  { value: 'converted', label: 'Booking', meaning: 'Customer has confirmed / paid' },
+  { value: 'lost', label: 'Lost', meaning: 'Not converting / rejected' },
+  { value: 'negotiation', label: 'Negotiation', meaning: 'Price discussion in progress' },
+  { value: 'reactivated', label: 'Reactivated', meaning: 'Previously lost lead revived' },
+  { value: 'booked_from_another_company', label: 'Booked Elsewhere', meaning: 'Lost to another company' },
 ];
 
 /** Stored source keys — display uses short labels via getLeadSourceShortLabel */
@@ -78,7 +79,7 @@ export const pageConfig = {
     assignee: 'unassigned',
   },
   '/leads/assigned': { title: 'Assigned Leads', subtitle: 'Leads assigned to team members', status: '', assignee: 'assigned' },
-  '/leads/converted': { title: 'Converted Leads', subtitle: 'Successfully closed deals', status: 'converted', assignee: '' },
+  '/leads/converted': { title: 'Bookings', subtitle: 'Confirmed / paid customers', status: 'converted', assignee: '' },
   '/leads/lost': { title: 'Lost Leads', subtitle: 'Did not convert', status: 'lost', assignee: '' },
   '/leads/duplicates': {
     title: 'Duplicate Leads',

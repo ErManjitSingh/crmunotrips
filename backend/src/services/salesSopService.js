@@ -142,6 +142,19 @@ function assertQualifiedForQuotation(lead) {
   if (missing.length) {
     throw new ApiError(400, `Complete requirements before quotation: ${missing.join(', ')}`);
   }
+  // Contacted ≠ Qualified: quoting needs a genuine buyer with confirmed requirements.
+  const status = String(lead?.status || '');
+  const quoteReady = ['qualified', 'quotation_sent', 'follow_up', 'negotiation', 'converted'];
+  if (status && !quoteReady.includes(status) && status !== 'working_progress') {
+    // Allow working_progress only when fields are complete (treated as ready to qualify).
+    // Block pure contacted/new from jumping straight to quotation.
+    if (['new', 'contacted', 'reactivated'].includes(status)) {
+      throw new ApiError(
+        400,
+        'Mark the lead as Qualified (genuine buyer + requirements confirmed) before sending a quotation. Contacted alone is not enough.'
+      );
+    }
+  }
   return true;
 }
 

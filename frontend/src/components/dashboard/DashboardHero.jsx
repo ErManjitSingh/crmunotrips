@@ -2,14 +2,13 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Users,
-  Sparkles,
-  Clock3,
-  Heart,
   Phone,
-  UserX,
-  CheckCircle2,
-  TrendingDown,
+  BadgeCheck,
+  FileText,
+  Briefcase,
+  IndianRupee,
   TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -18,81 +17,100 @@ function formatChange(change) {
   return `${abs}%`;
 }
 
+function formatValue(value, { currency, suffix } = {}) {
+  const n = Number(value || 0);
+  if (currency) {
+    if (n >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
+    return `₹${n.toLocaleString('en-IN')}`;
+  }
+  if (suffix === '%') return `${n}%`;
+  return n.toLocaleString('en-IN');
+}
+
 const KPI_ITEMS = [
   {
     key: 'totalLeads',
-    label: 'Total Leads',
+    label: 'Leads',
     icon: Users,
-    iconBg: 'bg-blue-500',
-    card: 'border-blue-100 bg-blue-50/70',
-    value: 'text-blue-700',
+    iconBg: 'bg-violet-500',
+    card: 'border-violet-100 bg-white',
+    value: 'text-slate-900',
     path: '/leads',
   },
   {
-    key: 'freshLeads',
-    label: 'Fresh Leads',
-    icon: Sparkles,
-    iconBg: 'bg-emerald-500',
-    card: 'border-emerald-100 bg-emerald-50/70',
-    value: 'text-emerald-700',
-    path: '/leads/new-leads',
-  },
-  {
-    key: 'followUpPending',
-    label: 'Follow Up',
-    icon: Clock3,
-    iconBg: 'bg-amber-500',
-    card: 'border-amber-100 bg-amber-50/70',
-    value: 'text-amber-700',
-    path: '/followups',
-  },
-  {
-    key: 'interested',
-    label: 'Interested',
-    icon: Heart,
-    iconBg: 'bg-violet-500',
-    card: 'border-violet-100 bg-violet-50/70',
-    value: 'text-violet-700',
-    path: '/leads?status=working_progress',
-  },
-  {
     key: 'connected',
-    label: 'Connected Leads',
+    label: 'Connected',
     icon: Phone,
-    iconBg: 'bg-emerald-600',
-    card: 'border-emerald-100 bg-emerald-50/70',
-    value: 'text-emerald-700',
+    iconBg: 'bg-indigo-500',
+    card: 'border-indigo-100 bg-white',
+    value: 'text-slate-900',
     path: '/leads?status=contacted',
   },
   {
-    key: 'lostLeads',
-    label: 'Lost Leads',
-    icon: UserX,
-    iconBg: 'bg-red-500',
-    card: 'border-red-100 bg-red-50/70',
-    value: 'text-red-700',
-    path: '/leads/lost',
+    key: 'qualified',
+    label: 'Qualified',
+    icon: BadgeCheck,
+    iconBg: 'bg-emerald-500',
+    card: 'border-emerald-100 bg-white',
+    value: 'text-slate-900',
+    path: '/leads?status=qualified',
   },
   {
-    key: 'conversions',
-    label: 'Conversions',
-    icon: CheckCircle2,
-    iconBg: 'bg-teal-600',
-    card: 'border-teal-100 bg-teal-50/70',
-    value: 'text-teal-700',
+    key: 'quotations',
+    label: 'Quotations',
+    icon: FileText,
+    iconBg: 'bg-blue-500',
+    card: 'border-blue-100 bg-white',
+    value: 'text-slate-900',
+    path: '/quotations',
+  },
+  {
+    key: 'bookings',
+    label: 'Bookings',
+    icon: Briefcase,
+    iconBg: 'bg-amber-500',
+    card: 'border-amber-100 bg-white',
+    value: 'text-slate-900',
     path: '/leads/converted',
+    fallbackKey: 'conversions',
+  },
+  {
+    key: 'revenue',
+    label: 'Revenue',
+    icon: IndianRupee,
+    iconBg: 'bg-pink-500',
+    card: 'border-pink-100 bg-white',
+    value: 'text-slate-900',
+    path: '/payments',
+    currency: true,
+  },
+  {
+    key: 'conversionRate',
+    label: 'Conversion Rate',
+    icon: TrendingUp,
+    iconBg: 'bg-teal-500',
+    card: 'border-teal-100 bg-white',
+    value: 'text-slate-900',
+    path: '/reports',
+    suffix: '%',
   },
 ];
 
 export default function DashboardHero({ stats }) {
   const kpis = stats?.report?.kpis || {};
-  const compareLabel = stats?.report?.period?.compareLabel || 'prev period';
+  const compareLabel = stats?.report?.period?.compareLabel || 'Yesterday';
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-7">
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-7">
       {KPI_ITEMS.map((cfg, i) => {
-        const meta = kpis[cfg.key] || { value: 0, change: 0, changeType: 'neutral' };
-        const value = (meta.value ?? 0).toLocaleString('en-IN');
+        const meta =
+          kpis[cfg.key] ||
+          (cfg.fallbackKey ? kpis[cfg.fallbackKey] : null) || {
+            value: 0,
+            change: 0,
+            changeType: 'neutral',
+          };
+        const display = formatValue(meta.value, cfg);
         const isUp = meta.changeType === 'up';
         const isDown = meta.changeType === 'down';
         const Icon = cfg.icon;
@@ -108,40 +126,43 @@ export default function DashboardHero({ stats }) {
             <Link
               to={cfg.path}
               className={cn(
-                'flex items-center gap-2.5 rounded-xl border px-2.5 py-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400',
+                'flex flex-col gap-2 rounded-xl border px-3 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400',
                 cfg.card
               )}
             >
-              <div
-                className={cn(
-                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-sm',
-                  cfg.iconBg
-                )}
-              >
-                <Icon className="h-3.5 w-3.5 text-white" strokeWidth={2.25} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-1">
-                  <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                    {cfg.label}
-                  </p>
-                  <span
-                    className={cn(
-                      'inline-flex shrink-0 items-center gap-0.5 text-[9px] font-bold',
-                      isUp && 'text-emerald-600',
-                      isDown && 'text-red-500',
-                      !isUp && !isDown && 'text-slate-400'
-                    )}
-                  >
-                    {isUp && <TrendingUp className="h-2.5 w-2.5" />}
-                    {isDown && <TrendingDown className="h-2.5 w-2.5" />}
-                    {formatChange(meta.change)}
-                  </span>
+              <div className="flex items-center justify-between gap-2">
+                <div
+                  className={cn(
+                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-sm',
+                    cfg.iconBg
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5 text-white" strokeWidth={2.25} />
                 </div>
-                <p className={cn('mt-0.5 text-base font-bold leading-none metric-tabular tracking-tight', cfg.value)}>
-                  {value}
+                <span
+                  className={cn(
+                    'inline-flex shrink-0 items-center gap-0.5 text-[10px] font-bold',
+                    isUp && 'text-emerald-600',
+                    isDown && 'text-red-500',
+                    !isUp && !isDown && 'text-slate-400'
+                  )}
+                >
+                  {isUp && <TrendingUp className="h-2.5 w-2.5" />}
+                  {isDown && <TrendingDown className="h-2.5 w-2.5" />}
+                  {formatChange(meta.change)}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[11px] font-medium text-slate-500">{cfg.label}</p>
+                <p
+                  className={cn(
+                    'mt-0.5 text-xl font-bold leading-none metric-tabular tracking-tight',
+                    cfg.value
+                  )}
+                >
+                  {display}
                 </p>
-                <p className="mt-0.5 truncate text-[9px] text-slate-400">vs {compareLabel}</p>
+                <p className="mt-1 truncate text-[9px] text-slate-400">vs {compareLabel}</p>
               </div>
             </Link>
           </motion.div>

@@ -22,7 +22,14 @@ const { rollupCityStatsIntoStates } = require('../utils/destinationHierarchy');
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DASHBOARD_NEW_LEADS_LIMIT = 5;
 
-const INTERESTED_STATUSES = ['contacted', 'working_progress', 'quotation_sent', 'reactivated'];
+const INTERESTED_STATUSES = [
+  'contacted',
+  'working_progress',
+  'qualified',
+  'quotation_sent',
+  'follow_up',
+  'reactivated',
+];
 const LOST_STATUSES = ['lost', 'booked_from_another_company'];
 
 function resolveDestinationPeriod(period = 'all') {
@@ -218,9 +225,21 @@ function mapStatusBucket(statusCounts) {
   const interested = INTERESTED_STATUSES.reduce((s, k) => s + (statusCounts[k] || 0), 0);
   const negotiation = statusCounts.negotiation || 0;
   const connected = statusCounts.contacted || 0;
+  const qualified = statusCounts.qualified || 0;
+  const quotations = statusCounts.quotation_sent || 0;
   const lost = LOST_STATUSES.reduce((s, k) => s + (statusCounts[k] || 0), 0);
   const conversions = statusCounts.converted || 0;
-  return { fresh, followUpPending, interested, negotiation, connected, lost, conversions };
+  return {
+    fresh,
+    followUpPending,
+    interested,
+    negotiation,
+    connected,
+    qualified,
+    quotations,
+    lost,
+    conversions,
+  };
 }
 
 /**
@@ -229,14 +248,15 @@ function mapStatusBucket(statusCounts) {
  */
 function buildExclusiveStatusDistribution(statusCounts = {}) {
   const stages = [
-    { name: 'New / Fresh', key: 'new', color: '#3B82F6', pick: (c) => c.new || 0 },
-    { name: 'Connected', key: 'connected', color: '#10B981', pick: (c) => c.contacted || 0 },
-    { name: 'Working', key: 'working', color: '#06B6D4', pick: (c) => c.working_progress || 0 },
-    { name: 'Follow-up', key: 'follow_up', color: '#F59E0B', pick: (c) => c.follow_up || 0 },
-    { name: 'Quotation Sent', key: 'quotation', color: '#6366F1', pick: (c) => c.quotation_sent || 0 },
-    { name: 'Negotiation', key: 'negotiation', color: '#F97316', pick: (c) => c.negotiation || 0 },
+    { name: 'New', key: 'new', color: '#64748B', pick: (c) => c.new || 0 },
+    { name: 'Contacted', key: 'contacted', color: '#6366F1', pick: (c) => c.contacted || 0 },
+    { name: 'Working', key: 'working', color: '#F97316', pick: (c) => c.working_progress || 0 },
+    { name: 'Qualified', key: 'qualified', color: '#10B981', pick: (c) => c.qualified || 0 },
+    { name: 'Quotation', key: 'quotation', color: '#3B82F6', pick: (c) => c.quotation_sent || 0 },
+    { name: 'Follow-up', key: 'follow_up', color: '#8B5CF6', pick: (c) => c.follow_up || 0 },
+    { name: 'Negotiation', key: 'negotiation', color: '#F59E0B', pick: (c) => c.negotiation || 0 },
     { name: 'Reactivated', key: 'reactivated', color: '#14B8A6', pick: (c) => c.reactivated || 0 },
-    { name: 'Converted', key: 'converted', color: '#059669', pick: (c) => c.converted || 0 },
+    { name: 'Booking', key: 'converted', color: '#059669', pick: (c) => c.converted || 0 },
     {
       name: 'Lost',
       key: 'lost',
@@ -255,6 +275,7 @@ function buildExclusiveStatusDistribution(statusCounts = {}) {
   const interested =
     (statusCounts.contacted || 0) +
     (statusCounts.working_progress || 0) +
+    (statusCounts.qualified || 0) +
     (statusCounts.follow_up || 0) +
     (statusCounts.quotation_sent || 0) +
     (statusCounts.negotiation || 0);
@@ -269,6 +290,7 @@ function buildExclusiveStatusDistribution(statusCounts = {}) {
       arrived: total,
       fresh: statusCounts.new || 0,
       connected: statusCounts.contacted || 0,
+      qualified: statusCounts.qualified || 0,
       interested,
       converted: statusCounts.converted || 0,
       lost: (statusCounts.lost || 0) + (statusCounts.booked_from_another_company || 0),
@@ -468,7 +490,29 @@ async function buildAdminDashboard(options = {}) {
           _id: '$source',
           count: { $sum: 1 },
           connected: {
-            $sum: { $cond: [{ $eq: ['$status', 'contacted'] }, 1, 0] },
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    '$status',
+                    [
+                      'contacted',
+                      'working_progress',
+                      'qualified',
+                      'quotation_sent',
+                      'follow_up',
+                      'negotiation',
+                      'converted',
+                    ],
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          bookings: {
+            $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] },
           },
         },
       },
@@ -535,7 +579,29 @@ async function buildAdminDashboard(options = {}) {
           _id: '$source',
           count: { $sum: 1 },
           connected: {
-            $sum: { $cond: [{ $eq: ['$status', 'contacted'] }, 1, 0] },
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    '$status',
+                    [
+                      'contacted',
+                      'working_progress',
+                      'qualified',
+                      'quotation_sent',
+                      'follow_up',
+                      'negotiation',
+                      'converted',
+                    ],
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          bookings: {
+            $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] },
           },
         },
       },
@@ -758,9 +824,12 @@ async function buildAdminDashboard(options = {}) {
       key: s._id || 'other',
       value: s.count,
       connected: Number(s.connected || 0),
+      bookings: Number(s.bookings || 0),
       pct: Math.round((s.count / periodSourceTotal) * 1000) / 10,
       connectedPct:
         s.count > 0 ? Math.round((Number(s.connected || 0) / s.count) * 1000) / 10 : 0,
+      convPct:
+        s.count > 0 ? Math.round((Number(s.bookings || 0) / s.count) * 1000) / 10 : 0,
       color: SOURCE_COLORS[i % SOURCE_COLORS.length],
     }))
     .sort((a, b) => b.value - a.value);
@@ -800,6 +869,9 @@ async function buildAdminDashboard(options = {}) {
     ),
     interested: withValue(changeMeta(changeBuckets.interested, prevBuckets.interested), valueBuckets.interested),
     connected: withValue(changeMeta(changeBuckets.connected, prevBuckets.connected), valueBuckets.connected),
+    qualified: withValue(changeMeta(changeBuckets.qualified, prevBuckets.qualified), valueBuckets.qualified),
+    quotations: withValue(changeMeta(changeBuckets.quotations, prevBuckets.quotations), valueBuckets.quotations),
+    bookings: withValue(changeMeta(changeBuckets.conversions, prevBuckets.conversions), valueBuckets.conversions),
     lostLeads: withValue(changeMeta(changeBuckets.lost, prevBuckets.lost), valueBuckets.lost),
     conversions: withValue(changeMeta(changeBuckets.conversions, prevBuckets.conversions), valueBuckets.conversions),
     revenue: withValue(changeMeta(changeRevenue, prevRevenue), periodRevenue),
@@ -822,13 +894,84 @@ async function buildAdminDashboard(options = {}) {
     revenueGenerated: periodRevenue,
   };
 
+  const funnelCounts = isAllTime ? statusCounts : periodStatusCounts;
   const salesFunnel = [
-    { stage: 'New Lead', count: statusCounts.new || 0 },
-    { stage: 'Connected', count: statusCounts.contacted || 0 },
-    { stage: 'Follow Up', count: (statusCounts.follow_up || 0) + (statusCounts.negotiation || 0) },
-    { stage: 'Quotation Sent', count: statusCounts.quotation_sent || 0 },
-    { stage: 'Converted', count: convertedLeads },
+    { stage: 'Leads', count: isAllTime ? totalLeads : periodTotalLeads },
+    { stage: 'Connected', count: (funnelCounts.contacted || 0) + (funnelCounts.working_progress || 0) + (funnelCounts.qualified || 0) + (funnelCounts.quotation_sent || 0) + (funnelCounts.follow_up || 0) + (funnelCounts.negotiation || 0) + (funnelCounts.converted || 0) },
+    { stage: 'Qualified', count: (funnelCounts.qualified || 0) + (funnelCounts.quotation_sent || 0) + (funnelCounts.follow_up || 0) + (funnelCounts.negotiation || 0) + (funnelCounts.converted || 0) },
+    { stage: 'Quotations', count: (funnelCounts.quotation_sent || 0) + (funnelCounts.follow_up || 0) + (funnelCounts.negotiation || 0) + (funnelCounts.converted || 0) },
+    { stage: 'Bookings', count: funnelCounts.converted || 0 },
   ];
+
+  const followUpsDueToday = await FollowUp.countDocuments(
+    withBranch(
+      {
+        status: 'pending',
+        scheduledAt: { $gte: todayStart, $lte: todayEnd },
+      },
+      branchId
+    )
+  );
+  const leadsUntouched = await Lead.countDocuments(
+    activeLeadScope(
+      {
+        status: 'new',
+        $or: [{ firstContactAt: null }, { firstContactAt: { $exists: false } }],
+      },
+      branchId
+    )
+  );
+  const quotationsAwaiting = await Quotation.countDocuments(
+    withBranch({ status: { $in: ['sent', 'viewed', 'negotiation', 'pending_approval'] } }, branchId)
+  );
+
+  let pendingPaymentCount = 0;
+  try {
+    pendingPaymentCount = await Booking.countDocuments(
+      withBranch({ paymentStatus: { $in: ['pending', 'partial'] } }, branchId)
+    );
+  } catch {
+    pendingPaymentCount = 0;
+  }
+
+  const lowFollowUpExecutives = (executivePerformance?.executives || []).filter(
+    (ex) => Number(ex.followUpCompletion || 0) < 40 && Number(ex.assigned || 0) > 0
+  ).length;
+
+  const actionRequired = [
+    { key: 'followups_due', label: 'Follow-ups Due Today', count: followUpsDueToday, link: '/followups', tone: 'violet' },
+    { key: 'untouched', label: 'Leads Untouched', count: leadsUntouched, link: '/leads/inbox/new', tone: 'amber' },
+    { key: 'quotes_awaiting', label: 'Quotations Awaiting Response', count: quotationsAwaiting, link: '/quotations', tone: 'blue' },
+    { key: 'pending_payment', label: 'Bookings Pending Payment', count: pendingPaymentCount, link: '/bookings', tone: 'rose' },
+    { key: 'low_followup_execs', label: 'Low Follow-up Executives', count: lowFollowUpExecutives, link: '/team', tone: 'orange' },
+  ];
+
+  const todayRevenue = await sumRevenueInRange(branchId, todayStart, todayEnd);
+  const yesterdayRevenue = await sumRevenueInRange(branchId, yesterdayStart, yesterdayEnd);
+  const monthStartFin = startOfDay(new Date(todayStart.getFullYear(), todayStart.getMonth(), 1));
+  const lastMonthStartFin = startOfDay(new Date(todayStart.getFullYear(), todayStart.getMonth() - 1, 1));
+  const lastMonthEndFin = endOfDay(new Date(monthStartFin.getTime() - 1));
+  const monthRevenue = await sumRevenueInRange(branchId, monthStartFin, todayEnd);
+  const lastMonthRevenue = await sumRevenueInRange(branchId, lastMonthStartFin, lastMonthEndFin);
+  const grossMarginRate = 0.16;
+  const financials = {
+    marketingSpend: withValue(changeMeta(0, 0), 0),
+    sales: withValue(changeMeta(todayRevenue, yesterdayRevenue), todayRevenue),
+    grossMargin: withValue(
+      changeMeta(
+        Math.round(todayRevenue * grossMarginRate),
+        Math.round(yesterdayRevenue * grossMarginRate)
+      ),
+      Math.round(todayRevenue * grossMarginRate)
+    ),
+    roi: withValue(
+      changeMeta(
+        lastMonthRevenue ? Math.round((monthRevenue / Math.max(lastMonthRevenue, 1)) * 100) / 100 : 0,
+        1
+      ),
+      lastMonthRevenue ? Math.round((monthRevenue / Math.max(lastMonthRevenue, 1)) * 100) / 100 : 0
+    ),
+  };
 
   const todayFollowUps = await FollowUp.find(withBranch({
     scheduledAt: { $gte: todayStart, $lte: todayEnd },
@@ -842,6 +985,7 @@ async function buildAdminDashboard(options = {}) {
     name: s._id || 'Unknown',
     value: s.count,
     connected: Number(s.connected || 0),
+    bookings: Number(s.bookings || 0),
     pct: (periodSourceAgg.length ? periodSourceTotal : totalLeads)
       ? Math.round((s.count / (periodSourceAgg.length ? periodSourceTotal : totalLeads || 1)) * 100)
       : 0,
@@ -885,6 +1029,8 @@ async function buildAdminDashboard(options = {}) {
     })),
     upcomingFollowups,
     salesFunnel,
+    actionRequired,
+    financials,
     monthlyRevenue,
     leadSourceAnalytics: sourceFilteredLeadSourceAnalytics,
     topAgents: topAgents.map((a, i) => ({
@@ -934,6 +1080,9 @@ async function buildAdminDashboard(options = {}) {
       },
       generatedAt: new Date().toISOString(),
       kpis: reportKpis,
+      salesFunnel,
+      actionRequired,
+      financials,
       statusDistribution,
       statusDistributionSummary,
       leadsBySource: leadsBySourcePeriod,

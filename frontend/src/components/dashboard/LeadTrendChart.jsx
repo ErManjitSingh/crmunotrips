@@ -53,11 +53,11 @@ export default function LeadTrendChart({ stats }) {
 
   return (
     <DashboardPanel
-      title="Monthly Lead Trend"
+      title="Lead Trend"
       subtitle={
         latest
-          ? `From July · Latest: ${latest.label} · ${Number(latest.leadsGenerated || 0).toLocaleString('en-IN')} generated`
-          : 'Generated · Connected · Converted from July'
+          ? `Last period · Latest: ${latest.label} · ${Number(latest.leadsGenerated || 0).toLocaleString('en-IN')} generated`
+          : 'Generated · Connected · Bookings'
       }
       action={<TrendingUp className="h-4 w-4 text-violet-500" />}
       className="h-full"

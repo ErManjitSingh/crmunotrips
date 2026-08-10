@@ -51,11 +51,49 @@ async function getSourceAnalytics(branchId) {
         pipeline: {
           $sum: {
             $cond: [
-              { $in: ['$status', ['new', 'contacted', 'working_progress', 'follow_up', 'quotation_sent', 'negotiation']] },
+              {
+                $in: [
+                  '$status',
+                  [
+                    'new',
+                    'contacted',
+                    'working_progress',
+                    'qualified',
+                    'follow_up',
+                    'quotation_sent',
+                    'negotiation',
+                  ],
+                ],
+              },
               1,
               0,
             ],
           },
+        },
+        connected: {
+          $sum: {
+            $cond: [
+              {
+                $in: [
+                  '$status',
+                  [
+                    'contacted',
+                    'working_progress',
+                    'qualified',
+                    'quotation_sent',
+                    'follow_up',
+                    'negotiation',
+                    'converted',
+                  ],
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        },
+        bookings: {
+          $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] },
         },
         totalBudget: { $sum: '$budget' },
         avgScore: { $avg: '$smartScore' },
@@ -72,6 +110,8 @@ async function getSourceAnalytics(branchId) {
       label: SOURCE_LABELS[r._id] || r._id || 'Other',
       total: r.total,
       converted: r.converted,
+      connected: r.connected || 0,
+      bookings: r.bookings || r.converted || 0,
       lost: r.lost,
       pipeline: r.pipeline,
       conversionRate: r.total ? Math.round((r.converted / r.total) * 1000) / 10 : 0,
@@ -94,13 +134,37 @@ async function getExecutivePerformance(branchId) {
 
   if (!execIds.length) return { executives: [] };
 
-  const [assignedAgg, convertedAgg, followUpAgg, hotAgg] = await Promise.all([
+  const [assignedAgg, convertedAgg, followUpAgg, hotAgg, quoteAgg] = await Promise.all([
     Lead.aggregate([
       { $match: { ...branchMatch(branchId), assignedTo: { $in: execIds } } },
-      { $group: { _id: '$assignedTo', assigned: { $sum: 1 }, pipeline: { $sum: { $cond: [{ $ne: ['$status', 'converted'] }, 1, 0] } }, revenue: { $sum: '$budget' } } },
+      {
+        $group: {
+          _id: '$assignedTo',
+          assigned: { $sum: 1 },
+          pipeline: {
+            $sum: { $cond: [{ $ne: ['$status', 'converted'] }, 1, 0] },
+          },
+          revenue: { $sum: '$budget' },
+          todayLeads: {
+            $sum: {
+              $cond: [
+                { $gte: ['$createdAt', new Date(new Date().setHours(0, 0, 0, 0))] },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
     ]),
     Lead.aggregate([
-      { $match: { ...branchMatch(branchId), assignedTo: { $in: execIds }, status: 'converted' } },
+      {
+        $match: {
+          ...branchMatch(branchId),
+          assignedTo: { $in: execIds },
+          status: 'converted',
+        },
+      },
       { $group: { _id: '$assignedTo', converted: { $sum: 1 }, revenue: { $sum: '$budget' } } },
     ]),
     FollowUp.aggregate([
@@ -111,12 +175,48 @@ async function getExecutivePerformance(branchId) {
           total: { $sum: 1 },
           completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
           missed: { $sum: { $cond: [{ $eq: ['$status', 'missed'] }, 1, 0] } },
+          todayPending: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$status', 'pending'] },
+                    { $gte: ['$scheduledAt', new Date(new Date().setHours(0, 0, 0, 0))] },
+                    {
+                      $lt: [
+                        '$scheduledAt',
+                        new Date(new Date().setHours(23, 59, 59, 999)),
+                      ],
+                    },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
         },
       },
     ]),
     Lead.aggregate([
-      { $match: { ...branchMatch(branchId), assignedTo: { $in: execIds }, temperature: { $in: ['hot', 'vip'] } } },
+      {
+        $match: {
+          ...branchMatch(branchId),
+          assignedTo: { $in: execIds },
+          temperature: { $in: ['hot', 'vip'] },
+        },
+      },
       { $group: { _id: '$assignedTo', hot: { $sum: 1 } } },
+    ]),
+    Lead.aggregate([
+      {
+        $match: {
+          ...branchMatch(branchId),
+          assignedTo: { $in: execIds },
+          status: { $in: ['quotation_sent', 'follow_up', 'negotiation'] },
+        },
+      },
+      { $group: { _id: '$assignedTo', quotes: { $sum: 1 } } },
     ]),
   ]);
 
@@ -124,6 +224,7 @@ async function getExecutivePerformance(branchId) {
   const convertedMap = Object.fromEntries(convertedAgg.map((r) => [String(r._id), r]));
   const fuMap = Object.fromEntries(followUpAgg.map((r) => [String(r._id), r]));
   const hotMap = Object.fromEntries(hotAgg.map((r) => [String(r._id), r.hot]));
+  const quoteMap = Object.fromEntries(quoteAgg.map((r) => [String(r._id), r.quotes]));
 
   const executives_data = executives.map((exec) => {
     const id = String(exec._id);
@@ -132,18 +233,32 @@ async function getExecutivePerformance(branchId) {
     const fu = fuMap[id] || {};
     const fuTotal = fu.total || 0;
     const fuCompleted = fu.completed || 0;
+    const conversionRate = assigned ? Math.round((converted / assigned) * 1000) / 10 : 0;
+    const followUpCompletion = fuTotal ? Math.round((fuCompleted / fuTotal) * 100) : 0;
+    let performanceStatus = 'Inactive';
+    if (assigned > 0) {
+      if (conversionRate >= 15 || followUpCompletion >= 80) performanceStatus = 'Excellent';
+      else if (conversionRate >= 8 || followUpCompletion >= 60) performanceStatus = 'Good';
+      else if (followUpCompletion >= 40) performanceStatus = 'Needs Attention';
+      else performanceStatus = 'Low';
+    }
     return {
       _id: exec._id,
       name: exec.name,
       email: exec.email,
       assigned,
+      leads: assignedMap[id]?.todayLeads || assigned,
+      followUps: fu.todayPending || 0,
+      quotes: quoteMap[id] || 0,
+      bookings: converted,
       converted,
       pipeline: assignedMap[id]?.pipeline || 0,
       revenue: convertedMap[id]?.revenue || assignedMap[id]?.revenue || 0,
-      conversionRate: assigned ? Math.round((converted / assigned) * 1000) / 10 : 0,
-      followUpCompletion: fuTotal ? Math.round((fuCompleted / fuTotal) * 100) : 0,
+      conversionRate,
+      followUpCompletion,
       missedFollowUps: fu.missed || 0,
       hotLeads: hotMap[id] || 0,
+      performanceStatus,
     };
   });
 

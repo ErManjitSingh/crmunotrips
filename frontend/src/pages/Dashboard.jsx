@@ -13,34 +13,23 @@ import { invalidateDashboard } from "../lib/queryInvalidation";
 import DashboardHeader, {
   getDefaultDashboardFilters,
 } from "../components/dashboard/DashboardHeader";
-import { DashboardHero, DashboardSkeleton } from "../components/dashboard";
+import {
+  DashboardHero,
+  DashboardSkeleton,
+  AdminDashboardGreeting,
+  ActionRequiredPanel,
+  AdminSalesFunnel,
+  LeadSourcePerformanceTable,
+  TopDestinationsDonut,
+  SalesTeamPerformanceTable,
+  FinancialMetricsRow,
+} from "../components/dashboard";
+
 const MobileAdminDashboard = lazy(
   () => import("../components/dashboard/MobileAdminDashboard"),
 );
-
 const LeadTrendChart = lazy(
   () => import("../components/dashboard/LeadTrendChart"),
-);
-const LeadStatusDonut = lazy(
-  () => import("../components/dashboard/LeadStatusDonut"),
-);
-const LeadSourceChart = lazy(
-  () => import("../components/dashboard/LeadSourceChart"),
-);
-const ConversionRateChart = lazy(
-  () => import("../components/dashboard/ConversionRateChart"),
-);
-const ExecutivePerformancePanel = lazy(
-  () => import("../components/dashboard/ExecutivePerformancePanel"),
-);
-const TopDestinationQueriesChart = lazy(
-  () => import("../components/dashboard/TopDestinationQueriesChart"),
-);
-const TodayFollowUps = lazy(
-  () => import("../components/dashboard/TodayFollowUps"),
-);
-const RemindersAlertsPanel = lazy(
-  () => import("../components/dashboard/RemindersAlertsPanel"),
 );
 
 function PanelSkeleton() {
@@ -94,12 +83,14 @@ export default function Dashboard() {
   if (isLoading && !stats) return <DashboardSkeleton />;
   if (!stats) return null;
 
-  const statusTotal =
-    report?.statusDistributionSummary?.total ??
-    (report?.statusDistribution || []).reduce((s, d) => s + (d.value || 0), 0);
-  const sourceTotal =
-    stats.totalLeads ||
-    (report?.leadsBySource || []).reduce((s, d) => s + (d.value || 0), 0);
+  const funnel = report?.salesFunnel || stats.salesFunnel || [];
+  const actionRequired = report?.actionRequired || stats.actionRequired || [];
+  const financials = report?.financials || stats.financials || {};
+  const sourceRows =
+    report?.leadsBySource ||
+    stats.leadSourceAnalytics ||
+    stats.sourceAnalytics?.sources ||
+    [];
 
   return (
     <>
@@ -116,8 +107,8 @@ export default function Dashboard() {
 
       <div className="mx-auto hidden w-full max-w-[1600px] space-y-4 pb-8 sm:space-y-5 lg:block">
         {isFetching && (
-          <div className="h-0.5 w-full overflow-hidden rounded-full bg-blue-500/30">
-            <div className="h-full w-1/3 animate-pulse bg-blue-500" />
+          <div className="h-0.5 w-full overflow-hidden rounded-full bg-violet-500/30">
+            <div className="h-full w-1/3 animate-pulse bg-violet-500" />
           </div>
         )}
 
@@ -130,73 +121,56 @@ export default function Dashboard() {
           badgeLabel={isLeadProvider ? "Lead Insights" : "Admin Insights"}
         />
 
+        <AdminDashboardGreeting
+          filters={filters}
+          periodLabel={report?.period?.label}
+        />
+
         <DashboardHero stats={stats} />
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-12">
-          <div className="min-w-0 xl:col-span-5">
-            <Suspense fallback={<PanelSkeleton />}>
-              <LeadTrendChart stats={stats} />
-            </Suspense>
+        {!isLeadProvider && (
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+            <div className="min-w-0 xl:col-span-3">
+              <ActionRequiredPanel items={actionRequired} />
+            </div>
+            <div className="min-w-0 xl:col-span-5">
+              <AdminSalesFunnel data={funnel} />
+            </div>
+            <div className="min-w-0 xl:col-span-4">
+              <LeadSourcePerformanceTable data={sourceRows} />
+            </div>
           </div>
-          <div className="min-w-0 lg:col-span-1 xl:col-span-3">
-            <Suspense fallback={<PanelSkeleton />}>
-              <LeadStatusDonut
-                data={report?.statusDistribution || []}
-                total={statusTotal}
-                summary={report?.statusDistributionSummary || null}
-              />
-            </Suspense>
-          </div>
-          <div className="min-w-0 lg:col-span-2 xl:col-span-4">
-            <Suspense fallback={<PanelSkeleton />}>
-              <LeadSourceChart
-                data={report?.leadsBySource || stats.leadSourceAnalytics || []}
-                total={sourceTotal}
-              />
-            </Suspense>
-          </div>
-        </div>
+        )}
 
         <div
           className={
             isLeadProvider
               ? "grid grid-cols-1 gap-4 md:grid-cols-2"
-              : "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+              : "grid grid-cols-1 gap-4 xl:grid-cols-12"
           }
         >
-          <Suspense fallback={<PanelSkeleton />}>
-            <ConversionRateChart data={report?.conversionRateTrend || []} />
-          </Suspense>
-          {!isLeadProvider && (
+          <div className="min-w-0 xl:col-span-5">
             <Suspense fallback={<PanelSkeleton />}>
-              <ExecutivePerformancePanel data={stats.executivePerformance} />
-            </Suspense>
-          )}
-          <div className={isLeadProvider ? undefined : "md:col-span-2 xl:col-span-1"}>
-            <Suspense fallback={<PanelSkeleton />}>
-              <TopDestinationQueriesChart
-                data={report?.topDestinations || []}
-              />
+              <LeadTrendChart stats={stats} />
             </Suspense>
           </div>
+          <div className="min-w-0 xl:col-span-3">
+            <TopDestinationsDonut data={report?.topDestinations || []} />
+          </div>
+          {!isLeadProvider && (
+            <div className="min-w-0 xl:col-span-4">
+              <SalesTeamPerformanceTable data={stats.executivePerformance} />
+            </div>
+          )}
         </div>
 
-        {!isLeadProvider && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Suspense fallback={<PanelSkeleton />}>
-              <TodayFollowUps followups={stats.todayFollowUps || []} />
-            </Suspense>
-            <Suspense fallback={<PanelSkeleton />}>
-              <RemindersAlertsPanel stats={stats} />
-            </Suspense>
-          </div>
-        )}
+        {!isLeadProvider && <FinancialMetricsRow financials={financials} />}
 
         <div className="flex flex-col gap-2 border-t border-subtle pt-4 text-xs text-content-muted sm:flex-row sm:items-center sm:justify-between">
           <p className="inline-flex items-start gap-1.5 sm:items-center">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:mt-0" />
-            All metrics use live CRM data. % change compares with previous
-            period. Currency in INR. L = Lakhs.
+            Live CRM metrics. Pipeline keeps Contacted and Qualified separate.
+            Currency in INR.
           </p>
           <p className="shrink-0">Report Generated on: {generatedAt}</p>
         </div>

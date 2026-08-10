@@ -1,7 +1,8 @@
 const map = {
   new: 'new',
   contacted: 'contacted',
-  qualified: 'follow_up',
+  working_progress: 'working_progress',
+  qualified: 'qualified',
   follow_up: 'follow_up',
   proposal: 'quotation_sent',
   quotation_sent: 'quotation_sent',
@@ -9,7 +10,9 @@ const map = {
   reactivated: 'reactivated',
   won: 'converted',
   converted: 'converted',
+  booking: 'converted',
   lost: 'lost',
+  booked_from_another_company: 'booked_from_another_company',
 };
 
 export function normalizeLeadStatus(status) {

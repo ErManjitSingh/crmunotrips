@@ -1,6 +1,13 @@
 export { default as DashboardPanel } from './DashboardPanel';
 export { default as DashboardHero } from './DashboardHero';
 export { default as DashboardHeader } from './DashboardHeader';
+export { default as AdminDashboardGreeting } from './AdminDashboardGreeting';
+export { default as ActionRequiredPanel } from './ActionRequiredPanel';
+export { default as AdminSalesFunnel } from './AdminSalesFunnel';
+export { default as LeadSourcePerformanceTable } from './LeadSourcePerformanceTable';
+export { default as TopDestinationsDonut } from './TopDestinationsDonut';
+export { default as SalesTeamPerformanceTable } from './SalesTeamPerformanceTable';
+export { default as FinancialMetricsRow } from './FinancialMetricsRow';
 export { default as KpiCard } from './KpiCard';
 export { default as LeadSourceChart } from './LeadSourceChart';
 export { default as RevenueChart } from './RevenueChart';

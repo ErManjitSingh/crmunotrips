@@ -266,6 +266,16 @@ const updateLead = asyncHandler(async (req, res) => {
   if (isStatusOnlyUpdate) {
     if (!LEAD_STATUSES.includes(status)) throw new ApiError(400, 'Invalid lead status');
     const trimmedReason = typeof statusReason === 'string' ? statusReason.trim() : '';
+    if (status === 'qualified') {
+      const { getMissingQualificationFields } = require('../services/salesSopService');
+      const missing = getMissingQualificationFields(lead);
+      if (missing.length) {
+        throw new ApiError(
+          400,
+          `Qualified means genuine buyer + requirements confirmed. Complete: ${missing.join(', ')}`
+        );
+      }
+    }
     if (status === 'converted') {
       const advance = Number(advanceAmount ?? tokenAmount);
       if (!Number.isFinite(advance) || advance < 0) {

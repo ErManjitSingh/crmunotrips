@@ -12,15 +12,13 @@ import {
 import { getLeadStatusLabel } from '../../lib/leadStatusLabel';
 
 export const PIPELINE_STAGES = [
-  { value: 'new', label: 'New Lead', shortLabel: 'New Lead' },
-  { value: 'contacted', label: 'Connected', shortLabel: 'Connected' },
-  { value: 'working_progress', label: 'Working Progress', shortLabel: 'Working Progress' },
-  { value: 'follow_up', label: 'Follow Up', shortLabel: 'Follow Up' },
-  { value: 'quotation_sent', label: 'Quotation Sent', shortLabel: 'Quotation Sent' },
-  { value: 'negotiation', label: 'Negotiation', shortLabel: 'Negotiation' },
-  { value: 'reactivated', label: 'Reactivated', shortLabel: 'Reactivated' },
-  { value: 'converted', label: 'Converted', shortLabel: 'Converted' },
-  { value: 'booked_from_another_company', label: 'Booked', shortLabel: 'Booked' },
+  { value: 'new', label: 'New', shortLabel: 'New' },
+  { value: 'contacted', label: 'Contacted', shortLabel: 'Contacted' },
+  { value: 'working_progress', label: 'Working', shortLabel: 'Working' },
+  { value: 'qualified', label: 'Qualified', shortLabel: 'Qualified' },
+  { value: 'quotation_sent', label: 'Quotation', shortLabel: 'Quotation' },
+  { value: 'follow_up', label: 'Follow-up', shortLabel: 'Follow-up' },
+  { value: 'converted', label: 'Booking', shortLabel: 'Booking' },
 ];
 
 export const ACTIVITY_CONFIG = {

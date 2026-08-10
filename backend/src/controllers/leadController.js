@@ -84,7 +84,7 @@ async function findAccessibleLeadDoc(req, leadId, extra = {}) {
 }
 
 const LOST_LEAD_STATUSES = ['lost', 'booked_from_another_company'];
-const WORKING_PIPELINE_STATUSES = ['working_progress', 'follow_up', 'quotation_sent', 'negotiation', 'reactivated', 'converted'];
+const WORKING_PIPELINE_STATUSES = ['working_progress', 'qualified', 'follow_up', 'quotation_sent', 'negotiation', 'reactivated', 'converted'];
 const REACTIVATION_STATUS_TO_STAGE = {
   contacted: 'contacted',
   follow_up: 'follow_up_scheduled',
@@ -530,6 +530,17 @@ const updateLead = asyncHandler(async (req, res) => {
   const before = lead.toObject();
   const data = normalizeLeadInput(req.body, { isUpdate: true });
   const nextStatus = data.status || lead.status;
+  if (nextStatus === 'qualified') {
+    const { getMissingQualificationFields } = require('../services/salesSopService');
+    const probe = { ...lead.toObject(), ...data };
+    const missing = getMissingQualificationFields(probe);
+    if (missing.length) {
+      throw new ApiError(
+        400,
+        `Qualified means genuine buyer + requirements confirmed. Complete: ${missing.join(', ')}`
+      );
+    }
+  }
   const effectivePayload = {
     budget: data.budget ?? lead.budget,
     nextFollowUp: data.nextFollowUp ?? lead.nextFollowUp,
@@ -552,7 +563,7 @@ const updateLead = asyncHandler(async (req, res) => {
 
   const prevTemperature = lead.temperature;
   Object.assign(lead, data);
-  if (!lead.firstContactAt && (data.status === 'contacted' || ['contacted', 'working_progress', 'follow_up'].includes(nextStatus))) {
+  if (!lead.firstContactAt && (data.status === 'contacted' || ['contacted', 'working_progress', 'qualified', 'follow_up'].includes(nextStatus))) {
     lead.firstContactAt = new Date();
     if (!lead.slaContactedAt) lead.slaContactedAt = lead.firstContactAt;
   }
