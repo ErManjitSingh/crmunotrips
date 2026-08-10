@@ -703,12 +703,20 @@ async function buildAdminDashboard(options = {}) {
       },
       {
         $project: {
-          destination: { $trim: { input: { $ifNull: ['$destination', ''] } } },
+          destinationRaw: { $trim: { input: { $ifNull: ['$destination', ''] } } },
           status: 1,
         },
       },
       {
-        $match: { destination: { $ne: '' } },
+        $addFields: {
+          destination: {
+            $cond: [
+              { $or: [{ $eq: ['$destinationRaw', ''] }, { $eq: ['$destinationRaw', null] }] },
+              'Not specified',
+              '$destinationRaw',
+            ],
+          },
+        },
       },
       {
         $group: {
@@ -906,7 +914,8 @@ async function buildAdminDashboard(options = {}) {
       metricFields: ['queries', 'conversions'],
       rateConfig: { field: 'conversionRate', numerator: 'conversions', denominator: 'queries' },
       sortField: 'queries',
-      limit: 7,
+      limit: 12,
+      groupUnknownAs: 'Other',
     }
   );
 

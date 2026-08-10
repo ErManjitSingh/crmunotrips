@@ -31,55 +31,97 @@ const KPI_ITEMS = [
     key: 'totalLeads',
     label: 'Leads',
     icon: Users,
-    iconBg: 'bg-violet-100 text-violet-600',
     path: '/leads',
+    card: 'bg-gradient-to-br from-violet-600 to-indigo-700 border-violet-500/30 shadow-violet-500/20',
+    iconWrap: 'bg-white/20 text-white',
+    labelCls: 'text-violet-100',
+    valueCls: 'text-white',
+    upCls: 'text-emerald-200',
+    downCls: 'text-rose-200',
+    flatCls: 'text-violet-100/80',
   },
   {
     key: 'connected',
     label: 'Connected',
     icon: Phone,
-    iconBg: 'bg-emerald-100 text-emerald-600',
     path: '/leads?status=contacted',
+    card: 'bg-gradient-to-br from-emerald-500 to-teal-600 border-emerald-400/30 shadow-emerald-500/20',
+    iconWrap: 'bg-white/20 text-white',
+    labelCls: 'text-emerald-50',
+    valueCls: 'text-white',
+    upCls: 'text-emerald-100',
+    downCls: 'text-rose-100',
+    flatCls: 'text-emerald-50/85',
   },
   {
     key: 'qualified',
     label: 'Qualified',
     icon: BadgeCheck,
-    iconBg: 'bg-orange-100 text-orange-600',
     path: '/leads?status=qualified',
+    card: 'bg-gradient-to-br from-orange-500 to-amber-600 border-orange-400/30 shadow-orange-500/20',
+    iconWrap: 'bg-white/20 text-white',
+    labelCls: 'text-orange-50',
+    valueCls: 'text-white',
+    upCls: 'text-emerald-100',
+    downCls: 'text-rose-100',
+    flatCls: 'text-orange-50/85',
   },
   {
     key: 'quotations',
     label: 'Quotations',
     short: 'Quotes',
     icon: FileText,
-    iconBg: 'bg-violet-100 text-violet-600',
     path: '/quotations',
+    card: 'bg-gradient-to-br from-fuchsia-500 to-pink-600 border-fuchsia-400/30 shadow-fuchsia-500/20',
+    iconWrap: 'bg-white/20 text-white',
+    labelCls: 'text-fuchsia-50',
+    valueCls: 'text-white',
+    upCls: 'text-emerald-100',
+    downCls: 'text-rose-100',
+    flatCls: 'text-fuchsia-50/85',
   },
   {
     key: 'bookings',
     label: 'Bookings',
     icon: Briefcase,
-    iconBg: 'bg-blue-100 text-blue-600',
     path: '/leads/converted',
     fallbackKey: 'conversions',
+    card: 'bg-gradient-to-br from-sky-500 to-blue-600 border-sky-400/30 shadow-sky-500/20',
+    iconWrap: 'bg-white/20 text-white',
+    labelCls: 'text-sky-50',
+    valueCls: 'text-white',
+    upCls: 'text-emerald-100',
+    downCls: 'text-rose-100',
+    flatCls: 'text-sky-50/85',
   },
   {
     key: 'revenue',
     label: 'Revenue',
     icon: IndianRupee,
-    iconBg: 'bg-emerald-100 text-emerald-600',
     path: '/payments',
     currency: true,
+    card: 'bg-gradient-to-br from-teal-500 to-cyan-700 border-teal-400/30 shadow-teal-500/20',
+    iconWrap: 'bg-white/20 text-white',
+    labelCls: 'text-teal-50',
+    valueCls: 'text-white',
+    upCls: 'text-emerald-100',
+    downCls: 'text-rose-100',
+    flatCls: 'text-teal-50/85',
   },
   {
     key: 'conversionRate',
     label: 'Conv. Rate',
     short: 'Conv.',
     icon: Percent,
-    iconBg: 'bg-pink-100 text-pink-600',
     path: '/reports',
     suffix: '%',
+    card: 'bg-gradient-to-br from-rose-500 to-red-600 border-rose-400/30 shadow-rose-500/20',
+    iconWrap: 'bg-white/20 text-white',
+    labelCls: 'text-rose-50',
+    valueCls: 'text-white',
+    upCls: 'text-emerald-100',
+    downCls: 'text-rose-100',
+    flatCls: 'text-rose-50/85',
   },
 ];
 
@@ -87,7 +129,7 @@ export default function DashboardHero({ stats }) {
   const kpis = stats?.report?.kpis || {};
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7 lg:gap-1.5">
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-7 lg:gap-2">
       {KPI_ITEMS.map((cfg, i) => {
         const meta =
           kpis[cfg.key] ||
@@ -114,33 +156,44 @@ export default function DashboardHero({ stats }) {
           >
             <Link
               to={cfg.path}
-              className="flex h-full min-h-0 flex-col gap-1 rounded-xl border border-slate-100 bg-white px-2 py-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 sm:flex-row sm:items-center sm:gap-1.5 sm:px-2 sm:py-2"
+              className={cn(
+                'flex h-full min-h-[88px] flex-col justify-between gap-2 rounded-2xl border px-2.5 py-2.5 shadow-md transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:min-h-[92px]',
+                cfg.card
+              )}
             >
-              <div
-                className={cn(
-                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
-                  cfg.iconBg
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" strokeWidth={2.1} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-slate-400">
+              <div className="flex items-start justify-between gap-1.5">
+                <p className={cn('truncate text-[10px] font-bold uppercase tracking-wide', cfg.labelCls)}>
                   <span className="xl:hidden">{cfg.short || cfg.label}</span>
                   <span className="hidden xl:inline">{cfg.label}</span>
                 </p>
-                <p className="truncate text-base font-bold leading-tight tracking-tight text-slate-900 metric-tabular sm:text-[17px]">
+                <span
+                  className={cn(
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg backdrop-blur-sm',
+                    cfg.iconWrap
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
+                </span>
+              </div>
+
+              <div className="min-w-0">
+                <p
+                  className={cn(
+                    'truncate text-[22px] font-bold leading-none tracking-tight metric-tabular drop-shadow-sm',
+                    cfg.valueCls
+                  )}
+                >
                   {display}
                 </p>
                 <p
                   className={cn(
-                    'mt-0.5 flex min-w-0 items-center gap-0.5 text-[8px] font-semibold leading-none',
-                    isUp && 'text-emerald-600',
-                    isDown && 'text-red-500',
-                    !isUp && !isDown && 'text-slate-400'
+                    'mt-1.5 flex min-w-0 items-center gap-1 text-[10px] font-semibold leading-none',
+                    isUp && cfg.upCls,
+                    isDown && cfg.downCls,
+                    !isUp && !isDown && cfg.flatCls
                   )}
                 >
-                  <TrendIcon className="h-2.5 w-2.5 shrink-0" />
+                  <TrendIcon className="h-3 w-3 shrink-0" />
                   <span className="truncate">{changeAbs}% vs yday</span>
                 </p>
               </div>
