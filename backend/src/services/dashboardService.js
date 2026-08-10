@@ -778,6 +778,96 @@ async function buildAdminDashboard(options = {}) {
     convertedLeads: convertedMap[b.key] || 0,
   }));
 
+  const dailyTrendStart = startOfDay(new Date(periodEnd.getTime() - 29 * 24 * 60 * 60 * 1000));
+  const dailyLeadAgg = await Lead.aggregate([
+    {
+      $match: activeLeadScope(
+        { createdAt: { $gte: dailyTrendStart, $lte: periodEnd }, ...sourceFilter },
+        branchId
+      ),
+    },
+    {
+      $group: {
+        _id: {
+          y: { $year: '$createdAt' },
+          m: { $month: '$createdAt' },
+          d: { $dayOfMonth: '$createdAt' },
+        },
+        leadsGenerated: { $sum: 1 },
+        connectedLeads: {
+          $sum: {
+            $cond: [
+              {
+                $in: [
+                  '$status',
+                  [
+                    'contacted',
+                    'working_progress',
+                    'qualified',
+                    'quotation_sent',
+                    'follow_up',
+                    'negotiation',
+                    'converted',
+                  ],
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        },
+        qualifiedLeads: {
+          $sum: {
+            $cond: [
+              {
+                $in: [
+                  '$status',
+                  ['qualified', 'quotation_sent', 'follow_up', 'negotiation', 'converted'],
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        },
+        quotationLeads: {
+          $sum: {
+            $cond: [
+              { $in: ['$status', ['quotation_sent', 'follow_up', 'negotiation', 'converted']] },
+              1,
+              0,
+            ],
+          },
+        },
+        convertedLeads: {
+          $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] },
+        },
+      },
+    },
+  ]);
+  const dailyMap = Object.fromEntries(
+    dailyLeadAgg.map((r) => {
+      const key = `${r._id.y}-${String(r._id.m).padStart(2, '0')}-${String(r._id.d).padStart(2, '0')}`;
+      return [key, r];
+    })
+  );
+  const dailyLeadTrend = [];
+  for (let i = 0; i < 30; i += 1) {
+    const day = new Date(dailyTrendStart.getTime() + i * 24 * 60 * 60 * 1000);
+    if (day > periodEnd) break;
+    const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+    const row = dailyMap[key];
+    dailyLeadTrend.push({
+      label: day.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+      date: key,
+      leadsGenerated: row?.leadsGenerated || 0,
+      connectedLeads: row?.connectedLeads || 0,
+      qualifiedLeads: row?.qualifiedLeads || 0,
+      quotationLeads: row?.quotationLeads || 0,
+      convertedLeads: row?.convertedLeads || 0,
+    });
+  }
+
   const conversionRateTrend = monthBuckets.map((b) => {
     const leads = leadMap[b.key] || 0;
     const converted = convertedMap[b.key] || 0;
@@ -1087,6 +1177,7 @@ async function buildAdminDashboard(options = {}) {
       statusDistributionSummary,
       leadsBySource: leadsBySourcePeriod,
       monthlyLeadTrend,
+      dailyLeadTrend,
       conversionRateTrend,
       revenueVsBookings,
       topDestinations,

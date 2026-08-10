@@ -26,8 +26,7 @@ export default function SalesTeamPerformanceTable({ data }) {
 
   return (
     <DashboardPanel
-      title="Sales Team Performance"
-      subtitle="Today"
+      title="Sales Team Performance (Today)"
       className="h-full"
       action={
         <Link to="/team" className="text-xs font-semibold text-violet-600 hover:underline">

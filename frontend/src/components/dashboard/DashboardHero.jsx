@@ -7,13 +7,15 @@ import {
   FileText,
   Briefcase,
   IndianRupee,
+  Percent,
   TrendingUp,
   TrendingDown,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-function formatChange(change) {
+function formatChange(change, { points = false } = {}) {
   const abs = Math.abs(change || 0);
+  if (points) return `${abs}%`;
   return `${abs}%`;
 }
 
@@ -32,45 +34,35 @@ const KPI_ITEMS = [
     key: 'totalLeads',
     label: 'Leads',
     icon: Users,
-    iconBg: 'bg-violet-500',
-    card: 'border-violet-100 bg-white',
-    value: 'text-slate-900',
+    iconBg: 'bg-violet-100 text-violet-600',
     path: '/leads',
   },
   {
     key: 'connected',
     label: 'Connected',
     icon: Phone,
-    iconBg: 'bg-indigo-500',
-    card: 'border-indigo-100 bg-white',
-    value: 'text-slate-900',
+    iconBg: 'bg-emerald-100 text-emerald-600',
     path: '/leads?status=contacted',
   },
   {
     key: 'qualified',
     label: 'Qualified',
     icon: BadgeCheck,
-    iconBg: 'bg-emerald-500',
-    card: 'border-emerald-100 bg-white',
-    value: 'text-slate-900',
+    iconBg: 'bg-orange-100 text-orange-600',
     path: '/leads?status=qualified',
   },
   {
     key: 'quotations',
     label: 'Quotations',
     icon: FileText,
-    iconBg: 'bg-blue-500',
-    card: 'border-blue-100 bg-white',
-    value: 'text-slate-900',
+    iconBg: 'bg-violet-100 text-violet-600',
     path: '/quotations',
   },
   {
     key: 'bookings',
     label: 'Bookings',
     icon: Briefcase,
-    iconBg: 'bg-amber-500',
-    card: 'border-amber-100 bg-white',
-    value: 'text-slate-900',
+    iconBg: 'bg-blue-100 text-blue-600',
     path: '/leads/converted',
     fallbackKey: 'conversions',
   },
@@ -78,19 +70,15 @@ const KPI_ITEMS = [
     key: 'revenue',
     label: 'Revenue',
     icon: IndianRupee,
-    iconBg: 'bg-pink-500',
-    card: 'border-pink-100 bg-white',
-    value: 'text-slate-900',
+    iconBg: 'bg-emerald-100 text-emerald-600',
     path: '/payments',
     currency: true,
   },
   {
     key: 'conversionRate',
     label: 'Conversion Rate',
-    icon: TrendingUp,
-    iconBg: 'bg-teal-500',
-    card: 'border-teal-100 bg-white',
-    value: 'text-slate-900',
+    icon: Percent,
+    iconBg: 'bg-pink-100 text-pink-600',
     path: '/reports',
     suffix: '%',
   },
@@ -98,10 +86,9 @@ const KPI_ITEMS = [
 
 export default function DashboardHero({ stats }) {
   const kpis = stats?.report?.kpis || {};
-  const compareLabel = stats?.report?.period?.compareLabel || 'Yesterday';
 
   return (
-    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-7">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-7">
       {KPI_ITEMS.map((cfg, i) => {
         const meta =
           kpis[cfg.key] ||
@@ -120,49 +107,39 @@ export default function DashboardHero({ stats }) {
             key={cfg.key}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: i * 0.03 }}
+            transition={{ duration: 0.22, delay: i * 0.03 }}
             className="min-w-0"
           >
             <Link
               to={cfg.path}
-              className={cn(
-                'flex flex-col gap-2 rounded-xl border px-3 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400',
-                cfg.card
-              )}
+              className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-3.5 py-3.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
             >
-              <div className="flex items-center justify-between gap-2">
-                <div
+              <div
+                className={cn(
+                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-full',
+                  cfg.iconBg
+                )}
+              >
+                <Icon className="h-5 w-5" strokeWidth={2.1} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[12px] font-medium text-slate-500">{cfg.label}</p>
+                <p className="mt-0.5 text-[22px] font-bold leading-none tracking-tight text-slate-900 metric-tabular">
+                  {display}
+                </p>
+                <p
                   className={cn(
-                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-sm',
-                    cfg.iconBg
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5 text-white" strokeWidth={2.25} />
-                </div>
-                <span
-                  className={cn(
-                    'inline-flex shrink-0 items-center gap-0.5 text-[10px] font-bold',
+                    'mt-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold',
                     isUp && 'text-emerald-600',
                     isDown && 'text-red-500',
                     !isUp && !isDown && 'text-slate-400'
                   )}
                 >
-                  {isUp && <TrendingUp className="h-2.5 w-2.5" />}
-                  {isDown && <TrendingDown className="h-2.5 w-2.5" />}
-                  {formatChange(meta.change)}
-                </span>
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-[11px] font-medium text-slate-500">{cfg.label}</p>
-                <p
-                  className={cn(
-                    'mt-0.5 text-xl font-bold leading-none metric-tabular tracking-tight',
-                    cfg.value
-                  )}
-                >
-                  {display}
+                  <span className="font-medium text-slate-400">vs Yesterday</span>
+                  {isUp && <TrendingUp className="ml-1 h-3 w-3" />}
+                  {isDown && <TrendingDown className="ml-1 h-3 w-3" />}
+                  <span>{formatChange(meta.change)}</span>
                 </p>
-                <p className="mt-1 truncate text-[9px] text-slate-400">vs {compareLabel}</p>
               </div>
             </Link>
           </motion.div>

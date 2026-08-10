@@ -1,77 +1,68 @@
 import { Link } from 'react-router-dom';
-import {
-  ArrowRight,
-  CalendarClock,
-  FileWarning,
-  PhoneOff,
-  UserX,
-  Wallet,
-} from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import DashboardPanel from './DashboardPanel';
 import { cn } from '../../lib/utils';
 
-const TONE = {
-  violet: 'bg-violet-50 text-violet-600 border-violet-100',
-  amber: 'bg-amber-50 text-amber-600 border-amber-100',
-  blue: 'bg-blue-50 text-blue-600 border-blue-100',
-  rose: 'bg-rose-50 text-rose-600 border-rose-100',
-  orange: 'bg-orange-50 text-orange-600 border-orange-100',
+const BADGE = {
+  violet: 'bg-violet-100 text-violet-700',
+  amber: 'bg-orange-100 text-orange-700',
+  blue: 'bg-blue-100 text-blue-700',
+  rose: 'bg-red-100 text-red-700',
+  orange: 'bg-amber-100 text-amber-700',
 };
 
-const ICONS = {
-  followups_due: CalendarClock,
-  untouched: PhoneOff,
-  quotes_awaiting: FileWarning,
-  pending_payment: Wallet,
-  low_followup_execs: UserX,
-};
+const DEFAULT_ROWS = [
+  { key: 'followups_due', label: 'Follow-ups Due Today', count: 0, link: '/followups', tone: 'rose' },
+  { key: 'untouched', label: 'Leads Untouched (24+ hrs)', count: 0, link: '/leads/inbox/new', tone: 'amber' },
+  { key: 'quotes_awaiting', label: 'Quotations Awaiting Response', count: 0, link: '/quotations', tone: 'violet' },
+  { key: 'pending_payment', label: 'Bookings Pending Payment', count: 0, link: '/bookings', tone: 'blue' },
+  { key: 'low_followup_execs', label: 'Low Follow-up Executives', count: 0, link: '/team', tone: 'orange' },
+];
 
 export default function ActionRequiredPanel({ items = [] }) {
-  const rows = items.length
-    ? items
-    : [
-        { key: 'followups_due', label: 'Follow-ups Due Today', count: 0, link: '/followups', tone: 'violet' },
-        { key: 'untouched', label: 'Leads Untouched', count: 0, link: '/leads/inbox/new', tone: 'amber' },
-        { key: 'quotes_awaiting', label: 'Quotations Awaiting Response', count: 0, link: '/quotations', tone: 'blue' },
-        { key: 'pending_payment', label: 'Bookings Pending Payment', count: 0, link: '/bookings', tone: 'rose' },
-        { key: 'low_followup_execs', label: 'Low Follow-up Executives', count: 0, link: '/team', tone: 'orange' },
-      ];
+  const incoming = items.length ? items : DEFAULT_ROWS;
+  const rows = incoming.map((row) => {
+    const fallback = DEFAULT_ROWS.find((d) => d.key === row.key);
+    return {
+      ...fallback,
+      ...row,
+      label:
+        row.key === 'untouched'
+          ? 'Leads Untouched (24+ hrs)'
+          : row.label || fallback?.label,
+      tone: row.key === 'followups_due' ? 'rose' : row.tone || fallback?.tone || 'violet',
+    };
+  });
 
   return (
-    <DashboardPanel
-      title="Action Required"
-      subtitle="Urgent tasks needing attention"
-      className="h-full"
-      action={
-        <Link
-          to="/followups"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-violet-600 hover:underline"
-        >
-          View All Tasks <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      }
-    >
-      <div className="space-y-2">
-        {rows.map((row) => {
-          const Icon = ICONS[row.key] || CalendarClock;
-          return (
-            <Link
-              key={row.key}
-              to={row.link || '/leads'}
+    <DashboardPanel title="Action Required" className="h-full">
+      <div className="space-y-1">
+        {rows.map((row) => (
+          <Link
+            key={row.key}
+            to={row.link || '/leads'}
+            className="flex items-center justify-between gap-3 rounded-xl px-1 py-2.5 transition hover:bg-slate-50"
+          >
+            <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-700">
+              {row.label}
+            </p>
+            <span
               className={cn(
-                'flex items-center gap-3 rounded-xl border px-3 py-2.5 transition hover:opacity-90',
-                TONE[row.tone] || TONE.violet
+                'inline-flex min-w-[28px] items-center justify-center rounded-full px-2 py-0.5 text-[12px] font-bold tabular-nums',
+                BADGE[row.tone] || BADGE.violet
               )}
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/70">
-                <Icon className="h-4 w-4" />
-              </span>
-              <p className="min-w-0 flex-1 truncate text-sm font-medium">{row.label}</p>
-              <span className="text-sm font-bold tabular-nums">{row.count || 0}</span>
-            </Link>
-          );
-        })}
+              {row.count || 0}
+            </span>
+          </Link>
+        ))}
       </div>
+      <Link
+        to="/followups"
+        className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-violet-600 hover:underline"
+      >
+        View All Tasks <ArrowRight className="h-3.5 w-3.5" />
+      </Link>
     </DashboardPanel>
   );
 }

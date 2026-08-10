@@ -21,26 +21,32 @@ function formatPeriodChip(filters) {
   return 'Custom Range';
 }
 
-export default function AdminDashboardGreeting({ filters, periodLabel }) {
+export default function AdminDashboardGreeting({ filters, periodLabel, onOpenFilters }) {
   const { user } = useAuth();
   const firstName = (user?.name || 'Admin').split(' ')[0];
-  const chip = periodLabel || formatPeriodChip(filters);
+  const chip = periodLabel?.includes(' - ')
+    ? formatPeriodChip(filters)
+    : periodLabel || formatPeriodChip(filters);
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-content-primary">
+        <h1 className="text-[26px] font-bold tracking-tight text-slate-900">
           {timeGreeting()}, {firstName}! 👋
         </h1>
-        <p className="mt-1 text-sm text-content-muted">
-          Here&apos;s your business overview — Contacted and Qualified stay separate in the funnel.
+        <p className="mt-1 text-[13px] text-slate-500">
+          Here&apos;s what&apos;s happening with your business today.
         </p>
       </div>
-      <div className="inline-flex items-center gap-2 self-start rounded-xl border border-subtle bg-surface px-3 py-2 text-sm font-medium text-content-secondary shadow-sm sm:self-auto">
+      <button
+        type="button"
+        onClick={onOpenFilters}
+        className="inline-flex items-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 sm:self-auto"
+      >
         <CalendarDays className="h-4 w-4 text-violet-500" />
         <span>{chip}</span>
-        <ChevronDown className="h-3.5 w-3.5 text-content-muted" />
-      </div>
+        <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+      </button>
     </div>
   );
 }

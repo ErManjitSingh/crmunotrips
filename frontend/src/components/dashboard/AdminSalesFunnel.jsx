@@ -1,30 +1,37 @@
-import { motion } from 'framer-motion';
 import DashboardPanel from './DashboardPanel';
 
-const FILLS = ['#7C3AED', '#6366F1', '#3B82F6', '#0EA5E9', '#10B981'];
+const STAGES = [
+  { key: 'leads', label: 'Leads', color: '#7C3AED' },
+  { key: 'connected', label: 'Connected', color: '#10B981' },
+  { key: 'qualified', label: 'Qualified', color: '#F97316' },
+  { key: 'quotations', label: 'Quotations', color: '#EC4899' },
+  { key: 'bookings', label: 'Bookings', color: '#3B82F6' },
+];
 
 function pct(n, d) {
   if (!d) return 0;
   return Math.round((n / d) * 10000) / 100;
 }
 
+/**
+ * True inverted trapezoid funnel — same visual language as the UNO admin mock.
+ * Each band is a trapezoid polygon (top wider than bottom).
+ */
 export default function AdminSalesFunnel({ data = [] }) {
-  const stages = data.length
-    ? data
-    : [
-        { stage: 'Leads', count: 0 },
-        { stage: 'Connected', count: 0 },
-        { stage: 'Qualified', count: 0 },
-        { stage: 'Quotations', count: 0 },
-        { stage: 'Bookings', count: 0 },
-      ];
+  const byLabel = Object.fromEntries(
+    (data || []).map((s) => [String(s.stage || '').toLowerCase(), Number(s.count || 0)])
+  );
 
-  const leads = Number(stages[0]?.count || 0) || 1;
-  const connected = Number(stages[1]?.count || 0);
-  const qualified = Number(stages[2]?.count || 0);
-  const quotations = Number(stages[3]?.count || 0);
-  const bookings = Number(stages[4]?.count || 0);
+  const counts = STAGES.map((s, i) => {
+    const fromData = data[i]?.count;
+    const byName =
+      byLabel[s.label.toLowerCase()] ??
+      byLabel[s.key] ??
+      (s.key === 'leads' ? byLabel.lead : undefined);
+    return Number(fromData ?? byName ?? 0);
+  });
 
+  const [leads, connected, qualified, quotations, bookings] = counts;
   const conversions = [
     { label: 'Overall Conversion', value: pct(bookings, leads) },
     { label: 'Lead → Connected', value: pct(connected, leads) },
@@ -32,47 +39,53 @@ export default function AdminSalesFunnel({ data = [] }) {
     { label: 'Qualified → Booking', value: pct(bookings, qualified) },
   ];
 
-  const max = Math.max(...stages.map((s) => Number(s.count || 0)), 1);
+  // Trapezoid geometry in viewBox 0..100 x 0..100
+  const bandH = 18;
+  const gap = 2.2;
+  const topW = [100, 84, 68, 52, 36];
+  const bands = STAGES.map((stage, i) => {
+    const y = i * (bandH + gap);
+    const wTop = topW[i];
+    const wBot = topW[i + 1] ?? topW[i] * 0.55;
+    const xTop = (100 - wTop) / 2;
+    const xBot = (100 - wBot) / 2;
+    const points = [
+      `${xTop},${y}`,
+      `${xTop + wTop},${y}`,
+      `${xBot + wBot},${y + bandH}`,
+      `${xBot},${y + bandH}`,
+    ].join(' ');
+    return { ...stage, count: counts[i], points, y, midY: y + bandH / 2 };
+  });
 
   return (
-    <DashboardPanel title="Sales Funnel" subtitle="This Month" className="h-full">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
-        <div className="flex-1 space-y-2">
-          {stages.map((stage, i) => {
-            const width = Math.max(28, Math.round((Number(stage.count || 0) / max) * 100));
-            return (
-              <motion.div
-                key={stage.stage}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="relative"
-              >
-                <div
-                  className="flex items-center justify-between rounded-lg px-3 py-2 text-white shadow-sm"
-                  style={{
-                    width: `${width}%`,
-                    minWidth: '140px',
-                    background: FILLS[i % FILLS.length],
-                  }}
+    <DashboardPanel title="Sales Funnel (This Month)" className="h-full">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+        <div className="relative mx-auto w-full max-w-[280px] shrink-0 sm:mx-0">
+          <svg viewBox="0 0 100 100" className="h-auto w-full drop-shadow-sm" aria-hidden>
+            {bands.map((band) => (
+              <g key={band.key}>
+                <polygon points={band.points} fill={band.color} />
+                <text
+                  x="50"
+                  y={band.midY + 1.2}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#fff"
+                  style={{ fontSize: '4.2px', fontWeight: 700 }}
                 >
-                  <span className="text-xs font-medium">{stage.stage}</span>
-                  <span className="text-sm font-bold tabular-nums">
-                    {Number(stage.count || 0).toLocaleString('en-IN')}
-                  </span>
-                </div>
-              </motion.div>
-            );
-          })}
+                  {band.count.toLocaleString('en-IN')} {band.label}
+                </text>
+              </g>
+            ))}
+          </svg>
         </div>
-        <div className="w-full shrink-0 space-y-2 lg:w-44">
+
+        <div className="min-w-0 flex-1 space-y-3">
           {conversions.map((c) => (
-            <div
-              key={c.label}
-              className="rounded-xl border border-subtle bg-surface-elevated/40 px-3 py-2"
-            >
-              <p className="text-[10px] font-medium text-content-muted">{c.label}</p>
-              <p className="mt-0.5 text-sm font-bold text-content-primary tabular-nums">
+            <div key={c.label} className="flex items-baseline justify-between gap-3 border-b border-slate-100 pb-2 last:border-0 last:pb-0">
+              <p className="text-[12px] font-medium text-slate-500">{c.label}</p>
+              <p className="text-[15px] font-bold tabular-nums text-slate-800">
                 {c.value.toFixed(2)}%
               </p>
             </div>
