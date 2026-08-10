@@ -20,7 +20,6 @@ import {
 import { toast } from '../../../context/ToastContext';
 import { useSidebar } from '../../../context/SidebarContext';
 import { formatCurrency } from '../executiveUtils';
-import CrmUpdateSection from './CrmUpdateSection';
 import RecentUpdatesRemindersRow from './RecentUpdatesRemindersRow';
 
 const KPI_CARDS = [
@@ -220,11 +219,6 @@ export default function MobileExecutiveDashboard({
         </div>
 
         <div className="mt-4 space-y-3">
-          <CrmUpdateSection
-            target={data?.target}
-            announcements={hero ? [hero] : []}
-            now={now}
-          />
           <RecentUpdatesRemindersRow
             announcements={hero ? [hero] : []}
             conversionProgress={data?.conversionProgress || []}

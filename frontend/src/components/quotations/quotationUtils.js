@@ -5,12 +5,8 @@ function round2(n) {
 }
 
 /**
- * Bake company (admin) margin into cost lines so SE only sees higher "raw"
- * amounts — no separate company-margin row on the total.
- *
- * Formula: Hotel Cost = Σ(day-wise absolute rates) × rooms (+ mattress),
- * then × (1 + adminMargin%). Same bake for cab / flight.
- * Caller must pass UNBAKED raw line costs (wizard recomputes from package each time).
+ * Optionally bake company (admin) margin into cost lines (legacy).
+ * Prefer keeping website line costs raw and applying adminMarginPercent in calculatePricing.
  */
 export function bakeCompanyMarginIntoLineCosts(pricing = {}, adminMarginPercent = 0) {
   const pct = Math.max(0, Number(adminMarginPercent) || 0);
@@ -29,7 +25,6 @@ export function bakeCompanyMarginIntoLineCosts(pricing = {}, adminMarginPercent 
     ...pricing,
     hotelCost: bake(pricing.hotelCost),
     cabCost: bake(pricing.cabCost),
-    // Residual package share is dropped from costing (not folded into hotel, not billed)
     baseCost: 0,
     flightCost: bake(pricing.flightCost),
     activityCost: round2(Number(pricing.activityCost || 0)),
@@ -41,11 +36,10 @@ export function bakeCompanyMarginIntoLineCosts(pricing = {}, adminMarginPercent 
 
 /**
  * Quotation costing formula:
- * 1. Line costs (hotel/cab/…) — company margin already baked into these when set
- * 2. Optional executive "Your margin %" on the sum
- * 3. Discount → GST → final
- *
- * adminMarginPercent is only used if costs were NOT already baked (legacy quotes).
+ * 1. Website line costs (hotel/cab/flight/activity) — same rates as website
+ * 2. Admin (destination) margin % on those costs → added to total
+ * 3. Optional executive "Your margin %"
+ * 4. Discount → GST → final
  */
 export function calculatePricing({
   hotelCost = 0,
@@ -59,6 +53,7 @@ export function calculatePricing({
   markupPercent = 0,
   adminMarginPercent = 0,
   companyMarginBaked = false,
+  companyMarginBakedPercent = 0,
 } = {}) {
   // Package residual (baseCost) is intentionally excluded from quotation totals
   const costs =
@@ -67,9 +62,11 @@ export function calculatePricing({
     Number(flightCost || 0) +
     Number(activityCost || 0);
 
-  // Legacy only: if lines were not baked, apply admin % once on the sum (hidden from SE UI)
-  const adminPct =
-    companyMarginBaked ? 0 : Math.max(0, Number(adminMarginPercent) || 0);
+  // If lines were already baked (legacy quotes), do not apply % again.
+  // Prefer explicit adminMarginPercent; fall back to baked percent only for display recovery.
+  const adminPct = companyMarginBaked
+    ? 0
+    : Math.max(0, Number(adminMarginPercent) || 0);
   const adminMarkup =
     adminPct > 0 ? round2(costs * (adminPct / 100)) : 0;
   const afterAdmin = costs + adminMarkup;
@@ -101,6 +98,7 @@ export function calculatePricing({
     taxes: computedTaxes,
     markup: computedMarkup,
     adminMarkup,
+    adminMarginPercent: adminPct || Number(companyMarginBakedPercent || 0) || 0,
     execMarkup,
     packageCost,
     packageBeforeDisc,
@@ -118,8 +116,8 @@ export function foldPackageResidualIntoHotel(pricing = {}) {
 }
 
 /**
- * SE-facing breakdown. Hotel Cost = hotel rates + admin margin only.
- * Package residual is never billed / shown.
+ * SE-facing breakdown.
+ * Hotel/Cab = website rates. Admin margin is a separate add-on on the total.
  */
 export function getDisplayedCostBreakdown(pricing = {}) {
   const calc = calculatePricing({ ...pricing, baseCost: 0 });
@@ -134,6 +132,8 @@ export function getDisplayedCostBreakdown(pricing = {}) {
     activityCost,
     flightCost,
     packageResidualCost: 0,
+    adminMarkup: calc.adminMarkup,
+    adminMarginPercent: calc.adminMarginPercent,
     markup: calc.execMarkup,
     taxes: calc.taxes,
     discount: Math.max(0, Number(pricing.discount || 0)),

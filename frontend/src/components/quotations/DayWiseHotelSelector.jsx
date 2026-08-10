@@ -33,8 +33,8 @@ export function sumDayWiseHotelIncluded(selections = []) {
 }
 
 /**
- * Hotel Cost = Σ day-wise absolute hotel rates only.
- * Admin margin is applied later via bakeCompanyMarginIntoLineCosts.
+ * Hotel Cost = Σ day-wise absolute hotel rates only (same as website).
+ * Admin margin is applied on the quotation total via adminMarginPercent.
  * Package residual / upgrade deltas must never inflate this line.
  */
 export function resolvePackageHotelPricing(_packageStartingPrice = 0, selections = []) {

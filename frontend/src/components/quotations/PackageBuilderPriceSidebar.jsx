@@ -151,11 +151,25 @@ export default function PackageBuilderPriceSidebar({
           })}
 
           <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
-            <span className="text-[11px] font-semibold text-slate-600">Subtotal</span>
+            <span className="text-[11px] font-semibold text-slate-600">Website Subtotal</span>
             <span className="text-sm font-bold metric-tabular text-slate-800">
               {formatINR(breakdown.costsBeforeMargin || 0)}
             </span>
           </div>
+
+          {Number(breakdown.adminMarkup || 0) > 0 && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/80 px-2 py-1.5">
+              <div>
+                <span className="text-xs font-semibold text-amber-800">Admin Margin</span>
+                <p className="text-[10px] text-amber-700/70">
+                  +{Number(breakdown.adminMarginPercent || 0)}% on website costs
+                </p>
+              </div>
+              <span className="min-w-[108px] text-right text-sm font-bold metric-tabular text-amber-900">
+                {formatINR(breakdown.adminMarkup)}
+              </span>
+            </div>
+          )}
 
           <div className="rounded-lg border border-green-100 bg-green-50/70 px-2 py-2 space-y-1.5">
             <div className="flex items-center justify-between gap-3">

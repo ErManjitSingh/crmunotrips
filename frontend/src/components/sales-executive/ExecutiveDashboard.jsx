@@ -11,7 +11,6 @@ import API from '../../api/axios';
 import ExecutiveKpiCards from './dashboard/ExecutiveKpiCards';
 import ExecutiveDashboardPanels from './dashboard/ExecutiveDashboardPanels';
 import MobileExecutiveDashboard from './dashboard/MobileExecutiveDashboard';
-import CrmUpdateSection from './dashboard/CrmUpdateSection';
 import RecentUpdatesRemindersRow from './dashboard/RecentUpdatesRemindersRow';
 import {
   ColdCallAlertsPanel,
@@ -195,15 +194,6 @@ export default function ExecutiveDashboard() {
         />
 
         <ExecutiveKpiCards kpis={data?.kpis} trends={data?.kpiTrends} />
-
-        <CrmUpdateSection
-          target={data?.target}
-          announcements={[
-            ...(announcementFeed?.hero ? [announcementFeed.hero] : []),
-            ...(announcementFeed?.carousel || []),
-          ]}
-          now={now}
-        />
 
         <RecentUpdatesRemindersRow
           announcements={[
