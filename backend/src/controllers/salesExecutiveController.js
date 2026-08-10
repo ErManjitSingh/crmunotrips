@@ -109,13 +109,17 @@ function buildExecutiveLeadFilter(filter) {
 
 const getDashboard = asyncHandler(async (req, res) => {
   const destinationPeriod = req.query.destinationPeriod || 'all';
-  const cacheSuffix = `${req.user._id}:${req.branchId || 'all'}:${destinationPeriod}`;
+  const dateFrom = typeof req.query.dateFrom === 'string' ? req.query.dateFrom : '';
+  const dateTo = typeof req.query.dateTo === 'string' ? req.query.dateTo : '';
+  const cacheSuffix = `${req.user._id}:${req.branchId || 'all'}:${destinationPeriod}:${dateFrom || '-'}:${dateTo || '-'}`;
   const stats = await getOrSetFresh(
     req,
     cacheKey('sales_executive', cacheSuffix),
     () => buildExecutiveDashboard(req.user._id, {
       branchId: req.branchId,
       destinationPeriod,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
     }),
     60 * 1000
   );

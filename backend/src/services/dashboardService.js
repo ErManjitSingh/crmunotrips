@@ -62,8 +62,11 @@ function resolveDestinationPeriod(period = 'all') {
   }
 }
 
-async function buildDestinationWiseStats(leadScope, period = 'all') {
-  const { start, end } = resolveDestinationPeriod(period);
+async function buildDestinationWiseStats(leadScope, period = 'all', rangeOverride = null) {
+  const resolved = rangeOverride?.start && rangeOverride?.end
+    ? { start: rangeOverride.start, end: rangeOverride.end }
+    : resolveDestinationPeriod(period);
+  const { start, end } = resolved;
   const match = { ...leadScope };
   if (start && end) {
     match.createdAt = { $gte: start, $lte: end };
@@ -1187,22 +1190,135 @@ async function buildAdminDashboard(options = {}) {
 }
 
 async function buildExecutiveDashboard(userId, options = {}) {
-  const { branchId, destinationPeriod = 'all' } = options;
+  const { branchId, destinationPeriod = 'all', dateFrom, dateTo } = options;
   const execId = userId;
   const todayStart = startOfDay();
   const todayEnd = endOfDay();
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const lastMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
-  const lastMonthEnd = new Date(monthStart.getTime() - 1);
-  const yesterdayStart = new Date(todayStart);
-  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-  const yesterdayEnd = new Date(todayStart.getTime() - 1);
-  const chartStart = startOfDay(new Date(todayStart.getFullYear(), todayStart.getMonth(), todayStart.getDate() - 20));
+  const {
+    isAllTime,
+    periodStart,
+    periodEnd,
+    prevStart,
+    prevEnd,
+  } = resolveReportPeriod(dateFrom, dateTo);
+
+  const hasCustomRange = Boolean(dateFrom || dateTo);
+  const destinationRange = hasCustomRange && !isAllTime
+    ? { start: periodStart, end: periodEnd }
+    : null;
+
+  const chartSpanDays = Math.min(
+    30,
+    Math.max(7, Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (24 * 60 * 60 * 1000)) + 1)
+  );
+  const chartStart = startOfDay(
+    new Date(periodEnd.getTime() - (chartSpanDays - 1) * 24 * 60 * 60 * 1000)
+  );
 
   const leadScope = withBranch({ assignedTo: execId }, branchId);
   const leadIds = await Lead.find(leadScope).distinct('_id');
   const followScope = { $or: [{ assignedTo: execId }, { lead: { $in: leadIds } }] };
   const quoteScope = { $or: [{ createdByExecutive: execId }, { lead: { $in: leadIds } }] };
+
+  const periodTouch = {
+    $or: [
+      { createdAt: { $gte: periodStart, $lte: periodEnd } },
+      { assignedAt: { $gte: periodStart, $lte: periodEnd } },
+    ],
+  };
+  const prevTouch = {
+    $or: [
+      { createdAt: { $gte: prevStart, $lte: prevEnd } },
+      { assignedAt: { $gte: prevStart, $lte: prevEnd } },
+    ],
+  };
+
+  // All-time keeps live pipeline counts; date filters scope activity to the range.
+  const activeLeadScope = isAllTime
+    ? { ...leadScope, status: { $nin: ['lost', 'booked_from_another_company'] } }
+    : {
+        ...leadScope,
+        status: { $nin: ['lost', 'booked_from_another_company'] },
+        ...periodTouch,
+      };
+  const freshLeadScope = isAllTime
+    ? {
+        ...leadScope,
+        $or: [
+          { createdAt: { $gte: todayStart, $lte: todayEnd } },
+          { assignedAt: { $gte: todayStart, $lte: todayEnd } },
+        ],
+      }
+    : { ...leadScope, ...periodTouch };
+  const connectedScope = isAllTime
+    ? { ...leadScope, status: 'contacted' }
+    : { ...leadScope, status: 'contacted', ...periodTouch };
+  const hotScope = isAllTime
+    ? {
+        ...leadScope,
+        isHot: true,
+        status: { $nin: ['converted', 'lost', 'booked_from_another_company'] },
+      }
+    : {
+        ...leadScope,
+        isHot: true,
+        status: { $nin: ['converted', 'lost', 'booked_from_another_company'] },
+        ...periodTouch,
+      };
+  const convertedScope = isAllTime
+    ? { ...leadScope, status: 'converted' }
+    : {
+        ...leadScope,
+        status: 'converted',
+        updatedAt: { $gte: periodStart, $lte: periodEnd },
+      };
+  const followPendingScope = isAllTime
+    ? { ...followScope, status: 'pending' }
+    : {
+        ...followScope,
+        status: 'pending',
+        scheduledAt: { $gte: periodStart, $lte: periodEnd },
+      };
+  const todayFollowScope = isAllTime
+    ? {
+        ...followScope,
+        scheduledAt: { $gte: todayStart, $lte: todayEnd },
+        status: 'pending',
+      }
+    : {
+        ...followScope,
+        scheduledAt: { $gte: periodStart, $lte: periodEnd },
+        status: 'pending',
+      };
+  const monthStart = startOfDay(new Date(todayStart.getFullYear(), todayStart.getMonth(), 1));
+  const revenueStart = isAllTime ? monthStart : periodStart;
+  const revenueEnd = isAllTime ? todayEnd : periodEnd;
+  const revenueMatch = withBranch(
+    {
+      status: { $in: ['paid', 'partial'] },
+      lead: { $in: leadIds },
+      $or: [
+        { paidAt: { $gte: revenueStart, $lte: revenueEnd } },
+        { paidAt: null, createdAt: { $gte: revenueStart, $lte: revenueEnd } },
+      ],
+    },
+    branchId
+  );
+  const prevRevenueMatch = withBranch(
+    {
+      status: { $in: ['paid', 'partial'] },
+      lead: { $in: leadIds },
+      $or: [
+        { paidAt: { $gte: prevStart, $lte: prevEnd } },
+        { paidAt: null, createdAt: { $gte: prevStart, $lte: prevEnd } },
+      ],
+    },
+    branchId
+  );
+  const periodLabel = isAllTime
+    ? 'All time'
+    : `${periodStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} – ${periodEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  const trendPeriod = isAllTime ? 'from last month' : 'vs prior period';
 
   const [
     myLeads,
@@ -1221,12 +1337,12 @@ async function buildExecutiveDashboard(userId, options = {}) {
     statusAgg,
     emailStats,
     sourceAgg,
-    lastMonthLeads,
-    yesterdayFollowups,
-    yesterdayHotLeads,
-    lastMonthQuotes,
-    lastMonthConverted,
-    lastMonthRevenueAgg,
+    prevMyLeads,
+    prevFollowups,
+    prevHotLeads,
+    prevQuotes,
+    prevConverted,
+    prevRevenueAgg,
     leadTrendAgg,
     followupTrendAgg,
     convertedTrendAgg,
@@ -1235,124 +1351,109 @@ async function buildExecutiveDashboard(userId, options = {}) {
     coldCallRemindersRaw,
     destinationWise,
   ] = await Promise.all([
-    Lead.countDocuments({ ...leadScope, status: { $nin: ['lost', 'booked_from_another_company'] } }),
-    Lead.countDocuments({
-      ...leadScope,
-      $or: [
-        { createdAt: { $gte: todayStart, $lte: todayEnd } },
-        { assignedAt: { $gte: todayStart, $lte: todayEnd } },
-      ],
-    }),
-    Lead.countDocuments({ ...leadScope, status: 'contacted' }),
-    FollowUp.countDocuments({ ...followScope, status: 'pending' }),
-    Lead.countDocuments({ ...leadScope, isHot: true, status: { $nin: ['converted', 'lost', 'booked_from_another_company'] } }),
-    Lead.countDocuments({ ...leadScope, status: 'converted' }),
-    FollowUp.countDocuments({
-      ...followScope,
-      scheduledAt: { $gte: todayStart, $lte: todayEnd },
-      status: 'pending',
-    }),
-    FollowUp.find({
-      ...followScope,
-      scheduledAt: { $gte: todayStart, $lte: todayEnd },
-      status: 'pending',
-    })
+    Lead.countDocuments(activeLeadScope),
+    Lead.countDocuments(freshLeadScope),
+    Lead.countDocuments(connectedScope),
+    FollowUp.countDocuments(followPendingScope),
+    Lead.countDocuments(hotScope),
+    Lead.countDocuments(convertedScope),
+    FollowUp.countDocuments(todayFollowScope),
+    FollowUp.find(todayFollowScope)
       .populate('lead', 'name destination')
       .sort({ scheduledAt: 1 })
       .limit(20)
       .lean(),
-    Quotation.countDocuments({
-      ...quoteScope,
-      status: { $in: ['sent', 'negotiation', 'approved', 'viewed', 'pending_approval'] },
-    }),
+    Quotation.countDocuments(
+      isAllTime
+        ? {
+            ...quoteScope,
+            status: { $in: ['sent', 'negotiation', 'approved', 'viewed', 'pending_approval'] },
+          }
+        : {
+            ...quoteScope,
+            status: { $in: ['sent', 'negotiation', 'approved', 'viewed', 'pending_approval'] },
+            createdAt: { $gte: periodStart, $lte: periodEnd },
+          }
+    ),
     Payment.aggregate([
-      {
-        $match: withBranch({
-          status: { $in: ['paid', 'partial'] },
-          lead: { $in: leadIds },
-          $or: [
-            { paidAt: { $gte: monthStart } },
-            { paidAt: null, createdAt: { $gte: monthStart } },
-          ],
-        }, branchId),
-      },
+      { $match: revenueMatch },
       { $group: { _id: null, total: { $sum: '$paidAmount' } } },
     ]),
     Lead.aggregate([
       {
-        $match: {
-          ...leadScope,
-          status: { $nin: ['lost', 'booked_from_another_company'] },
-        },
+        $match: activeLeadScope,
       },
       { $group: { _id: null, total: { $sum: { $ifNull: ['$budget', 0] } } } },
     ]),
-    Lead.find(leadScope).sort({ createdAt: -1 }).limit(6).lean(),
+    Lead.find(isAllTime ? leadScope : { ...leadScope, ...periodTouch })
+      .sort({ createdAt: -1 })
+      .limit(6)
+      .lean(),
     FollowUp.find({ ...followScope, status: 'pending', scheduledAt: { $gte: new Date() } })
       .populate('lead', 'name destination')
       .sort({ scheduledAt: 1 })
       .limit(6)
       .lean(),
     Lead.aggregate([
-      { $match: leadScope },
+      { $match: isAllTime ? leadScope : { ...leadScope, ...periodTouch } },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]),
     getEmailDashboardStats({ branchId, userId: execId }),
-    Lead.aggregate([{ $match: leadScope }, { $group: { _id: '$source', count: { $sum: 1 } } }]),
+    Lead.aggregate([
+      { $match: isAllTime ? leadScope : { ...leadScope, ...periodTouch } },
+      { $group: { _id: '$source', count: { $sum: 1 } } },
+    ]),
     Lead.countDocuments({
       ...leadScope,
       status: { $nin: ['lost', 'booked_from_another_company'] },
-      createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd },
+      ...prevTouch,
     }),
     FollowUp.countDocuments({
       ...followScope,
-      scheduledAt: { $gte: yesterdayStart, $lte: yesterdayEnd },
+      scheduledAt: { $gte: prevStart, $lte: prevEnd },
       status: 'pending',
     }),
     Lead.countDocuments({
       ...leadScope,
       isHot: true,
       status: { $nin: ['converted', 'lost', 'booked_from_another_company'] },
-      updatedAt: { $gte: yesterdayStart, $lte: yesterdayEnd },
+      ...prevTouch,
     }),
     Quotation.countDocuments({
       ...quoteScope,
       status: { $in: ['sent', 'negotiation', 'approved', 'viewed', 'pending_approval'] },
-      createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd },
+      createdAt: { $gte: prevStart, $lte: prevEnd },
     }),
     Lead.countDocuments({
       ...leadScope,
       status: 'converted',
-      updatedAt: { $gte: lastMonthStart, $lte: lastMonthEnd },
+      updatedAt: { $gte: prevStart, $lte: prevEnd },
     }),
     Payment.aggregate([
-      {
-        $match: withBranch({
-          status: { $in: ['paid', 'partial'] },
-          lead: { $in: leadIds },
-          $or: [
-            { paidAt: { $gte: lastMonthStart, $lte: lastMonthEnd } },
-            { paidAt: null, createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } },
-          ],
-        }, branchId),
-      },
+      { $match: prevRevenueMatch },
       { $group: { _id: null, total: { $sum: '$paidAmount' } } },
     ]),
     Lead.aggregate([
-      { $match: { ...leadScope, createdAt: { $gte: chartStart, $lte: todayEnd } } },
+      { $match: { ...leadScope, createdAt: { $gte: chartStart, $lte: periodEnd } } },
       { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
     ]),
     FollowUp.aggregate([
-      { $match: { ...followScope, scheduledAt: { $gte: chartStart, $lte: todayEnd } } },
+      { $match: { ...followScope, scheduledAt: { $gte: chartStart, $lte: periodEnd } } },
       { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$scheduledAt' } }, count: { $sum: 1 } } },
     ]),
     Lead.aggregate([
-      { $match: { ...leadScope, status: 'converted', updatedAt: { $gte: chartStart, $lte: todayEnd } } },
+      {
+        $match: {
+          ...leadScope,
+          status: 'converted',
+          updatedAt: { $gte: chartStart, $lte: periodEnd },
+        },
+      },
       { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$updatedAt' } }, count: { $sum: 1 } } },
     ]),
     LeadActivity.find({
       actorId: execId,
-      createdAt: { $gte: todayStart, $lte: todayEnd },
+      createdAt: { $gte: isAllTime ? todayStart : periodStart, $lte: isAllTime ? todayEnd : periodEnd },
       ...(branchId ? { branchId } : {}),
     })
       .populate('leadId', 'name destination')
@@ -1360,7 +1461,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
       .limit(4)
       .lean(),
     Lead.find({
-      ...leadScope,
+      ...(isAllTime ? leadScope : { ...leadScope, ...periodTouch }),
       status: { $nin: ['lost', 'booked_from_another_company'] },
     })
       .sort({ isHot: -1, budget: -1, updatedAt: -1 })
@@ -1375,7 +1476,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
       .sort({ coldCallReminderAt: 1 })
       .limit(20)
       .lean(),
-    buildDestinationWiseStats(leadScope, destinationPeriod),
+    buildDestinationWiseStats(leadScope, destinationPeriod, destinationRange),
   ]);
 
   const statusCounts = Object.fromEntries(statusAgg.map((s) => [s._id, s.count]));
@@ -1383,7 +1484,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
   const enrichedRecent = recentLeadsRaw.map(enrichLead);
   const monthlyRevenue = monthlyRevenueAgg[0]?.total || 0;
   const totalLeadValue = totalLeadValueAgg[0]?.total || 0;
-  const lastMonthRevenue = lastMonthRevenueAgg[0]?.total || 0;
+  const lastMonthRevenue = prevRevenueAgg[0]?.total || 0;
   const totalAssigned = statusDist.summary.total;
   const monthlyTargets = await getMonthlyTargets(execId);
   const primaryTarget =
@@ -1412,7 +1513,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
     followups: new Map(followupTrendAgg.map((row) => [row._id, row.count])),
     converted: new Map(convertedTrendAgg.map((row) => [row._id, row.count])),
   };
-  const leadOverview = Array.from({ length: 21 }, (_, index) => {
+  const leadOverview = Array.from({ length: chartSpanDays }, (_, index) => {
     const date = new Date(chartStart);
     date.setDate(date.getDate() + index);
     const key = date.toISOString().slice(0, 10);
@@ -1426,6 +1527,13 @@ async function buildExecutiveDashboard(userId, options = {}) {
   });
 
   return {
+    filters: {
+      dateFrom: dateFrom || '',
+      dateTo: dateTo || '',
+      destinationPeriod: destinationPeriod || 'all',
+      isAllTime,
+      periodLabel,
+    },
     emailStats,
     kpis: {
       myLeads,
@@ -1440,15 +1548,21 @@ async function buildExecutiveDashboard(userId, options = {}) {
       totalLeadValue,
     },
     kpiTrends: {
-      myLeads: { change: pctChange(myLeads, lastMonthLeads), period: 'from last month' },
-      todayLeads: { change: 0, period: 'today' },
-      connectedLeads: { change: 0, period: 'live' },
-      followUpPending: { change: 0, period: 'pending' },
-      todayFollowups: { change: pctChange(todayFollowupCount, yesterdayFollowups), period: 'from yesterday' },
-      hotLeads: { change: pctChange(hotLeads, yesterdayHotLeads), period: 'from yesterday' },
-      quotationsSent: { change: pctChange(quotesSentCount, lastMonthQuotes), period: 'from last month' },
-      convertedLeads: { change: pctChange(convertedCount, lastMonthConverted), period: 'from last month' },
-      monthlyRevenue: { change: pctChange(monthlyRevenue, lastMonthRevenue), period: 'from last month' },
+      myLeads: { change: pctChange(myLeads, prevMyLeads), period: trendPeriod },
+      todayLeads: {
+        change: isAllTime ? 0 : pctChange(todayLeads, prevMyLeads),
+        period: isAllTime ? 'today' : trendPeriod,
+      },
+      connectedLeads: { change: 0, period: isAllTime ? 'live' : periodLabel },
+      followUpPending: { change: pctChange(followUpPending, prevFollowups), period: isAllTime ? 'pending' : trendPeriod },
+      todayFollowups: {
+        change: pctChange(todayFollowupCount, prevFollowups),
+        period: isAllTime ? 'from yesterday' : trendPeriod,
+      },
+      hotLeads: { change: pctChange(hotLeads, prevHotLeads), period: trendPeriod },
+      quotationsSent: { change: pctChange(quotesSentCount, prevQuotes), period: trendPeriod },
+      convertedLeads: { change: pctChange(convertedCount, prevConverted), period: trendPeriod },
+      monthlyRevenue: { change: pctChange(monthlyRevenue, lastMonthRevenue), period: trendPeriod },
     },
     pipelineOverview,
     leadSources,
@@ -1505,7 +1619,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
     statusDistributionSummary: {
       ...statusDist.summary,
       hot: hotLeads,
-      periodLabel: 'My leads',
+      periodLabel,
     },
     target: {
       ...targetStats,
@@ -1534,7 +1648,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
       followUpId: lead.coldCallFollowUpId,
     })),
     destinationWise: {
-      period: destinationPeriod || 'all',
+      period: hasCustomRange ? 'custom' : destinationPeriod || 'all',
       rows: destinationWise,
     },
   };

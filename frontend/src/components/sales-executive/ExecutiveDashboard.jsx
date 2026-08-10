@@ -11,6 +11,10 @@ import API from '../../api/axios';
 import ExecutiveKpiCards from './dashboard/ExecutiveKpiCards';
 import ExecutiveDashboardPanels from './dashboard/ExecutiveDashboardPanels';
 import ExecutiveMonthlyTargetCard from './dashboard/ExecutiveMonthlyTargetCard';
+import ExecutiveDashboardPeriodFilter, {
+  applyExecDashboardPreset,
+  getDefaultExecDashboardFilters,
+} from './dashboard/ExecutiveDashboardPeriodFilter';
 import MobileExecutiveDashboard from './dashboard/MobileExecutiveDashboard';
 import RecentUpdatesRemindersRow from './dashboard/RecentUpdatesRemindersRow';
 import {
@@ -103,12 +107,10 @@ function TimeScene({ scene }) {
 
 export default function ExecutiveDashboard() {
   const [now, setNow] = useState(() => new Date());
-  const [destinationPeriod, setDestinationPeriod] = useState('all');
+  const [filters, setFilters] = useState(getDefaultExecDashboardFilters);
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data, isLoading, isFetching } = useDashboardQuery('/sales-executive/dashboard', {
-    destinationPeriod,
-  });
+  const { data, isLoading, isFetching } = useDashboardQuery('/sales-executive/dashboard', filters);
   const { data: announcementFeed } = useQuery({
     queryKey: ['announcements', 'feed'],
     queryFn: fetchAnnouncementFeed,
@@ -134,6 +136,29 @@ export default function ExecutiveDashboard() {
     refresh();
   }, [refresh]);
 
+  const handleDestinationPeriodChange = useCallback((period) => {
+    const presetKey =
+      period === 'today' ? 'all' :
+      period === 'week' ? '7d' :
+      period === '7d' || period === 'yesterday' || period === 'month' || period === 'all'
+        ? period
+        : 'all';
+    if (period === 'today') {
+      const day = new Date();
+      const yyyy = day.getFullYear();
+      const mm = String(day.getMonth() + 1).padStart(2, '0');
+      const dd = String(day.getDate()).padStart(2, '0');
+      const value = `${yyyy}-${mm}-${dd}`;
+      setFilters({ dateFrom: value, dateTo: value, destinationPeriod: 'today' });
+      return;
+    }
+    if (period === 'week') {
+      setFilters(applyExecDashboardPreset('7d'));
+      return;
+    }
+    setFilters(applyExecDashboardPreset(presetKey));
+  }, []);
+
   useDataRefresh(['dashboard', 'leads', 'followups'], refresh);
 
   if (isLoading && !data) {
@@ -145,6 +170,7 @@ export default function ExecutiveDashboard() {
   }
 
   const hero = announcementFeed?.hero;
+  const periodLabel = data?.filters?.periodLabel || data?.statusDistributionSummary?.periodLabel || '';
 
   return (
     <>
@@ -155,6 +181,9 @@ export default function ExecutiveDashboard() {
         greeting={getGreeting()}
         now={now}
         unreadCount={announcementFeed?.unreadCount || 0}
+        filters={filters}
+        onFiltersChange={setFilters}
+        periodLabel={periodLabel}
       />
 
       <div className="hidden space-y-3 pb-6 lg:block">
@@ -189,6 +218,12 @@ export default function ExecutiveDashboard() {
           </div>
         </motion.div>
 
+        <ExecutiveDashboardPeriodFilter
+          filters={filters}
+          onChange={setFilters}
+          periodLabel={periodLabel}
+        />
+
         <ColdCallAlertsPanel
           items={data?.coldCallReminders || []}
           onMarkDone={handleMarkColdCallDone}
@@ -209,8 +244,8 @@ export default function ExecutiveDashboard() {
 
         <DestinationWisePanel
           rows={data?.destinationWise?.rows || []}
-          period={destinationPeriod}
-          onPeriodChange={setDestinationPeriod}
+          period={filters.destinationPeriod || 'all'}
+          onPeriodChange={handleDestinationPeriodChange}
         />
 
         <ExecutiveDashboardPanels data={data} announcements={announcementFeed?.carousel || []} />

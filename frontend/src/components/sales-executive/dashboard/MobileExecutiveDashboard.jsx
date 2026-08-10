@@ -21,6 +21,7 @@ import { toast } from '../../../context/ToastContext';
 import { useSidebar } from '../../../context/SidebarContext';
 import { formatCurrency } from '../executiveUtils';
 import ExecutiveMonthlyTargetCard from './ExecutiveMonthlyTargetCard';
+import ExecutiveDashboardPeriodFilter from './ExecutiveDashboardPeriodFilter';
 import RecentUpdatesRemindersRow from './RecentUpdatesRemindersRow';
 
 const KPI_CARDS = [
@@ -113,6 +114,9 @@ export default function MobileExecutiveDashboard({
   greeting,
   now,
   unreadCount = 0,
+  filters,
+  onFiltersChange,
+  periodLabel = '',
 }) {
   const navigate = useNavigate();
   const { toggleMobileOpen } = useSidebar();
@@ -175,6 +179,15 @@ export default function MobileExecutiveDashboard({
           <QuickAction icon={Plus} label="Add Lead" primary to="/sales-executive/leads/add" />
           <QuickAction icon={Phone} label="Follow-up" tone="bg-orange-50 text-orange-500" to="/sales-executive/follow-ups" />
           <QuickAction icon={MoreHorizontal} label="More" tone="bg-slate-50 text-slate-500" to="/sales-executive/profile" />
+        </div>
+
+        <div className="mt-4">
+          <ExecutiveDashboardPeriodFilter
+            filters={filters || { dateFrom: '', dateTo: '', destinationPeriod: 'all' }}
+            onChange={onFiltersChange}
+            periodLabel={periodLabel}
+            compact
+          />
         </div>
 
         <div className="mt-4 grid grid-cols-3 gap-2">
