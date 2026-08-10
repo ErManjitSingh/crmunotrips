@@ -9,7 +9,6 @@ import {
   Flame,
   Mail,
   Phone,
-  Target,
 } from 'lucide-react';
 import {
   CartesianGrid,
@@ -156,8 +155,6 @@ function Announcements({ items = [] }) {
 export default function ExecutiveDashboardPanels({ data, announcements = [] }) {
   if (!data) return null;
 
-  const progress = Math.min(100, Number(data.target?.progress || 0));
-
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.95fr)]">
@@ -191,56 +188,13 @@ export default function ExecutiveDashboardPanels({ data, announcements = [] }) {
         </Panel>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,.85fr)_240px]">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.95fr)]">
         <Panel title="Today's Activities" link="/sales-executive/leads/all" delay={0.2}>
           <ActivityList items={data.todayActivities} />
         </Panel>
 
         <Panel title="Important Announcements" delay={0.25}>
           <Announcements items={announcements} />
-        </Panel>
-
-        <Panel title="Monthly Target" delay={0.3}>
-          <div className="flex items-center gap-3">
-            <div
-              className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
-              style={{ background: `conic-gradient(#8b5cf6 ${progress * 3.6}deg, #ede9fe 0deg)` }}
-            >
-              <div className="flex h-14 w-14 flex-col items-center justify-center rounded-full bg-white">
-                <span className="text-lg font-bold text-content-primary">{progress}%</span>
-                <span className="text-[8px] text-content-muted">Achieved</span>
-              </div>
-            </div>
-            <div className="min-w-0 space-y-1 text-[9px] text-content-muted">
-              <div>
-                <p>Revenue</p>
-                <p className="truncate text-xs font-bold text-content-primary">
-                  {formatCurrency(data.target?.revenueTarget || data.target?.monthlyTarget)}
-                </p>
-              </div>
-              <div>
-                <p>Total Sales</p>
-                <p className="truncate text-xs font-bold text-content-primary">
-                  {formatCurrency(data.target?.totalSalesTarget || data.target?.monthlyTarget)}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-1.5 text-[9px]">
-            <div className="rounded-lg bg-amber-50 px-2 py-1.5">
-              <p className="text-amber-700/80">Package</p>
-              <p className="font-bold text-amber-800">{formatCurrency(data.target?.packageTarget)}</p>
-            </div>
-            <div className="rounded-lg bg-rose-50 px-2 py-1.5">
-              <p className="text-rose-700/80">Profit</p>
-              <p className="font-bold text-rose-800">{formatCurrency(data.target?.profitTarget)}</p>
-            </div>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-violet-50 px-2 py-1.5 text-[9px] font-medium text-violet-700">
-            <Target className="h-3 w-3" />
-            {data.target?.leadsConverted || 0} leads converted
-            {data.target?.setByName ? ` · ${data.target.setByName}` : ''}
-          </div>
         </Panel>
       </div>
 

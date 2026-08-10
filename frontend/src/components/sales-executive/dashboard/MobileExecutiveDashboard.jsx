@@ -20,6 +20,7 @@ import {
 import { toast } from '../../../context/ToastContext';
 import { useSidebar } from '../../../context/SidebarContext';
 import { formatCurrency } from '../executiveUtils';
+import ExecutiveMonthlyTargetCard from './ExecutiveMonthlyTargetCard';
 import RecentUpdatesRemindersRow from './RecentUpdatesRemindersRow';
 
 const KPI_CARDS = [
@@ -121,8 +122,6 @@ export default function MobileExecutiveDashboard({
     ? Math.round(((kpis.convertedLeads || 0) / kpis.myLeads) * 1000) / 10
     : 0;
   const values = { ...kpis, conversionRate };
-  const progress = Math.min(100, Number(data?.target?.progress || 0));
-
   const submitSearch = (event) => {
     event.preventDefault();
     const value = new FormData(event.currentTarget).get('search')?.trim();
@@ -218,6 +217,10 @@ export default function MobileExecutiveDashboard({
           })}
         </div>
 
+        <div className="mt-4">
+          <ExecutiveMonthlyTargetCard target={data?.target} now={now} compact />
+        </div>
+
         <div className="mt-4 space-y-3">
           <RecentUpdatesRemindersRow
             announcements={hero ? [hero] : []}
@@ -225,27 +228,6 @@ export default function MobileExecutiveDashboard({
             upcomingFollowups={data?.upcomingFollowups || []}
           />
         </div>
-
-        <section className="relative mt-4 overflow-hidden rounded-2xl bg-gradient-to-r from-violet-700 via-fuchsia-600 to-rose-500 p-4 text-white shadow-lg shadow-fuchsia-500/15">
-          <button type="button" className="absolute right-3 top-2 text-white/65" aria-label="Dismiss offer">×</button>
-          <div className="flex gap-3">
-            <span className="text-4xl" aria-hidden>🎁</span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[9px] font-semibold text-amber-200">🔥 {hero?.badge || 'Monthly Goal'}</p>
-              <h2 className="mt-0.5 line-clamp-1 text-sm font-bold">{hero?.title || 'Close more leads and unlock your monthly reward'}</h2>
-              <p className="mt-1 line-clamp-2 text-[10px] text-white/80">
-                {hero?.description || `You have completed ${progress}% of your monthly sales target.`}
-              </p>
-              <div className="mt-2 flex items-center gap-2">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/20">
-                  <div className="h-full rounded-full bg-white" style={{ width: `${progress}%` }} />
-                </div>
-                <span className="text-[9px] font-semibold">{progress}%</span>
-                <button type="button" className="rounded-lg bg-amber-300 px-2.5 py-1 text-[9px] font-bold text-slate-900">Join Now</button>
-              </div>
-            </div>
-          </div>
-        </section>
 
         <section className="mt-4 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm">
           <form onSubmit={submitSearch} className="relative">

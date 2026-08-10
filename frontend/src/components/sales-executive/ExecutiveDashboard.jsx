@@ -10,6 +10,7 @@ import { fetchAnnouncementFeed } from '../../services/announcementApi';
 import API from '../../api/axios';
 import ExecutiveKpiCards from './dashboard/ExecutiveKpiCards';
 import ExecutiveDashboardPanels from './dashboard/ExecutiveDashboardPanels';
+import ExecutiveMonthlyTargetCard from './dashboard/ExecutiveMonthlyTargetCard';
 import MobileExecutiveDashboard from './dashboard/MobileExecutiveDashboard';
 import RecentUpdatesRemindersRow from './dashboard/RecentUpdatesRemindersRow';
 import {
@@ -194,6 +195,8 @@ export default function ExecutiveDashboard() {
         />
 
         <ExecutiveKpiCards kpis={data?.kpis} trends={data?.kpiTrends} />
+
+        <ExecutiveMonthlyTargetCard target={data?.target} now={now} />
 
         <RecentUpdatesRemindersRow
           announcements={[
