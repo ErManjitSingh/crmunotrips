@@ -4,6 +4,11 @@ import { Button } from '../ui/button';
 import UnoHotelSelector from './UnoHotelSelector';
 import { formatINR } from './quotationUtils';
 import { cn } from '../../lib/utils';
+import { resolveHotelNightDisplayRate } from '../../lib/mealPlanDefaults';
+
+function round2(n) {
+  return Math.round(Number(n || 0) * 100) / 100;
+}
 
 export function sumDayWiseHotelCost(selections = []) {
   return selections.reduce((sum, item) => sum + Number(item.totalCost || item.perNight || 0), 0);
@@ -41,6 +46,22 @@ export function sumDayWiseHotelIncluded(selections = []) {
     const included = Number(item.includedRate ?? item.hotel?.startingPrice ?? 0);
     return sum + included * nights;
   }, 0);
+}
+
+/** Sum hotel nightly rates (same as day cards, no admin margin). */
+export function sumDayWiseHotelRackTotal(selections = [], rooms = 1) {
+  return round2(
+    (Array.isArray(selections) ? selections : []).reduce((sum, item) => {
+      const nights = Math.max(1, Number(item.nights) || 1);
+      const upgrade = Number(item.perNight ?? item.totalCost ?? item.priceDelta ?? 0);
+      const isIncluded = upgrade <= 0;
+      const rate = resolveHotelNightDisplayRate(item, null, 'map');
+      const nightTotal = isIncluded
+        ? rate * nights
+        : rate * nights * Math.max(1, Number(rooms) || 1);
+      return sum + nightTotal;
+    }, 0)
+  );
 }
 
 /**

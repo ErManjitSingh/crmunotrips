@@ -25,7 +25,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { defaultItineraryDay, formatINR, applyAdminMarginToAmount } from './quotationUtils';
+import { defaultItineraryDay, formatINR } from './quotationUtils';
 import { resolvePartyOccupancy } from './partyCosting';
 import { resolveHotelNightDisplayRate } from '../../lib/mealPlanDefaults';
 
@@ -66,7 +66,6 @@ function HotelCard({
   onOpenPicker,
   emptyLabel,
   rooms = 1,
-  adminMarginPercent = 0,
   showTotal = true,
 }) {
   const image = meta?.image || meta?.images?.[0];
@@ -81,7 +80,7 @@ function HotelCard({
   const rawTotal = isIncluded
     ? rateNight * nights
     : rateNight * nights * Math.max(1, Number(rooms) || 1);
-  const displayTotal = applyAdminMarginToAmount(rawTotal, adminMarginPercent);
+  const displayTotal = Math.round(rawTotal * 100) / 100;
 
   return (
     <div className="rounded-xl border border-violet-200 bg-violet-50/70 overflow-hidden shadow-sm shadow-violet-100/50">
@@ -139,7 +138,7 @@ function HotelCard({
   );
 }
 
-function CabCard({ packageCab, onChangeCab, cabCount = 1, adminMarginPercent = 0 }) {
+function CabCard({ packageCab, onChangeCab, cabCount = 1 }) {
   if (!packageCab) return null;
   const upgradeFare = Number(
     packageCab.upgradePrice ?? packageCab.priceDelta ?? packageCab.cost ?? 0
@@ -149,7 +148,7 @@ function CabCard({ packageCab, onChangeCab, cabCount = 1, adminMarginPercent = 0
     packageCab.absoluteFare ?? packageCab.totalAmount ?? packageCab.cost ?? 0
   ) || 0;
   const rawTotal = unitFare * Math.max(1, Number(cabCount) || 1);
-  const displayTotal = applyAdminMarginToAmount(rawTotal, adminMarginPercent);
+  const displayTotal = Math.round(rawTotal * 100) / 100;
   return (
     <div className="flex gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3 shadow-sm shadow-sky-100/60">
       <div className="w-16 h-16 rounded-xl bg-white border border-sky-200 overflow-hidden shrink-0 flex items-center justify-center">
@@ -240,7 +239,6 @@ function SortableDayCard({
   colorIndex = 0,
   rooms = 1,
   cabCount = 1,
-  adminMarginPercent = 0,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: day.id });
   const style = {
@@ -361,7 +359,6 @@ function SortableDayCard({
             onOpenPicker={() => onOpenHotelPicker?.(day)}
             emptyLabel={isLastDay ? 'Departure day · no overnight stay' : 'Select hotel for this night'}
             rooms={rooms}
-            adminMarginPercent={adminMarginPercent}
             showTotal={Boolean(
               !isLastDay && (hotelSel?.hotel || hotelMeta?.name || day.hotel)
             )}
@@ -372,7 +369,6 @@ function SortableDayCard({
               packageCab={packageCab}
               onChangeCab={onChangeCab}
               cabCount={cabCount}
-              adminMarginPercent={adminMarginPercent}
             />
           )}
         </div>
@@ -401,13 +397,11 @@ export default function PackageBuilderDayTimeline({
   embedded = false,
   lead = null,
   party = null,
-  adminMarginPercent = 0,
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const occ = party || resolvePartyOccupancy(lead || {});
   const rooms = Math.max(1, Number(occ.rooms) || 1);
   const cabCount = Math.max(1, Number(occ.cabCount) || 1);
-  const marginPct = Math.max(0, Number(adminMarginPercent) || 0);
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -488,7 +482,6 @@ export default function PackageBuilderDayTimeline({
                   colorIndex={idx}
                   rooms={rooms}
                   cabCount={cabCount}
-                  adminMarginPercent={marginPct}
                 />
               );
             })}

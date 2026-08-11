@@ -783,14 +783,6 @@ export default function PackageBuilderWorkspace({
               embedded
               lead={lead}
               party={pricing?.party}
-              adminMarginPercent={
-                Number(
-                  pricing?.companyMarginBakedPercent ??
-                    pkg?.destinationMarginPercent ??
-                    pricing?.adminMarginPercent ??
-                    0
-                ) || 0
-              }
             />
           </SectionShell>
 

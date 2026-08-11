@@ -1,5 +1,5 @@
 import { resolveCabAbsoluteFare, resolveCabUpgradeCost } from '../../lib/packageCabMapper';
-import { resolvePackageHotelPricing } from './DayWiseHotelSelector';
+import { sumDayWiseHotelRackTotal } from './DayWiseHotelSelector';
 
 /**
  * Party-size costing: per-person package, 2 adults/room + mattress for odd, cab by seats.
@@ -132,8 +132,8 @@ export function applyPartyCosting({
 }
 
 /**
- * Website-aligned quote lines: total matches UNO package price (+ upgrades).
- * Cab fare is shown on its own line; hotel/package line holds the remainder.
+ * Sidebar hotel = Σ day-wise website hotel rates (+ mattress). Cab line unchanged.
+ * Admin margin is baked into sidebar lines only (not day cards).
  */
 export function buildWebsiteAlignedQuoteCosts({
   packageAnchor = 0,
@@ -146,12 +146,24 @@ export function buildWebsiteAlignedQuoteCosts({
   flightCost = 0,
   activityCost = 0,
 } = {}) {
-  const unit = resolvePackageHotelPricing(0, dayWiseHotels);
+  void packageAnchor;
+  const occ = resolvePartyOccupancy(lead);
   const cabUpgrade = resolveCabUpgradeCost(selectedCab, packageCabs);
   const cabUnitFare = resolveCabAbsoluteFare(selectedCab, packageCabs);
+  const cabCount = resolveCabCount(occ.travelers, cabSeats);
+  const coupleUnits = resolveCoupleUnits(lead);
+
+  const hotelRackSum = sumDayWiseHotelRackTotal(dayWiseHotels, occ.rooms);
+  const mattressCost = estimateMattressCost(dayWiseHotels, occ.mattresses);
+  const hotelLineCost = round2(hotelRackSum + mattressCost);
+
+  const isDefaultCab = cabUpgrade <= 0;
+  const cabUnits = isDefaultCab ? coupleUnits : cabCount;
+  const cabLineCost = cabUnitFare > 0 ? round2(cabUnitFare * cabUnits) : 0;
+
   const party = applyPartyCosting({
-    unitBaseCost: packageAnchor,
-    unitHotelCost: unit.hotelCost,
+    unitBaseCost: 0,
+    unitHotelCost: 0,
     unitCabCost: cabUpgrade,
     flightCost,
     activityCost,
@@ -161,34 +173,12 @@ export function buildWebsiteAlignedQuoteCosts({
     dayWiseHotels,
   });
 
-  const isDefaultCab = cabUpgrade <= 0;
-  const cabUnits = isDefaultCab ? party.coupleUnits : party.cabCount;
-  const packageSubtotal = round2(party.baseCost + party.hotelCost + party.cabCost);
-
-  let cabLineCost = cabUnitFare > 0 ? round2(cabUnitFare * cabUnits) : 0;
-  if (cabLineCost <= 0 || packageSubtotal <= 0) {
-    return {
-      hotelCost: packageSubtotal,
-      cabCost: 0,
-      flightCost: party.flightCost,
-      activityCost: party.activityCost,
-      party,
-      packageAnchor: Number(packageAnchor) || 0,
-    };
-  }
-
-  const maxCabShare = round2(packageSubtotal * 0.45);
-  if (cabLineCost > maxCabShare) {
-    cabLineCost = maxCabShare;
-  }
-  const hotelLineCost = round2(Math.max(0, packageSubtotal - cabLineCost));
-
   return {
     hotelCost: hotelLineCost,
     cabCost: cabLineCost,
     flightCost: party.flightCost,
     activityCost: party.activityCost,
-    party,
+    party: { ...party, hotelRackSum, mattressCost },
     packageAnchor: Number(packageAnchor) || 0,
   };
 }
