@@ -27,6 +27,7 @@ import {
 import { cn } from '../../lib/utils';
 import { defaultItineraryDay, formatINR, applyAdminMarginToAmount } from './quotationUtils';
 import { resolvePartyOccupancy } from './partyCosting';
+import { resolveHotelNightDisplayRate } from '../../lib/mealPlanDefaults';
 
 const DAY_ACCENTS = [
   { card: 'border-teal-200 bg-gradient-to-br from-teal-50 to-white', badge: 'bg-teal-600 shadow-teal-600/30', strip: 'from-teal-500 to-cyan-400' },
@@ -76,22 +77,7 @@ function HotelCard({
     hotelSel?.perNight ?? hotelSel?.totalCost ?? meta?.priceDelta ?? 0
   );
   const isIncluded = upgradePerNight <= 0;
-  const nightlyRef = Number(
-    hotelSel?.includedRate ??
-      hotelSel?.absolutePerNight ??
-      meta?.includedRate ??
-      meta?.absolutePerNight ??
-      0
-  );
-  const absoluteNight = Number(
-    hotelSel?.absolutePerNight ??
-      meta?.absolutePerNight ??
-      meta?.includedRate ??
-      0
-  );
-  const rateNight =
-    absoluteNight > 0 ? absoluteNight : nightlyRef > 0 ? nightlyRef : 0;
-  // Per-day card = one night reference (included stays don't multiply rooms — avoids inflated totals).
+  const rateNight = resolveHotelNightDisplayRate(hotelSel, meta, 'map');
   const rawTotal = isIncluded
     ? rateNight * nights
     : rateNight * nights * Math.max(1, Number(rooms) || 1);
@@ -203,7 +189,11 @@ function buildHotelSelFromDay(day, dayNum) {
   const meta = day?.hotelMeta || (day?.hotel ? { name: day.hotel } : null);
   if (!meta?.name && !day?.hotel) return null;
   const name = meta.name || day.hotel;
-  const absolute = Number(meta.absolutePerNight || meta.includedRate || 0) || 0;
+  const absolute = resolveHotelNightDisplayRate(
+    { room: meta.room, mealPlan: meta.mealPlan, absolutePerNight: meta.absolutePerNight },
+    meta,
+    meta.mealPlanKey || 'map'
+  );
   return {
     day: dayNum,
     hotel: {

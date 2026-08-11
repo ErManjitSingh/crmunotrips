@@ -6,6 +6,7 @@ import {
   mealPlanNightlyRate,
   normalizeMealPlanKey,
   pickPreferredMealPlan,
+  resolveHotelNightDisplayRate,
 } from './mealPlanDefaults';
 
 function formatMealsLabel(meals = {}) {
@@ -584,7 +585,7 @@ export function seedDayWiseHotelsFromItinerary(itinerary = [], preferredMealKey 
           absolutePrice: priced || Number(preferred.absolutePrice || 0),
         };
       }
-      if (priced > 0) absolutePerNight = priced;
+      absolutePerNight = resolveHotelNightDisplayRate({ room, mealPlan }, meta, wantKey);
 
       return {
         day: day.day,

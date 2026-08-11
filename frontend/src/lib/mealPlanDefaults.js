@@ -48,18 +48,25 @@ export function isMapMealPlan(plan = {}) {
   return normalizeMealPlanKey(plan?.key || plan?.label) === 'map';
 }
 
-/** Nightly rate for a meal plan (absolute rack, else EP room + supplement). */
+/** Nightly rate for a meal plan — website room.rates win (same as hotel picker). */
 export function mealPlanNightlyRate(plan = {}, room = {}) {
+  const key = normalizeMealPlanKey(plan?.key || plan?.label);
+  const rates = room?.rates || {};
+  const fromRates = key ? Number(rates[key] || 0) : 0;
+  if (fromRates > 0) return fromRates;
+
   const absolute = Number(plan?.absolutePrice || 0);
   const supplement = Number(plan?.price || 0);
   const roomBase =
-    Number(room?.pricePerNight || 0) ||
     Number(room?.epPrice || 0) ||
     Number(room?.rates?.ep || 0) ||
+    Number(room?.pricePerNight || 0) ||
     0;
 
-  // absolute accidentally set to EP while supplement holds MAP/CP/AP premium
+  // Stale plan row: absolute duplicated EP while supplement is the meal premium — use rates if present.
   if (absolute > 0 && supplement > 0 && roomBase > 0 && Math.abs(absolute - roomBase) < 1) {
+    const rebuilt = Number(rates[key || 'map'] || 0);
+    if (rebuilt > 0) return rebuilt;
     return Math.round((roomBase + supplement) * 100) / 100;
   }
   if (absolute > 0) return absolute;
@@ -207,9 +214,35 @@ export function pickDefaultPackageRoom(rooms = [], hints = {}) {
 export function defaultPackageRoomNightly(room = null, mealKey = DEFAULT_MEAL_PLAN_KEY) {
   if (!room) return 0;
   const want = normalizeMealPlanKey(mealKey) || DEFAULT_MEAL_PLAN_KEY;
+  const fromRates = Number(room?.rates?.[want] || 0);
+  if (fromRates > 0) return fromRates;
   const plans = ensureMealPlanOptions(room);
   const plan = pickPreferredMealPlan(plans, room, want);
+  return mealPlanNightlyRate(plan, room);
+}
+
+/** Same rate logic as PackageResourcePickerDrawer — for day cards & seed. */
+export function resolveHotelNightDisplayRate(hotelSel = null, meta = null, mealKey = 'map') {
+  const room = hotelSel?.room || meta?.room || {};
+  const want =
+    normalizeMealPlanKey(
+      hotelSel?.mealPlan?.key ||
+        meta?.mealPlan?.key ||
+        meta?.mealPlanKey ||
+        hotelSel?.meals ||
+        meta?.meals ||
+        mealKey
+    ) || 'map';
+  const fromRates = Number(room?.rates?.[want] || 0);
+  if (fromRates > 0) return fromRates;
+  const plans = ensureMealPlanOptions(room);
+  const selected = hotelSel?.mealPlan || meta?.mealPlan || null;
+  const plan =
+    resolveSelectedMealPlan(selected, plans, room, want) ||
+    pickPreferredMealPlan(plans, room, want);
   const rate = mealPlanNightlyRate(plan, room);
   if (rate > 0) return rate;
-  return Number(room.rates?.[want] || 0) || 0;
+  return (
+    Number(hotelSel?.absolutePerNight ?? meta?.absolutePerNight ?? meta?.includedRate ?? 0) || 0
+  );
 }
