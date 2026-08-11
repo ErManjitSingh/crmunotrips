@@ -21,7 +21,7 @@ export default function TeamMonitoringPage() {
     fetchExecutives();
   }, [fetchExecutives]);
 
-  useDataRefresh(['leads', 'followups', 'quotations', 'dashboard'], fetchExecutives);
+  useDataRefresh(['leads', 'followups', 'quotations'], fetchExecutives);
   const sorted = [...executives].sort((a, b) => b.revenue - a.revenue);
 
   return (

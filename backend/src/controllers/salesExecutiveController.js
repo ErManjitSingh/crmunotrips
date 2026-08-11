@@ -50,7 +50,7 @@ const { resolvePackageReference } = require('../utils/packageRef');
 const { getExecutiveFollowUpSummary, getMissedFollowUpsPreview } = require('../services/followUpSummaryService');
 const { normalizeLeadInput } = require('../utils/normalizeLeadInput');
 const { ROLE_LABELS } = require('../config/roles');
-const { getOrSetFresh, cacheKey } = require('../services/dashboardCacheService');
+const { getOrSetFresh, cacheKey, DEFAULT_TTL_MS } = require('../services/dashboardCacheService');
 const {
   findExecutiveLeadsPaginated,
   findScopedFollowUpsPaginated,
@@ -121,7 +121,7 @@ const getDashboard = asyncHandler(async (req, res) => {
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
     }),
-    60 * 1000
+    DEFAULT_TTL_MS
   );
   res.json(stats);
 });
@@ -872,7 +872,7 @@ const getProfile = asyncHandler(async (req, res) => {
     req,
     cacheKey('sales_executive', `${req.user._id}:${req.branchId || 'all'}`),
     () => buildExecutiveDashboard(req.user._id, { branchId: req.branchId }),
-    60 * 1000
+    DEFAULT_TTL_MS
   );
   const activity = await ActivityLog.find({
     userId: req.user._id,

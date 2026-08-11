@@ -16,7 +16,7 @@ const { buildExecutivePerformanceRows } = require('../services/executivePerforma
 const { buildTeamLeaderDashboard } = require('../services/dashboardService');
 const { sumConvertedPackageRevenue } = require('../utils/convertedPackageRevenue');
 const { stampPendingAcceptance } = require('../services/leadExecutiveStallService');
-const { getOrSetFresh, cacheKey } = require('../services/dashboardCacheService');
+const { getOrSetFresh, cacheKey, DEFAULT_TTL_MS } = require('../services/dashboardCacheService');
 const {
   findTeamLeaderLeadsPaginated,
   findScopedFollowUpsPaginated,
@@ -82,7 +82,7 @@ const getDashboard = asyncHandler(async (req, res) => {
     req,
     cacheKey('team_leader', `${req.user._id}:${req.branchId || 'all'}`),
     () => buildTeamLeaderDashboard(req.user._id, { branchId: req.branchId }),
-    60 * 1000
+    DEFAULT_TTL_MS
   );
   res.json(stats);
 });
@@ -492,7 +492,7 @@ const getProfile = asyncHandler(async (req, res) => {
     req,
     cacheKey('team_leader', `${req.user._id}:${req.branchId || 'all'}`),
     () => buildTeamLeaderDashboard(req.user._id, { branchId: req.branchId }),
-    60 * 1000
+    DEFAULT_TTL_MS
   );
   const team = await getTeamForLeader(req.user._id);
   const execIds = await getExecutiveIdsForLeader(req.user._id);

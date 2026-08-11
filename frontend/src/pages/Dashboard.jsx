@@ -49,7 +49,13 @@ export default function Dashboard() {
     isFetching,
   } = useDashboardQuery("/dashboard/stats", filters);
 
-  const refreshDashboard = useCallback(async () => {
+  // Soft refresh after mutations — use Redis cache, do NOT send fresh=1 (that stampedes Mongo).
+  const softRefreshDashboard = useCallback(() => {
+    invalidateDashboard(queryClient);
+  }, [queryClient]);
+
+  // Manual / filter refresh only — bypasses server cache once.
+  const hardRefreshDashboard = useCallback(async () => {
     const endpoint = "/dashboard/stats";
     const key = dashboardQueryKey(endpoint, filters);
     await invalidateDashboard(queryClient);
@@ -66,7 +72,7 @@ export default function Dashboard() {
     });
   }, [queryClient, filters]);
 
-  useDataRefresh(["dashboard"], refreshDashboard);
+  useDataRefresh(["dashboard"], softRefreshDashboard);
 
   const report = stats?.report;
 
@@ -112,7 +118,7 @@ export default function Dashboard() {
           <DashboardHeader
             filters={filters}
             onFiltersChange={setFilters}
-            onRefresh={refreshDashboard}
+            onRefresh={hardRefreshDashboard}
             isRefreshing={isFetching}
             periodLabel={report?.period?.label}
             badgeLabel={isLeadProvider ? "Lead Insights" : "Admin Insights"}

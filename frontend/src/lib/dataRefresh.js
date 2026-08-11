@@ -56,8 +56,13 @@ export function keysFromMutationUrl(url, _method) {
 
   if (leadPath || /\/sales-manager\/assign/.test(path) || /\/leads\/assign/.test(path)) {
     keys.add('leads');
-    keys.add('dashboard');
     keys.add('nav-counts');
+    // Do NOT invalidate full dashboard on every lead touch — that stampedes Mongo.
+    // Dashboard refreshes on open / manual refresh / longer staleTime.
+    const statusHeavy =
+      /\/(status|convert|assign|merge|transfer|reactivat)/.test(path) ||
+      /\/leads\/assign/.test(path);
+    if (statusHeavy) keys.add('dashboard');
     const leadIdMatch = path.match(/\/leads\/([a-f0-9]{24})/);
     if (leadIdMatch) keys.add(`lead:${leadIdMatch[1]}`);
   }

@@ -31,6 +31,7 @@ async function ensureIndexes() {
     User.collection.createIndex({ branchId: 1, role: 1, status: 1 }, { background: true }),
 
     Lead.collection.createIndex({ phone: 1 }, { background: true }),
+    Lead.collection.createIndex({ whatsapp: 1 }, { background: true, sparse: true }),
     Lead.collection.createIndex({ branchId: 1, status: 1, createdAt: -1 }, { background: true }),
     Lead.collection.createIndex({ branchId: 1, leadScore: 1, budget: -1 }, { background: true }),
     Lead.collection.createIndex({ branchId: 1, 'reactivation.isReactivated': 1, 'reactivation.stage': 1, updatedAt: -1 }, { background: true }),

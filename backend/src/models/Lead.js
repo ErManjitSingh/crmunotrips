@@ -45,7 +45,7 @@ const leadSchema = new mongoose.Schema(
     phone: { type: String, required: true, trim: true, index: true },
     alternatePhone: { type: String, trim: true, index: true },
     branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', index: true },
-    whatsapp: { type: String, trim: true },
+    whatsapp: { type: String, trim: true, index: true },
     city: { type: String, trim: true },
     state: { type: String, trim: true },
     destination: { type: String, required: true, trim: true, index: true },

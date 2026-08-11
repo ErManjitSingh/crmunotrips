@@ -67,8 +67,8 @@ function WhatsAppLeadsPage() {
       const res = await API.get('/whatsapp/conversations', { params, skipSuccessToast: true });
       return res.data?.data || [];
     },
-    staleTime: 60_000,
-    refetchInterval: 90_000,
+    staleTime: 2 * 60_000,
+    refetchInterval: 3 * 60_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
     placeholderData: (prev) => prev,
@@ -86,41 +86,25 @@ function WhatsAppLeadsPage() {
 
   const detailsKey = selected?.conversationId || selected?.leadId || null;
 
+  // Single thread fetch (messages + meta) — avoids duplicate /whatsapp/thread calls
   const threadQuery = useQuery({
     queryKey: ['whatsapp', 'thread', detailsKey],
     queryFn: async () => {
-      const params = { meta: '0' };
+      const params = {};
       if (selected.conversationId) params.conversationId = selected.conversationId;
       if (selected.leadId) params.leadId = selected.leadId;
       const res = await API.get('/whatsapp/thread', { params, skipSuccessToast: true });
       return res.data || { messages: [], notes: [], followups: [] };
     },
     enabled: !!detailsKey,
-    staleTime: 45_000,
-    refetchInterval: selected ? 60_000 : false,
+    staleTime: 90_000,
+    refetchInterval: selected ? 2 * 60_000 : false,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
     placeholderData: (prev) => prev,
   });
 
-  const threadMetaQuery = useQuery({
-    queryKey: ['whatsapp', 'thread-meta', detailsKey],
-    queryFn: async () => {
-      const params = {};
-      if (selected.conversationId) params.conversationId = selected.conversationId;
-      if (selected.leadId) params.leadId = selected.leadId;
-      const res = await API.get('/whatsapp/thread', { params, skipSuccessToast: true });
-      return {
-        notes: res.data?.notes || [],
-        followups: res.data?.followups || [],
-        botAnswers: res.data?.botAnswers || null,
-        botStep: res.data?.botStep || null,
-        sessionOpen: res.data?.sessionOpen,
-      };
-    },
-    enabled: !!detailsKey,
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
-  });
+  const threadMetaQuery = { data: threadQuery.data };
 
   const conversations = conversationsQuery.data ?? [];
   const messages = threadQuery.data?.messages ?? [];
@@ -164,7 +148,7 @@ function WhatsAppLeadsPage() {
     }
   }, [queryClient, detailsKey]);
 
-  useDataRefresh(['whatsapp', 'leads'], () => {
+  useDataRefresh(['whatsapp'], () => {
     refreshConversations();
     refreshThread();
   });

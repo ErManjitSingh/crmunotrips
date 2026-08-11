@@ -43,7 +43,7 @@ export default function TeamPerformancePage() {
     fetchExecutives();
   }, []);
 
-  useDataRefresh(['leads', 'followups', 'quotations', 'dashboard'], fetchExecutives);
+  useDataRefresh(['leads', 'followups', 'quotations'], fetchExecutives);
 
   const filteredExecutives = useMemo(() => {
     const q = search.trim().toLowerCase();

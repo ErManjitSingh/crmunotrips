@@ -159,7 +159,8 @@ export default function ExecutiveDashboard() {
     setFilters(applyExecDashboardPreset(presetKey));
   }, []);
 
-  useDataRefresh(['dashboard', 'leads', 'followups'], refresh);
+  // Soft invalidate only — don't rebuild on every lead/followup mutation
+  useDataRefresh(['dashboard'], refresh);
 
   if (isLoading && !data) {
     return (

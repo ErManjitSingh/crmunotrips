@@ -6,6 +6,9 @@ const { invalidateExecutiveLeadIdsCache } = require('../services/executiveScopeS
 let invalidateTimer = null;
 const pendingUserInvalidations = new Map();
 
+let navInvalidateTimer = null;
+let pendingNavWipe = false;
+
 function scheduleUserCacheInvalidation(userId, role, branchId) {
   if (!userId || !role) return;
   const key = `${role}:${userId}:${branchId || 'all'}`;
@@ -22,7 +25,20 @@ function scheduleUserCacheInvalidation(userId, role, branchId) {
         invalidateExecutiveLeadIdsCache(uid, bid);
       }
     });
-  }, 400);
+  }, 800);
+}
+
+/** Coalesce Redis SCAN wipes — lead spam was wiping all nav caches every request */
+function scheduleSharedNavInvalidation() {
+  pendingNavWipe = true;
+  if (navInvalidateTimer) return;
+  navInvalidateTimer = setTimeout(() => {
+    navInvalidateTimer = null;
+    if (!pendingNavWipe) return;
+    pendingNavWipe = false;
+    invalidateDashboardCache('nav:');
+    invalidateDashboardCache('lead-list-kpis');
+  }, 5000);
 }
 
 /** After successful mutations, invalidate only the acting user's cached dashboard/nav data. */
@@ -34,10 +50,8 @@ function dataSyncMiddleware(req, res, next) {
 
     if (keys.some((k) => ['leads', 'followups', 'quotations', 'dashboard', 'payments', 'nav-counts'].includes(k))) {
       scheduleUserCacheInvalidation(req.user?._id, req.user?.role, req.branchId);
-      // Lead mutations affect every role's badges — clear shared nav/KPI caches
       if (keys.includes('leads') || keys.includes('nav-counts')) {
-        invalidateDashboardCache('nav:');
-        invalidateDashboardCache('lead-list-kpis');
+        scheduleSharedNavInvalidation();
       }
     }
 

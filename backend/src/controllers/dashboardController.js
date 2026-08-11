@@ -1,6 +1,6 @@
 const asyncHandler = require('../utils/asyncHandler');
 const { buildAdminDashboard } = require('../services/dashboardService');
-const { getOrSetFresh, cacheKey } = require('../services/dashboardCacheService');
+const { getOrSetFresh, cacheKey, DEFAULT_TTL_MS } = require('../services/dashboardCacheService');
 
 const getStats = asyncHandler(async (req, res) => {
   const dateFrom = typeof req.query.dateFrom === 'string' ? req.query.dateFrom : '';
@@ -18,7 +18,7 @@ const getStats = asyncHandler(async (req, res) => {
         dateTo: dateTo || undefined,
         source: source || undefined,
       }),
-    60 * 1000
+    DEFAULT_TTL_MS
   );
   res.json(stats);
 });

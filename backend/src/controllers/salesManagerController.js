@@ -36,7 +36,7 @@ const {
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
 const { sumConvertedPackageRevenue } = require('../utils/convertedPackageRevenue');
 const { stampPendingAcceptance } = require('../services/leadExecutiveStallService');
-const { getOrSetFresh, cacheKey } = require('../services/dashboardCacheService');
+const { getOrSetFresh, cacheKey, DEFAULT_TTL_MS } = require('../services/dashboardCacheService');
 const {
   findManagerLeadsPaginated,
   findScopedFollowUpsPaginated,
@@ -48,7 +48,7 @@ const getDashboard = asyncHandler(async (req, res) => {
     req,
     cacheKey('sales_manager', `dashboard:${req.branchId || 'all'}`),
     () => buildSalesManagerDashboard({ branchId: req.branchId }),
-    60 * 1000
+    DEFAULT_TTL_MS
   );
   res.json(stats);
 });
