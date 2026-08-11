@@ -17,7 +17,6 @@ import {
   X,
 } from 'lucide-react';
 import { getPackageTypeConfig, formatINR } from './quotationUtils';
-import PackageDestinationFlow from './PackageDestinationFlow';
 import PackageBuilderDayTimeline from './PackageBuilderDayTimeline';
 import PackageBuilderPriceSidebar from './PackageBuilderPriceSidebar';
 import MobileQuotationActionBar from './MobileQuotationActionBar';
@@ -716,58 +715,13 @@ export default function PackageBuilderWorkspace({
             </div>
           </SectionShell>
 
-          <SectionShell
-            tone="route"
-            step={2}
-            title="Destination Flow"
-            subtitle="Pickup → stops → drop — drag to reorder"
-            icon={Route}
-          >
-            <PackageDestinationFlow destinations={destinations} onChange={setDestinations} embedded />
-          </SectionShell>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <SectionShell
-              tone="travel"
-              step={3}
-              title="Transport"
-              subtitle="Private vehicle for the trip"
-              icon={Car}
-              action={packageCabs.length > 0 ? <ChangeBtn onClick={openCabPicker} /> : null}
-              className="h-full"
-            >
-              <div className="rounded-xl border border-sky-200 bg-white/80 px-3.5 py-3">
-                <p className="text-sm font-bold text-slate-900">
-                  {selectedUnoCab?.name || 'Sedan (Dzire / Etios)'}
-                </p>
-                <p className="mt-1 text-xs font-medium text-sky-700/80">
-                  {[
-                    'AC Vehicle',
-                    selectedUnoCab?.seatingCapacity ? `${selectedUnoCab.seatingCapacity} Seats` : '4 Seats',
-                  ].join(' · ')}
-                </p>
-              </div>
-            </SectionShell>
-
-            <SectionShell
-              tone="stay"
-              step={3}
-              title="Stay"
-              subtitle="Hotels linked to this package"
-              icon={Hotel}
-              action={stayOptions.length > 0 ? <ChangeBtn onClick={openStayPicker} /> : null}
-              className="h-full"
-            >
-              <div className="rounded-xl border border-violet-200 bg-white/80 px-3.5 py-3">
-                <p className="text-sm font-bold text-slate-900">{staySummary.name}</p>
-                <p className="mt-1 text-xs font-medium text-violet-700/80">{staySummary.detail}</p>
-              </div>
-            </SectionShell>
-          </div>
+          {/* User-requested UI simplification:
+              Remove Destination Flow, Transport and Stay blocks from the screen.
+              Hotels/cab are still pre-seeded and used for Day-wise Itinerary + pricing. */}
 
           <SectionShell
             tone="itinerary"
-            step={4}
+            step={2}
             title="Day-wise Itinerary"
             subtitle="Each day has its own color strip — hotels, cab & activities"
             icon={CalendarDays}
@@ -788,7 +742,7 @@ export default function PackageBuilderWorkspace({
 
           <SectionShell
             tone="policy"
-            step={5}
+            step={3}
             title="Inclusions & Exclusions"
             subtitle="Green = included · Rose = not included"
             icon={ListChecks}
