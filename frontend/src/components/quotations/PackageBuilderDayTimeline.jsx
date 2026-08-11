@@ -24,6 +24,7 @@ import {
   Star,
   RefreshCw,
 } from 'lucide-react';
+import { useState } from 'react';
 import { cn } from '../../lib/utils';
 import { defaultItineraryDay, formatINR } from './quotationUtils';
 import { resolvePartyOccupancy } from './partyCosting';
@@ -250,6 +251,10 @@ function SortableDayCard({
 
   const update = (field, value) => onChange({ ...day, [field]: value });
 
+  // Manual fallback inputs (when API returns empty sightseeing/activities options)
+  const [sightAdd, setSightAdd] = useState('');
+  const [actAdd, setActAdd] = useState('');
+
   const hotelMeta =
     day.hotelMeta ||
     (hotelSel?.hotel
@@ -285,6 +290,12 @@ function SortableDayCard({
   const joinNames = (items = []) => (Array.isArray(items) ? items.map((x) => x?.name).filter(Boolean) : []).join(' · ');
 
   const commitDay = (patch) => onChange({ ...day, ...patch });
+
+  const splitTextNames = (text = '') =>
+    String(text || '')
+      .split(/\s*[·•]\s*|,\s*|\n+/)
+      .map((x) => String(x || '').trim())
+      .filter(Boolean);
 
   const toggleSightseeing = (opt) => {
     const sightseeingOptions = Array.isArray(day.sightseeingOptions) ? day.sightseeingOptions : [];
@@ -419,12 +430,12 @@ function SortableDayCard({
           className="w-full rounded-xl border border-white bg-white/80 px-3 py-2.5 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-teal-500/25"
         />
 
-        {(Array.isArray(day.sightseeingOptions) && day.sightseeingOptions.length > 0) ||
-        (Array.isArray(day.activityOptions) && day.activityOptions.length > 0) ? (
-          <div className="mt-3 space-y-3">
-            {Array.isArray(day.sightseeingOptions) && day.sightseeingOptions.length > 0 && (
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-amber-700">Sightseeing options</p>
+        <div className="mt-3 space-y-3">
+          {/* Sightseeing */}
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-amber-700">Sightseeing</p>
+            {Array.isArray(day.sightseeingOptions) && day.sightseeingOptions.length > 0 ? (
+              <>
                 <p className="text-[10px] text-amber-800/70">Included items are locked</p>
                 <div className="flex flex-wrap gap-2">
                   {day.sightseeingOptions.map((opt) => {
@@ -458,12 +469,46 @@ function SortableDayCard({
                     );
                   })}
                 </div>
-              </div>
+              </>
+            ) : (
+              <>
+                <p className="text-[10px] text-amber-800/70">Type sightseeing (comma / • / · separated)</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {splitTextNames(day.sightseeing || '').map((name) => (
+                    <span key={name} className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-semibold text-amber-900">
+                      {name}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    value={sightAdd}
+                    onChange={(e) => setSightAdd(e.target.value)}
+                    placeholder="e.g. Solang Valley"
+                    className="h-9 flex-1 rounded-lg border border-amber-200 bg-white/80 px-3 text-sm outline-none focus:ring-2 focus:ring-amber-500/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextNames = [...splitTextNames(day.sightseeing || ''), ...splitTextNames(sightAdd)];
+                      const uniq = [...new Set(nextNames)];
+                      commitDay({ sightseeing: uniq.join(' · ') });
+                      setSightAdd('');
+                    }}
+                    className="h-9 px-3 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-500"
+                  >
+                    Add
+                  </button>
+                </div>
+              </>
             )}
+          </div>
 
-            {Array.isArray(day.activityOptions) && day.activityOptions.length > 0 && (
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-amber-700">Activities options</p>
+          {/* Activities */}
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-amber-700">Activities</p>
+            {Array.isArray(day.activityOptions) && day.activityOptions.length > 0 ? (
+              <>
                 <p className="text-[10px] text-amber-800/70">Included items are locked</p>
                 <div className="flex flex-wrap gap-2">
                   {day.activityOptions.map((opt) => {
@@ -497,10 +542,41 @@ function SortableDayCard({
                     );
                   })}
                 </div>
-              </div>
+              </>
+            ) : (
+              <>
+                <p className="text-[10px] text-amber-800/70">Type activities (comma / • / · separated)</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {splitTextNames(day.activities || '').map((name) => (
+                    <span key={name} className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-semibold text-amber-900">
+                      {name}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    value={actAdd}
+                    onChange={(e) => setActAdd(e.target.value)}
+                    placeholder="e.g. Hatu Peak"
+                    className="h-9 flex-1 rounded-lg border border-amber-200 bg-white/80 px-3 text-sm outline-none focus:ring-2 focus:ring-amber-500/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextNames = [...splitTextNames(day.activities || ''), ...splitTextNames(actAdd)];
+                      const uniq = [...new Set(nextNames)];
+                      commitDay({ activities: uniq.join(' · ') });
+                      setActAdd('');
+                    }}
+                    className="h-9 px-3 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-500"
+                  >
+                    Add
+                  </button>
+                </div>
+              </>
             )}
           </div>
-        ) : null}
+        </div>
       </div>
     </div>
   );
