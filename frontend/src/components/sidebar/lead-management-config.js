@@ -1,6 +1,5 @@
 import {
   Users,
-  Sparkles,
   CalendarDays,
   Inbox,
   UserCheck,
@@ -41,13 +40,6 @@ export const leadManagementSections = [
         label: 'WhatsApp Leads',
         icon: MessageCircle,
         permission: { module: 'whatsapp', action: 'use' },
-      },
-      {
-        path: '/leads/inbox/new',
-        label: 'New Leads',
-        icon: Sparkles,
-        badgeKey: 'leads.statusNew',
-        permission: leadPerm,
       },
       {
         path: '/leads/new-leads',
