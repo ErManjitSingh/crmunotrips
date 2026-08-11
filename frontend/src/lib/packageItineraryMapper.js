@@ -193,8 +193,104 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
   const defaultHotelName =
     defaultHotelOption?.name || itineraryDay.hotel_name || itineraryDay.hotel || '';
 
-  const sightseeing = formatNamedList(optionDay.sightseeing || []);
-  const activitiesFromOptions = formatNamedList(optionDay.activities || []);
+  const normalizeOptionId = (item = {}, fallbackPrefix = 'opt', idx = 0) => {
+    const raw =
+      item?.id ??
+      item?._id ??
+      item?.link_id ??
+      item?.linkId ??
+      item?.sightseeing_id ??
+      item?.sightseeingId ??
+      item?.activity_id ??
+      item?.activityId ??
+      item?.activityLinkId ??
+      item?.activity_link_id ??
+      '';
+    if (raw === 0) return '0';
+    const s = String(raw || '').trim();
+    return s || `${fallbackPrefix}-${idx}`;
+  };
+
+  const normalizeOptionPrice = (item = {}) => {
+    const p =
+      item?.price_per_person ??
+      item?.pricePerPerson ??
+      item?.price_per ??
+      item?.pricePer ??
+      item?.unit_price ??
+      item?.unitPrice ??
+      item?.amount ??
+      item?.price ??
+      0;
+    const n = Number(p || 0);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const sightseeingOptions = Array.isArray(optionDay.sightseeing)
+    ? optionDay.sightseeing
+        .map((item, idx) => {
+          const id = normalizeOptionId(item, 'sight', idx);
+          const name = item?.name || item?.title || item?.label || '';
+          const isOptional = item?.is_optional != null ? Boolean(item.is_optional) : true;
+          const isIncluded = item?.is_included != null ? Boolean(item.is_included) : !isOptional;
+          const isSelectedByDefault =
+            item?.is_selected_by_default != null
+              ? Boolean(item.is_selected_by_default)
+              : isIncluded;
+          const price = normalizeOptionPrice(item);
+          return {
+            id,
+            name,
+            price,
+            priceType:
+              item?.price_per_person != null || item?.pricePerPerson != null ? 'per_person' : 'flat',
+            isIncluded,
+            isOptional,
+            isSelectedByDefault,
+            raw: item,
+          };
+        })
+        .filter((o) => o.name)
+    : [];
+
+  const activityOptions = Array.isArray(optionDay.activities)
+    ? optionDay.activities
+        .map((item, idx) => {
+          const id = normalizeOptionId(item, 'act', idx);
+          const name = item?.name || item?.title || item?.label || '';
+          const isOptional = item?.is_optional != null ? Boolean(item.is_optional) : true;
+          const isIncluded = item?.is_included != null ? Boolean(item.is_included) : !isOptional;
+          const isSelectedByDefault =
+            item?.is_selected_by_default != null
+              ? Boolean(item.is_selected_by_default)
+              : isIncluded;
+          const price = normalizeOptionPrice(item);
+          return {
+            id,
+            name,
+            price,
+            priceType:
+              item?.price_per_person != null || item?.pricePerPerson != null ? 'per_person' : 'flat',
+            isIncluded,
+            isOptional,
+            isSelectedByDefault,
+            raw: item,
+          };
+        })
+        .filter((o) => o.name)
+    : [];
+
+  const selectedSightseeingIds = sightseeingOptions
+    .filter((o) => o.isIncluded || o.isSelectedByDefault)
+    .map((o) => o.id);
+
+  const selectedActivityIds = activityOptions
+    .filter((o) => o.isIncluded || o.isSelectedByDefault)
+    .map((o) => o.id);
+
+  const sightseeing = formatNamedList(
+    sightseeingOptions.filter((o) => selectedSightseeingIds.includes(o.id))
+  );
   const legacyActivityParts = [
     itineraryDay.arrival,
     itineraryDay.transport,
@@ -202,6 +298,9 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
     itineraryDay.transport_mode,
   ].filter(Boolean);
   const legacyActivities = legacyActivityParts.join(' · ');
+  const activitiesFromOptions = formatNamedList(
+    activityOptions.filter((o) => selectedActivityIds.includes(o.id))
+  );
   const activities = [activitiesFromOptions, legacyActivities].filter(Boolean).join(' · ');
 
   const meals = packageMealLabel(stay?.default_meal_plan, {
@@ -246,6 +345,12 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
     stayNights: stay ? Number(stay.nights) || 1 : null,
     activities: activities || sightseeing,
     sightseeing,
+    // Selection support for day-wise itinerary UI + PDF/preview
+    activityLegacyText: legacyActivities,
+    sightseeingOptions,
+    activityOptions,
+    selectedSightseeingIds,
+    selectedActivityIds,
     meals,
     mealPlanKey,
     transport,

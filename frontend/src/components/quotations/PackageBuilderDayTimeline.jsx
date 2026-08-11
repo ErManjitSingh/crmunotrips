@@ -282,6 +282,44 @@ function SortableDayCard({
     { icon: UtensilsCrossed, label: 'Meals', value: hotelMeta?.meals || day.meals || 'As per plan', tone: 'border-rose-200 bg-rose-50 text-rose-700' },
   ];
 
+  const joinNames = (items = []) => (Array.isArray(items) ? items.map((x) => x?.name).filter(Boolean) : []).join(' · ');
+
+  const commitDay = (patch) => onChange({ ...day, ...patch });
+
+  const toggleSightseeing = (opt) => {
+    const sightseeingOptions = Array.isArray(day.sightseeingOptions) ? day.sightseeingOptions : [];
+    if (!opt || !opt.id) return;
+    const isLocked = Boolean(opt.isIncluded) || opt.isOptional === false;
+    if (isLocked) return;
+
+    const current = Array.isArray(day.selectedSightseeingIds) ? day.selectedSightseeingIds : [];
+    const set = new Set(current);
+    set.has(opt.id) ? set.delete(opt.id) : set.add(opt.id);
+    const nextIds = [...set];
+
+    const selected = sightseeingOptions.filter((o) => nextIds.includes(o.id));
+    const text = joinNames(selected);
+    commitDay({ selectedSightseeingIds: nextIds, sightseeing: text });
+  };
+
+  const toggleActivity = (opt) => {
+    const activityOptions = Array.isArray(day.activityOptions) ? day.activityOptions : [];
+    if (!opt || !opt.id) return;
+    const isLocked = Boolean(opt.isIncluded) || opt.isOptional === false;
+    if (isLocked) return;
+
+    const current = Array.isArray(day.selectedActivityIds) ? day.selectedActivityIds : [];
+    const set = new Set(current);
+    set.has(opt.id) ? set.delete(opt.id) : set.add(opt.id);
+    const nextIds = [...set];
+
+    const selected = activityOptions.filter((o) => nextIds.includes(o.id));
+    const optionText = joinNames(selected);
+    const legacyText = day.activityLegacyText || '';
+    const nextActivities = [optionText, legacyText].filter(Boolean).join(' · ');
+    commitDay({ selectedActivityIds: nextIds, activities: nextActivities });
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -380,6 +418,89 @@ function SortableDayCard({
           rows={3}
           className="w-full rounded-xl border border-white bg-white/80 px-3 py-2.5 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-teal-500/25"
         />
+
+        {(Array.isArray(day.sightseeingOptions) && day.sightseeingOptions.length > 0) ||
+        (Array.isArray(day.activityOptions) && day.activityOptions.length > 0) ? (
+          <div className="mt-3 space-y-3">
+            {Array.isArray(day.sightseeingOptions) && day.sightseeingOptions.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-amber-700">Sightseeing options</p>
+                <p className="text-[10px] text-amber-800/70">Included items are locked</p>
+                <div className="flex flex-wrap gap-2">
+                  {day.sightseeingOptions.map((opt) => {
+                    const selected = (day.selectedSightseeingIds || []).includes(opt.id);
+                    const locked = Boolean(opt.isIncluded) || opt.isOptional === false;
+                    const priceText =
+                      Number(opt.price || 0) > 0
+                        ? ` · ${formatINR(Number(opt.price || 0), { zeroLabel: '' })}${opt.priceType === 'per_person' ? '/pax' : ''}`
+                        : '';
+                    return (
+                      <label
+                        key={opt.id}
+                        className={cn(
+                          'inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs cursor-pointer select-none',
+                          selected
+                            ? 'border-amber-300 bg-amber-50 text-amber-900'
+                            : 'border-amber-200 bg-white/70 text-amber-800 hover:bg-amber-50/60',
+                          locked && 'opacity-60 cursor-not-allowed'
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          disabled={locked}
+                          onChange={() => toggleSightseeing(opt)}
+                          className="h-3.5 w-3.5 rounded border-amber-300 text-amber-600 focus:ring-amber-500/20"
+                        />
+                        <span className="font-semibold">{opt.name}</span>
+                        {priceText && <span className="text-[10px] text-amber-800/70">{priceText}</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {Array.isArray(day.activityOptions) && day.activityOptions.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-amber-700">Activities options</p>
+                <p className="text-[10px] text-amber-800/70">Included items are locked</p>
+                <div className="flex flex-wrap gap-2">
+                  {day.activityOptions.map((opt) => {
+                    const selected = (day.selectedActivityIds || []).includes(opt.id);
+                    const locked = Boolean(opt.isIncluded) || opt.isOptional === false;
+                    const priceText =
+                      Number(opt.price || 0) > 0
+                        ? ` · ${formatINR(Number(opt.price || 0), { zeroLabel: '' })}${opt.priceType === 'per_person' ? '/pax' : ''}`
+                        : '';
+                    return (
+                      <label
+                        key={opt.id}
+                        className={cn(
+                          'inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs cursor-pointer select-none',
+                          selected
+                            ? 'border-amber-300 bg-amber-50 text-amber-900'
+                            : 'border-amber-200 bg-white/70 text-amber-800 hover:bg-amber-50/60',
+                          locked && 'opacity-60 cursor-not-allowed'
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          disabled={locked}
+                          onChange={() => toggleActivity(opt)}
+                          className="h-3.5 w-3.5 rounded border-amber-300 text-amber-600 focus:ring-amber-500/20"
+                        />
+                        <span className="font-semibold">{opt.name}</span>
+                        {priceText && <span className="text-[10px] text-amber-800/70">{priceText}</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   );
