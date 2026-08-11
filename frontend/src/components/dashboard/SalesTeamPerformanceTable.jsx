@@ -11,6 +11,14 @@ const STATUS_STYLE = {
   Inactive: 'bg-slate-100 text-slate-500 ring-slate-200',
 };
 
+const STATUS_LABEL = {
+  Excellent: 'Excellent',
+  Good: 'Good',
+  'Needs Attention': 'Focus',
+  Low: 'Low',
+  Inactive: 'Inactive',
+};
+
 export default function SalesTeamPerformanceTable({ data }) {
   const executives = (data?.executives || [])
     .slice(0, 6)
@@ -28,66 +36,57 @@ export default function SalesTeamPerformanceTable({ data }) {
     <DashboardPanel
       title="Sales Team Performance (Today)"
       className="h-full"
-      noPadding
       action={
-        <Link
-          to="/team"
-          className="mr-5 mt-5 text-xs font-semibold text-violet-600 hover:underline"
-        >
+        <Link to="/team" className="text-xs font-semibold text-violet-600 hover:underline">
           View All
         </Link>
       }
     >
-      <div className="overflow-x-auto px-5 pb-4 pt-3">
-        <table className="w-full min-w-[420px] text-left text-[13px]">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[420px] border-collapse text-left text-[13px]">
           <thead>
-            <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wide text-slate-400">
-              <th className="pb-2 pr-2 font-semibold">Executive</th>
-              <th className="pb-2 px-1 font-semibold text-right">Leads</th>
-              <th className="pb-2 px-1 font-semibold text-right">Follow-ups</th>
-              <th className="pb-2 px-1 font-semibold text-right">Quotes</th>
-              <th className="pb-2 px-1 font-semibold text-right">Bookings</th>
-              <th className="pb-2 pl-1 font-semibold text-right">Status</th>
+            <tr className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-500">
+              <th className="rounded-l-lg py-2 pl-2.5 pr-2 font-semibold">Team Member</th>
+              <th className="px-1.5 py-2 text-right font-semibold">Leads</th>
+              <th className="px-1.5 py-2 text-right font-semibold">Follow-ups</th>
+              <th className="px-1.5 py-2 text-right font-semibold">Quotations</th>
+              <th className="px-1.5 py-2 text-right font-semibold">Bookings</th>
+              <th className="rounded-r-lg py-2 pl-1.5 pr-2.5 text-right font-semibold">Performance</th>
             </tr>
           </thead>
           <tbody>
             {executives.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-slate-400">
+                <td colSpan={6} className="py-8 text-center text-slate-400">
                   No executives found
                 </td>
               </tr>
             ) : (
-              executives.map((ex, i) => (
+              executives.map((ex) => (
                 <tr
                   key={ex.id}
-                  className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70"
+                  className="border-b border-slate-100 last:border-0 hover:bg-violet-50/40"
                 >
-                  <td className="py-1.5 pr-2">
+                  <td className="py-2 pl-2.5 pr-2">
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="w-3.5 shrink-0 text-[10px] font-bold tabular-nums text-slate-300">
-                        {i + 1}
-                      </span>
                       <Avatar name={ex.name} size="sm" className="!h-7 !w-7 !text-[10px]" />
                       <span className="truncate font-medium text-slate-800">{ex.name}</span>
                     </div>
                   </td>
-                  <td className="py-1.5 px-1 text-right tabular-nums text-slate-700">{ex.leads}</td>
-                  <td className="py-1.5 px-1 text-right tabular-nums text-slate-700">
-                    {ex.followUps}
-                  </td>
-                  <td className="py-1.5 px-1 text-right tabular-nums text-slate-700">{ex.quotes}</td>
-                  <td className="py-1.5 px-1 text-right font-semibold tabular-nums text-violet-700">
+                  <td className="px-1.5 py-2 text-right tabular-nums text-slate-700">{ex.leads}</td>
+                  <td className="px-1.5 py-2 text-right tabular-nums text-slate-700">{ex.followUps}</td>
+                  <td className="px-1.5 py-2 text-right tabular-nums text-slate-700">{ex.quotes}</td>
+                  <td className="px-1.5 py-2 text-right font-semibold tabular-nums text-violet-700">
                     {ex.bookings}
                   </td>
-                  <td className="py-1.5 pl-1 text-right">
+                  <td className="py-2 pl-1.5 pr-2.5 text-right">
                     <span
                       className={cn(
                         'inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset',
                         STATUS_STYLE[ex.status] || STATUS_STYLE.Inactive
                       )}
                     >
-                      {ex.status === 'Needs Attention' ? 'Focus' : ex.status}
+                      {STATUS_LABEL[ex.status] || ex.status}
                     </span>
                   </td>
                 </tr>
