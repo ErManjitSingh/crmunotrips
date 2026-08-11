@@ -1,4 +1,4 @@
-import { resolveCabUpgradeCost } from '../../lib/packageCabMapper';
+import { resolveCabAbsoluteFare, resolveCabUpgradeCost } from '../../lib/packageCabMapper';
 import { resolvePackageHotelPricing } from './DayWiseHotelSelector';
 
 /**
@@ -132,8 +132,8 @@ export function applyPartyCosting({
 }
 
 /**
- * Website-aligned quote lines: package base + hotel/cab upgrades only.
- * Hotel line folds in the website package price (default config matches UNO card price).
+ * Website-aligned quote lines: total matches UNO package price (+ upgrades).
+ * Cab fare is shown on its own line; hotel/package line holds the remainder.
  */
 export function buildWebsiteAlignedQuoteCosts({
   packageAnchor = 0,
@@ -148,6 +148,7 @@ export function buildWebsiteAlignedQuoteCosts({
 } = {}) {
   const unit = resolvePackageHotelPricing(0, dayWiseHotels);
   const cabUpgrade = resolveCabUpgradeCost(selectedCab, packageCabs);
+  const cabUnitFare = resolveCabAbsoluteFare(selectedCab, packageCabs);
   const party = applyPartyCosting({
     unitBaseCost: packageAnchor,
     unitHotelCost: unit.hotelCost,
@@ -160,9 +161,15 @@ export function buildWebsiteAlignedQuoteCosts({
     dayWiseHotels,
   });
 
+  const isDefaultCab = cabUpgrade <= 0;
+  const cabUnits = isDefaultCab ? party.coupleUnits : party.cabCount;
+  const cabLineCost = round2(cabUnitFare * cabUnits);
+  const packageSubtotal = round2(party.baseCost + party.hotelCost + party.cabCost);
+  const hotelLineCost = round2(Math.max(0, packageSubtotal - cabLineCost));
+
   return {
-    hotelCost: round2(party.baseCost + party.hotelCost),
-    cabCost: party.cabCost,
+    hotelCost: hotelLineCost,
+    cabCost: cabLineCost,
     flightCost: party.flightCost,
     activityCost: party.activityCost,
     party,

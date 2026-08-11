@@ -85,6 +85,24 @@ export function resolvePackageCabs(source = {}) {
     });
 }
 
+/** Absolute trip fare for a package cab (UNO price_delta). */
+export function resolveCabAbsoluteFare(cab = null, packageCabs = []) {
+  const cabs = Array.isArray(packageCabs) ? packageCabs : [];
+  const defaultCab = cabs.find((c) => c.isDefault) || cabs[0] || null;
+  const fare = Math.max(
+    0,
+    Number(
+      cab?.absoluteFare ??
+        cab?.totalAmount ??
+        cab?.cost ??
+        defaultCab?.absoluteFare ??
+        defaultCab?.totalAmount ??
+        0
+    ) || 0
+  );
+  return fare;
+}
+
 /** Cab upgrade vs package-default vehicle only (0 for default website config). */
 export function resolveCabUpgradeCost(selectedCab = null, packageCabs = []) {
   const cabs = Array.isArray(packageCabs) ? packageCabs : [];

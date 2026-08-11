@@ -64,7 +64,7 @@ export default function PackageBuilderPriceSidebar({
 
   const rows = [
     { key: 'hotelCost', label: 'Package Cost' },
-    { key: 'transportCost', label: 'Cab Upgrade' },
+    { key: 'transportCost', label: 'Cab Cost' },
     { key: 'flightCost', label: 'Flight Cost' },
     { key: 'activityCost', label: 'Activities Cost' },
   ];

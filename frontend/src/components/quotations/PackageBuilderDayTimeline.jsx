@@ -156,10 +156,10 @@ function CabCard({ packageCab, onChangeCab, cabCount = 1, adminMarginPercent = 0
   const upgradeFare = Number(
     packageCab.upgradePrice ?? packageCab.priceDelta ?? packageCab.cost ?? 0
   ) || 0;
-  const isIncluded = Boolean(packageCab.isDefault) || upgradeFare <= 0;
-  const unitFare = isIncluded
-    ? 0
-    : upgradeFare;
+  const isDefault = Boolean(packageCab.isDefault) || upgradeFare <= 0;
+  const unitFare = Number(
+    packageCab.absoluteFare ?? packageCab.totalAmount ?? packageCab.cost ?? 0
+  ) || 0;
   const rawTotal = unitFare * Math.max(1, Number(cabCount) || 1);
   const displayTotal = applyAdminMarginToAmount(rawTotal, adminMarginPercent);
   return (
@@ -182,13 +182,14 @@ function CabCard({ packageCab, onChangeCab, cabCount = 1, adminMarginPercent = 0
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          {isIncluded ? (
-            <p className="text-[11px] font-semibold text-sky-700">Included in package</p>
-          ) : displayTotal > 0 ? (
+          {displayTotal > 0 && (
             <p className="text-base font-bold text-sky-800 metric-tabular leading-none">
               {formatINR(displayTotal)}
             </p>
-          ) : null}
+          )}
+          {isDefault && displayTotal > 0 && (
+            <p className="text-[10px] font-semibold text-sky-600">Included in package</p>
+          )}
           {onChangeCab && <ChangeBtn onClick={onChangeCab} />}
         </div>
       </div>
