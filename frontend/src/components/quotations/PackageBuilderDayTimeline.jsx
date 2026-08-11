@@ -75,7 +75,6 @@ function HotelCard({
   const absoluteNight = Number(
     hotelSel?.absolutePerNight ??
       meta?.absolutePerNight ??
-      meta?.startingPrice ??
       meta?.includedRate ??
       0
   );

@@ -277,41 +277,53 @@ function pickStayRoom(rooms = [], stay = {}, meta = {}) {
   const roomName = String(stay.default_room_type_name || meta.tierName || '')
     .trim()
     .toLowerCase();
-  return (
-    list.find((r) => roomId && String(r.id) === String(roomId)) ||
-    list.find((r) => roomName && String(r.name || '').trim().toLowerCase() === roomName) ||
-    list.find((r) => roomName && String(r.name || '').toLowerCase().includes(roomName)) ||
-    list[0] ||
-    null
-  );
+  const byId = roomId ? list.find((r) => String(r.id) === String(roomId)) : null;
+  if (byId) return byId;
+  if (roomName) {
+    const exact = list.find((r) => String(r.name || '').trim().toLowerCase() === roomName);
+    if (exact) return exact;
+    const partial = list.find((r) => {
+      const n = String(r.name || '').toLowerCase();
+      return n.includes(roomName) || roomName.includes(n);
+    });
+    if (partial) return partial;
+  }
+  // Package base is usually Deluxe — prefer it over cheapest/first room (often Standard EP).
+  const deluxe = list.find((r) => /\bdeluxe\b/i.test(String(r.name || '')));
+  if (deluxe) return deluxe;
+  return list[0] || null;
 }
 
 function pickStayMealPlan(room = null, mealKey = 'map') {
   const key = packageMealKey(mealKey, { hasHotel: true });
+  const rateKey = String(key || 'map').toLowerCase();
+  const fromRates = Number(room?.rates?.[rateKey] || 0) || 0;
+  const epBase = Number(room?.epPrice || room?.rates?.ep || 0) || 0;
   const plans = Array.isArray(room?.mealPlanOptions) ? room.mealPlanOptions : [];
   const matched =
-    plans.find((p) => String(p?.key || '').toLowerCase() === key) ||
-    plans.find((p) => new RegExp(`\\b${key}\\b`, 'i').test(String(p?.label || ''))) ||
+    plans.find((p) => String(p?.key || '').toLowerCase() === rateKey) ||
+    plans.find((p) => new RegExp(`\\b${rateKey}\\b`, 'i').test(String(p?.label || ''))) ||
     null;
   if (matched) {
     const absolute =
       Number(matched.absolutePrice || 0) ||
-      Number(room?.pricePerNight || 0) + Number(matched.price || 0) ||
+      fromRates ||
+      (epBase > 0 ? epBase + Number(matched.price || 0) : 0) ||
       0;
     return {
-      key: String(matched.key || key).toLowerCase(),
-      label: matched.label || packageMealLabel(key, { hasHotel: true }),
+      key: String(matched.key || rateKey).toLowerCase(),
+      label: matched.label || packageMealLabel(rateKey, { hasHotel: true }),
       price: Number(matched.price || 0),
       absolutePrice: absolute,
       meals: matched.meals || [],
     };
   }
   return {
-    key,
-    label: packageMealLabel(key, { hasHotel: true }),
+    key: rateKey,
+    label: packageMealLabel(rateKey, { hasHotel: true }),
     price: 0,
-    absolutePrice: Number(room?.rates?.[key] || room?.pricePerNight || 0) || 0,
-    meals: key === 'map' ? ['breakfast', 'dinner'] : key === 'cp' ? ['breakfast'] : [],
+    absolutePrice: fromRates || 0,
+    meals: rateKey === 'map' ? ['breakfast', 'dinner'] : rateKey === 'cp' ? ['breakfast'] : [],
   };
 }
 
@@ -535,7 +547,12 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = [], catalog
 
     const room = pickStayRoom(detail?.rooms || [], stay, meta || {});
     const mealPlan = pickStayMealPlan(room, mealKey);
-    const absolute = Number(mealPlan.absolutePrice || 0) || Number(meta?.startingPrice || 0) || 0;
+    const rateKey = String(mealPlan.key || mealKey || 'map').toLowerCase();
+    const absolute =
+      Number(mealPlan.absolutePrice || 0) ||
+      Number(room?.rates?.[rateKey] || 0) ||
+      Number(meta?.absolutePerNight || 0) ||
+      0;
     const epRate =
       Number(room?.epPrice || room?.rates?.ep || room?.pricePerNight || 0) || 0;
     const mealKeyForBed = String(mealPlan.key || mealKey || 'map').toLowerCase();
@@ -572,11 +589,11 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = [], catalog
             }
           : {
               id: stay.default_room_type_id || null,
-              name: stay.default_room_type_name || meta?.tierName || 'Standard Room',
+              name: stay.default_room_type_name || meta?.tierName || 'Deluxe',
             },
         absolutePerNight: absolute,
-        includedRate: absolute || Number(meta?.startingPrice || 0) || 0,
-        startingPrice: absolute || Number(meta?.startingPrice || 0) || 0,
+        includedRate: absolute,
+        startingPrice: absolute,
         extraBedPerNight,
         selectedFromPackage: true,
       },

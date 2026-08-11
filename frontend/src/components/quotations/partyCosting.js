@@ -71,7 +71,7 @@ export function estimateMattressCost(dayWiseHotels = [], mattresses = 0) {
   const perMattress = (Array.isArray(dayWiseHotels) ? dayWiseHotels : []).reduce((sum, item) => {
     const nights = Math.max(1, Number(item?.nights) || 1);
     const absolute = Number(
-      item?.absolutePerNight || item?.hotel?.startingPrice || item?.includedRate || 0
+      item?.absolutePerNight || item?.includedRate || 0
     );
     const explicit =
       Number(item?.extraBedPerNight ?? item?.room?.extraBedRate ?? item?.mealPlan?.extraBed ?? 0) || 0;

@@ -174,3 +174,42 @@ export function resolveSelectedMealPlan(
   }
   return pickPreferredMealPlan(plans, room, preferredKey);
 }
+
+/** Package default room: stay tier id/name, then Deluxe, then first room. */
+export function pickDefaultPackageRoom(rooms = [], hints = {}) {
+  const list = Array.isArray(rooms) ? rooms : [];
+  if (!list.length) return null;
+  const roomId = hints.roomTypeId || hints.roomId || null;
+  const roomName = String(
+    hints.tierName || hints.roomName || hints.defaultRoomTypeName || ''
+  )
+    .trim()
+    .toLowerCase();
+  if (roomId) {
+    const byId = list.find((r) => String(r.id || r._id) === String(roomId));
+    if (byId) return byId;
+  }
+  if (roomName) {
+    const exact = list.find((r) => String(r.name || '').trim().toLowerCase() === roomName);
+    if (exact) return exact;
+    const partial = list.find((r) => {
+      const n = String(r.name || '').toLowerCase();
+      return n.includes(roomName) || roomName.includes(n);
+    });
+    if (partial) return partial;
+  }
+  const deluxe = list.find((r) => /\bdeluxe\b/i.test(String(r.name || '')));
+  if (deluxe) return deluxe;
+  return list[0] || null;
+}
+
+/** Nightly rack for package default room + meal (MAP by default). */
+export function defaultPackageRoomNightly(room = null, mealKey = DEFAULT_MEAL_PLAN_KEY) {
+  if (!room) return 0;
+  const want = normalizeMealPlanKey(mealKey) || DEFAULT_MEAL_PLAN_KEY;
+  const plans = ensureMealPlanOptions(room);
+  const plan = pickPreferredMealPlan(plans, room, want);
+  const rate = mealPlanNightlyRate(plan, room);
+  if (rate > 0) return rate;
+  return Number(room.rates?.[want] || 0) || 0;
+}

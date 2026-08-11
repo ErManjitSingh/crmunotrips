@@ -24,6 +24,7 @@ import {
   ensureMealPlanOptions,
   mealPlanNightlyRate,
   normalizeMealPlanKey,
+  pickDefaultPackageRoom,
   pickPreferredMealPlan,
   resolveSelectedMealPlan,
 } from '../../lib/mealPlanDefaults';
@@ -565,12 +566,14 @@ function buildFallbackRooms(option) {
   }
   const fallback = {
     id: option.roomTypeId || `pkg-room-${option.id || option.name}`,
-    name: option.tierName || 'Standard Room',
+    name: option.tierName || 'Deluxe',
     description: 'Package room option',
-    pricePerNight: Number(option.startingPrice || option.absolutePerNight || option.priceDelta || 0),
+    pricePerNight: Number(option.room?.rates?.map || option.absolutePerNight || 0),
+    epPrice: Number(option.room?.epPrice || option.room?.rates?.ep || 0),
+    rates: option.room?.rates || null,
     images: option.images || (option.image ? [option.image] : []),
     fromPackage: true,
-    mealPlanOptions: [],
+    mealPlanOptions: option.room?.mealPlanOptions || [],
   };
   return [{ ...fallback, mealPlanOptions: ensureMealPlanOptions(fallback) }];
 }
@@ -692,6 +695,19 @@ export default function PackageResourcePickerDrawer({
     try {
       const detail = await fetchHotelDetailForOption(option, destination);
       setHotelDetail(detail);
+      const roomList = (detail?.rooms?.length ? detail.rooms : buildFallbackRooms(option)).map(
+        (room) => ({ ...room, mealPlanOptions: ensureMealPlanOptions(room) })
+      );
+      const defaultRoom = pickDefaultPackageRoom(roomList, {
+        tierName: option.tierName,
+        roomTypeId: option.roomTypeId,
+      });
+      if (defaultRoom) {
+        setSelectedRoom(defaultRoom);
+        setSelectedMealPlan(
+          pickPreferredMealPlan(defaultRoom.mealPlanOptions, defaultRoom, packageMealKey)
+        );
+      }
     } catch {
       setHotelDetail({
         ...option,

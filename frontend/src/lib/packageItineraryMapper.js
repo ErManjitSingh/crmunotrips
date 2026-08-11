@@ -1,5 +1,6 @@
 import {
   DEFAULT_MAP_MEAL_PLAN,
+  defaultPackageRoomNightly,
   ensureMealPlanOptions,
   mealPlanFromCode,
   mealPlanNightlyRate,
@@ -166,8 +167,8 @@ export function mapHotelOption(option = {}) {
     mealPlanKey: mealKey,
     mealsRaw: option.meals || null,
     startingPrice,
-    absolutePerNight: startingPrice,
-    includedRate: startingPrice,
+    absolutePerNight: 0,
+    includedRate: 0,
     priceDelta,
     tierName:
       option.tier_name ||
@@ -422,19 +423,12 @@ export function seedDayWiseHotelsFromItinerary(itinerary = [], preferredMealKey 
             absolutePrice: Number(meta.mealPlan.absolutePrice || 0),
           }
         : { key: meal.key, label: meal.label, price: 0, absolutePrice: 0 };
-      let absolutePerNight = Number(
-        meta.absolutePerNight ||
-          mealPlan.absolutePrice ||
-          meta.startingPrice ||
-          0
-      );
+      let absolutePerNight = Number(meta.absolutePerNight || mealPlan.absolutePrice || 0);
       const room = meta.room?.name
         ? {
             id: meta.room.id || meta.roomTypeId || null,
             name: meta.room.name,
-            pricePerNight: Number(
-              meta.room.pricePerNight || absolutePerNight || 0
-            ),
+            pricePerNight: Number(meta.room.pricePerNight || absolutePerNight || 0),
             epPrice: Number(meta.room.epPrice || meta.room.rates?.ep || 0),
             rates: meta.room.rates || null,
             mealPlanOptions: meta.room.mealPlanOptions || [],
@@ -443,16 +437,17 @@ export function seedDayWiseHotelsFromItinerary(itinerary = [], preferredMealKey 
           }
         : {
             id: meta.roomTypeId || null,
-            name: meta.tierName || 'Standard Room',
+            name: meta.tierName || 'Deluxe',
             pricePerNight: absolutePerNight,
+            epPrice: Number(meta.room?.epPrice || meta.room?.rates?.ep || 0),
             rates: meta.room?.rates || null,
             mealPlanOptions: meta.room?.mealPlanOptions || [],
           };
 
-      // Reprice to lead meal plan (or keep package meal) using room rates when available
-      const wantKey = leadMealKey || normalizeMealPlanKey(mealPlan.key) || 'map';
+      // Always price Deluxe + MAP (or lead meal) — never catalog startingPrice (usually EP/from).
+      const wantKey = leadMealKey || 'map';
       const preferred = pickPreferredMealPlan(ensureMealPlanOptions(room), room, wantKey);
-      const priced = mealPlanNightlyRate(preferred, room);
+      const priced = mealPlanNightlyRate(preferred, room) || defaultPackageRoomNightly(room, wantKey);
       if (preferred) {
         mealPlan = {
           ...preferred,
@@ -473,7 +468,7 @@ export function seedDayWiseHotelsFromItinerary(itinerary = [], preferredMealKey 
           location: meta.location || '',
           city: meta.city || '',
           slug: meta.slug || meta.hotel_slug || '',
-          startingPrice: absolutePerNight || meta.startingPrice || 0,
+          startingPrice: absolutePerNight || 0,
         },
         room,
         mealPlan,
@@ -481,7 +476,7 @@ export function seedDayWiseHotelsFromItinerary(itinerary = [], preferredMealKey 
         perNight: Number(meta.priceDelta || 0),
         totalCost: Number(meta.priceDelta || 0),
         absolutePerNight,
-        includedRate: Number(meta.includedRate || absolutePerNight || meta.startingPrice || 0),
+        includedRate: Number(meta.includedRate || absolutePerNight || 0),
         extraBedPerNight: Number(meta.extraBedPerNight || room?.extraBedRate || 0) || 0,
         nights: 1,
         fromPackage: true,
