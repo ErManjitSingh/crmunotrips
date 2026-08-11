@@ -19,6 +19,15 @@ const STATUS_LABEL = {
   Inactive: 'Inactive',
 };
 
+const HEADERS = [
+  { key: 'name', label: 'Sales Executive', align: 'left' },
+  { key: 'leads', label: 'Leads', align: 'right' },
+  { key: 'followUps', label: 'Follow-ups', align: 'right' },
+  { key: 'quotes', label: 'Quotes Sent', align: 'right' },
+  { key: 'bookings', label: 'Bookings Won', align: 'right' },
+  { key: 'status', label: 'Status', align: 'right' },
+];
+
 export default function SalesTeamPerformanceTable({ data }) {
   const executives = (data?.executives || [])
     .slice(0, 6)
@@ -42,19 +51,26 @@ export default function SalesTeamPerformanceTable({ data }) {
         </Link>
       }
     >
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[420px] border-collapse text-left text-[13px]">
+      <div className="overflow-x-auto rounded-xl ring-1 ring-slate-100">
+        <table className="w-full min-w-[440px] border-collapse text-left text-[13px]">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-500">
-              <th className="rounded-l-lg py-2 pl-2.5 pr-2 font-semibold">Team Member</th>
-              <th className="px-1.5 py-2 text-right font-semibold">Leads</th>
-              <th className="px-1.5 py-2 text-right font-semibold">Follow-ups</th>
-              <th className="px-1.5 py-2 text-right font-semibold">Quotations</th>
-              <th className="px-1.5 py-2 text-right font-semibold">Bookings</th>
-              <th className="rounded-r-lg py-2 pl-1.5 pr-2.5 text-right font-semibold">Performance</th>
+            <tr className="bg-slate-100/90 text-[10px] font-bold uppercase tracking-[0.05em] text-slate-600">
+              {HEADERS.map((h, i) => (
+                <th
+                  key={h.key}
+                  className={cn(
+                    'whitespace-nowrap py-2.5 font-bold',
+                    h.align === 'right' ? 'px-2 text-right' : 'pl-3 pr-2 text-left',
+                    i === 0 && 'rounded-tl-xl',
+                    i === HEADERS.length - 1 && 'rounded-tr-xl pr-3'
+                  )}
+                >
+                  {h.label}
+                </th>
+              ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="bg-white">
             {executives.length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-8 text-center text-slate-400">
@@ -62,24 +78,28 @@ export default function SalesTeamPerformanceTable({ data }) {
                 </td>
               </tr>
             ) : (
-              executives.map((ex) => (
+              executives.map((ex, idx) => (
                 <tr
                   key={ex.id}
-                  className="border-b border-slate-100 last:border-0 hover:bg-violet-50/40"
+                  className={cn(
+                    'border-b border-slate-100 last:border-0',
+                    idx % 2 === 1 && 'bg-slate-50/50',
+                    'hover:bg-violet-50/50'
+                  )}
                 >
-                  <td className="py-2 pl-2.5 pr-2">
+                  <td className="py-2 pl-3 pr-2">
                     <div className="flex min-w-0 items-center gap-2">
                       <Avatar name={ex.name} size="sm" className="!h-7 !w-7 !text-[10px]" />
-                      <span className="truncate font-medium text-slate-800">{ex.name}</span>
+                      <span className="truncate font-semibold text-slate-800">{ex.name}</span>
                     </div>
                   </td>
-                  <td className="px-1.5 py-2 text-right tabular-nums text-slate-700">{ex.leads}</td>
-                  <td className="px-1.5 py-2 text-right tabular-nums text-slate-700">{ex.followUps}</td>
-                  <td className="px-1.5 py-2 text-right tabular-nums text-slate-700">{ex.quotes}</td>
-                  <td className="px-1.5 py-2 text-right font-semibold tabular-nums text-violet-700">
+                  <td className="px-2 py-2 text-right tabular-nums text-slate-700">{ex.leads}</td>
+                  <td className="px-2 py-2 text-right tabular-nums text-slate-700">{ex.followUps}</td>
+                  <td className="px-2 py-2 text-right tabular-nums text-slate-700">{ex.quotes}</td>
+                  <td className="px-2 py-2 text-right font-bold tabular-nums text-violet-700">
                     {ex.bookings}
                   </td>
-                  <td className="py-2 pl-1.5 pr-2.5 text-right">
+                  <td className="py-2 pl-2 pr-3 text-right">
                     <span
                       className={cn(
                         'inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset',
