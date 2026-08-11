@@ -31,6 +31,28 @@ const INTERESTED_STATUSES = [
   'reactivated',
 ];
 const LOST_STATUSES = ['lost', 'booked_from_another_company'];
+/** Pipeline stages counted as "connected" — must match funnel + source table. */
+const CONNECTED_STATUSES = [
+  'contacted',
+  'working_progress',
+  'qualified',
+  'quotation_sent',
+  'follow_up',
+  'negotiation',
+  'converted',
+];
+const QUALIFIED_FUNNEL_STATUSES = [
+  'qualified',
+  'quotation_sent',
+  'follow_up',
+  'negotiation',
+  'converted',
+];
+const QUOTATION_FUNNEL_STATUSES = ['quotation_sent', 'follow_up', 'negotiation', 'converted'];
+
+function sumStatusCounts(statusCounts = {}, keys = []) {
+  return keys.reduce((sum, key) => sum + (statusCounts[key] || 0), 0);
+}
 
 function resolveDestinationPeriod(period = 'all') {
   const todayStart = startOfDay();
@@ -227,9 +249,9 @@ function mapStatusBucket(statusCounts) {
   const followUpPending = statusCounts.follow_up || 0;
   const interested = INTERESTED_STATUSES.reduce((s, k) => s + (statusCounts[k] || 0), 0);
   const negotiation = statusCounts.negotiation || 0;
-  const connected = statusCounts.contacted || 0;
-  const qualified = statusCounts.qualified || 0;
-  const quotations = statusCounts.quotation_sent || 0;
+  const connected = sumStatusCounts(statusCounts, CONNECTED_STATUSES);
+  const qualified = sumStatusCounts(statusCounts, QUALIFIED_FUNNEL_STATUSES);
+  const quotations = sumStatusCounts(statusCounts, QUOTATION_FUNNEL_STATUSES);
   const lost = LOST_STATUSES.reduce((s, k) => s + (statusCounts[k] || 0), 0);
   const conversions = statusCounts.converted || 0;
   return {
@@ -292,8 +314,8 @@ function buildExclusiveStatusDistribution(statusCounts = {}) {
       total,
       arrived: total,
       fresh: statusCounts.new || 0,
-      connected: statusCounts.contacted || 0,
-      qualified: statusCounts.qualified || 0,
+      connected: sumStatusCounts(statusCounts, CONNECTED_STATUSES),
+      qualified: sumStatusCounts(statusCounts, QUALIFIED_FUNNEL_STATUSES),
       interested,
       converted: statusCounts.converted || 0,
       lost: (statusCounts.lost || 0) + (statusCounts.booked_from_another_company || 0),
@@ -648,7 +670,7 @@ async function buildAdminDashboard(options = {}) {
       {
         $match: activeLeadScope(
           {
-            status: 'contacted',
+            status: { $in: CONNECTED_STATUSES },
             createdAt: { $gte: trendStart, $lte: periodEnd },
             ...sourceFilter,
           },
@@ -997,12 +1019,13 @@ async function buildAdminDashboard(options = {}) {
   };
 
   const funnelCounts = isAllTime ? statusCounts : periodStatusCounts;
+  const funnelBuckets = mapStatusBucket(funnelCounts);
   const salesFunnel = [
     { stage: 'Leads', count: isAllTime ? totalLeads : periodTotalLeads },
-    { stage: 'Connected', count: (funnelCounts.contacted || 0) + (funnelCounts.working_progress || 0) + (funnelCounts.qualified || 0) + (funnelCounts.quotation_sent || 0) + (funnelCounts.follow_up || 0) + (funnelCounts.negotiation || 0) + (funnelCounts.converted || 0) },
-    { stage: 'Qualified', count: (funnelCounts.qualified || 0) + (funnelCounts.quotation_sent || 0) + (funnelCounts.follow_up || 0) + (funnelCounts.negotiation || 0) + (funnelCounts.converted || 0) },
-    { stage: 'Quotations', count: (funnelCounts.quotation_sent || 0) + (funnelCounts.follow_up || 0) + (funnelCounts.negotiation || 0) + (funnelCounts.converted || 0) },
-    { stage: 'Bookings', count: funnelCounts.converted || 0 },
+    { stage: 'Connected', count: funnelBuckets.connected },
+    { stage: 'Qualified', count: funnelBuckets.qualified },
+    { stage: 'Quotations', count: funnelBuckets.quotations },
+    { stage: 'Bookings', count: funnelBuckets.conversions },
   ];
 
   const followUpsDueToday = await FollowUp.countDocuments(
