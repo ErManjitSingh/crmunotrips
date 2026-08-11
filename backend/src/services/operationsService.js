@@ -993,7 +993,7 @@ async function buildBookingPayloadFromPayment(payment) {
     hotels: quotation ? mapQuoteHotels(quotation, travelDate) : [],
     transport: quotation ? mapQuoteTransport(quotation) : [],
     activities: quotation ? mapQuoteActivities(quotation) : [],
-    itinerary: quotation ? mapQuoteItinerary(quotation, travelDate) : [],
+    itinerary: quotation ? mapQuoteItinerary(quotation, travelDate, executive?.name || '') : [],
     hotelConfirmation: 'pending',
     cabConfirmation: 'pending',
     voucherStatus: 'pending',

@@ -28,7 +28,7 @@ function normalizeVehicleType(value) {
   return 'suv';
 }
 
-function mapQuoteItinerary(quotation, travelDate) {
+function mapQuoteItinerary(quotation, travelDate, executiveName = '') {
   const snap = quotation?.packageSnapshot || {};
   const days = snap.itinerary || [];
   const selectedHotels = quotation?.selectedHotels || [];
@@ -65,6 +65,17 @@ function mapQuoteItinerary(quotation, travelDate) {
         }
       : undefined;
 
+    const rawActivities = d.activities || d.sightseeing || d.activityNotes || '';
+    const selectedByTag = executiveName ? `Selected by ${executiveName}` : '';
+    const activities = selectedByTag
+      ? (() => {
+          const base = String(rawActivities || '').trim();
+          if (!base) return selectedByTag;
+          if (base.includes(selectedByTag)) return base;
+          return `${base} · ${selectedByTag}`;
+        })()
+      : String(rawActivities || '');
+
     return {
       day: dayNum,
       title: d.title || `Day ${dayNum}`,
@@ -72,7 +83,7 @@ function mapQuoteItinerary(quotation, travelDate) {
       meals: d.meals || '',
       accommodation: hotelName,
       transport: d.transport || '',
-      activities: d.activities || d.sightseeing || d.activityNotes || '',
+      activities,
       date: dayDate,
       ...(dayHotel ? { dayHotel } : {}),
       ...(dayCab ? { dayCab } : {}),
@@ -183,7 +194,7 @@ async function extractFulfillmentFromQuotation(quotation, booking = {}) {
   }
 
   return {
-    itinerary: mapQuoteItinerary(quotation, travelDate),
+    itinerary: mapQuoteItinerary(quotation, travelDate, executiveName),
     hotels: mapQuoteHotels(quotation, travelDate),
     transport: mapQuoteTransport(quotation),
     activities: mapQuoteActivities(quotation),
