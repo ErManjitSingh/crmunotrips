@@ -2,7 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
 
-const envPath = path.join(__dirname, '../backend/.env');
+const backendRoot = path.join(__dirname, '../backend');
+process.chdir(backendRoot);
+const envPath = path.join(backendRoot, '.env');
 if (fs.existsSync(envPath)) {
   for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
     const m = line.match(/^([^#=]+)=(.*)$/);
