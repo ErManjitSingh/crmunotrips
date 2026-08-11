@@ -292,7 +292,8 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
       .filter(Boolean);
   };
 
-  const sightseeingStringFallback = !sightseeingOptions.length ? optionDay.sightseeing : '';
+  const sightseeingStringFallback =
+    !sightseeingOptions.length ? optionDay.sightseeing || itineraryDay.sightseeing || '' : '';
   const sightseeingFallbackNames = splitNamedList(sightseeingStringFallback);
   const sightseeingOptionsFallback = sightseeingFallbackNames.map((name, idx) => ({
     id: `sight-fallback-${idx}-${name}`,
@@ -306,7 +307,10 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
   }));
   const normalizedSightseeingOptions = sightseeingOptionsFallback.length ? sightseeingOptionsFallback : sightseeingOptions;
 
-  const activitiesStringFallback = !activityOptions.length ? optionDay.activities : '';
+  const activitiesStringFallback =
+    !activityOptions.length
+      ? optionDay.activities || itineraryDay.activities || itineraryDay.activityNotes || ''
+      : '';
   const activitiesFallbackNames = splitNamedList(activitiesStringFallback);
   const activityOptionsFallback = activitiesFallbackNames.map((name, idx) => ({
     id: `act-fallback-${idx}-${name}`,
