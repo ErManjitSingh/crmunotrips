@@ -85,6 +85,29 @@ export function resolvePackageCabs(source = {}) {
     });
 }
 
+/** Cab upgrade vs package-default vehicle only (0 for default website config). */
+export function resolveCabUpgradeCost(selectedCab = null, packageCabs = []) {
+  const cabs = Array.isArray(packageCabs) ? packageCabs : [];
+  const defaultCab = cabs.find((c) => c.isDefault) || cabs[0] || null;
+  const defaultId = defaultCab?.id || defaultCab?.packageCabId || null;
+  const selectedId = selectedCab?.id || selectedCab?.packageCabId || null;
+  const isDefault =
+    Boolean(selectedCab?.isDefault) ||
+    (defaultId && selectedId && String(defaultId) === String(selectedId));
+
+  if (isDefault || !selectedCab) return 0;
+
+  return Math.max(
+    0,
+    Number(
+      selectedCab.upgradePrice ??
+        selectedCab.priceDelta ??
+        selectedCab.cost ??
+        0
+    ) || 0
+  );
+}
+
 /**
  * Peel included (default) cab fare out of package residual and itemize selected cab absolute.
  * @returns {{ baseCost: number, cabCost: number, includedCabFare: number }}
@@ -114,20 +137,22 @@ export function resolvePackageCabPricing(packageBaseAfterHotels = 0, selectedCab
   // Prefer absolute selected fare; fall back to included + upgrade.
   const cabAbsolute = selectedAbs > 0 ? selectedAbs : included + upgrade;
 
+  const cabUpgradeCost = resolveCabUpgradeCost(selectedCab, cabs);
+
   // Always itemize cab when we know the absolute fare and can peel default cab from package.
   if (included > 0 && included <= packageBase + 0.01) {
     return {
       baseCost: Math.round((packageBase - included) * 100) / 100,
-      cabCost: Math.round(cabAbsolute * 100) / 100,
+      cabCost: Math.round(cabUpgradeCost * 100) / 100,
       includedCabFare: included,
     };
   }
 
-  // Absolute known but cannot peel (package base too small / missing) — still show cab line.
+  // Absolute known but cannot peel (package base too small / missing) — upgrade only.
   if (cabAbsolute > 0 && packageBase <= 0) {
     return {
       baseCost: 0,
-      cabCost: Math.round(cabAbsolute * 100) / 100,
+      cabCost: Math.round(cabUpgradeCost * 100) / 100,
       includedCabFare: 0,
     };
   }
@@ -135,7 +160,7 @@ export function resolvePackageCabPricing(packageBaseAfterHotels = 0, selectedCab
   // Cannot peel — only charge upgrade delta (legacy / missing absolute).
   return {
     baseCost: packageBase,
-    cabCost: Math.round((upgrade || (selectedAbs > 0 && included <= 0 ? selectedAbs : 0)) * 100) / 100,
+    cabCost: Math.round(cabUpgradeCost * 100) / 100,
     includedCabFare: 0,
   };
 }

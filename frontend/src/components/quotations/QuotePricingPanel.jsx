@@ -2,8 +2,8 @@ import { calculatePricing, formatINR, getDisplayedCostBreakdown } from './quotat
 import { resolvePartyOccupancy } from './partyCosting';
 
 const COST_FIELDS = [
-  { key: 'hotelCost', label: 'Hotel Cost', color: 'border-amber-400/30 bg-amber-500/5' },
-  { key: 'transportCost', label: 'Cab Cost', color: 'border-emerald-400/30 bg-emerald-500/5' },
+  { key: 'hotelCost', label: 'Package Cost', color: 'border-amber-400/30 bg-amber-500/5' },
+  { key: 'transportCost', label: 'Cab Upgrade', color: 'border-emerald-400/30 bg-emerald-500/5' },
   { key: 'flightCost', label: 'Flight Cost', color: 'border-cyan-400/30 bg-cyan-500/5' },
   { key: 'activityCost', label: 'Activities Cost', color: 'border-indigo-400/30 bg-indigo-500/5' },
 ];

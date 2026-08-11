@@ -1,3 +1,6 @@
+import { resolveCabUpgradeCost } from '../../lib/packageCabMapper';
+import { resolvePackageHotelPricing } from './DayWiseHotelSelector';
+
 /**
  * Party-size costing: per-person package, 2 adults/room + mattress for odd, cab by seats.
  */
@@ -46,6 +49,12 @@ export function resolveCabCount(travelers = 1, seats = 4) {
   return Math.max(1, Math.ceil(pax / capacity));
 }
 
+/** Website packages are listed per couple (2 adults). */
+export function resolveCoupleUnits(lead = {}) {
+  const adults = Math.max(1, Number(lead?.adults ?? lead?.travelers ?? 1) || 1);
+  return Math.max(1, Math.ceil(adults / 2));
+}
+
 /** Listed Uno/CRM package price → per-adult rate (use unmargined base when available). */
 export function resolvePerPersonPackageRate(pkg = {}) {
   const listed =
@@ -83,8 +92,8 @@ export function estimateMattressCost(dayWiseHotels = [], mattresses = 0) {
 }
 
 /**
- * Scale unit (1 couple / 1 room / 1 cab) costs to lead party size.
- * Hotel = absolute stay × rooms + mattress. Package residual is never billed.
+ * Scale website package price + upgrade deltas to lead party size.
+ * baseCost = unmargined website package price × couple units.
  */
 export function applyPartyCosting({
   unitBaseCost = 0,
@@ -98,25 +107,66 @@ export function applyPartyCosting({
   dayWiseHotels = [],
 } = {}) {
   const occ = resolvePartyOccupancy(lead);
+  const coupleUnits = resolveCoupleUnits(lead);
   const perPersonRate = resolvePerPersonPackageRate(pkg);
   const cabCount = resolveCabCount(occ.travelers, cabSeats);
   const mattressCost = estimateMattressCost(dayWiseHotels, occ.mattresses);
-  void unitBaseCost;
 
+  const baseCost = round2(Number(unitBaseCost || 0) * coupleUnits);
   const hotelCost = round2(Number(unitHotelCost || 0) * occ.rooms + mattressCost);
   const cabCost = round2(Number(unitCabCost || 0) * cabCount);
 
   return {
     ...occ,
     perPersonRate,
+    coupleUnits,
     cabCount,
     cabSeats: Math.max(1, Number(cabSeats) || 4),
     mattressCost,
-    baseCost: 0,
+    baseCost,
     hotelCost,
     cabCost,
     flightCost: round2(flightCost),
     activityCost: round2(activityCost),
+  };
+}
+
+/**
+ * Website-aligned quote lines: package base + hotel/cab upgrades only.
+ * Hotel line folds in the website package price (default config matches UNO card price).
+ */
+export function buildWebsiteAlignedQuoteCosts({
+  packageAnchor = 0,
+  dayWiseHotels = [],
+  selectedCab = null,
+  packageCabs = [],
+  lead = {},
+  pkg = {},
+  cabSeats = 4,
+  flightCost = 0,
+  activityCost = 0,
+} = {}) {
+  const unit = resolvePackageHotelPricing(0, dayWiseHotels);
+  const cabUpgrade = resolveCabUpgradeCost(selectedCab, packageCabs);
+  const party = applyPartyCosting({
+    unitBaseCost: packageAnchor,
+    unitHotelCost: unit.hotelCost,
+    unitCabCost: cabUpgrade,
+    flightCost,
+    activityCost,
+    lead,
+    pkg,
+    cabSeats,
+    dayWiseHotels,
+  });
+
+  return {
+    hotelCost: round2(party.baseCost + party.hotelCost),
+    cabCost: party.cabCost,
+    flightCost: party.flightCost,
+    activityCost: party.activityCost,
+    party,
+    packageAnchor: Number(packageAnchor) || 0,
   };
 }
 

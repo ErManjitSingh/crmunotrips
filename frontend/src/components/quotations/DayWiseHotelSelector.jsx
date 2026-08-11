@@ -10,7 +10,7 @@ export function sumDayWiseHotelCost(selections = []) {
 }
 
 /**
- * Day-wise hotel total: sum each night's absolute room+meal rate.
+ * Day-wise hotel total: sum each night's absolute room+meal rate (reference / display).
  * Each selection is one hotel night (nights defaults to 1).
  */
 export function sumDayWiseHotelAbsolute(selections = []) {
@@ -20,6 +20,17 @@ export function sumDayWiseHotelAbsolute(selections = []) {
       item.absolutePerNight || item.includedRate || 0
     );
     return sum + absolute * nights;
+  }, 0);
+}
+
+/** Upgrade delta vs package-included stay (0 for default website config). */
+export function sumDayWiseHotelUpgradeCost(selections = []) {
+  return selections.reduce((sum, item) => {
+    const nights = Math.max(1, Number(item.nights) || 1);
+    const delta = Number(
+      item.perNight ?? item.totalCost ?? item.priceDelta ?? 0
+    );
+    return sum + delta * nights;
   }, 0);
 }
 
@@ -33,13 +44,12 @@ export function sumDayWiseHotelIncluded(selections = []) {
 }
 
 /**
- * Hotel Cost = Σ day-wise absolute hotel rates only (same as website).
- * Admin margin is baked into hotel/cab line costs (not shown separately).
- * Package residual / upgrade deltas must never inflate this line.
+ * Hotel upgrade cost only — default package stay is inside website baseStartingPrice.
  */
-export function resolvePackageHotelPricing(_packageStartingPrice = 0, selections = []) {
-  const absoluteCost = sumDayWiseHotelAbsolute(selections);
-  const hotelCost = Math.round(Math.max(0, absoluteCost) * 100) / 100;
+export function resolvePackageHotelPricing(_packageResidual = 0, selections = []) {
+  void _packageResidual;
+  const upgradeCost = sumDayWiseHotelUpgradeCost(selections);
+  const hotelCost = Math.round(Math.max(0, upgradeCost) * 100) / 100;
 
   return {
     baseCost: 0,

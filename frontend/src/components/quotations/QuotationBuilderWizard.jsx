@@ -12,16 +12,14 @@ import { buildListParams, unwrapPagination } from '../../utils/apiHelpers';
 import { fetchUnoPublicPackages, fetchUnoPublicPackageDetail, matchesPackageNameSearch } from '../../lib/unoPublicPackages';
 import { logSelectedPackageDebug } from '../../lib/logPackageDebug';
 import { resolvePackageItinerary, seedDayWiseHotelsFromItinerary } from '../../lib/packageItineraryMapper';
-import { normalizeMealPlanKey } from '../../lib/mealPlanDefaults';
 import { shortLeadMealPlan } from '../lead-wizard/leadWizardUtils';
-import { resolvePackageCabs, resolvePackageCabPricing } from '../../lib/packageCabMapper';
+import { resolvePackageCabs } from '../../lib/packageCabMapper';
 import InclusionExclusionEditor, { cleanInclusionExclusionLines } from './InclusionExclusionEditor';
-import { resolvePackageHotelPricing } from './DayWiseHotelSelector';
 import { buildSelectedCabSnapshot } from './UnoCabSelector';
 import { parsePackageNights } from './UnoHotelSelector';
 import { WIZARD_STEPS } from './constants';
 import { calculatePricing, bakeCompanyMarginIntoLineCosts, defaultItineraryDay, defaultWizardState, formatINR, matchesResourceDestination } from './quotationUtils';
-import { applyPartyCosting } from './partyCosting';
+import { buildWebsiteAlignedQuoteCosts } from './partyCosting';
 import { buildSelectedHotelsSnapshot } from './quotePdfHelpers';
 import { hydrateWizardFromQuote } from './quotationHydrate';
 import { unwrapList } from '../../utils/apiHelpers';
@@ -522,9 +520,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setCustomExclusions(normalized.exclusions?.length ? [...normalized.exclusions] : ['']);
     setCustomizeTab('itinerary');
 
-    // Seed day-wise hotels using lead meal plan (default MAP) for hotel pricing
-    const leadMealKey = normalizeMealPlanKey(selectedLead?.mealPlan || selectedLead?.mealPreference) || 'map';
-    const seededHotels = seedDayWiseHotelsFromItinerary(itinerary, leadMealKey);
+    // Seed day-wise hotels — package MAP (same as website), not lead meal override
+    const seededHotels = seedDayWiseHotelsFromItinerary(itinerary, 'map');
     setDayWiseHotels(seededHotels);
 
     // Auto-select default package cab from day-options
@@ -536,12 +533,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         normalized.baseStartingPrice ?? normalized.startingPrice ?? 0
       );
       const adminMarginPct = Number(normalized.destinationMarginPercent || 0) || 0;
-      const transport = resolvePackageCabPricing(packageStart, defaultCab, packageCabs);
-      const unit = resolvePackageHotelPricing(transport.baseCost, seededHotels);
-      const party = applyPartyCosting({
-        unitBaseCost: unit.baseCost,
-        unitHotelCost: unit.hotelCost,
-        unitCabCost: transport.cabCost,
+      const aligned = buildWebsiteAlignedQuoteCosts({
+        packageAnchor: packageStart,
+        dayWiseHotels: seededHotels,
+        selectedCab: defaultCab,
+        packageCabs,
         lead: selectedLead,
         pkg: {
           ...normalized,
@@ -549,13 +545,13 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           baseStartingPrice: packageStart,
         },
         cabSeats: defaultCab?.seatingCapacity || 4,
-        dayWiseHotels: seededHotels,
       });
+      const party = aligned.party;
       const rawPricing = {
         ...s.pricing,
         baseCost: 0,
-        hotelCost: party.hotelCost,
-        cabCost: party.cabCost,
+        hotelCost: aligned.hotelCost,
+        cabCost: aligned.cabCost,
         flightCost: 0,
         activityCost: 0,
         markupPercent: Number(s.pricing.markupPercent || 0) || 0,
@@ -631,8 +627,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       selectedPkgDetail?.baseStartingPrice ?? selectedPkgDetail?.startingPrice ?? 0
     );
     const packageCabs = resolvePackageCabs(selectedPkgDetail || {});
-    const transport = resolvePackageCabPricing(packageAnchor, selectedUnoCab, packageCabs);
-    const unit = resolvePackageHotelPricing(transport.baseCost, dayWiseHotels);
     const flightCost = flights
       .filter((f) => state.selectedFlightIds.includes(f._id))
       .reduce((s, f) => s + (f.cost || 0), 0);
@@ -646,12 +640,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           state.pricing.adminMarginPercent ??
           0
       ) || 0;
-    const party = applyPartyCosting({
-      unitBaseCost: unit.baseCost,
-      unitHotelCost: unit.hotelCost,
-      unitCabCost: transport.cabCost,
-      flightCost,
-      activityCost,
+    const aligned = buildWebsiteAlignedQuoteCosts({
+      packageAnchor,
+      dayWiseHotels,
+      selectedCab: selectedUnoCab,
+      packageCabs,
       lead: selectedLead,
       pkg: {
         ...(selectedPkgDetail || {}),
@@ -659,12 +652,14 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         baseStartingPrice: packageAnchor,
       },
       cabSeats: selectedUnoCab?.seatingCapacity || 4,
-      dayWiseHotels,
+      flightCost,
+      activityCost,
     });
+    const party = aligned.party;
     const rawPricing = {
       baseCost: 0,
-      hotelCost: party.hotelCost,
-      cabCost: party.cabCost,
+      hotelCost: aligned.hotelCost,
+      cabCost: aligned.cabCost,
       flightCost: party.flightCost,
       activityCost: party.activityCost,
       markupPercent: Number(state.pricing.markupPercent || 0) || 0,

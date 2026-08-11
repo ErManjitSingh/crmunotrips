@@ -72,13 +72,26 @@ function HotelCard({
   const stars = Math.min(5, Math.round(Number(meta?.starRating || 0)));
   const hasOptions = options.length > 0;
   const nights = Math.max(1, Number(hotelSel?.nights ?? 1));
+  const upgradePerNight = Number(
+    hotelSel?.perNight ?? hotelSel?.totalCost ?? meta?.priceDelta ?? 0
+  );
+  const isIncluded = upgradePerNight <= 0;
+  const nightlyRef = Number(
+    hotelSel?.includedRate ??
+      hotelSel?.absolutePerNight ??
+      meta?.includedRate ??
+      meta?.absolutePerNight ??
+      0
+  );
   const absoluteNight = Number(
     hotelSel?.absolutePerNight ??
       meta?.absolutePerNight ??
       meta?.includedRate ??
       0
   );
-  const rawTotal = absoluteNight * nights * Math.max(1, Number(rooms) || 1);
+  const rawTotal = isIncluded
+    ? nightlyRef * nights
+    : absoluteNight * nights * Math.max(1, Number(rooms) || 1);
   const displayTotal = applyAdminMarginToAmount(rawTotal, adminMarginPercent);
 
   return (
@@ -112,13 +125,21 @@ function HotelCard({
                 )}
                 {!showTotal || displayTotal <= 0 ? (
                   <span className="font-medium text-slate-400">· Not included</span>
+                ) : isIncluded ? (
+                  <span className="font-medium text-emerald-700">· Included in package</span>
                 ) : null}
               </div>
             </div>
             <div className="flex flex-col items-end gap-1.5 shrink-0">
-              {showTotal && displayTotal > 0 && (
+              {showTotal && displayTotal > 0 && !isIncluded && (
                 <p className="text-base font-bold text-violet-800 metric-tabular leading-none">
                   {formatINR(displayTotal)}
+                </p>
+              )}
+              {showTotal && isIncluded && nightlyRef > 0 && (
+                <p className="text-[11px] font-semibold text-violet-700 metric-tabular leading-none text-right">
+                  {formatINR(applyAdminMarginToAmount(nightlyRef, adminMarginPercent))}
+                  <span className="text-slate-500 font-medium">/night</span>
                 </p>
               )}
               {hasOptions && onOpenPicker && <ChangeBtn onClick={onOpenPicker} />}
@@ -132,9 +153,13 @@ function HotelCard({
 
 function CabCard({ packageCab, onChangeCab, cabCount = 1, adminMarginPercent = 0 }) {
   if (!packageCab) return null;
-  const unitFare = Number(
-    packageCab.absoluteFare ?? packageCab.totalAmount ?? packageCab.cost ?? 0
+  const upgradeFare = Number(
+    packageCab.upgradePrice ?? packageCab.priceDelta ?? packageCab.cost ?? 0
   ) || 0;
+  const isIncluded = Boolean(packageCab.isDefault) || upgradeFare <= 0;
+  const unitFare = isIncluded
+    ? 0
+    : upgradeFare;
   const rawTotal = unitFare * Math.max(1, Number(cabCount) || 1);
   const displayTotal = applyAdminMarginToAmount(rawTotal, adminMarginPercent);
   return (
@@ -157,11 +182,13 @@ function CabCard({ packageCab, onChangeCab, cabCount = 1, adminMarginPercent = 0
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          {displayTotal > 0 && (
+          {isIncluded ? (
+            <p className="text-[11px] font-semibold text-sky-700">Included in package</p>
+          ) : displayTotal > 0 ? (
             <p className="text-base font-bold text-sky-800 metric-tabular leading-none">
               {formatINR(displayTotal)}
             </p>
-          )}
+          ) : null}
           {onChangeCab && <ChangeBtn onClick={onChangeCab} />}
         </div>
       </div>
