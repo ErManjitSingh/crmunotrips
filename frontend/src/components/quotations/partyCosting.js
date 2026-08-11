@@ -163,8 +163,24 @@ export function buildWebsiteAlignedQuoteCosts({
 
   const isDefaultCab = cabUpgrade <= 0;
   const cabUnits = isDefaultCab ? party.coupleUnits : party.cabCount;
-  const cabLineCost = round2(cabUnitFare * cabUnits);
   const packageSubtotal = round2(party.baseCost + party.hotelCost + party.cabCost);
+
+  let cabLineCost = cabUnitFare > 0 ? round2(cabUnitFare * cabUnits) : 0;
+  if (cabLineCost <= 0 || packageSubtotal <= 0) {
+    return {
+      hotelCost: packageSubtotal,
+      cabCost: 0,
+      flightCost: party.flightCost,
+      activityCost: party.activityCost,
+      party,
+      packageAnchor: Number(packageAnchor) || 0,
+    };
+  }
+
+  const maxCabShare = round2(packageSubtotal * 0.45);
+  if (cabLineCost > maxCabShare) {
+    cabLineCost = maxCabShare;
+  }
   const hotelLineCost = round2(Math.max(0, packageSubtotal - cabLineCost));
 
   return {

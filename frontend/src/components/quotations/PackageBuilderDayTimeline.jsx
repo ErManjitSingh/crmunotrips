@@ -91,7 +91,10 @@ function HotelCard({
   );
   const rateNight =
     absoluteNight > 0 ? absoluteNight : nightlyRef > 0 ? nightlyRef : 0;
-  const rawTotal = rateNight * nights * Math.max(1, Number(rooms) || 1);
+  // Per-day card = one night reference (included stays don't multiply rooms — avoids inflated totals).
+  const rawTotal = isIncluded
+    ? rateNight * nights
+    : rateNight * nights * Math.max(1, Number(rooms) || 1);
   const displayTotal = applyAdminMarginToAmount(rawTotal, adminMarginPercent);
 
   return (
@@ -477,15 +480,6 @@ export default function PackageBuilderDayTimeline({
               let hotelSel = dayWiseHotels.find((h) => h.day === dayNum);
               if (!hotelSel && (day.hotelMeta?.name || day.hotel)) {
                 hotelSel = buildHotelSelFromDay(day, dayNum);
-              }
-              if (!hotelSel && idx > 0) {
-                for (let j = idx - 1; j >= 0; j--) {
-                  const prev = itinerary[j];
-                  if (prev?.hotelMeta?.name || prev?.hotel) {
-                    hotelSel = buildHotelSelFromDay(prev, dayNum);
-                    break;
-                  }
-                }
               }
               return (
                 <SortableDayCard
