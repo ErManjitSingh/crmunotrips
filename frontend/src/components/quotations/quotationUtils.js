@@ -5,11 +5,18 @@ function round2(n) {
 }
 
 /**
- * Optionally bake company (admin) margin into cost lines (legacy).
- * Prefer keeping website line costs raw and applying adminMarginPercent in calculatePricing.
+ * Fold destination (admin) margin into hotel & cab line costs — not shown separately.
  */
 export function bakeCompanyMarginIntoLineCosts(pricing = {}, adminMarginPercent = 0) {
-  const pct = Math.max(0, Number(adminMarginPercent) || 0);
+  if (pricing.companyMarginBaked) return { ...pricing };
+
+  const pct = Math.max(
+    0,
+    Number(adminMarginPercent) ||
+      Number(pricing.adminMarginPercent) ||
+      Number(pricing.companyMarginBakedPercent) ||
+      0
+  );
   if (pct <= 0) {
     return {
       ...pricing,
@@ -25,9 +32,6 @@ export function bakeCompanyMarginIntoLineCosts(pricing = {}, adminMarginPercent 
     ...pricing,
     hotelCost: bake(pricing.hotelCost),
     cabCost: bake(pricing.cabCost),
-    baseCost: 0,
-    flightCost: bake(pricing.flightCost),
-    activityCost: round2(Number(pricing.activityCost || 0)),
     adminMarginPercent: 0,
     companyMarginBaked: true,
     companyMarginBakedPercent: pct,
@@ -36,10 +40,9 @@ export function bakeCompanyMarginIntoLineCosts(pricing = {}, adminMarginPercent 
 
 /**
  * Quotation costing formula:
- * 1. Website line costs (hotel/cab/flight/activity) — same rates as website
- * 2. Admin (destination) margin % on those costs → added to total
- * 3. Optional executive "Your margin %"
- * 4. Discount → GST → final
+ * 1. Hotel/cab (admin margin baked in) + flight/activity
+ * 2. Optional executive "Your margin %"
+ * 3. Discount → GST → final
  */
 export function calculatePricing({
   hotelCost = 0,
@@ -115,10 +118,7 @@ export function foldPackageResidualIntoHotel(pricing = {}) {
   return { ...pricing };
 }
 
-/**
- * SE-facing breakdown.
- * Hotel/Cab = website rates. Admin margin is a separate add-on on the total.
- */
+/** SE-facing breakdown — hotel/cab already include admin margin when baked. */
 export function getDisplayedCostBreakdown(pricing = {}) {
   const calc = calculatePricing({ ...pricing, baseCost: 0 });
   const hotelCost = Number(pricing.hotelCost || 0);

@@ -1,6 +1,7 @@
 import { resolveQuotePackage } from './quotePdfHelpers';
 import { resolvePackageCabs } from '../../lib/packageCabMapper';
 import { seedDayWiseHotelsFromItinerary } from '../../lib/packageItineraryMapper';
+import { bakeCompanyMarginIntoLineCosts, calculatePricing } from './quotationUtils';
 
 /**
  * Rebuild day-wise hotel selections from a saved quotation snapshot.
@@ -126,6 +127,28 @@ export function hydrateWizardFromQuote(quote) {
     .map((a) => String(a._id || a.id || a))
     .filter(Boolean);
 
+  const adminPct =
+    Number(
+      quote.pricing?.adminMarginPercent ??
+        quote.pricing?.companyMarginBakedPercent ??
+        pkg.destinationMarginPercent ??
+        0
+    ) || 0;
+
+  let pricing = {
+    ...(quote.pricing || {}),
+    markupPercent: Number(quote.pricing?.markupPercent ?? quote.costing1?.markupPercent ?? 0) || 0,
+    gstEnabled: Boolean(quote.pricing?.gstEnabled),
+  };
+
+  if (!pricing.companyMarginBaked && adminPct > 0) {
+    pricing = bakeCompanyMarginIntoLineCosts(pricing, adminPct);
+  } else if (pricing.companyMarginBaked) {
+    pricing = { ...pricing, adminMarginPercent: 0 };
+  }
+
+  pricing = { ...pricing, ...calculatePricing(pricing) };
+
   return {
     leadId,
     lead,
@@ -143,25 +166,7 @@ export function hydrateWizardFromQuote(quote) {
     selectedFlightIds,
     selectedActivityIds,
     customizations: quote.customizations || '',
-    pricing: {
-      ...(quote.pricing || {}),
-      markupPercent: Number(quote.pricing?.markupPercent ?? quote.costing1?.markupPercent ?? 0) || 0,
-      adminMarginPercent: Number(
-        quote.pricing?.adminMarginPercent ??
-          quote.pricing?.companyMarginBakedPercent ??
-          pkg.destinationMarginPercent ??
-          0
-      ) || 0,
-      // Recompute from website rates going forward — don't keep baked lines
-      companyMarginBaked: false,
-      companyMarginBakedPercent: Number(
-        quote.pricing?.companyMarginBakedPercent ??
-          quote.pricing?.adminMarginPercent ??
-          pkg.destinationMarginPercent ??
-          0
-      ) || 0,
-      gstEnabled: Boolean(quote.pricing?.gstEnabled),
-    },
+    pricing,
     quoteNumber: quote.quoteNumber || '',
     status: quote.status || 'draft',
   };

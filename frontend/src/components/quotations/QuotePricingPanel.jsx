@@ -55,17 +55,6 @@ export default function QuotePricingPanel({ pricing, onChange, readOnly = false,
           );
         })}
 
-        {Number(breakdown.adminMarkup || 0) > 0 && (
-          <div className="p-3 rounded-xl border border-amber-400/30 bg-amber-500/5">
-            <label className="text-[10px] uppercase font-semibold text-content-muted">
-              Admin Margin (+{Number(breakdown.adminMarginPercent || 0)}%)
-            </label>
-            <p className="text-lg font-bold text-amber-800 metric-tabular mt-1">
-              {formatINR(breakdown.adminMarkup)}
-            </p>
-          </div>
-        )}
-
         <div className="p-3 rounded-xl border border-green-400/30 bg-green-500/5">
           <label className="text-[10px] uppercase font-semibold text-content-muted">Your margin %</label>
           {readOnly ? (

@@ -20,7 +20,7 @@ import { resolvePackageHotelPricing } from './DayWiseHotelSelector';
 import { buildSelectedCabSnapshot } from './UnoCabSelector';
 import { parsePackageNights } from './UnoHotelSelector';
 import { WIZARD_STEPS } from './constants';
-import { calculatePricing, defaultItineraryDay, defaultWizardState, formatINR, matchesResourceDestination } from './quotationUtils';
+import { calculatePricing, bakeCompanyMarginIntoLineCosts, defaultItineraryDay, defaultWizardState, formatINR, matchesResourceDestination } from './quotationUtils';
 import { applyPartyCosting } from './partyCosting';
 import { buildSelectedHotelsSnapshot } from './quotePdfHelpers';
 import { hydrateWizardFromQuote } from './quotationHydrate';
@@ -532,7 +532,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setSelectedUnoCab(defaultCab);
 
     setState((s) => {
-      // Website rates for hotel/cab; admin margin applied on total (not baked into lines)
       const packageStart = Number(
         normalized.baseStartingPrice ?? normalized.startingPrice ?? 0
       );
@@ -560,9 +559,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         flightCost: 0,
         activityCost: 0,
         markupPercent: Number(s.pricing.markupPercent || 0) || 0,
-        adminMarginPercent: adminMarginPct,
-        companyMarginBaked: false,
-        companyMarginBakedPercent: adminMarginPct,
         party: {
           adults: party.adults,
           children: party.children,
@@ -574,11 +570,13 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           perPersonRate: party.perPersonRate,
         },
       };
+      const baked = bakeCompanyMarginIntoLineCosts(rawPricing, adminMarginPct);
       return {
         ...s,
         pricing: {
-          ...rawPricing,
-          ...calculatePricing(rawPricing),
+          ...baked,
+          ...calculatePricing(baked),
+          party: rawPricing.party,
         },
       };
     });
@@ -629,7 +627,6 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   };
 
   useEffect(() => {
-    // Website hotel/cab rates; admin margin added on total via adminMarginPercent
     const packageAnchor = Number(
       selectedPkgDetail?.baseStartingPrice ?? selectedPkgDetail?.startingPrice ?? 0
     );
@@ -645,8 +642,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     const adminMarginPct =
       Number(
         selectedPkgDetail?.destinationMarginPercent ??
-          state.pricing.adminMarginPercent ??
           state.pricing.companyMarginBakedPercent ??
+          state.pricing.adminMarginPercent ??
           0
       ) || 0;
     const party = applyPartyCosting({
@@ -674,23 +671,21 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       discount: Number(state.pricing.discount || 0) || 0,
       gstEnabled: Boolean(state.pricing.gstEnabled),
       markup: 0,
-      adminMarginPercent: adminMarginPct,
-      companyMarginBaked: false,
-      companyMarginBakedPercent: adminMarginPct,
     };
-    const calc = calculatePricing(rawPricing);
+    const baked = bakeCompanyMarginIntoLineCosts(rawPricing, adminMarginPct);
+    const calc = calculatePricing(baked);
 
     setState((s) => {
       const nextPricing = {
         ...s.pricing,
         baseCost: 0,
-        hotelCost: rawPricing.hotelCost,
-        cabCost: rawPricing.cabCost,
-        flightCost: rawPricing.flightCost,
-        activityCost: rawPricing.activityCost,
-        adminMarginPercent: adminMarginPct,
-        companyMarginBaked: false,
-        companyMarginBakedPercent: adminMarginPct,
+        hotelCost: baked.hotelCost,
+        cabCost: baked.cabCost,
+        flightCost: baked.flightCost,
+        activityCost: baked.activityCost,
+        adminMarginPercent: baked.adminMarginPercent,
+        companyMarginBaked: baked.companyMarginBaked,
+        companyMarginBakedPercent: baked.companyMarginBakedPercent,
         taxes: calc.taxes,
         markup: calc.markup,
         total: calc.total,
@@ -714,7 +709,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         Number(prev.cabCost || 0) === Number(nextPricing.cabCost || 0) &&
         Number(prev.flightCost || 0) === Number(nextPricing.flightCost || 0) &&
         Number(prev.activityCost || 0) === Number(nextPricing.activityCost || 0) &&
-        Number(prev.adminMarginPercent || 0) === Number(nextPricing.adminMarginPercent || 0) &&
+        Number(prev.companyMarginBakedPercent || 0) === Number(nextPricing.companyMarginBakedPercent || 0) &&
+        Boolean(prev.companyMarginBaked) === Boolean(nextPricing.companyMarginBaked) &&
         Number(prev.taxes || 0) === Number(nextPricing.taxes || 0) &&
         Number(prev.markup || 0) === Number(nextPricing.markup || 0) &&
         Number(prev.total || 0) === Number(nextPricing.total || 0) &&
