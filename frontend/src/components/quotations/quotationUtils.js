@@ -4,6 +4,14 @@ function round2(n) {
   return Math.round(Number(n || 0) * 100) / 100;
 }
 
+/** Apply destination admin margin to a raw website amount (for display). */
+export function applyAdminMarginToAmount(amount = 0, adminMarginPercent = 0) {
+  const base = Number(amount || 0);
+  const pct = Math.max(0, Number(adminMarginPercent) || 0);
+  if (base <= 0 || pct <= 0) return round2(base);
+  return round2(base * (1 + pct / 100));
+}
+
 /**
  * Fold destination (admin) margin into hotel & cab line costs — not shown separately.
  */

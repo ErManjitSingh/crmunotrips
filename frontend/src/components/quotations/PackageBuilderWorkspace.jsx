@@ -781,6 +781,16 @@ export default function PackageBuilderWorkspace({
               onChangeCab={openCabPicker}
               destination={hotelDestination || pkg?.destination || 'Destination'}
               embedded
+              lead={lead}
+              party={pricing?.party}
+              adminMarginPercent={
+                Number(
+                  pricing?.companyMarginBakedPercent ??
+                    pkg?.destinationMarginPercent ??
+                    pricing?.adminMarginPercent ??
+                    0
+                ) || 0
+              }
             />
           </SectionShell>
 

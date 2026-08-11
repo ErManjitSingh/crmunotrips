@@ -25,7 +25,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { defaultItineraryDay, formatINR } from './quotationUtils';
+import { defaultItineraryDay, formatINR, applyAdminMarginToAmount } from './quotationUtils';
+import { resolvePartyOccupancy } from './partyCosting';
 
 const DAY_ACCENTS = [
   { card: 'border-teal-200 bg-gradient-to-br from-teal-50 to-white', badge: 'bg-teal-600 shadow-teal-600/30', strip: 'from-teal-500 to-cyan-400' },
@@ -57,14 +58,29 @@ function ChangeBtn({ onClick, label = 'Change' }) {
   );
 }
 
-function HotelCard({ meta, options = [], onOpenPicker, emptyLabel }) {
+function HotelCard({
+  meta,
+  hotelSel,
+  options = [],
+  onOpenPicker,
+  emptyLabel,
+  rooms = 1,
+  adminMarginPercent = 0,
+  showTotal = true,
+}) {
   const image = meta?.image || meta?.images?.[0];
   const stars = Math.min(5, Math.round(Number(meta?.starRating || 0)));
   const hasOptions = options.length > 0;
-  const priceDelta = Number(meta?.priceDelta || 0);
+  const nights = Math.max(1, Number(hotelSel?.nights ?? 1));
   const absoluteNight = Number(
-    meta?.absolutePerNight ?? meta?.startingPrice ?? meta?.includedRate ?? 0
+    hotelSel?.absolutePerNight ??
+      meta?.absolutePerNight ??
+      meta?.startingPrice ??
+      meta?.includedRate ??
+      0
   );
+  const rawTotal = absoluteNight * nights * Math.max(1, Number(rooms) || 1);
+  const displayTotal = applyAdminMarginToAmount(rawTotal, adminMarginPercent);
 
   return (
     <div className="rounded-xl border border-violet-200 bg-violet-50/70 overflow-hidden shadow-sm shadow-violet-100/50">
@@ -77,39 +93,37 @@ function HotelCard({ meta, options = [], onOpenPicker, emptyLabel }) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-wide text-violet-600">Hotel & Stay</p>
               <p className="text-sm font-semibold text-slate-900 truncate">{meta?.name || emptyLabel}</p>
-            </div>
-            {hasOptions && onOpenPicker && <ChangeBtn onClick={onOpenPicker} />}
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-slate-600">
-            {stars > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-amber-600 font-semibold">
-                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                {stars}★
-              </span>
-            )}
-            {meta?.tierName && <span>{meta.tierName}</span>}
-            {meta?.room?.name && meta.room.name !== meta.tierName && (
-              <span>· {meta.room.name}</span>
-            )}
-            {(meta?.mealPlan?.label || meta?.meals) && (
-              <span>· {meta.mealPlan?.label || meta.meals}</span>
-            )}
-            {priceDelta > 0 ? (
-              <span className="font-semibold text-emerald-600">
-                · +{formatINR(priceDelta)}/night upgrade
-                {absoluteNight > 0 ? (
-                  <span className="font-medium text-slate-500"> ({formatINR(absoluteNight)}/night)</span>
+              <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-slate-600">
+                {stars > 0 && (
+                  <span className="inline-flex items-center gap-0.5 text-amber-600 font-semibold">
+                    <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                    {stars}★
+                  </span>
+                )}
+                {meta?.tierName && <span>{meta.tierName}</span>}
+                {meta?.room?.name && meta.room.name !== meta.tierName && (
+                  <span>· {meta.room.name}</span>
+                )}
+                {(meta?.mealPlan?.label || meta?.meals) && (
+                  <span>· {meta.mealPlan?.label || meta.meals}</span>
+                )}
+                {!showTotal || displayTotal <= 0 ? (
+                  <span className="font-medium text-slate-400">· Not included</span>
                 ) : null}
-              </span>
-            ) : absoluteNight > 0 ? (
-              <span className="font-semibold text-violet-700">· {formatINR(absoluteNight)}/night</span>
-            ) : (
-              <span className="font-medium text-slate-400">· Not included</span>
-            )}
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              {showTotal && displayTotal > 0 && (
+                <p className="text-base font-bold text-violet-800 metric-tabular leading-none">
+                  {formatINR(displayTotal)}
+                </p>
+              )}
+              {hasOptions && onOpenPicker && <ChangeBtn onClick={onOpenPicker} />}
+            </div>
           </div>
         </div>
       </div>
@@ -117,12 +131,13 @@ function HotelCard({ meta, options = [], onOpenPicker, emptyLabel }) {
   );
 }
 
-function CabCard({ packageCab, onChangeCab }) {
+function CabCard({ packageCab, onChangeCab, cabCount = 1, adminMarginPercent = 0 }) {
   if (!packageCab) return null;
-  const fare = Number(
+  const unitFare = Number(
     packageCab.absoluteFare ?? packageCab.totalAmount ?? packageCab.cost ?? 0
   ) || 0;
-  const upgrade = Number(packageCab.upgradePrice ?? packageCab.priceDelta ?? 0) || 0;
+  const rawTotal = unitFare * Math.max(1, Number(cabCount) || 1);
+  const displayTotal = applyAdminMarginToAmount(rawTotal, adminMarginPercent);
   return (
     <div className="flex gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3 shadow-sm shadow-sky-100/60">
       <div className="w-16 h-16 rounded-xl bg-white border border-sky-200 overflow-hidden shrink-0 flex items-center justify-center">
@@ -132,8 +147,8 @@ function CabCard({ packageCab, onChangeCab }) {
           <Car className="w-6 h-6 text-sky-600" />
         )}
       </div>
-      <div className="min-w-0 flex-1 flex items-start justify-between gap-2">
-        <div className="min-w-0">
+      <div className="min-w-0 flex-1 flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-wide text-sky-700">Cab Included</p>
           <p className="text-sm font-semibold text-slate-900 truncate">{packageCab.name}</p>
           <p className="text-[11px] text-sky-800/70 mt-0.5 font-medium">
@@ -141,18 +156,15 @@ function CabCard({ packageCab, onChangeCab }) {
               .filter(Boolean)
               .join(' · ')}
           </p>
-          {fare > 0 && (
-            <p className="mt-1 text-sm font-bold text-sky-800 metric-tabular">
-              {formatINR(fare)}
-              {upgrade > 0 ? (
-                <span className="ml-1 text-[11px] font-semibold text-amber-700">
-                  (+{formatINR(upgrade)} upgrade)
-                </span>
-              ) : null}
+        </div>
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          {displayTotal > 0 && (
+            <p className="text-base font-bold text-sky-800 metric-tabular leading-none">
+              {formatINR(displayTotal)}
             </p>
           )}
+          {onChangeCab && <ChangeBtn onClick={onChangeCab} />}
         </div>
-        {onChangeCab && <ChangeBtn onClick={onChangeCab} />}
       </div>
     </div>
   );
@@ -171,6 +183,9 @@ function SortableDayCard({
   canRemove,
   isLastDay,
   colorIndex = 0,
+  rooms = 1,
+  cabCount = 1,
+  adminMarginPercent = 0,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: day.id });
   const style = {
@@ -286,12 +301,23 @@ function SortableDayCard({
         <div className="space-y-3 mb-3">
           <HotelCard
             meta={hotelMeta}
+            hotelSel={hotelSel}
             options={hotelOptions}
             onOpenPicker={() => onOpenHotelPicker?.(day)}
             emptyLabel={isLastDay ? 'Departure day · no overnight stay' : 'Hotel not linked'}
+            rooms={rooms}
+            adminMarginPercent={adminMarginPercent}
+            showTotal={!isLastDay && Boolean(hotelSel?.hotel || hotelMeta?.name)}
           />
           {renderHotelActions?.(day)}
-          {packageCab && day.day === 1 && <CabCard packageCab={packageCab} onChangeCab={onChangeCab} />}
+          {packageCab && day.day === 1 && (
+            <CabCard
+              packageCab={packageCab}
+              onChangeCab={onChangeCab}
+              cabCount={cabCount}
+              adminMarginPercent={adminMarginPercent}
+            />
+          )}
         </div>
 
         <textarea
@@ -316,8 +342,15 @@ export default function PackageBuilderDayTimeline({
   renderHotelActions,
   destination = 'Destination',
   embedded = false,
+  lead = null,
+  party = null,
+  adminMarginPercent = 0,
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const occ = party || resolvePartyOccupancy(lead || {});
+  const rooms = Math.max(1, Number(occ.rooms) || 1);
+  const cabCount = Math.max(1, Number(occ.cabCount) || 1);
+  const marginPct = Math.max(0, Number(adminMarginPercent) || 0);
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -392,6 +425,9 @@ export default function PackageBuilderDayTimeline({
                   canRemove={itinerary.length > 1}
                   isLastDay={idx === itinerary.length - 1}
                   colorIndex={idx}
+                  rooms={rooms}
+                  cabCount={cabCount}
+                  adminMarginPercent={marginPct}
                 />
               );
             })}
