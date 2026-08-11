@@ -1,9 +1,13 @@
 const fs = require('fs');
 const path = require('path');
-const mongoose = require('mongoose');
 
 const backendRoot = path.join(__dirname, '../backend');
 process.chdir(backendRoot);
+module.paths.unshift(path.join(backendRoot, 'node_modules'));
+
+const mongoose = require('mongoose');
+const { buildAdminDashboard } = require('./src/services/dashboardService');
+
 const envPath = path.join(backendRoot, '.env');
 if (fs.existsSync(envPath)) {
   for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
@@ -11,8 +15,6 @@ if (fs.existsSync(envPath)) {
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
   }
 }
-
-const { buildAdminDashboard } = require('../backend/src/services/dashboardService');
 
 (async () => {
   const now = new Date();
