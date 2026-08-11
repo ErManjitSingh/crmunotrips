@@ -91,7 +91,13 @@ function buildExecutiveLeadFilter(filterKey) {
       ],
     };
   }
-  if (filterKey === 'contacted') return { status: 'contacted' };
+  // "Connected" should include the full lead pipeline segment that the UI/analytics
+  // considers connected (not just literal status='contacted').
+  // See leadAnalyticsService: connected bucket includes:
+  // contacted, working_progress, qualified, quotation_sent, follow_up, negotiation, converted
+  if (filterKey === 'contacted') {
+    return { status: { $in: ['contacted', 'working_progress', 'qualified', 'quotation_sent', 'follow_up', 'negotiation', 'converted'] } };
+  }
   if (filterKey === 'follow-up') return { status: { $in: ['follow_up', 'negotiation'] } };
   if (filterKey === 'converted') return { status: 'converted' };
   if (filterKey === 'lost') return { status: { $in: ['lost', 'booked_from_another_company'] } };
