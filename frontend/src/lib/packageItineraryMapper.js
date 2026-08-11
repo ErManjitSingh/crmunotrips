@@ -280,16 +280,56 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
         .filter((o) => o.name)
     : [];
 
-  const selectedSightseeingIds = sightseeingOptions
+  // Public/legacy day-options may return sightseeing/activities as a formatted string
+  // (e.g. "Solang · Rohtang") instead of structured arrays.
+  // Build pseudo-options from that text so UI pickers can still render.
+  const splitNamedList = (text = '') => {
+    const s = String(text || '').trim();
+    if (!s) return [];
+    return s
+      .split(/\s*[·•]\s*|,\s*/)
+      .map((x) => String(x || '').trim())
+      .filter(Boolean);
+  };
+
+  const sightseeingStringFallback = !sightseeingOptions.length ? optionDay.sightseeing : '';
+  const sightseeingFallbackNames = splitNamedList(sightseeingStringFallback);
+  const sightseeingOptionsFallback = sightseeingFallbackNames.map((name, idx) => ({
+    id: `sight-fallback-${idx}-${name}`,
+    name,
+    price: 0,
+    priceType: 'flat',
+    isIncluded: false,
+    isOptional: true,
+    isSelectedByDefault: true,
+    raw: { fallback: true },
+  }));
+  const normalizedSightseeingOptions = sightseeingOptionsFallback.length ? sightseeingOptionsFallback : sightseeingOptions;
+
+  const activitiesStringFallback = !activityOptions.length ? optionDay.activities : '';
+  const activitiesFallbackNames = splitNamedList(activitiesStringFallback);
+  const activityOptionsFallback = activitiesFallbackNames.map((name, idx) => ({
+    id: `act-fallback-${idx}-${name}`,
+    name,
+    price: 0,
+    priceType: 'flat',
+    isIncluded: false,
+    isOptional: true,
+    isSelectedByDefault: true,
+    raw: { fallback: true },
+  }));
+  const normalizedActivityOptions = activityOptionsFallback.length ? activityOptionsFallback : activityOptions;
+
+  const selectedSightseeingIds = normalizedSightseeingOptions
     .filter((o) => o.isIncluded || o.isSelectedByDefault)
     .map((o) => o.id);
 
-  const selectedActivityIds = activityOptions
+  const selectedActivityIds = normalizedActivityOptions
     .filter((o) => o.isIncluded || o.isSelectedByDefault)
     .map((o) => o.id);
 
   const sightseeing = formatNamedList(
-    sightseeingOptions.filter((o) => selectedSightseeingIds.includes(o.id))
+    normalizedSightseeingOptions.filter((o) => selectedSightseeingIds.includes(o.id))
   );
   const legacyActivityParts = [
     itineraryDay.arrival,
@@ -299,7 +339,7 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
   ].filter(Boolean);
   const legacyActivities = legacyActivityParts.join(' · ');
   const activitiesFromOptions = formatNamedList(
-    activityOptions.filter((o) => selectedActivityIds.includes(o.id))
+    normalizedActivityOptions.filter((o) => selectedActivityIds.includes(o.id))
   );
   const activities = [activitiesFromOptions, legacyActivities].filter(Boolean).join(' · ');
 
@@ -347,8 +387,8 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
     sightseeing,
     // Selection support for day-wise itinerary UI + PDF/preview
     activityLegacyText: legacyActivities,
-    sightseeingOptions,
-    activityOptions,
+    sightseeingOptions: normalizedSightseeingOptions,
+    activityOptions: normalizedActivityOptions,
     selectedSightseeingIds,
     selectedActivityIds,
     meals,
