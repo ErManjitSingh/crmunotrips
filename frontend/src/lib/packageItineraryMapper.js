@@ -219,11 +219,27 @@ function mergeDayItinerary(itineraryDay = {}, optionDay = {}, stay = null) {
     description: String(
       itineraryDay.description || optionDay.description || optionDay.location || ''
     ).trim(),
-    hotel: defaultHotelName,
-    accommodation: defaultHotelName,
-    hotelMeta: defaultHotelOption
-      ? { ...defaultHotelOption, mealPlanKey, meals }
-      : defaultHotelOption,
+    hotel:
+      itineraryDay.hotelMeta?.name ||
+      itineraryDay.hotel ||
+      itineraryDay.hotel_name ||
+      defaultHotelName,
+    accommodation:
+      itineraryDay.hotelMeta?.name ||
+      itineraryDay.accommodation ||
+      itineraryDay.hotel ||
+      defaultHotelName,
+    hotelMeta: itineraryDay.hotelMeta?.name
+      ? {
+          ...itineraryDay.hotelMeta,
+          mealPlanKey: itineraryDay.hotelMeta.mealPlanKey || mealPlanKey,
+          meals: itineraryDay.hotelMeta.meals || meals,
+        }
+      : defaultHotelOption
+        ? { ...defaultHotelOption, mealPlanKey, meals }
+        : defaultHotelName
+          ? { name: defaultHotelName, mealPlanKey, meals }
+          : null,
     hotelOptions,
     stayId: stay?.id || null,
     stayNights: stay ? Number(stay.nights) || 1 : null,
@@ -254,12 +270,80 @@ function stayNightNumbers(stays = []) {
   return nums;
 }
 
+/** Copy check-in hotel onto every night of the same stay (multi-night gaps). */
+export function fillStayNightHotels(itinerary = [], stays = []) {
+  const days = (Array.isArray(itinerary) ? itinerary : []).map((d) => ({ ...d }));
+  const stayList = Array.isArray(stays) ? stays : [];
+
+  for (let i = 0; i < days.length; i++) {
+    const dayNum = dayKey(days[i]);
+    if (!dayNum) continue;
+    const stay = findStayForDay(stayList, dayNum);
+    if (!stay) continue;
+    if (days[i].hotelMeta?.name || days[i].hotel) continue;
+
+    const cin = Number(stay.check_in_day);
+    let template = null;
+    for (let d = cin; d < dayNum; d++) {
+      const hit = days.find((x) => dayKey(x) === d);
+      if (hit?.hotelMeta?.name || hit?.hotel) {
+        template = hit;
+        break;
+      }
+    }
+
+    if (!template) {
+      const opts = hotelOptionsFromStay(stay).map(mapHotelOption).filter(Boolean);
+      const def = opts.find((o) => o.isDefault) || opts[0] || null;
+      const mealKey = packageMealKey(stay.default_meal_plan, { hasHotel: Boolean(def?.name) });
+      const mealLabel = packageMealLabel(stay.default_meal_plan, { hasHotel: Boolean(def?.name) });
+      if (def) {
+        days[i].hotel = def.name;
+        days[i].accommodation = def.name;
+        days[i].hotelMeta = { ...def, mealPlanKey: mealKey, meals: mealLabel };
+        days[i].hotelOptions = opts;
+        days[i].meals = mealLabel;
+        days[i].mealPlanKey = mealKey;
+        days[i].stayId = stay.id || null;
+      }
+      continue;
+    }
+
+    days[i].hotel = template.hotel || template.hotelMeta?.name;
+    days[i].accommodation = template.accommodation || days[i].hotel;
+    days[i].hotelMeta = { ...(template.hotelMeta || { name: days[i].hotel }) };
+    days[i].hotelOptions = template.hotelOptions || days[i].hotelOptions || [];
+    days[i].meals = days[i].meals || template.meals;
+    days[i].mealPlanKey = days[i].mealPlanKey || template.mealPlanKey;
+    days[i].stayId = days[i].stayId || template.stayId || stay.id || null;
+  }
+
+  return days;
+}
+
+/** When stays[] missing — carry hotel from previous night (same property continuation). */
+function carryForwardHotels(itinerary = []) {
+  const days = (Array.isArray(itinerary) ? itinerary : []).map((d) => ({ ...d }));
+  for (let i = 0; i < days.length; i++) {
+    if (days[i].hotelMeta?.name || days[i].hotel) continue;
+    const prev = i > 0 ? days[i - 1] : null;
+    if (!prev?.hotelMeta?.name && !prev?.hotel) continue;
+    days[i].hotel = prev.hotel || prev.hotelMeta?.name;
+    days[i].accommodation = prev.accommodation || days[i].hotel;
+    days[i].hotelMeta = { ...(prev.hotelMeta || { name: days[i].hotel }) };
+    days[i].hotelOptions = prev.hotelOptions || days[i].hotelOptions || [];
+    days[i].meals = days[i].meals || prev.meals;
+    days[i].mealPlanKey = days[i].mealPlanKey || prev.mealPlanKey;
+  }
+  return days;
+}
+
 /** Fill missing hotel / options on an existing itinerary from day-options stays[]. */
 export function enrichItineraryWithStays(itinerary = [], stays = []) {
   if (!Array.isArray(itinerary) || !itinerary.length) return [];
-  if (!Array.isArray(stays) || !stays.length) return itinerary;
+  if (!Array.isArray(stays) || !stays.length) return carryForwardHotels(itinerary);
 
-  return itinerary.map((day) => {
+  const enriched = itinerary.map((day) => {
     const dayNum = dayKey(day);
     const stay = findStayForDay(stays, dayNum);
     const hasHotel = Boolean(day.hotelMeta?.name || day.hotel);
@@ -312,6 +396,8 @@ export function enrichItineraryWithStays(itinerary = [], stays = []) {
       stayNights: day.stayNights || Number(stay.nights) || 1,
     };
   });
+
+  return fillStayNightHotels(enriched, stays);
 }
 
 export function buildMergedItinerary(itineraryDays = [], optionDays = [], stays = []) {
@@ -402,9 +488,13 @@ export function resolvePackageItinerary(source = {}) {
 /** Seed DayWiseHotelSelector / snapshot shape from itinerary hotelMeta.
  * preferredMealKey (from lead.mealPlan) overrides package meal for pricing when set.
  */
-export function seedDayWiseHotelsFromItinerary(itinerary = [], preferredMealKey = '') {
+export function seedDayWiseHotelsFromItinerary(itinerary = [], preferredMealKey = '', stays = []) {
   const leadMealKey = normalizeMealPlanKey(preferredMealKey) || '';
-  return (Array.isArray(itinerary) ? itinerary : [])
+  const normalized = fillStayNightHotels(
+    carryForwardHotels(Array.isArray(itinerary) ? itinerary : []),
+    stays
+  );
+  return normalized
     .filter((day) => day?.hotelMeta?.name || day?.hotel)
     .map((day) => {
       const meta = day.hotelMeta || { name: day.hotel };

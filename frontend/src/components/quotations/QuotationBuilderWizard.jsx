@@ -521,7 +521,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setCustomizeTab('itinerary');
 
     // Seed day-wise hotels — package MAP (same as website), not lead meal override
-    const seededHotels = seedDayWiseHotelsFromItinerary(itinerary, 'map');
+    const seededHotels = seedDayWiseHotelsFromItinerary(
+      itinerary,
+      'map',
+      normalized._apiRaw?.dayOptions?.stays || normalized.stays || []
+    );
     setDayWiseHotels(seededHotels);
 
     // Auto-select default package cab from day-options

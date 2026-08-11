@@ -89,9 +89,9 @@ function HotelCard({
       meta?.includedRate ??
       0
   );
-  const rawTotal = isIncluded
-    ? nightlyRef * nights
-    : absoluteNight * nights * Math.max(1, Number(rooms) || 1);
+  const rateNight =
+    absoluteNight > 0 ? absoluteNight : nightlyRef > 0 ? nightlyRef : 0;
+  const rawTotal = rateNight * nights * Math.max(1, Number(rooms) || 1);
   const displayTotal = applyAdminMarginToAmount(rawTotal, adminMarginPercent);
 
   return (
@@ -131,15 +131,14 @@ function HotelCard({
               </div>
             </div>
             <div className="flex flex-col items-end gap-1.5 shrink-0">
-              {showTotal && displayTotal > 0 && !isIncluded && (
+              {showTotal && displayTotal > 0 && (
                 <p className="text-base font-bold text-violet-800 metric-tabular leading-none">
                   {formatINR(displayTotal)}
                 </p>
               )}
-              {showTotal && isIncluded && nightlyRef > 0 && (
-                <p className="text-[11px] font-semibold text-violet-700 metric-tabular leading-none text-right">
-                  {formatINR(applyAdminMarginToAmount(nightlyRef, adminMarginPercent))}
-                  <span className="text-slate-500 font-medium">/night</span>
+              {showTotal && isIncluded && displayTotal > 0 && (
+                <p className="text-[10px] font-semibold text-emerald-700 leading-none">
+                  Included in package
                 </p>
               )}
               {hasOptions && onOpenPicker && <ChangeBtn onClick={onOpenPicker} />}
@@ -195,6 +194,42 @@ function CabCard({ packageCab, onChangeCab, cabCount = 1, adminMarginPercent = 0
       </div>
     </div>
   );
+}
+
+function buildHotelSelFromDay(day, dayNum) {
+  const meta = day?.hotelMeta || (day?.hotel ? { name: day.hotel } : null);
+  if (!meta?.name && !day?.hotel) return null;
+  const name = meta.name || day.hotel;
+  const absolute = Number(meta.absolutePerNight || meta.includedRate || 0) || 0;
+  return {
+    day: dayNum,
+    hotel: {
+      id: meta.id || meta.hotelId,
+      name,
+      image: meta.image || '',
+      images: meta.images || [],
+      starCategory: meta.starRating || 0,
+      starRating: meta.starRating || 0,
+      location: meta.location || '',
+      city: meta.city || '',
+      slug: meta.slug || '',
+      startingPrice: absolute,
+    },
+    room: meta.room || { name: meta.tierName || 'Deluxe' },
+    mealPlan:
+      meta.mealPlan ||
+      (meta.mealPlanKey || meta.meals
+        ? { key: meta.mealPlanKey, label: meta.meals }
+        : null),
+    meals: meta.meals || meta.mealPlan?.label,
+    perNight: Number(meta.priceDelta || 0),
+    totalCost: Number(meta.priceDelta || 0),
+    absolutePerNight: absolute,
+    includedRate: Number(meta.includedRate || absolute),
+    nights: 1,
+    hotelOptions: day.hotelOptions || [],
+    fromPackage: true,
+  };
 }
 
 function SortableDayCard({
@@ -331,10 +366,12 @@ function SortableDayCard({
             hotelSel={hotelSel}
             options={hotelOptions}
             onOpenPicker={() => onOpenHotelPicker?.(day)}
-            emptyLabel={isLastDay ? 'Departure day · no overnight stay' : 'Hotel not linked'}
+            emptyLabel={isLastDay ? 'Departure day · no overnight stay' : 'Select hotel for this night'}
             rooms={rooms}
             adminMarginPercent={adminMarginPercent}
-            showTotal={!isLastDay && Boolean(hotelSel?.hotel || hotelMeta?.name)}
+            showTotal={Boolean(
+              !isLastDay && (hotelSel?.hotel || hotelMeta?.name || day.hotel)
+            )}
           />
           {renderHotelActions?.(day)}
           {packageCab && day.day === 1 && (
@@ -436,7 +473,20 @@ export default function PackageBuilderDayTimeline({
         <SortableContext items={itinerary.map((d) => d.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-4">
             {itinerary.map((day, idx) => {
-              const hotelSel = dayWiseHotels.find((h) => h.day === (day.day || idx + 1));
+              const dayNum = day.day || idx + 1;
+              let hotelSel = dayWiseHotels.find((h) => h.day === dayNum);
+              if (!hotelSel && (day.hotelMeta?.name || day.hotel)) {
+                hotelSel = buildHotelSelFromDay(day, dayNum);
+              }
+              if (!hotelSel && idx > 0) {
+                for (let j = idx - 1; j >= 0; j--) {
+                  const prev = itinerary[j];
+                  if (prev?.hotelMeta?.name || prev?.hotel) {
+                    hotelSel = buildHotelSelFromDay(prev, dayNum);
+                    break;
+                  }
+                }
+              }
               return (
                 <SortableDayCard
                   key={day.id}
