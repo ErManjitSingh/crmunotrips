@@ -634,6 +634,18 @@ export default function PackageBuilderWorkspace({
     setPicker(null);
   };
 
+  const handleReplaceExtraRoom = (day, option, roomSlot) => {
+    if (!day || !option) return;
+    const slot = Math.max(2, Number(roomSlot) || 2);
+    const { entry } = buildHotelStayEntry(day, option, slot);
+    const nextHotels = (dayWiseHotels || [])
+      .filter((h) => !(h.day === day.day && Number(h.roomSlot || 1) === slot))
+      .concat(entry)
+      .sort((a, b) => a.day - b.day || (a.roomSlot || 1) - (b.roomSlot || 1));
+    onDayWiseHotelsChange?.(nextHotels);
+    setPicker(null);
+  };
+
   const openCabPicker = (mode = 'change') => setPicker({ type: 'cab', cabMode: mode });
   const openStayPicker = () => setPicker({ type: 'hotel' });
   const openDayHotelPicker = (day, opts = {}) => setPicker({ type: 'hotel', day, ...opts });
@@ -643,6 +655,17 @@ export default function PackageBuilderWorkspace({
     openDayHotelPicker(day, {
       addRoom: true,
       roomSlot: lines + 1,
+      initialHotel,
+      lockHotel: Boolean(initialHotel),
+    });
+  };
+
+  const openChangeExtraRoomPicker = (day, roomSlot) => {
+    const slot = Math.max(2, Number(roomSlot) || 2);
+    const initialHotel = resolveDayHotelForAddRoom(day, dayWiseHotels);
+    openDayHotelPicker(day, {
+      replaceRoomSlot: slot,
+      roomSlot: slot,
       initialHotel,
       lockHotel: Boolean(initialHotel),
     });
@@ -659,7 +682,9 @@ export default function PackageBuilderWorkspace({
 
   const applyStayOption = (opt) => {
     if (picker?.type === 'hotel' && picker.day) {
-      if (picker.addRoom) {
+      if (picker.replaceRoomSlot) {
+        handleReplaceExtraRoom(picker.day, opt, picker.replaceRoomSlot);
+      } else if (picker.addRoom) {
         handleAddHotelRoom(picker.day, opt);
       } else {
         handleReplaceHotel(picker.day, opt);
@@ -866,6 +891,7 @@ export default function PackageBuilderWorkspace({
               onChange={onItineraryChange}
               onOpenHotelPicker={openDayHotelPicker}
               onAddHotelRoom={openAddRoomPicker}
+              onChangeExtraRoom={openChangeExtraRoomPicker}
               onChangeCab={() => openCabPicker('change')}
               onAddCab={() => openCabPicker('add')}
               extraCabs={extraCabs}
@@ -1038,17 +1064,19 @@ export default function PackageBuilderWorkspace({
         onClose={() => setPicker(null)}
         mode="hotel"
         title={
-          picker?.addRoom
-            ? `Add room · Day ${picker.day.day} · Room ${picker.roomSlot || 2}`
-            : picker?.day
-              ? `Change hotel · Day ${picker.day.day}`
-              : 'Choose your hotel'
+          picker?.replaceRoomSlot
+            ? `Change room · Day ${picker.day.day} · Room ${picker.replaceRoomSlot}`
+            : picker?.addRoom
+              ? `Add room · Day ${picker.day.day} · Room ${picker.roomSlot || 2}`
+              : picker?.day
+                ? `Change hotel · Day ${picker.day.day}`
+                : 'Choose your hotel'
         }
         subtitle={
-          picker?.addRoom
+          picker?.replaceRoomSlot || picker?.addRoom
             ? picker?.initialHotel?.name
               ? `Rooms at ${picker.initialHotel.name} — pick type & meal plan`
-              : 'Pick room type & meal plan for an additional room on this night'
+              : 'Pick room type & meal plan for this night'
             : picker?.day
               ? 'Hotel → Room → Meal plan for this night'
               : 'Select hotel, then room & meal plan with prices'
@@ -1060,8 +1088,14 @@ export default function PackageBuilderWorkspace({
         nights={picker?.day?.stayNights || nights || 1}
         destination={hotelDestination || pkg?.destination || ''}
         basePrice={hotelBasePrice}
-        initialHotel={picker?.addRoom ? picker.initialHotel || null : null}
-        lockHotel={Boolean(picker?.addRoom && picker?.lockHotel && picker?.initialHotel)}
+        initialHotel={
+          picker?.addRoom || picker?.replaceRoomSlot ? picker.initialHotel || null : null
+        }
+        lockHotel={Boolean(
+          (picker?.addRoom || picker?.replaceRoomSlot) &&
+            picker?.lockHotel &&
+            picker?.initialHotel
+        )}
         defaultMealPlanKey={
           normalizeMealPlanKey(lead?.mealPlan || lead?.mealPreference) ||
           picker?.day?.mealPlanKey ||

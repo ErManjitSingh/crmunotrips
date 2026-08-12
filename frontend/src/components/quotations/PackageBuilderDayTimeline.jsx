@@ -85,6 +85,7 @@ function HotelCard({
   options = [],
   onOpenPicker,
   onAddRoom,
+  onChangeExtraRoom,
   emptyLabel,
   rooms = 1,
   showTotal = true,
@@ -169,13 +170,27 @@ function HotelCard({
               key={line.roomSlot || idx + 2}
               className="flex items-center justify-between gap-2 rounded-lg bg-white/80 border border-violet-100 px-2.5 py-2 text-[11px]"
             >
-              <span className="font-semibold text-violet-800">
+              <span className="min-w-0 font-semibold text-violet-800 truncate">
                 Room {line.roomSlot || idx + 2}: {line.room?.name || line.hotel?.name || 'Added room'}
                 {line.mealPlan?.label ? ` · ${line.mealPlan.label}` : ''}
               </span>
-              {line.absolutePerNight > 0 && (
-                <span className="font-bold text-violet-700">{formatINR(line.absolutePerNight)}/night</span>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                {line.absolutePerNight > 0 && (
+                  <span className="font-bold text-violet-700">
+                    {formatINR(line.absolutePerNight)}/night
+                  </span>
+                )}
+                {onChangeExtraRoom && (
+                  <button
+                    type="button"
+                    onClick={() => onChangeExtraRoom(line)}
+                    className="inline-flex items-center gap-1 h-7 px-2 rounded-lg border border-violet-300 bg-white text-[10px] font-bold text-violet-700 hover:bg-violet-50"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Change
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -349,6 +364,7 @@ function SortableDayCard({
   onDuplicate,
   onOpenHotelPicker,
   onAddHotelRoom,
+  onChangeExtraRoom,
   onChangeCab,
   onAddCab,
   extraCabs = [],
@@ -535,6 +551,11 @@ function SortableDayCard({
             options={hotelOptions}
             onOpenPicker={() => onOpenHotelPicker?.(day)}
             onAddRoom={!isLastDay ? () => onAddHotelRoom?.(day) : undefined}
+            onChangeExtraRoom={
+              !isLastDay
+                ? (line) => onChangeExtraRoom?.(day, line.roomSlot || 2)
+                : undefined
+            }
             emptyLabel={isLastDay ? 'Departure day · no overnight stay' : 'Select hotel for this night'}
             rooms={extraRoomLines.length > 0 ? 1 : rooms}
             roomHint={!isLastDay ? roomHint : null}
@@ -723,6 +744,7 @@ export default function PackageBuilderDayTimeline({
   onChange,
   onOpenHotelPicker,
   onAddHotelRoom,
+  onChangeExtraRoom,
   onChangeCab,
   onAddCab,
   extraCabs = [],
@@ -815,6 +837,7 @@ export default function PackageBuilderDayTimeline({
                   onDuplicate={() => duplicateDay(idx)}
                   onOpenHotelPicker={onOpenHotelPicker}
                   onAddHotelRoom={onAddHotelRoom}
+                  onChangeExtraRoom={onChangeExtraRoom}
                   onChangeCab={onChangeCab}
                   onAddCab={onAddCab}
                   extraCabs={extraCabs}
