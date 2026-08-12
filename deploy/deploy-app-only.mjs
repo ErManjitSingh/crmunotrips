@@ -77,6 +77,19 @@ if [ -f "$APP/backend/.env" ]; then
   else
     echo 'WHATSAPP_DEFAULT_LEAD_SOURCE=dpw_wa' >> "$APP/backend/.env"
   fi
+  if ! grep -q '^UNO_HOTELS_RATE_OVERRIDE_CHANNEL=' "$APP/backend/.env" 2>/dev/null; then
+    echo 'UNO_HOTELS_RATE_OVERRIDE_CHANNEL=staff' >> "$APP/backend/.env"
+  fi
+  if [ -f /var/www/uno-backend/.env ]; then
+    OPS_USER=$(grep '^OPS_USERNAME=' /var/www/uno-backend/.env | cut -d= -f2- | tr -d '\r')
+    OPS_PASS=$(grep '^OPS_PASSWORD=' /var/www/uno-backend/.env | cut -d= -f2- | tr -d '\r')
+    if [ -n "$OPS_USER" ] && ! grep -q '^UNO_HOTELS_OPS_USERNAME=' "$APP/backend/.env" 2>/dev/null; then
+      echo "UNO_HOTELS_OPS_USERNAME=$OPS_USER" >> "$APP/backend/.env"
+    fi
+    if [ -n "$OPS_PASS" ] && ! grep -q '^UNO_HOTELS_OPS_PASSWORD=' "$APP/backend/.env" 2>/dev/null; then
+      echo "UNO_HOTELS_OPS_PASSWORD=$OPS_PASS" >> "$APP/backend/.env"
+    fi
+  fi
 fi
 if [ -f "$APP/frontend/.env" ]; then
   sed -i 's|^VITE_API_URL=.*|VITE_API_URL=https://app.unotrips.com/api|' "$APP/frontend/.env" || true

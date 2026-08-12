@@ -10,6 +10,7 @@ const {
   sanitizeImages,
   unoFetch,
 } = require('./unoHotelsApiClient');
+const { applyOpsRateOverridesToHotel } = require('./unoHotelsOpsService');
 
 function extractWebsiteRoomRates(rates) {
   if (!rates || typeof rates !== 'object') return null;
@@ -270,7 +271,8 @@ async function getUnoHotelDetail({ city, slug, checkIn, checkOut, rooms, adults 
       ...(adults ? { adults } : {}),
     },
   });
-  const hotel = unwrapPayload(raw);
+  let hotel = unwrapPayload(raw);
+  hotel = await applyOpsRateOverridesToHotel(hotel, { checkIn });
 
   return {
     ...mapHotelSummary(hotel),

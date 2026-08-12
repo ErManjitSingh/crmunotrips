@@ -12,6 +12,7 @@ const {
   unoFetch,
 } = require('./unoHotelsApiClient');
 const { getUnoHotelDetail, mapHotelSummary, mapRoom } = require('./unoHotelsHotelService');
+const { applyOpsRateOverridesToHotel } = require('./unoHotelsOpsService');
 
 const LIST_CACHE_TTL_MS = 10 * 60 * 1000;
 const DETAIL_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -507,9 +508,12 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = [], catalog
             if (detail) return detail;
           }
           if (Array.isArray(hotel?.rooms) && hotel.rooms.length) {
+            const withOverrides = await applyOpsRateOverridesToHotel(hotel, {
+              checkIn: stayDates.checkIn,
+            });
             return {
-              ...mapHotelSummary(hotel),
-              rooms: hotel.rooms.map(mapRoom),
+              ...mapHotelSummary(withOverrides),
+              rooms: withOverrides.rooms.map(mapRoom),
             };
           }
         } catch {
