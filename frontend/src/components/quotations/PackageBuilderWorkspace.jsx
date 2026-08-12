@@ -343,6 +343,7 @@ export default function PackageBuilderWorkspace({
   resubmissionReason = '',
   onResubmissionReasonChange,
   disableSubmit = false,
+  allowAskDiscount = false,
 }) {
   const [destinations, setDestinations] = useState(() => parseDestinationStops(pkg, lead));
   const [showPreview, setShowPreview] = useState(false);
@@ -912,6 +913,7 @@ export default function PackageBuilderWorkspace({
             resubmissionReason={resubmissionReason}
             onResubmissionReasonChange={onResubmissionReasonChange}
             disableSubmit={disableSubmit}
+            allowAskDiscount={allowAskDiscount}
           />
         </div>
       </div>
@@ -977,6 +979,7 @@ export default function PackageBuilderWorkspace({
                 resubmissionReason={resubmissionReason}
                 onResubmissionReasonChange={onResubmissionReasonChange}
                 disableSubmit={disableSubmit}
+                allowAskDiscount={allowAskDiscount}
                 hideActions
                 className="!static"
               />

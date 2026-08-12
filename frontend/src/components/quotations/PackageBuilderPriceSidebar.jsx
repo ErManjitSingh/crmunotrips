@@ -43,6 +43,8 @@ export default function PackageBuilderPriceSidebar({
   resubmissionReason = '',
   onResubmissionReasonChange,
   disableSubmit = false,
+  /** Only after first quotation is saved and opened again for edit. */
+  allowAskDiscount = false,
 }) {
   const breakdown = useMemo(() => getDisplayedCostBreakdown(pricing || {}), [pricing]);
   const youSave = Number(breakdown.youSave ?? pricing?.discount ?? 0) || 0;
@@ -52,11 +54,14 @@ export default function PackageBuilderPriceSidebar({
   const capacityMessage =
     party.capacityMessage ||
     'Add rooms and set cab for this party size to unlock full pricing.';
-  const askDiscountApplied = Boolean(pricing?.askDiscount);
+  const askDiscountApplied = allowAskDiscount && Boolean(pricing?.askDiscount);
   const extraDiscount = Math.max(0, Number(pricing?.extraDiscount) || 0);
-  const needsManagerApproval = hasExtraDiscountRequest(pricing);
+  const needsManagerApproval = allowAskDiscount && hasExtraDiscountRequest(pricing);
   const [showExtraDiscount, setShowExtraDiscount] = useState(
-    () => Boolean(pricing?.askDiscount) && (extraDiscount > 0 || Boolean(pricing?.extraDiscountPending))
+    () =>
+      allowAskDiscount &&
+      Boolean(pricing?.askDiscount) &&
+      (extraDiscount > 0 || Boolean(pricing?.extraDiscountPending))
   );
 
   const applyPricing = (partial) => {
@@ -255,7 +260,7 @@ export default function PackageBuilderPriceSidebar({
             </div>
           </div>
 
-          {!askDiscountApplied ? (
+          {allowAskDiscount && (!askDiscountApplied ? (
             <button
               type="button"
               onClick={applyAutoAskDiscount}
@@ -339,7 +344,7 @@ export default function PackageBuilderPriceSidebar({
                 </div>
               )}
             </div>
-          )}
+          ))}
 
           <div className="rounded-lg border border-violet-100 bg-violet-50/80 px-2 py-2 space-y-1.5">
             <label className="flex items-center justify-between gap-3 cursor-pointer">

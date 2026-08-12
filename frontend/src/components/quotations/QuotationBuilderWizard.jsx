@@ -716,10 +716,10 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       activityCost: party.activityCost,
       markupPercent: Number(state.pricing.markupPercent || 0) || 0,
       discount: Number(state.pricing.discount || 0) || 0,
-      askDiscount: Boolean(state.pricing.askDiscount),
-      autoDiscountAmount: Number(state.pricing.autoDiscountAmount || 0) || 0,
-      extraDiscount: Number(state.pricing.extraDiscount || 0) || 0,
-      extraDiscountPending: Boolean(state.pricing.extraDiscountPending),
+      askDiscount: isEditMode ? Boolean(state.pricing.askDiscount) : false,
+      autoDiscountAmount: isEditMode ? Number(state.pricing.autoDiscountAmount || 0) || 0 : 0,
+      extraDiscount: isEditMode ? Number(state.pricing.extraDiscount || 0) || 0 : 0,
+      extraDiscountPending: isEditMode ? Boolean(state.pricing.extraDiscountPending) : false,
       gstEnabled: Boolean(state.pricing.gstEnabled),
       markup: 0,
     };
@@ -807,6 +807,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     dayWiseHotels,
     extraCabs,
     customItinerary,
+    isEditMode,
   ]);
 
   const handleSave = async (saveAs) => {
@@ -822,7 +823,18 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     }
     setSaving(true);
     try {
-      const pricingPayload = applyAskDiscount(state.pricing || {});
+      const pricingPayload = applyAskDiscount(
+        isEditMode
+          ? state.pricing || {}
+          : {
+              ...(state.pricing || {}),
+              askDiscount: false,
+              discount: 0,
+              autoDiscountAmount: 0,
+              extraDiscount: 0,
+              extraDiscountPending: false,
+            }
+      );
       const extraDiscountReason = hasExtraDiscountRequest(pricingPayload)
         ? `Extra discount requested beyond auto 5% (₹${Number(pricingPayload.extraDiscount || 0).toLocaleString('en-IN')}) — pending manager approval`
         : '';
@@ -1064,6 +1076,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           needsResubmissionReason={mode === 'executive' && needsResubmissionReason}
           resubmissionReason={resubmissionReason}
           onResubmissionReasonChange={setResubmissionReason}
+          allowAskDiscount={isEditMode}
           disableSubmit={
             mode === 'executive' && needsResubmissionReason && !resubmissionReason.trim()
           }
