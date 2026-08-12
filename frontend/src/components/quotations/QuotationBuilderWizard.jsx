@@ -18,7 +18,7 @@ import InclusionExclusionEditor, { cleanInclusionExclusionLines } from './Inclus
 import { buildSelectedCabSnapshot } from './UnoCabSelector';
 import { parsePackageNights } from './UnoHotelSelector';
 import { WIZARD_STEPS } from './constants';
-import { calculatePricing, bakeCompanyMarginIntoLineCosts, defaultItineraryDay, defaultWizardState, formatINR, matchesResourceDestination } from './quotationUtils';
+import { applyAskDiscount, calculatePricing, bakeCompanyMarginIntoLineCosts, defaultItineraryDay, defaultWizardState, formatINR, hasExtraDiscountRequest, matchesResourceDestination } from './quotationUtils';
 import { buildWebsiteAlignedQuoteCosts } from './partyCosting';
 import { buildSelectedHotelsSnapshot, toYmd } from './quotePdfHelpers';
 import { hydrateWizardFromQuote } from './quotationHydrate';
@@ -571,11 +571,12 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         },
       };
       const baked = bakeCompanyMarginIntoLineCosts(rawPricing, adminMarginPct);
+      const priced = applyAskDiscount(baked);
       return {
         ...s,
         pricing: {
-          ...baked,
-          ...calculatePricing(baked),
+          ...priced,
+          ...calculatePricing(priced),
           party: rawPricing.party,
         },
       };
@@ -672,11 +673,16 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       activityCost: party.activityCost,
       markupPercent: Number(state.pricing.markupPercent || 0) || 0,
       discount: Number(state.pricing.discount || 0) || 0,
+      askDiscount: Boolean(state.pricing.askDiscount),
+      autoDiscountAmount: Number(state.pricing.autoDiscountAmount || 0) || 0,
+      extraDiscount: Number(state.pricing.extraDiscount || 0) || 0,
+      extraDiscountPending: Boolean(state.pricing.extraDiscountPending),
       gstEnabled: Boolean(state.pricing.gstEnabled),
       markup: 0,
     };
     const baked = bakeCompanyMarginIntoLineCosts(rawPricing, adminMarginPct);
-    const calc = calculatePricing(baked);
+    const priced = applyAskDiscount(baked);
+    const calc = calculatePricing(priced);
 
     setState((s) => {
       const nextPricing = {
@@ -689,6 +695,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         adminMarginPercent: baked.adminMarginPercent,
         companyMarginBaked: baked.companyMarginBaked,
         companyMarginBakedPercent: baked.companyMarginBakedPercent,
+        discount: priced.discount,
+        askDiscount: Boolean(priced.askDiscount),
+        autoDiscountAmount: Number(priced.autoDiscountAmount || 0) || 0,
+        extraDiscount: Number(priced.extraDiscount || 0) || 0,
+        extraDiscountPending: Boolean(priced.extraDiscountPending),
         taxes: calc.taxes,
         markup: calc.markup,
         total: calc.total,
@@ -717,6 +728,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         Number(prev.taxes || 0) === Number(nextPricing.taxes || 0) &&
         Number(prev.markup || 0) === Number(nextPricing.markup || 0) &&
         Number(prev.total || 0) === Number(nextPricing.total || 0) &&
+        Number(prev.discount || 0) === Number(nextPricing.discount || 0) &&
+        Boolean(prev.askDiscount) === Boolean(nextPricing.askDiscount) &&
+        Number(prev.extraDiscount || 0) === Number(nextPricing.extraDiscount || 0) &&
         Number(prev.party?.rooms || 0) === Number(nextPricing.party?.rooms || 0) &&
         Number(prev.party?.cabCount || 0) === Number(nextPricing.party?.cabCount || 0) &&
         Number(prev.party?.adults || 0) === Number(nextPricing.party?.adults || 0);
@@ -734,6 +748,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     flights,
     activities,
     state.pricing.discount,
+    state.pricing.askDiscount,
+    state.pricing.extraDiscount,
     state.pricing.gstEnabled,
     state.pricing.markupPercent,
     dayWiseHotels,
@@ -752,6 +768,10 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     }
     setSaving(true);
     try {
+      const pricingPayload = applyAskDiscount(state.pricing || {});
+      const extraDiscountReason = hasExtraDiscountRequest(pricingPayload)
+        ? `Extra discount requested beyond auto 5% (₹${Number(pricingPayload.extraDiscount || 0).toLocaleString('en-IN')}) — pending manager approval`
+        : '';
       const payload = {
         quoteNumber: isEditMode && editMeta.quoteNumber
           ? editMeta.quoteNumber
@@ -759,7 +779,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         leadId: state.leadId,
         packageId: isMongoPackageId(state.packageId) ? state.packageId : null,
         status,
-        pricing: state.pricing,
+        pricing: pricingPayload,
         selectedHotels: buildSelectedHotelsSnapshot(dayWiseHotels, {
           rooms: state.pricing?.party?.rooms || 1,
           mattresses: state.pricing?.party?.mattresses || 0,
@@ -772,8 +792,14 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         selectedActivities: activities.filter((a) => state.selectedActivityIds.includes(a._id)),
         package: buildPackageSnapshot(activePkg),
         customizations: state.customizations,
-        ...(mode === 'executive' && saveAs === 'submit' && needsResubmissionReason
-          ? { resubmissionReason: resubmissionReason.trim() }
+        ...(mode === 'executive' && saveAs === 'submit'
+          ? {
+              resubmissionReason: (
+                needsResubmissionReason
+                  ? resubmissionReason.trim()
+                  : extraDiscountReason
+              ) || extraDiscountReason,
+            }
           : {}),
       };
 
@@ -806,7 +832,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         : savedStatus === 'approved'
           ? 'First quotation created and approved. You can send it to the customer.'
           : savedStatus === 'pending_approval'
-            ? 'Quotation submitted for approval. It is now on the lead activity timeline.'
+            ? hasExtraDiscountRequest(pricingPayload)
+              ? 'Extra discount requested. Quotation saved and sent to manager — status Pending until approved.'
+              : 'Quotation submitted for approval. It is now on the lead activity timeline.'
             : savedStatus === 'sent'
               ? 'Quotation saved and sent. Check the lead activity timeline.'
               : 'Quotation saved as draft.';

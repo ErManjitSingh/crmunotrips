@@ -59,8 +59,23 @@ const {
 
 const LEAD_FILTER_KEYS = ['new', 'contacted', 'follow-up', 'hot', 'converted', 'lost', 'reactivated', 'all', 'package-shared'];
 
-async function resolveExecutiveQuotationStatus(leadId, requestedStatus, excludeQuotationId = null) {
+const {
+  hasExtraDiscountRequest,
+  normalizeAskDiscountPricing,
+  buildDiscountHistoryOnSubmit,
+  appendDiscountHistory,
+} = require('../services/quotationDiscountService');
+
+async function resolveExecutiveQuotationStatus(
+  leadId,
+  requestedStatus,
+  excludeQuotationId = null,
+  pricing = null
+) {
   if (requestedStatus === 'draft') return 'draft';
+
+  // Extra discount beyond auto 5% always needs manager/TL approval
+  if (hasExtraDiscountRequest(pricing || {})) return 'pending_approval';
 
   const filter = {
     lead: leadId,
@@ -75,16 +90,18 @@ function normalizeResubmissionReason(raw) {
   return String(raw || '').trim().slice(0, 1000);
 }
 
-function assertResubmissionReasonIfNeeded(status, reason) {
+function assertResubmissionReasonIfNeeded(status, reason, pricing = null) {
   if (status !== 'pending_approval') return '';
   const cleaned = normalizeResubmissionReason(reason);
-  if (!cleaned) {
-    throw new ApiError(
-      400,
-      'Please provide a reason for submitting this quotation again for approval'
-    );
+  if (cleaned) return cleaned;
+  if (hasExtraDiscountRequest(pricing || {})) {
+    const extra = Number(pricing.extraDiscount || 0);
+    return `Extra discount requested beyond auto 5% (₹${extra.toLocaleString('en-IN')}) — pending manager approval`;
   }
-  return cleaned;
+  throw new ApiError(
+    400,
+    'Please provide a reason for submitting this quotation again for approval'
+  );
 }
 
 function buildExecutiveLeadFilter(filter) {
@@ -532,11 +549,13 @@ const createQuotation = asyncHandler(async (req, res) => {
     assertQualifiedForQuotation(lead);
   }
   const teamLeader = await getTeamLeaderForExecutive(req.user._id);
+  const pricing = normalizeAskDiscountPricing(req.body.pricing || {});
   const requestedStatus = req.body.status === 'draft' ? 'draft' : 'pending_approval';
-  const status = await resolveExecutiveQuotationStatus(lead._id, requestedStatus);
+  const status = await resolveExecutiveQuotationStatus(lead._id, requestedStatus, null, pricing);
   const resubmissionReason = assertResubmissionReasonIfNeeded(
     status,
-    req.body.resubmissionReason || req.body.submissionReason
+    req.body.resubmissionReason || req.body.submissionReason,
+    pricing
   );
   const now = new Date();
 
@@ -556,12 +575,17 @@ const createQuotation = asyncHandler(async (req, res) => {
       user: req.user.name,
       notes: 'First quotation — auto-approved',
     });
-  } else if (status === 'pending_approval' && teamLeader) {
+  } else if (status === 'pending_approval') {
+    const extraNote = hasExtraDiscountRequest(pricing)
+      ? ` Extra discount ₹${Number(pricing.extraDiscount || 0).toLocaleString('en-IN')} pending manager approval.`
+      : '';
     timeline.push({
       type: 'pending_approval',
       date: now,
       user: req.user.name,
-      notes: `Submitted to ${teamLeader.name} (Team Leader) for approval. Reason: ${resubmissionReason}`,
+      notes: teamLeader
+        ? `Submitted to ${teamLeader.name} (Team Leader) for approval. Reason: ${resubmissionReason}.${extraNote}`
+        : `Submitted for approval. Reason: ${resubmissionReason}.${extraNote}`,
     });
   }
 
@@ -571,7 +595,7 @@ const createQuotation = asyncHandler(async (req, res) => {
     package: resolvePackageReference(req.body.packageId),
     packageSnapshot: req.body.package,
     status,
-    pricing: req.body.pricing,
+    pricing,
     selectedHotels: req.body.selectedHotels || [],
     selectedCabs: req.body.selectedCabs || [],
     selectedFlights: req.body.selectedFlights || [],
@@ -583,7 +607,15 @@ const createQuotation = asyncHandler(async (req, res) => {
     teamLeader: teamLeader?._id,
     timeline,
     createdBy: req.user._id,
+    discountHistory: [],
   });
+
+  if (requestedStatus !== 'draft') {
+    appendDiscountHistory(
+      quotation,
+      buildDiscountHistoryOnSubmit({ pricing, actor: req.user, quoteStatus: status })
+    );
+  }
 
   const {
     snapshotCosting1,
@@ -732,13 +764,32 @@ const updateQuotation = asyncHandler(async (req, res) => {
     });
   } else if (action === 'submit') {
     const teamLeader = quotation.teamLeader || (await getTeamLeaderForExecutive(req.user._id));
-    const status = await resolveExecutiveQuotationStatus(quotation.lead, 'pending_approval', quotation._id);
+    if (req.body.pricing) {
+      quotation.pricing = normalizeAskDiscountPricing(req.body.pricing);
+    } else if (quotation.pricing) {
+      quotation.pricing = normalizeAskDiscountPricing(quotation.pricing);
+    }
+    const status = await resolveExecutiveQuotationStatus(
+      quotation.lead,
+      'pending_approval',
+      quotation._id,
+      quotation.pricing
+    );
     const resubmissionReason = assertResubmissionReasonIfNeeded(
       status,
-      req.body.resubmissionReason || req.body.submissionReason || remarks
+      req.body.resubmissionReason || req.body.submissionReason || remarks,
+      quotation.pricing
     );
     quotation.status = status;
     if (resubmissionReason) quotation.resubmissionReason = resubmissionReason;
+    appendDiscountHistory(
+      quotation,
+      buildDiscountHistoryOnSubmit({
+        pricing: quotation.pricing,
+        actor: req.user,
+        quoteStatus: status,
+      })
+    );
     if (status === 'approved') {
       quotation.timeline.push({
         type: 'approved',
@@ -747,13 +798,16 @@ const updateQuotation = asyncHandler(async (req, res) => {
         notes: 'First quotation — auto-approved',
       });
     } else {
+      const extraNote = hasExtraDiscountRequest(quotation.pricing)
+        ? ` Extra discount ₹${Number(quotation.pricing.extraDiscount || 0).toLocaleString('en-IN')} pending manager approval.`
+        : '';
       quotation.timeline.push({
         type: 'pending_approval',
         date: now,
         user: req.user.name,
         notes: teamLeader
-          ? `Submitted to ${teamLeader.name || 'Team Leader'} for approval. Reason: ${resubmissionReason}`
-          : `Submitted for approval. Reason: ${resubmissionReason}`,
+          ? `Submitted to ${teamLeader.name || 'Team Leader'} for approval. Reason: ${resubmissionReason}.${extraNote}`
+          : `Submitted for approval. Reason: ${resubmissionReason}.${extraNote}`,
       });
     }
   } else if (action === 'edit') {
@@ -764,7 +818,9 @@ const updateQuotation = asyncHandler(async (req, res) => {
       quotation.package = resolvePackageReference(payload.packageId);
     }
     if (payload.package !== undefined) quotation.packageSnapshot = payload.package;
-    if (payload.pricing !== undefined) quotation.pricing = payload.pricing;
+    if (payload.pricing !== undefined) {
+      quotation.pricing = normalizeAskDiscountPricing(payload.pricing);
+    }
     if (payload.selectedHotels !== undefined) quotation.selectedHotels = payload.selectedHotels || [];
     if (payload.selectedCabs !== undefined) quotation.selectedCabs = payload.selectedCabs || [];
     if (payload.selectedFlights !== undefined) quotation.selectedFlights = payload.selectedFlights || [];
@@ -788,14 +844,27 @@ const updateQuotation = asyncHandler(async (req, res) => {
       const nextStatus = await resolveExecutiveQuotationStatus(
         quotation.lead,
         'pending_approval',
-        quotation._id
+        quotation._id,
+        quotation.pricing
       );
       const resubmissionReason = assertResubmissionReasonIfNeeded(
         nextStatus,
-        payload.resubmissionReason || payload.submissionReason || remarks
+        payload.resubmissionReason || payload.submissionReason || remarks,
+        quotation.pricing
       );
       quotation.status = nextStatus;
       if (resubmissionReason) quotation.resubmissionReason = resubmissionReason;
+      appendDiscountHistory(
+        quotation,
+        buildDiscountHistoryOnSubmit({
+          pricing: quotation.pricing,
+          actor: req.user,
+          quoteStatus: nextStatus,
+        })
+      );
+      const extraNote = hasExtraDiscountRequest(quotation.pricing)
+        ? ` Extra discount ₹${Number(quotation.pricing.extraDiscount || 0).toLocaleString('en-IN')} pending manager approval.`
+        : '';
       quotation.timeline.push({
         type: nextStatus === 'approved' ? 'approved' : 'pending_approval',
         date: now,
@@ -803,7 +872,7 @@ const updateQuotation = asyncHandler(async (req, res) => {
         notes:
           nextStatus === 'approved'
             ? 'Updated quotation — auto-approved'
-            : `Updated and re-submitted for approval (was ${prevStatus}). Reason: ${resubmissionReason}`,
+            : `Updated and re-submitted for approval (was ${prevStatus}). Reason: ${resubmissionReason}.${extraNote}`,
       });
     } else {
       quotation.status = 'draft';

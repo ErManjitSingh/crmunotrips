@@ -118,6 +118,39 @@ export function calculatePricing({
   };
 }
 
+/** When ASK for discount is on: auto 5% + optional extra ₹ (manager approval). */
+export const AUTO_ASK_DISCOUNT_PERCENT = 5;
+
+export function getAutoAskDiscountAmount(pricing = {}) {
+  if (!pricing?.askDiscount) return 0;
+  const before = calculatePricing({ ...pricing, discount: 0 });
+  return round2((Number(before.packageBeforeDisc) || 0) * (AUTO_ASK_DISCOUNT_PERCENT / 100));
+}
+
+export function applyAskDiscount(pricing = {}) {
+  if (!pricing?.askDiscount) {
+    return {
+      ...pricing,
+      autoDiscountAmount: 0,
+      extraDiscount: 0,
+      extraDiscountPending: false,
+    };
+  }
+  const autoAmount = getAutoAskDiscountAmount(pricing);
+  const extraAmount = Math.max(0, Number(pricing.extraDiscount) || 0);
+  return {
+    ...pricing,
+    autoDiscountAmount: autoAmount,
+    extraDiscount: extraAmount,
+    discount: round2(autoAmount + extraAmount),
+    extraDiscountPending: extraAmount > 0,
+  };
+}
+
+export function hasExtraDiscountRequest(pricing = {}) {
+  return Boolean(pricing?.askDiscount) && Math.max(0, Number(pricing.extraDiscount) || 0) > 0;
+}
+
 /**
  * @deprecated Residual/flights must NOT be folded into hotelCost.
  * Kept as identity so older call sites stay safe until removed.
@@ -220,6 +253,10 @@ export const defaultPricing = {
   companyMarginBaked: false,
   companyMarginBakedPercent: 0,
   discount: 0,
+  askDiscount: false,
+  autoDiscountAmount: 0,
+  extraDiscount: 0,
+  extraDiscountPending: false,
   total: 0,
   profitMargin: 0,
 };

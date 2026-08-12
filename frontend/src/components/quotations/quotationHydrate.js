@@ -1,7 +1,7 @@
 import { resolveQuotePackage } from './quotePdfHelpers';
 import { resolvePackageCabs } from '../../lib/packageCabMapper';
 import { seedDayWiseHotelsFromItinerary } from '../../lib/packageItineraryMapper';
-import { bakeCompanyMarginIntoLineCosts, calculatePricing } from './quotationUtils';
+import { applyAskDiscount, bakeCompanyMarginIntoLineCosts, calculatePricing } from './quotationUtils';
 
 /**
  * Rebuild day-wise hotel selections from a saved quotation snapshot.
@@ -139,6 +139,10 @@ export function hydrateWizardFromQuote(quote) {
     ...(quote.pricing || {}),
     markupPercent: Number(quote.pricing?.markupPercent ?? quote.costing1?.markupPercent ?? 0) || 0,
     gstEnabled: Boolean(quote.pricing?.gstEnabled),
+    askDiscount: Boolean(quote.pricing?.askDiscount),
+    autoDiscountAmount: Number(quote.pricing?.autoDiscountAmount || 0) || 0,
+    extraDiscount: Number(quote.pricing?.extraDiscount || 0) || 0,
+    extraDiscountPending: Boolean(quote.pricing?.extraDiscountPending),
   };
 
   if (!pricing.companyMarginBaked && adminPct > 0) {
@@ -147,6 +151,7 @@ export function hydrateWizardFromQuote(quote) {
     pricing = { ...pricing, adminMarginPercent: 0 };
   }
 
+  pricing = applyAskDiscount(pricing);
   pricing = { ...pricing, ...calculatePricing(pricing) };
 
   return {

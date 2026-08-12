@@ -1,13 +1,21 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Share2,
   Mail,
   MessageCircle,
   Printer,
   Save,
+  CalendarDays,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { calculatePricing, formatINR, getDisplayedCostBreakdown } from './quotationUtils';
+import {
+  applyAskDiscount,
+  calculatePricing,
+  formatINR,
+  getDisplayedCostBreakdown,
+  hasExtraDiscountRequest,
+} from './quotationUtils';
+import { formatQuoteDate } from './quotePdfHelpers';
 import { resolvePartyOccupancy } from './partyCosting';
 import ActionTile from '../ui/ActionTile';
 import { cn } from '../../lib/utils';
@@ -39,9 +47,15 @@ export default function PackageBuilderPriceSidebar({
   const youSave = Number(breakdown.youSave ?? pricing?.discount ?? 0) || 0;
   const party = pricing?.party || resolvePartyOccupancy(lead || {});
   const adults = Math.max(1, Number(party.adults) || 1);
+  const askDiscountApplied = Boolean(pricing?.askDiscount);
+  const extraDiscount = Math.max(0, Number(pricing?.extraDiscount) || 0);
+  const needsManagerApproval = hasExtraDiscountRequest(pricing);
+  const [showExtraDiscount, setShowExtraDiscount] = useState(
+    () => Boolean(pricing?.askDiscount) && (extraDiscount > 0 || Boolean(pricing?.extraDiscountPending))
+  );
 
   const applyPricing = (partial) => {
-    const next = { ...pricing, ...partial };
+    const next = applyAskDiscount({ ...pricing, ...partial });
     const calc = calculatePricing(next);
     onPricingChange?.({
       ...next,
@@ -54,6 +68,32 @@ export default function PackageBuilderPriceSidebar({
 
   const updateNumber = (key, val) => {
     applyPricing({ [key]: Number(val) || 0 });
+  };
+
+  const travelDateLabel = lead?.travelDate ? formatQuoteDate(lead.travelDate) : '';
+
+  const applyAutoAskDiscount = () => {
+    applyPricing({
+      askDiscount: true,
+      extraDiscount: 0,
+      extraDiscountPending: false,
+    });
+    setShowExtraDiscount(false);
+  };
+
+  const clearAskDiscount = () => {
+    applyPricing({
+      askDiscount: false,
+      discount: 0,
+      autoDiscountAmount: 0,
+      extraDiscount: 0,
+      extraDiscountPending: false,
+    });
+    setShowExtraDiscount(false);
+  };
+
+  const openExtraDiscount = () => {
+    setShowExtraDiscount(true);
   };
 
   const subtotalBeforeDiscount = Number(breakdown.subtotalBeforeDiscount || 0);
@@ -114,6 +154,17 @@ export default function PackageBuilderPriceSidebar({
             {nights != null ? `${nights} Nights` : '—'} / {daysCount || '—'} Days
             {pkg?.destination ? ` · ${pkg.destination}` : ''}
           </p>
+          {travelDateLabel ? (
+            <p className="text-[11px] text-violet-100 mt-1 inline-flex items-center gap-1.5">
+              <CalendarDays className="w-3.5 h-3.5 shrink-0 text-amber-200" />
+              <span>Travel date · {travelDateLabel}</span>
+            </p>
+          ) : (
+            <p className="text-[11px] text-violet-200/70 mt-1 inline-flex items-center gap-1.5">
+              <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+              <span>Travel date · Not set</span>
+            </p>
+          )}
           {lead && (
             <p className="text-[11px] text-violet-100/80 mt-0.5 truncate">
               For {lead.name} · {occupancyBits.join(' · ')}
@@ -168,16 +219,91 @@ export default function PackageBuilderPriceSidebar({
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-3 rounded-lg bg-emerald-50/80 border border-emerald-100 px-2 py-1.5">
-            <span className="text-xs font-semibold text-emerald-700">Discount</span>
-            <input
-              type="number"
-              min={0}
-              value={pricing?.discount || ''}
-              onChange={(e) => updateNumber('discount', e.target.value)}
-              className="w-[108px] h-8 rounded-lg border border-emerald-200 bg-white px-2 text-right text-sm font-semibold metric-tabular text-emerald-700 focus:ring-2 focus:ring-emerald-500/20"
-            />
-          </div>
+          {!askDiscountApplied ? (
+            <button
+              type="button"
+              onClick={applyAutoAskDiscount}
+              className="w-full flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 border text-left transition-colors bg-amber-50/90 border-amber-200 hover:bg-amber-100"
+            >
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-amber-900">
+                  ASK for discount
+                </p>
+                <p className="text-[10px] mt-0.5 text-amber-800/70">
+                  Click to apply 5% off
+                </p>
+              </div>
+              <span className="shrink-0 inline-flex text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-md bg-amber-400 text-amber-950">
+                5% OFF
+              </span>
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <div className="w-full flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 border bg-emerald-50 border-emerald-200">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">
+                    ASK for discount
+                  </p>
+                  <p className="text-[10px] mt-0.5 text-emerald-700/80">
+                    5% auto discount applied
+                    {extraDiscount > 0 ? ` + extra ${formatINR(extraDiscount)}` : ''}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="shrink-0 text-sm font-bold metric-tabular text-emerald-700">
+                    {formatINR(youSave)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearAskDiscount}
+                    className="text-[10px] font-semibold text-emerald-800/70 hover:text-emerald-950 underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+
+              {!showExtraDiscount ? (
+                <button
+                  type="button"
+                  onClick={openExtraDiscount}
+                  className="w-full rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-left hover:bg-amber-100 transition-colors"
+                >
+                  <p className="text-xs font-bold uppercase tracking-wide text-amber-900">
+                    Ask for more discount
+                  </p>
+                  <p className="text-[10px] mt-0.5 text-amber-800/70">
+                    Enter extra amount — file goes to manager for approval
+                  </p>
+                </button>
+              ) : (
+                <div className="rounded-lg border border-amber-200 bg-amber-50/90 px-2.5 py-2 space-y-2">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-amber-900">
+                      Extra discount (₹)
+                    </p>
+                    <p className="text-[10px] mt-0.5 text-amber-800/70">
+                      Beyond auto 5% — needs manager approval · status Pending
+                    </p>
+                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={pricing?.extraDiscount || ''}
+                    onChange={(e) => updateNumber('extraDiscount', e.target.value)}
+                    className="w-full h-9 rounded-lg border border-amber-200 bg-white px-2 text-right text-sm font-semibold metric-tabular text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                    placeholder="0"
+                  />
+                  {needsManagerApproval && (
+                    <p className="text-[10px] font-semibold text-amber-900 bg-amber-100/80 rounded-md px-2 py-1.5">
+                      Submit pe ye file manager ke paas Pending approval me chali jayegi. Package save + discount history ban jayegi.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="rounded-lg border border-violet-100 bg-violet-50/80 px-2 py-2 space-y-1.5">
             <label className="flex items-center justify-between gap-3 cursor-pointer">
@@ -241,7 +367,11 @@ export default function PackageBuilderPriceSidebar({
                 onClick={onSubmit}
                 className="w-full h-11 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold shadow-md shadow-violet-600/25 transition-colors disabled:opacity-60"
               >
-                {saving ? 'Saving…' : submitLabel || 'Review & Continue'}
+                {saving
+                  ? 'Saving…'
+                  : needsManagerApproval
+                    ? 'Submit for Manager Approval'
+                    : submitLabel || 'Review & Continue'}
               </button>
             )}
             <button

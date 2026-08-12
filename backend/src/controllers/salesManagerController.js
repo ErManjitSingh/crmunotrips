@@ -280,6 +280,12 @@ const updateQuotation = asyncHandler(async (req, res) => {
     quotation.status = 'approved';
     quotation.approvedBy = req.user._id;
     quotation.approvedAt = now;
+    const { resolvePendingDiscountEntries } = require('../services/quotationDiscountService');
+    resolvePendingDiscountEntries(quotation, {
+      status: 'approved',
+      actor: req.user,
+      note: 'Extra discount approved by Sales Manager',
+    });
     quotation.timeline.push({
       type: 'approved',
       date: now,
@@ -290,6 +296,12 @@ const updateQuotation = asyncHandler(async (req, res) => {
     });
   } else if (action === 'reject') {
     quotation.status = 'rejected';
+    const { resolvePendingDiscountEntries } = require('../services/quotationDiscountService');
+    resolvePendingDiscountEntries(quotation, {
+      status: 'rejected',
+      actor: req.user,
+      note: notes || 'Extra discount rejected by Sales Manager',
+    });
     quotation.timeline.push({
       type: 'rejected',
       date: now,
@@ -298,6 +310,12 @@ const updateQuotation = asyncHandler(async (req, res) => {
     });
   } else if (action === 'changes') {
     quotation.status = 'draft';
+    const { resolvePendingDiscountEntries } = require('../services/quotationDiscountService');
+    resolvePendingDiscountEntries(quotation, {
+      status: 'changes_requested',
+      actor: req.user,
+      note: notes || 'Changes requested on discount quotation',
+    });
     quotation.timeline.push({
       type: 'changes_requested',
       date: now,

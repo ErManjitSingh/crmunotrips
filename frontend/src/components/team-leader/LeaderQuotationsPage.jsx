@@ -181,6 +181,12 @@ export default function LeaderQuotationsPage() {
                       <div className="text-xs font-semibold tabular-nums text-amber-800">
                         {formatDiscountLabel(q.discountSummary || q.pricing)}
                       </div>
+                      {Number(q.pricing?.extraDiscount || 0) > 0 && (
+                        <p className="mt-0.5 text-[10px] font-semibold text-amber-700">
+                          Extra ₹{Number(q.pricing.extraDiscount).toLocaleString('en-IN')}
+                          {q.status === 'pending_approval' ? ' · Pending' : ''}
+                        </p>
+                      )}
                       {q.previousQuotation && (
                         <p className="mt-0.5 text-[10px] text-content-muted">
                           Prev: {formatDiscountLabel(q.previousQuotation)}

@@ -19,11 +19,15 @@ export const QUOTE_STATUSES = [
 
 export const QUOTE_TIMELINE_TYPES = {
   created: { label: 'Quote Created', color: 'bg-blue-500' },
+  pending_approval: { label: 'Pending Approval', color: 'bg-amber-500' },
   sent: { label: 'Quote Sent', color: 'bg-sky-500' },
   viewed: { label: 'Quote Viewed', color: 'bg-indigo-500' },
   negotiation: { label: 'In Negotiation', color: 'bg-amber-500' },
   approved: { label: 'Quote Approved', color: 'bg-emerald-500' },
   rejected: { label: 'Quote Rejected', color: 'bg-red-500' },
+  changes_requested: { label: 'Changes Requested', color: 'bg-orange-500' },
+  updated: { label: 'Quote Updated', color: 'bg-slate-500' },
+  discount_request: { label: 'Discount Requested', color: 'bg-amber-600' },
 };
 
 export const WIZARD_STEPS = [

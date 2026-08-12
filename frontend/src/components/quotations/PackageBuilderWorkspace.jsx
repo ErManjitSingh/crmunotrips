@@ -808,7 +808,7 @@ export default function PackageBuilderWorkspace({
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur">
               <div>
                 <p className="text-sm font-bold text-slate-900">Package Pricing</p>
-                <p className="text-[11px] text-slate-500">Adjust GST, markup & discount</p>
+                <p className="text-[11px] text-slate-500">Adjust GST, markup & ask for discount</p>
               </div>
               <button
                 type="button"

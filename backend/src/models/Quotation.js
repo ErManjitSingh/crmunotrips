@@ -43,10 +43,39 @@ const quotationSchema = new mongoose.Schema(
       companyMarginBaked: { type: Boolean, default: false },
       companyMarginBakedPercent: { type: Number, default: 0 },
       discount: { type: Number, default: 0 },
+      /** First ASK click — auto 5% off (no manager gate) */
+      askDiscount: { type: Boolean, default: false },
+      autoDiscountAmount: { type: Number, default: 0 },
+      /** Extra ₹ beyond auto 5% — requires manager approval */
+      extraDiscount: { type: Number, default: 0 },
+      extraDiscountPending: { type: Boolean, default: false },
       total: { type: Number, default: 0 },
       profitMargin: { type: Number, default: 0 },
       party: { type: mongoose.Schema.Types.Mixed },
     },
+    /** Audit trail for ASK / extra discount requests & approvals */
+    discountHistory: [
+      {
+        type: {
+          type: String,
+          enum: ['auto_5', 'extra_request', 'approved', 'rejected', 'changes_requested'],
+          required: true,
+        },
+        autoAmount: { type: Number, default: 0 },
+        extraAmount: { type: Number, default: 0 },
+        totalAmount: { type: Number, default: 0 },
+        percent: { type: Number, default: 0 },
+        status: {
+          type: String,
+          enum: ['applied', 'pending', 'approved', 'rejected', 'changes_requested'],
+          default: 'applied',
+        },
+        note: { type: String, default: '' },
+        by: { type: String, default: '' },
+        byUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        at: { type: Date, default: Date.now },
+      },
+    ],
     costing: {
       lineItems: [{ type: mongoose.Schema.Types.Mixed }],
       subtotal: { type: Number, default: 0 },

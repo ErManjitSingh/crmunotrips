@@ -10,6 +10,7 @@ import MobileQuotationDetail from './MobileQuotationDetail';
 import QuotationRevisionCompareBanner from './QuotationRevisionCompareBanner';
 import { Button } from '../ui/button';
 import { formatINR } from './quotationUtils';
+import { cn } from '../../lib/utils';
 
 function useIsDesktopLg() {
   const [isDesktop, setIsDesktop] = useState(() =>
@@ -305,6 +306,70 @@ export default function QuotationDetailDrawer({
               )}
               <QuotePricingPanel pricing={quote.pricing} readOnly />
             </section>
+
+            {(quote.pricing?.askDiscount || Number(quote.pricing?.extraDiscount || 0) > 0 || quote.discountHistory?.length > 0) && (
+              <section className="space-y-3">
+                <h4 className="text-xs font-medium uppercase tracking-wider text-content-muted">
+                  Discount history
+                </h4>
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 space-y-2">
+                  <div className="flex flex-wrap gap-2 text-[11px]">
+                    {quote.pricing?.askDiscount && (
+                      <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800">
+                        Auto 5%: {formatINR(quote.pricing?.autoDiscountAmount || 0)}
+                      </span>
+                    )}
+                    {Number(quote.pricing?.extraDiscount || 0) > 0 && (
+                      <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-900">
+                        Extra: {formatINR(quote.pricing.extraDiscount)}
+                        {quote.pricing?.extraDiscountPending || quote.status === 'pending_approval'
+                          ? ' · Pending'
+                          : ''}
+                      </span>
+                    )}
+                    <span className="inline-flex rounded-full bg-white px-2 py-0.5 font-semibold text-slate-700 border border-amber-200">
+                      Total discount: {formatINR(quote.pricing?.discount || 0)}
+                    </span>
+                  </div>
+                  {(quote.discountHistory || []).length > 0 ? (
+                    <ul className="space-y-2">
+                      {[...(quote.discountHistory || [])].slice().reverse().map((entry, idx) => (
+                        <li
+                          key={`${entry.type}-${entry.at || idx}-${idx}`}
+                          className="rounded-lg border border-amber-100 bg-white px-2.5 py-2 text-xs"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-semibold text-slate-800 capitalize">
+                              {String(entry.type || '').replace(/_/g, ' ')}
+                            </p>
+                            <span className={cn(
+                              'text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded',
+                              entry.status === 'pending' && 'bg-amber-100 text-amber-800',
+                              entry.status === 'approved' && 'bg-emerald-100 text-emerald-800',
+                              entry.status === 'rejected' && 'bg-rose-100 text-rose-800',
+                              entry.status === 'applied' && 'bg-sky-100 text-sky-800',
+                              entry.status === 'changes_requested' && 'bg-orange-100 text-orange-800',
+                              !entry.status && 'bg-slate-100 text-slate-600'
+                            )}>
+                              {(entry.status || 'applied').replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-slate-600">
+                            {entry.note || `${formatINR(entry.totalAmount || 0)}${entry.percent ? ` · ${entry.percent}%` : ''}`}
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-slate-400">
+                            {entry.by || '—'}
+                            {entry.at ? ` · ${formatDateTime(entry.at)}` : ''}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-[11px] text-amber-800/80">No discount history entries yet.</p>
+                  )}
+                </div>
+              </section>
+            )}
 
             {quote.timeline?.length > 0 && (
               <section>
