@@ -180,7 +180,7 @@ function HotelCard({
           ))}
         </div>
       )}
-      {(roomHint?.needsAction) && (
+      {(roomHint?.needsAction || onAddRoom) && (
         <div className="flex flex-wrap gap-2 px-3 pb-3 pt-0">
           {onOpenPicker && (
             <button

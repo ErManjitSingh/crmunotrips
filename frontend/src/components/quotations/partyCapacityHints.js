@@ -43,17 +43,26 @@ export function getCabCapacityHint(lead = {}, packageCab = null, party = null, e
  * Hotel room hint when party needs more than one room.
  */
 export function getHotelRoomHint(lead = {}, party = null, configuredRoomLines = 1) {
-  const occ = party?.rooms
-    ? {
-        adults: Number(party.adults) || 1,
-        children: Number(party.children) || 0,
-        travelers: Number(party.travelers) || 1,
-        rooms: Number(party.rooms) || 1,
-        mattresses: Number(party.mattresses) || 0,
-      }
-    : resolvePartyOccupancy(lead);
+  const fromLead = resolvePartyOccupancy(lead);
+  // Prefer requiredRooms (true need) — party.rooms may be clamped to 1 while pricing is on hold.
+  const requiredRooms = Math.max(
+    1,
+    Number(party?.requiredRooms ?? party?.rooms ?? fromLead.rooms) || 1
+  );
+  const occ = {
+    adults: Number(party?.adults ?? fromLead.adults) || 1,
+    children: Number(party?.children ?? fromLead.children) || 0,
+    travelers: Number(party?.travelers ?? fromLead.travelers) || 1,
+    rooms: requiredRooms,
+    mattresses: Number(party?.mattresses ?? fromLead.mattresses) || 0,
+  };
 
-  const requiredRooms = Math.max(1, Number(occ.rooms) || 1);
+  const mats =
+    Number(
+      party?.capacityPending
+        ? fromLead.mattresses
+        : party?.mattresses ?? fromLead.mattresses
+    ) || 0;
   const configured = Math.max(0, Number(configuredRoomLines) || 0);
   const needsAction = configured < requiredRooms;
 
@@ -62,8 +71,8 @@ export function getHotelRoomHint(lead = {}, party = null, configuredRoomLines = 
     const parts = [
       `${occ.adults} adult${occ.adults === 1 ? '' : 's'} need ${requiredRooms} room${requiredRooms === 1 ? '' : 's'}`,
     ];
-    if (occ.mattresses > 0) {
-      parts.push(`${occ.mattresses} extra mattress${occ.mattresses === 1 ? '' : 'es'}`);
+    if (mats > 0) {
+      parts.push(`${mats} extra mattress${mats === 1 ? '' : 'es'}`);
     }
     parts.push(
       configured > 0
@@ -77,7 +86,7 @@ export function getHotelRoomHint(lead = {}, party = null, configuredRoomLines = 
     needsAction,
     requiredRooms,
     configuredRooms: configured,
-    mattresses: occ.mattresses,
+    mattresses: mats,
     adults: occ.adults,
     message,
   };
