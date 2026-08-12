@@ -127,8 +127,9 @@ function hotelBadge(option, index) {
   return BADGE_STYLES[(index % 2) + 1];
 }
 
-function HotelStepHeader({ step, onClose, title }) {
-  const idx = HOTEL_STEPS.findIndex((s) => s.key === step);
+function HotelStepHeader({ step, onClose, title, lockHotel = false }) {
+  const steps = lockHotel ? HOTEL_STEPS.filter((s) => s.key !== 'hotel') : HOTEL_STEPS;
+  const idx = steps.findIndex((s) => s.key === step);
   return (
     <div className="shrink-0 border-b border-violet-100 bg-white">
       <div className="flex items-center justify-between gap-3 px-5 py-3.5">
@@ -147,8 +148,8 @@ function HotelStepHeader({ step, onClose, title }) {
       </div>
 
       <div className="px-5 pb-4">
-        <div className="grid grid-cols-3 gap-2">
-          {HOTEL_STEPS.map((s, i) => {
+        <div className={cn('grid gap-2', lockHotel ? 'grid-cols-2' : 'grid-cols-3')}>
+          {steps.map((s, i) => {
             const active = s.key === step;
             const done = i < idx;
             return (
@@ -644,10 +645,13 @@ export default function PackageResourcePickerDrawer({
   checkOut = '',
   roomCount = 1,
   adults = 2,
+  /** When set (e.g. Add room), skip hotel list and open rooms for this hotel. */
+  initialHotel = null,
+  lockHotel = false,
 }) {
   const [query, setQuery] = useState('');
   const [starFilter, setStarFilter] = useState(0); // 0 = all, 1-5 = star rating
-  const [step, setStep] = useState('hotel');
+  const [step, setStep] = useState(lockHotel || initialHotel ? 'room' : 'hotel');
   const [packageHotel, setPackageHotel] = useState(null);
   const [hotelDetail, setHotelDetail] = useState(null);
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -657,6 +661,7 @@ export default function PackageResourcePickerDrawer({
   const isCab = mode === 'cab';
   const stayNights = Math.max(1, Number(nights) || 1);
   const locationLabel = resolveCity(options[0], destination) || destination || 'Destination';
+  const hotelLocked = Boolean(lockHotel && initialHotel);
 
   useEffect(() => {
     if (!open) {
@@ -669,8 +674,12 @@ export default function PackageResourcePickerDrawer({
       setSelectedMealPlan(null);
       setLoadingDetail(false);
       setDetailError('');
+      return;
     }
-  }, [open]);
+    if (initialHotel && !isCab) {
+      setStep('room');
+    }
+  }, [open, isCab, initialHotel?.id, initialHotel?.hotelId, initialHotel?.name]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -778,6 +787,22 @@ export default function PackageResourcePickerDrawer({
       setLoadingDetail(false);
     }
   };
+
+  useEffect(() => {
+    if (!open || isCab || !initialHotel) return;
+    const key = initialHotel.id || initialHotel.hotelId || initialHotel.name;
+    if (!key) return;
+    selectHotelOption(initialHotel);
+    // Only when drawer opens / hotel identity changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    open,
+    isCab,
+    initialHotel?.id,
+    initialHotel?.hotelId,
+    initialHotel?.name,
+    initialHotel?.slug,
+  ]);
 
   const selectMealPlan = (plan, roomOverride = null) => {
     const room = roomOverride || selectedRoom;
@@ -939,11 +964,16 @@ export default function PackageResourcePickerDrawer({
         </>
       ) : (
         <>
-          <HotelStepHeader step={step} onClose={resetClose} title={title || 'Change Hotel'} />
+          <HotelStepHeader
+            step={step}
+            onClose={resetClose}
+            title={title || 'Change Hotel'}
+            lockHotel={hotelLocked}
+          />
 
           <div className="flex-1 min-h-0 overflow-y-auto bg-[#F7F6FB]">
             <AnimatePresence mode="wait">
-              {step === 'hotel' && (
+              {step === 'hotel' && !hotelLocked && (
                 <motion.div
                   key="hotel"
                   initial={{ opacity: 0, x: 24 }}
@@ -1032,13 +1062,15 @@ export default function PackageResourcePickerDrawer({
                   exit={{ opacity: 0, x: -16 }}
                   className="p-4 space-y-3"
                 >
-                  <button
-                    type="button"
-                    onClick={() => setStep('hotel')}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-600"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" /> Back to hotels
-                  </button>
+                  {!hotelLocked && (
+                    <button
+                      type="button"
+                      onClick={() => setStep('hotel')}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-600"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" /> Back to hotels
+                    </button>
+                  )}
 
                   {packageHotel && (
                     <div className="flex items-center gap-3 rounded-xl border border-violet-100 bg-violet-50 p-3">

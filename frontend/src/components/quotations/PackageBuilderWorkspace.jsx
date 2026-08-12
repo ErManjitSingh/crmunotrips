@@ -72,6 +72,94 @@ function parseDestinationStops(pkg, lead) {
   }));
 }
 
+/** Resolve current day hotel so Add room opens that hotel's room list directly. */
+function resolveDayHotelForAddRoom(day, dayWiseHotels = []) {
+  if (!day) return null;
+  const primary =
+    (dayWiseHotels || []).find(
+      (h) => Number(h.day) === Number(day.day) && Number(h.roomSlot || 1) === 1
+    ) || (dayWiseHotels || []).find((h) => Number(h.day) === Number(day.day));
+  const meta = day.hotelMeta || null;
+  const options = Array.isArray(day.hotelOptions) ? day.hotelOptions : [];
+
+  const id =
+    meta?.id ||
+    meta?.hotelId ||
+    primary?.hotel?.id ||
+    primary?.hotel?.hotelId ||
+    null;
+  const name = meta?.name || primary?.hotel?.name || day.hotel || '';
+  const slug = meta?.slug || primary?.hotel?.slug || '';
+  const city = meta?.city || primary?.hotel?.city || '';
+
+  const matched =
+    options.find((o) => id && String(o.id || o.hotelId) === String(id)) ||
+    options.find(
+      (o) =>
+        name && String(o.name || '').toLowerCase() === String(name).toLowerCase()
+    ) ||
+    options.find(
+      (o) => slug && String(o.slug || '').toLowerCase() === String(slug).toLowerCase()
+    );
+
+  if (matched) {
+    return {
+      ...matched,
+      room: matched.room || meta?.room || primary?.room || null,
+      tierName:
+        matched.tierName ||
+        meta?.tierName ||
+        meta?.room?.name ||
+        primary?.room?.name ||
+        matched.room?.name,
+      mealPlan: matched.mealPlan || meta?.mealPlan || primary?.mealPlan || null,
+      mealPlanKey:
+        matched.mealPlanKey ||
+        meta?.mealPlanKey ||
+        primary?.mealPlan?.key ||
+        null,
+      absolutePerNight:
+        Number(
+          matched.absolutePerNight ??
+            meta?.absolutePerNight ??
+            primary?.absolutePerNight ??
+            0
+        ) || matched.absolutePerNight,
+      includedRate:
+        Number(matched.includedRate ?? meta?.includedRate ?? primary?.includedRate ?? 0) ||
+        matched.includedRate,
+      priceDelta:
+        Number(matched.priceDelta ?? meta?.priceDelta ?? primary?.perNight ?? 0) || 0,
+    };
+  }
+
+  if (!name && !id) return null;
+
+  return {
+    id: id || name,
+    hotelId: id || name,
+    name,
+    image: meta?.image || meta?.images?.[0] || primary?.hotel?.image || '',
+    images: meta?.images || primary?.hotel?.images || [],
+    starRating: meta?.starRating || primary?.hotel?.starRating || primary?.hotel?.starCategory || 0,
+    location: meta?.location || primary?.hotel?.location || '',
+    city,
+    slug,
+    startingPrice:
+      Number(meta?.startingPrice ?? primary?.hotel?.startingPrice ?? primary?.absolutePerNight ?? 0) ||
+      0,
+    tierName: meta?.tierName || meta?.room?.name || primary?.room?.name || 'Deluxe',
+    meals: meta?.meals || primary?.mealPlan?.label || primary?.meals || '',
+    mealPlanKey: meta?.mealPlanKey || primary?.mealPlan?.key || null,
+    mealPlan: meta?.mealPlan || primary?.mealPlan || null,
+    room: meta?.room || primary?.room || null,
+    priceDelta: Number(meta?.priceDelta ?? primary?.perNight ?? 0) || 0,
+    absolutePerNight: Number(meta?.absolutePerNight ?? primary?.absolutePerNight ?? 0) || 0,
+    includedRate: Number(meta?.includedRate ?? primary?.includedRate ?? 0) || 0,
+    isDefault: true,
+  };
+}
+
 export function stripHtml(input = '') {
   return String(input || '')
     .replace(/<\s*br\s*\/?>/gi, '\n')
@@ -549,7 +637,13 @@ export default function PackageBuilderWorkspace({
   const openDayHotelPicker = (day, opts = {}) => setPicker({ type: 'hotel', day, ...opts });
   const openAddRoomPicker = (day) => {
     const lines = (dayWiseHotels || []).filter((h) => h.day === day.day).length;
-    openDayHotelPicker(day, { addRoom: true, roomSlot: lines + 1 });
+    const initialHotel = resolveDayHotelForAddRoom(day, dayWiseHotels);
+    openDayHotelPicker(day, {
+      addRoom: true,
+      roomSlot: lines + 1,
+      initialHotel,
+      lockHotel: Boolean(initialHotel),
+    });
   };
 
   const selectCab = (cab) => {
@@ -948,7 +1042,9 @@ export default function PackageBuilderWorkspace({
         }
         subtitle={
           picker?.addRoom
-            ? 'Pick room type & meal plan for an additional room on this night'
+            ? picker?.initialHotel?.name
+              ? `Rooms at ${picker.initialHotel.name} — pick type & meal plan`
+              : 'Pick room type & meal plan for an additional room on this night'
             : picker?.day
               ? 'Hotel → Room → Meal plan for this night'
               : 'Select hotel, then room & meal plan with prices'
@@ -960,6 +1056,8 @@ export default function PackageBuilderWorkspace({
         nights={picker?.day?.stayNights || nights || 1}
         destination={hotelDestination || pkg?.destination || ''}
         basePrice={hotelBasePrice}
+        initialHotel={picker?.addRoom ? picker.initialHotel || null : null}
+        lockHotel={Boolean(picker?.addRoom && picker?.lockHotel && picker?.initialHotel)}
         defaultMealPlanKey={
           normalizeMealPlanKey(lead?.mealPlan || lead?.mealPreference) ||
           picker?.day?.mealPlanKey ||
