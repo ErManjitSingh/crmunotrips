@@ -259,6 +259,7 @@ export default function PackageBuilderWorkspace({
   const [autoPrint, setAutoPrint] = useState(false);
   const [showEmailComposer, setShowEmailComposer] = useState(false);
   const [picker, setPicker] = useState(null);
+  const [extraCabs, setExtraCabs] = useState([]);
   const [mobilePricingOpen, setMobilePricingOpen] = useState(false);
   const typeCfg = getPackageTypeConfig(pkg?.type || pkg?.category || 'family');
   const mobileTotal = Number(pricing?.total || 0);
@@ -426,8 +427,7 @@ export default function PackageBuilderWorkspace({
     },
   ];
 
-  const handleReplaceHotel = (day, option) => {
-    if (!day || !option) return;
+  const buildHotelStayEntry = (day, option, roomSlot = 1) => {
     const roomName = option.room?.name || option.tierName || 'Standard Room';
     const packageMeal = mealPlanFromCode(
       option.mealPlan?.key ||
@@ -438,48 +438,80 @@ export default function PackageBuilderWorkspace({
         'map',
       'map'
     );
-    const mealLabel =
-      option.mealPlan?.label ||
-      option.meals ||
-      packageMeal.label;
+    const mealLabel = option.mealPlan?.label || option.meals || packageMeal.label;
     const mealKey =
       normalizeMealPlanKey(option.mealPlan?.key || option.mealPlanKey || mealLabel) ||
       packageMeal.key;
-    // Cost contribution is upgrade delta only (package baseCost already includes default stay).
     const perNight = Number(option.perNight ?? option.priceDelta ?? 0);
     const absolutePerNight = Number(
-      option.absolutePerNight ??
-        option.mealPlan?.absolutePrice ??
-        option.startingPrice ??
-        0
+      option.absolutePerNight ?? option.mealPlan?.absolutePrice ?? option.startingPrice ?? 0
     );
-    const stayNights = 1;
     const totalCost = Number(option.totalCost ?? perNight);
-    const existing = (dayWiseHotels || []).find((h) => h.day === day.day);
-    // Keep original package-included rate stable across upgrades (for total itemization).
+    const existingPrimary = (dayWiseHotels || []).find(
+      (h) => h.day === day.day && Number(h.roomSlot || 1) === 1
+    );
     const includedRate = Number(
-      existing?.includedRate ??
+      (roomSlot === 1 ? existingPrimary?.includedRate : 0) ??
         option.includedRate ??
-        existing?.hotel?.startingPrice ??
+        existingPrimary?.hotel?.startingPrice ??
         day?.hotelMeta?.startingPrice ??
         day?.hotelMeta?.includedRate ??
+        absolutePerNight ??
         0
     );
-    const hotelMeta = {
-      ...option,
-      tierName: roomName,
-      meals: mealLabel,
-      mealPlanKey: mealKey,
-      priceDelta: perNight,
-      absolutePerNight,
-      includedRate,
-      startingPrice: absolutePerNight || option.startingPrice || 0,
-      room: option.room || { name: roomName },
-      mealPlan: option.mealPlan || { key: mealKey, label: mealLabel },
+
+    return {
+      entry: {
+        day: day.day,
+        roomSlot,
+        hotel: {
+          id: option.id || option.hotelId,
+          name: option.name,
+          image: option.image || '',
+          images: option.images || [],
+          starCategory: option.starRating || 0,
+          starRating: option.starRating || 0,
+          location: option.location || '',
+          city: option.city || '',
+          slug: option.slug || '',
+          startingPrice: absolutePerNight || option.startingPrice || 0,
+        },
+        room: option.room || { name: roomName },
+        mealPlan: option.mealPlan || { key: mealKey, label: mealLabel },
+        perNight,
+        absolutePerNight,
+        includedRate,
+        totalCost,
+        nights: 1,
+        fromPackage: true,
+        hotelOptions: day.hotelOptions || [],
+      },
+      hotelMeta:
+        roomSlot === 1
+          ? {
+              ...option,
+              tierName: roomName,
+              meals: mealLabel,
+              mealPlanKey: mealKey,
+              priceDelta: perNight,
+              absolutePerNight,
+              includedRate,
+              startingPrice: absolutePerNight || option.startingPrice || 0,
+              room: option.room || { name: roomName },
+              mealPlan: option.mealPlan || { key: mealKey, label: mealLabel },
+            }
+          : null,
+      mealLabel,
     };
+  };
+
+  const handleReplaceHotel = (day, option) => {
+    if (!day || !option) return;
+    const { entry, hotelMeta, mealLabel } = buildHotelStayEntry(day, option, 1);
 
     const nextItinerary = itinerary.map((d) => {
       if (d.id !== day.id && d.day !== day.day) return d;
+      if (!hotelMeta) return d;
       return {
         ...d,
         hotel: option.name,
@@ -491,47 +523,51 @@ export default function PackageBuilderWorkspace({
     });
     onItineraryChange?.(nextItinerary);
 
+    const extraLines = (dayWiseHotels || []).filter(
+      (h) => h.day === day.day && Number(h.roomSlot || 1) > 1
+    );
     const nextHotels = (dayWiseHotels || []).filter((h) => h.day !== day.day);
-    nextHotels.push({
-      day: day.day,
-      hotel: {
-        id: option.id || option.hotelId,
-        name: option.name,
-        image: option.image || '',
-        images: option.images || [],
-        starCategory: option.starRating || 0,
-        starRating: option.starRating || 0,
-        location: option.location || '',
-        city: option.city || '',
-        slug: option.slug || '',
-        startingPrice: absolutePerNight || option.startingPrice || 0,
-      },
-      room: option.room || { name: roomName },
-      mealPlan: option.mealPlan || { key: mealKey, label: mealLabel },
-      perNight,
-      absolutePerNight,
-      includedRate,
-      totalCost,
-      nights: stayNights,
-      fromPackage: true,
-      hotelOptions: day.hotelOptions || [],
-    });
-    onDayWiseHotelsChange?.(nextHotels.sort((a, b) => a.day - b.day));
+    nextHotels.push(entry, ...extraLines);
+    onDayWiseHotelsChange?.(nextHotels.sort((a, b) => a.day - b.day || (a.roomSlot || 1) - (b.roomSlot || 1)));
     setPicker(null);
   };
 
-  const openCabPicker = () => setPicker({ type: 'cab' });
+  const handleAddHotelRoom = (day, option) => {
+    if (!day || !option) return;
+    const linesForDay = (dayWiseHotels || []).filter((h) => h.day === day.day);
+    const nextSlot = Math.max(1, linesForDay.length) + 1;
+    const { entry } = buildHotelStayEntry(day, option, nextSlot);
+    const nextHotels = [...(dayWiseHotels || []), entry].sort(
+      (a, b) => a.day - b.day || (a.roomSlot || 1) - (b.roomSlot || 1)
+    );
+    onDayWiseHotelsChange?.(nextHotels);
+    setPicker(null);
+  };
+
+  const openCabPicker = (mode = 'change') => setPicker({ type: 'cab', cabMode: mode });
   const openStayPicker = () => setPicker({ type: 'hotel' });
-  const openDayHotelPicker = (day) => setPicker({ type: 'hotel', day });
+  const openDayHotelPicker = (day, opts = {}) => setPicker({ type: 'hotel', day, ...opts });
+  const openAddRoomPicker = (day) => {
+    const lines = (dayWiseHotels || []).filter((h) => h.day === day.day).length;
+    openDayHotelPicker(day, { addRoom: true, roomSlot: lines + 1 });
+  };
 
   const selectCab = (cab) => {
-    onCabChange?.(cab);
+    if (picker?.cabMode === 'add') {
+      setExtraCabs((prev) => [...prev, cab]);
+    } else {
+      onCabChange?.(cab);
+    }
     setPicker(null);
   };
 
   const applyStayOption = (opt) => {
     if (picker?.type === 'hotel' && picker.day) {
-      handleReplaceHotel(picker.day, opt);
+      if (picker.addRoom) {
+        handleAddHotelRoom(picker.day, opt);
+      } else {
+        handleReplaceHotel(picker.day, opt);
+      }
       return;
     }
     if (!opt?._day) return;
@@ -733,7 +769,10 @@ export default function PackageBuilderWorkspace({
               packageCab={selectedUnoCab}
               onChange={onItineraryChange}
               onOpenHotelPicker={openDayHotelPicker}
-              onChangeCab={openCabPicker}
+              onAddHotelRoom={openAddRoomPicker}
+              onChangeCab={() => openCabPicker('change')}
+              onAddCab={() => openCabPicker('add')}
+              extraCabs={extraCabs}
               destination={hotelDestination || pkg?.destination || 'Destination'}
               embedded
               lead={lead}
@@ -884,8 +923,12 @@ export default function PackageBuilderWorkspace({
         open={picker?.type === 'cab'}
         onClose={() => setPicker(null)}
         mode="cab"
-        title="Choose your cab"
-        subtitle="Prices show +extra or −savings vs your current cab"
+        title={picker?.cabMode === 'add' ? 'Add another cab' : 'Choose your cab'}
+        subtitle={
+          picker?.cabMode === 'add'
+            ? 'Select an additional cab for extra travelers'
+            : 'Prices show +extra or −savings vs your current cab'
+        }
         options={packageCabs}
         selectedId={cabSelectedId}
         onSelect={selectCab}
@@ -897,14 +940,18 @@ export default function PackageBuilderWorkspace({
         onClose={() => setPicker(null)}
         mode="hotel"
         title={
-          picker?.day
-            ? `Change hotel · Day ${picker.day.day}`
-            : 'Choose your hotel'
+          picker?.addRoom
+            ? `Add room · Day ${picker.day.day} · Room ${picker.roomSlot || 2}`
+            : picker?.day
+              ? `Change hotel · Day ${picker.day.day}`
+              : 'Choose your hotel'
         }
         subtitle={
-          picker?.day
-            ? 'Hotel → Room → Meal plan for this night'
-            : 'Select hotel, then room & meal plan with prices'
+          picker?.addRoom
+            ? 'Pick room type & meal plan for an additional room on this night'
+            : picker?.day
+              ? 'Hotel → Room → Meal plan for this night'
+              : 'Select hotel, then room & meal plan with prices'
         }
         options={hotelDrawerOptions}
         selectedId={hotelSelectedId}

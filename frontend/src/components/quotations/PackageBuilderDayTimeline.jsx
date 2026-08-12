@@ -27,8 +27,13 @@ import {
 import { useState } from 'react';
 import { cn } from '../../lib/utils';
 import { defaultItineraryDay, formatINR } from './quotationUtils';
-import { resolvePartyOccupancy } from './partyCosting';
+import { resolvePartyOccupancy, resolveCabCount } from './partyCosting';
 import { resolveHotelNightDisplayRate } from '../../lib/mealPlanDefaults';
+import {
+  getCabCapacityHint,
+  getHotelRoomHint,
+  getRoomLinesForDay,
+} from './partyCapacityHints';
 
 const DAY_ACCENTS = [
   { card: 'border-teal-200 bg-gradient-to-br from-teal-50 to-white', badge: 'bg-teal-600 shadow-teal-600/30', strip: 'from-teal-500 to-cyan-400' },
@@ -60,14 +65,30 @@ function ChangeBtn({ onClick, label = 'Change' }) {
   );
 }
 
+function CapacityAlert({ message, tone = 'amber' }) {
+  if (!message) return null;
+  const styles =
+    tone === 'sky'
+      ? 'border-sky-200 bg-sky-50 text-sky-900'
+      : 'border-amber-200 bg-amber-50 text-amber-950';
+  return (
+    <p className={cn('rounded-lg border px-2.5 py-2 text-[11px] font-medium leading-snug', styles)}>
+      {message}
+    </p>
+  );
+}
+
 function HotelCard({
   meta,
   hotelSel,
   options = [],
   onOpenPicker,
+  onAddRoom,
   emptyLabel,
   rooms = 1,
   showTotal = true,
+  roomHint = null,
+  extraRoomLines = [],
 }) {
   const image = meta?.image || meta?.images?.[0];
   const stars = Math.min(5, Math.round(Number(meta?.starRating || 0)));
@@ -85,6 +106,11 @@ function HotelCard({
 
   return (
     <div className="rounded-xl border border-violet-200 bg-violet-50/70 overflow-hidden shadow-sm shadow-violet-100/50">
+      {roomHint?.needsAction && (
+        <div className="px-3 pt-3">
+          <CapacityAlert message={roomHint.message} />
+        </div>
+      )}
       <div className="flex gap-3 p-3">
         <div className="w-16 h-16 rounded-xl bg-violet-200/70 flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-violet-100">
           {image ? (
@@ -130,16 +156,65 @@ function HotelCard({
                   Included in package
                 </p>
               )}
-              {hasOptions && onOpenPicker && <ChangeBtn onClick={onOpenPicker} />}
+              {hasOptions && onOpenPicker && <ChangeBtn onClick={onOpenPicker} label="Change room" />}
             </div>
           </div>
         </div>
       </div>
+      {extraRoomLines.length > 0 && (
+        <div className="border-t border-violet-100 px-3 py-2 space-y-1.5">
+          {extraRoomLines.map((line, idx) => (
+            <div
+              key={line.roomSlot || idx + 2}
+              className="flex items-center justify-between gap-2 rounded-lg bg-white/80 border border-violet-100 px-2.5 py-2 text-[11px]"
+            >
+              <span className="font-semibold text-violet-800">
+                Room {line.roomSlot || idx + 2}: {line.room?.name || line.hotel?.name || 'Added room'}
+                {line.mealPlan?.label ? ` · ${line.mealPlan.label}` : ''}
+              </span>
+              {line.absolutePerNight > 0 && (
+                <span className="font-bold text-violet-700">{formatINR(line.absolutePerNight)}/night</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {(roomHint?.needsAction) && (
+        <div className="flex flex-wrap gap-2 px-3 pb-3 pt-0">
+          {onOpenPicker && (
+            <button
+              type="button"
+              onClick={onOpenPicker}
+              className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-violet-300 bg-white text-[11px] font-bold text-violet-700 hover:bg-violet-50"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Change hotel / room
+            </button>
+          )}
+          {onAddRoom && (
+            <button
+              type="button"
+              onClick={onAddRoom}
+              className="inline-flex items-center gap-1 h-8 px-3 rounded-lg bg-violet-600 text-[11px] font-bold text-white hover:bg-violet-500 shadow-sm"
+            >
+              <Plus className="w-3 h-3" />
+              Add room
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function CabCard({ packageCab, onChangeCab, cabCount = 1 }) {
+function CabCard({
+  packageCab,
+  onChangeCab,
+  onAddCab,
+  cabCount = 1,
+  cabHint = null,
+  extraCabs = [],
+}) {
   if (!packageCab) return null;
   const upgradeFare = Number(
     packageCab.upgradePrice ?? packageCab.priceDelta ?? packageCab.cost ?? 0
@@ -151,7 +226,13 @@ function CabCard({ packageCab, onChangeCab, cabCount = 1 }) {
   const rawTotal = unitFare * Math.max(1, Number(cabCount) || 1);
   const displayTotal = Math.round(rawTotal * 100) / 100;
   return (
-    <div className="flex gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3 shadow-sm shadow-sky-100/60">
+    <div className="rounded-xl border border-sky-200 bg-sky-50 overflow-hidden shadow-sm shadow-sky-100/60">
+      {cabHint?.needsAction && (
+        <div className="px-3 pt-3">
+          <CapacityAlert message={cabHint.message} tone="sky" />
+        </div>
+      )}
+      <div className="flex gap-3 p-3">
       <div className="w-16 h-16 rounded-xl bg-white border border-sky-200 overflow-hidden shrink-0 flex items-center justify-center">
         {packageCab.featuredImage ? (
           <img src={packageCab.featuredImage} alt="" className="w-full h-full object-cover" />
@@ -178,9 +259,42 @@ function CabCard({ packageCab, onChangeCab, cabCount = 1 }) {
           {isDefault && displayTotal > 0 && (
             <p className="text-[10px] font-semibold text-sky-600">Included in package</p>
           )}
-          {onChangeCab && <ChangeBtn onClick={onChangeCab} />}
+          <div className="flex flex-col gap-1.5">
+            {onChangeCab && <ChangeBtn onClick={onChangeCab} label="Change cab" />}
+            {cabHint?.needsAction && onAddCab && (
+              <button
+                type="button"
+                onClick={onAddCab}
+                className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg bg-sky-600 text-[10px] font-bold text-white hover:bg-sky-500 shrink-0"
+              >
+                <Plus className="w-3 h-3" />
+                Add cab
+              </button>
+            )}
+          </div>
         </div>
       </div>
+      </div>
+      {extraCabs.length > 0 && (
+        <div className="border-t border-sky-100 px-3 py-2 space-y-1.5">
+          {extraCabs.map((cab, idx) => (
+            <div
+              key={cab.id || cab.slug || idx}
+              className="flex items-center justify-between gap-2 rounded-lg bg-white/80 border border-sky-100 px-2.5 py-2 text-[11px]"
+            >
+              <span className="font-semibold text-sky-800">
+                Cab {idx + 2}: {cab.name}
+                {cab.seatingCapacity ? ` · ${cab.seatingCapacity} seats` : ''}
+              </span>
+              {(cab.absoluteFare ?? cab.totalAmount ?? cab.cost) > 0 && (
+                <span className="font-bold text-sky-700">
+                  {formatINR(Number(cab.absoluteFare ?? cab.totalAmount ?? cab.cost ?? 0))}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -233,13 +347,19 @@ function SortableDayCard({
   onRemove,
   onDuplicate,
   onOpenHotelPicker,
+  onAddHotelRoom,
   onChangeCab,
+  onAddCab,
+  extraCabs = [],
   renderHotelActions,
   canRemove,
   isLastDay,
   colorIndex = 0,
   rooms = 1,
   cabCount = 1,
+  party = null,
+  lead = null,
+  dayWiseHotels = [],
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: day.id });
   const style = {
@@ -279,6 +399,12 @@ function SortableDayCard({
         : null);
 
   const hotelOptions = day.hotelOptions || hotelSel?.hotelOptions || [];
+  const dayNum = day.day || 1;
+  const roomLines = getRoomLinesForDay(dayWiseHotels, dayNum);
+  const primaryLine = roomLines[0] || hotelSel;
+  const extraRoomLines = roomLines.slice(1);
+  const roomHint = getHotelRoomHint(lead, party, roomLines.length);
+  const cabHint = day.day === 1 ? getCabCapacityHint(lead, packageCab, party) : null;
 
   const facts = [
     { icon: Car, label: 'Travel & Transfer', value: packageCab?.name || day.transport || 'Private Transfer', tone: 'border-sky-200 bg-sky-50 text-sky-700' },
@@ -403,13 +529,16 @@ function SortableDayCard({
         <div className="space-y-3 mb-3">
           <HotelCard
             meta={hotelMeta}
-            hotelSel={hotelSel}
+            hotelSel={primaryLine || hotelSel}
             options={hotelOptions}
             onOpenPicker={() => onOpenHotelPicker?.(day)}
+            onAddRoom={!isLastDay ? () => onAddHotelRoom?.(day) : undefined}
             emptyLabel={isLastDay ? 'Departure day · no overnight stay' : 'Select hotel for this night'}
-            rooms={rooms}
+            rooms={extraRoomLines.length > 0 ? 1 : rooms}
+            roomHint={!isLastDay ? roomHint : null}
+            extraRoomLines={extraRoomLines}
             showTotal={Boolean(
-              !isLastDay && (hotelSel?.hotel || hotelMeta?.name || day.hotel)
+              !isLastDay && (primaryLine?.hotel || hotelSel?.hotel || hotelMeta?.name || day.hotel)
             )}
           />
           {renderHotelActions?.(day)}
@@ -417,7 +546,10 @@ function SortableDayCard({
             <CabCard
               packageCab={packageCab}
               onChangeCab={onChangeCab}
+              onAddCab={onAddCab}
               cabCount={cabCount}
+              cabHint={cabHint}
+              extraCabs={extraCabs}
             />
           )}
         </div>
@@ -588,7 +720,10 @@ export default function PackageBuilderDayTimeline({
   packageCab = null,
   onChange,
   onOpenHotelPicker,
+  onAddHotelRoom,
   onChangeCab,
+  onAddCab,
+  extraCabs = [],
   renderHotelActions,
   destination = 'Destination',
   embedded = false,
@@ -598,7 +733,11 @@ export default function PackageBuilderDayTimeline({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const occ = party || resolvePartyOccupancy(lead || {});
   const rooms = Math.max(1, Number(occ.rooms) || 1);
-  const cabCount = Math.max(1, Number(occ.cabCount) || 1);
+  const cabCount = Math.max(
+    1,
+    Number(party?.cabCount) ||
+      resolveCabCount(occ.travelers, packageCab?.seatingCapacity || 4)
+  );
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -658,7 +797,8 @@ export default function PackageBuilderDayTimeline({
           <div className="space-y-4">
             {itinerary.map((day, idx) => {
               const dayNum = day.day || idx + 1;
-              let hotelSel = dayWiseHotels.find((h) => h.day === dayNum);
+              const roomLines = getRoomLinesForDay(dayWiseHotels, dayNum);
+              let hotelSel = roomLines[0];
               if (!hotelSel && (day.hotelMeta?.name || day.hotel)) {
                 hotelSel = buildHotelSelFromDay(day, dayNum);
               }
@@ -672,13 +812,19 @@ export default function PackageBuilderDayTimeline({
                   onRemove={() => removeDay(idx)}
                   onDuplicate={() => duplicateDay(idx)}
                   onOpenHotelPicker={onOpenHotelPicker}
+                  onAddHotelRoom={onAddHotelRoom}
                   onChangeCab={onChangeCab}
+                  onAddCab={onAddCab}
+                  extraCabs={extraCabs}
                   renderHotelActions={renderHotelActions}
                   canRemove={itinerary.length > 1}
                   isLastDay={idx === itinerary.length - 1}
                   colorIndex={idx}
                   rooms={rooms}
                   cabCount={cabCount}
+                  party={party}
+                  lead={lead}
+                  dayWiseHotels={dayWiseHotels}
                 />
               );
             })}

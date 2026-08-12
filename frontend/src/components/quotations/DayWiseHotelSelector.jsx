@@ -50,15 +50,23 @@ export function sumDayWiseHotelIncluded(selections = []) {
 
 /** Sum hotel nightly rates (same as day cards, no admin margin). */
 export function sumDayWiseHotelRackTotal(selections = [], rooms = 1) {
+  const list = Array.isArray(selections) ? selections : [];
+  const linesByDay = list.reduce((acc, item) => {
+    const d = Number(item.day) || 1;
+    acc[d] = (acc[d] || 0) + 1;
+    return acc;
+  }, {});
+
   return round2(
-    (Array.isArray(selections) ? selections : []).reduce((sum, item) => {
+    list.reduce((sum, item) => {
       const nights = Math.max(1, Number(item.nights) || 1);
       const upgrade = Number(item.perNight ?? item.totalCost ?? item.priceDelta ?? 0);
       const isIncluded = upgrade <= 0;
       const rate = resolveHotelNightDisplayRate(item, null, 'map');
-      const nightTotal = isIncluded
-        ? rate * nights
-        : rate * nights * Math.max(1, Number(rooms) || 1);
+      const dayLines = linesByDay[Number(item.day) || 1] || 1;
+      // Multiple room lines per day = each line is one room; else scale single line by party rooms.
+      const roomMultiplier = dayLines > 1 ? 1 : Math.max(1, Number(rooms) || 1);
+      const nightTotal = rate * nights * roomMultiplier;
       return sum + nightTotal;
     }, 0)
   );

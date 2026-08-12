@@ -112,9 +112,18 @@ export function buildSelectedHotelsSnapshot(dayWiseHotels, { rooms = 1, mattress
       const matNight =
         Number(entry.extraBedPerNight || entry.room?.extraBedRate || 0) ||
         (absolute > 0 ? absolute * 0.35 : 0);
-      const total = Math.round((unitTotal * roomCount + matNight * nights * matCount) * 100) / 100;
+      const lineRooms =
+        Number(entry.roomSlot) > 1
+          ? 1
+          : list.filter((x) => x.day === entry.day).length > 1
+            ? 1
+            : roomCount;
+      const matCountForLine = Number(entry.roomSlot) > 1 ? 0 : matCount;
+      const total =
+        Math.round((unitTotal * lineRooms + matNight * nights * matCountForLine) * 100) / 100;
       return {
         day: entry.day,
+        roomSlot: entry.roomSlot || 1,
         _id: entry.hotel.id,
         name: entry.hotel.name,
         location: entry.hotel.location,
@@ -128,9 +137,9 @@ export function buildSelectedHotelsSnapshot(dayWiseHotels, { rooms = 1, mattress
         mealPlan: entry.mealPlan,
         meals: entry.mealPlan?.label || entry.mealPlan?.key || '',
         nights,
-        rooms: roomCount,
+        rooms: lineRooms,
         mattresses: matCount,
-        price: Math.round(unitPerNight * roomCount * 100) / 100,
+        price: Math.round(unitPerNight * lineRooms * 100) / 100,
         total,
         absolutePerNight: absolute,
         priceDelta: unitPerNight,
