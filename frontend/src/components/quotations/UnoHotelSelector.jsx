@@ -307,7 +307,7 @@ export default function UnoHotelSelector({
   preferredMealPlanKey = 'map',
   checkIn = '',
   checkOut = '',
-  rooms = 1,
+  roomCount = 1,
   adults = 2,
 }) {
   const [subStep, setSubStep] = useState('hotel');
@@ -361,7 +361,7 @@ export default function UnoHotelSelector({
           slug: hotel.slug,
           ...(checkIn ? { check_in: checkIn } : {}),
           ...(checkOut ? { check_out: checkOut } : {}),
-          ...(rooms ? { rooms } : {}),
+          ...(roomCount ? { rooms: roomCount } : {}),
           ...(adults ? { adults } : {}),
         },
         skipErrorToast: true,

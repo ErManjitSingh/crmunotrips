@@ -601,7 +601,7 @@ export default function PackageResourcePickerDrawer({
   defaultMealPlanKey = 'map',
   checkIn = '',
   checkOut = '',
-  rooms = 1,
+  roomCount = 1,
   adults = 2,
 }) {
   const [query, setQuery] = useState('');
@@ -706,7 +706,7 @@ export default function PackageResourcePickerDrawer({
       const detail = await fetchHotelDetailForOption(option, destination, {
         checkIn,
         checkOut,
-        rooms,
+        rooms: roomCount,
         adults,
       });
       setHotelDetail(detail);

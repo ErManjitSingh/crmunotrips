@@ -934,7 +934,7 @@ export default function PackageBuilderWorkspace({
               )
             : ''
         }
-        rooms={lead?.numberOfRooms || 1}
+        roomCount={lead?.numberOfRooms || 1}
         adults={lead?.adults || 2}
       />
     </div>
