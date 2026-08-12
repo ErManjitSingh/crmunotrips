@@ -405,7 +405,8 @@ function SortableDayCard({
   const primaryLine = roomLines[0] || hotelSel;
   const extraRoomLines = roomLines.slice(1);
   const roomHint = getHotelRoomHint(lead, party, roomLines.length);
-  const cabHint = day.day === 1 ? getCabCapacityHint(lead, packageCab, party) : null;
+  const cabHint =
+    day.day === 1 ? getCabCapacityHint(lead, packageCab, party, extraCabs) : null;
 
   const facts = [
     { icon: Car, label: 'Travel & Transfer', value: packageCab?.name || day.transport || 'Private Transfer', tone: 'border-sky-200 bg-sky-50 text-sky-700' },

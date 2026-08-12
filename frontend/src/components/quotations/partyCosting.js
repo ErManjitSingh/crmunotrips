@@ -134,6 +134,7 @@ export function applyPartyCosting({
 /**
  * Sidebar hotel = Σ day-wise website hotel rates (+ mattress). Cab line unchanged.
  * Admin margin is baked into sidebar lines only (not day cards).
+ * Party-scaled hotel/cab totals apply only after rooms + cab capacity are configured.
  */
 export function buildWebsiteAlignedQuoteCosts({
   packageAnchor = 0,
@@ -145,21 +146,58 @@ export function buildWebsiteAlignedQuoteCosts({
   cabSeats = 4,
   flightCost = 0,
   activityCost = 0,
+  extraCabs = [],
+  capacityReady = null,
+  roomsReady = null,
+  cabReady = null,
+  capacityMessage = '',
+  requiredRooms = null,
+  requiredCabs = null,
 } = {}) {
   void packageAnchor;
   const occ = resolvePartyOccupancy(lead);
+  const seats = Math.max(1, Number(selectedCab?.seatingCapacity) || Number(cabSeats) || 4);
   const cabUpgrade = resolveCabUpgradeCost(selectedCab, packageCabs);
   const cabUnitFare = resolveCabAbsoluteFare(selectedCab, packageCabs);
-  const cabCount = resolveCabCount(occ.travelers, cabSeats);
+  const neededCabs = resolveCabCount(occ.travelers, seats);
   const coupleUnits = resolveCoupleUnits(lead);
 
-  const hotelRackSum = sumDayWiseHotelRackTotal(dayWiseHotels, occ.rooms);
-  const mattressCost = estimateMattressCost(dayWiseHotels, occ.mattresses);
+  const roomsOk = roomsReady == null ? true : Boolean(roomsReady);
+  const cabOk = cabReady == null ? true : Boolean(cabReady);
+  const ready = capacityReady == null ? roomsOk && cabOk : Boolean(capacityReady);
+
+  // Hold party multipliers until SE configures rooms / cab for this party size.
+  const effectiveRooms = roomsOk ? occ.rooms : 1;
+  const effectiveMattresses = roomsOk ? occ.mattresses : 0;
+
+  const hotelRackSum = sumDayWiseHotelRackTotal(dayWiseHotels, effectiveRooms);
+  const mattressCost = estimateMattressCost(dayWiseHotels, effectiveMattresses);
   const hotelLineCost = round2(hotelRackSum + mattressCost);
 
   const isDefaultCab = cabUpgrade <= 0;
-  const cabUnits = isDefaultCab ? coupleUnits : cabCount;
-  const cabLineCost = cabUnitFare > 0 ? round2(cabUnitFare * cabUnits) : 0;
+  let cabLineCost = 0;
+  let effectiveCabCount = 1;
+
+  if (cabOk) {
+    const extraCount = Array.isArray(extraCabs) ? extraCabs.length : 0;
+    effectiveCabCount = Math.max(occ.travelers <= seats ? 1 : neededCabs, 1 + extraCount);
+    const primaryUnits = isDefaultCab
+      ? Math.min(coupleUnits, Math.max(1, effectiveCabCount - extraCount))
+      : Math.max(1, effectiveCabCount - extraCount);
+    const primaryCost = cabUnitFare > 0 ? round2(cabUnitFare * primaryUnits) : 0;
+    const extraCost = round2(
+      (Array.isArray(extraCabs) ? extraCabs : []).reduce((sum, cab) => {
+        const fare =
+          Number(cab?.absoluteFare ?? cab?.totalAmount ?? cab?.cost ?? 0) || 0;
+        return sum + fare;
+      }, 0)
+    );
+    cabLineCost = round2(primaryCost + extraCost);
+  } else {
+    // Package base cab only — do not scale by adults yet.
+    effectiveCabCount = 1;
+    cabLineCost = cabUnitFare > 0 ? round2(cabUnitFare) : 0;
+  }
 
   const party = applyPartyCosting({
     unitBaseCost: 0,
@@ -169,7 +207,7 @@ export function buildWebsiteAlignedQuoteCosts({
     activityCost,
     lead,
     pkg,
-    cabSeats,
+    cabSeats: seats,
     dayWiseHotels,
   });
 
@@ -178,7 +216,22 @@ export function buildWebsiteAlignedQuoteCosts({
     cabCost: cabLineCost,
     flightCost: party.flightCost,
     activityCost: party.activityCost,
-    party: { ...party, hotelRackSum, mattressCost },
+    party: {
+      ...party,
+      rooms: roomsOk ? party.rooms : 1,
+      mattresses: roomsOk ? party.mattresses : 0,
+      cabCount: effectiveCabCount,
+      cabSeats: seats,
+      hotelRackSum,
+      mattressCost,
+      capacityPending: !ready,
+      capacityReady: ready,
+      roomsReady: roomsOk,
+      cabReady: cabOk,
+      capacityMessage: capacityMessage || '',
+      requiredRooms: requiredRooms != null ? requiredRooms : occ.rooms,
+      requiredCabs: requiredCabs != null ? requiredCabs : neededCabs,
+    },
     packageAnchor: Number(packageAnchor) || 0,
   };
 }

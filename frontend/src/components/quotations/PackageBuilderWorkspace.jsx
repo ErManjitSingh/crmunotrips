@@ -324,6 +324,8 @@ export default function PackageBuilderWorkspace({
   onDayWiseHotelsChange,
   selectedUnoCab,
   onCabChange,
+  extraCabs = [],
+  onExtraCabsChange,
   packageCabs = [],
   pricing,
   onPricingChange,
@@ -347,7 +349,6 @@ export default function PackageBuilderWorkspace({
   const [autoPrint, setAutoPrint] = useState(false);
   const [showEmailComposer, setShowEmailComposer] = useState(false);
   const [picker, setPicker] = useState(null);
-  const [extraCabs, setExtraCabs] = useState([]);
   const [mobilePricingOpen, setMobilePricingOpen] = useState(false);
   const typeCfg = getPackageTypeConfig(pkg?.type || pkg?.category || 'family');
   const mobileTotal = Number(pricing?.total || 0);
@@ -648,7 +649,7 @@ export default function PackageBuilderWorkspace({
 
   const selectCab = (cab) => {
     if (picker?.cabMode === 'add') {
-      setExtraCabs((prev) => [...prev, cab]);
+      onExtraCabsChange?.([...(extraCabs || []), cab]);
     } else {
       onCabChange?.(cab);
     }

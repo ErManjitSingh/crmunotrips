@@ -6,6 +6,7 @@ import {
   Printer,
   Save,
   CalendarDays,
+  TriangleAlert,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
@@ -47,6 +48,10 @@ export default function PackageBuilderPriceSidebar({
   const youSave = Number(breakdown.youSave ?? pricing?.discount ?? 0) || 0;
   const party = pricing?.party || resolvePartyOccupancy(lead || {});
   const adults = Math.max(1, Number(party.adults) || 1);
+  const capacityPending = Boolean(party.capacityPending);
+  const capacityMessage =
+    party.capacityMessage ||
+    'Add rooms and set cab for this party size to unlock full pricing.';
   const askDiscountApplied = Boolean(pricing?.askDiscount);
   const extraDiscount = Math.max(0, Number(pricing?.extraDiscount) || 0);
   const needsManagerApproval = hasExtraDiscountRequest(pricing);
@@ -173,13 +178,44 @@ export default function PackageBuilderPriceSidebar({
         </div>
 
         <div className="px-5 py-4 space-y-2.5 bg-white/60">
+          {capacityPending && (
+            <div
+              role="alert"
+              className="flex items-start gap-2.5 rounded-lg border-2 border-red-500 bg-red-50 px-3 py-2.5 text-red-900 shadow-sm shadow-red-200/60"
+            >
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-600" aria-hidden />
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-red-700">
+                  Pricing on hold
+                </p>
+                <p className="mt-0.5 text-[12px] font-semibold leading-snug text-red-900">
+                  {capacityMessage}
+                </p>
+                <p className="mt-1 text-[10px] font-medium text-red-700/80">
+                  Showing package base (1 room · 1 cab) until capacity is set.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-lg border border-violet-100 bg-violet-50/70 px-2.5 py-2 text-[10px] text-slate-600">
             <p className="font-semibold text-violet-800">Party costing</p>
             <p className="mt-0.5">
-              {party.rooms || 1} room
-              {party.mattresses ? ` + ${party.mattresses} mattress` : ''} ·{' '}
-              {party.cabCount || 1} cab
-              {party.cabSeats ? ` (${party.cabSeats}-seater)` : ''}
+              {capacityPending ? (
+                <>
+                  Required: {party.requiredRooms || party.rooms || 1} room
+                  {(party.requiredRooms || party.rooms || 1) === 1 ? '' : 's'}
+                  {party.requiredCabs > 1 ? ` · ${party.requiredCabs} cabs` : ''}
+                  {' · '}currently locked to package base
+                </>
+              ) : (
+                <>
+                  {party.rooms || 1} room
+                  {party.mattresses ? ` + ${party.mattresses} mattress` : ''} ·{' '}
+                  {party.cabCount || 1} cab
+                  {party.cabSeats ? ` (${party.cabSeats}-seater)` : ''}
+                </>
+              )}
             </p>
           </div>
 

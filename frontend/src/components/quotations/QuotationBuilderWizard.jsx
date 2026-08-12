@@ -20,6 +20,7 @@ import { parsePackageNights } from './UnoHotelSelector';
 import { WIZARD_STEPS } from './constants';
 import { applyAskDiscount, calculatePricing, bakeCompanyMarginIntoLineCosts, defaultItineraryDay, defaultWizardState, formatINR, hasExtraDiscountRequest, matchesResourceDestination } from './quotationUtils';
 import { buildWebsiteAlignedQuoteCosts } from './partyCosting';
+import { getPartyCapacityReadiness } from './partyCapacityHints';
 import { buildSelectedHotelsSnapshot, toYmd } from './quotePdfHelpers';
 import { hydrateWizardFromQuote } from './quotationHydrate';
 import { unwrapList } from '../../utils/apiHelpers';
@@ -139,6 +140,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const [customizeTab, setCustomizeTab] = useState('itinerary');
   const [selectedPkgDetail, setSelectedPkgDetail] = useState(null);
   const [dayWiseHotels, setDayWiseHotels] = useState([]);
+  const [extraCabs, setExtraCabs] = useState([]);
   const [loadingPackageDetail, setLoadingPackageDetail] = useState(false);
   const [openingPackageMeta, setOpeningPackageMeta] = useState({ name: '', destination: '' });
   const [packageSearch, setPackageSearch] = useState('');
@@ -269,6 +271,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         setCustomExclusions(hydrated.customExclusions);
         setDayWiseHotels(hydrated.dayWiseHotels);
         setSelectedUnoCab(hydrated.selectedUnoCab);
+        setExtraCabs([]);
         setOpeningPackageMeta({
           name: hydrated.packageDetail?.name || 'Package',
           destination: hydrated.packageDetail?.destination || hydrated.lead?.destination || '',
@@ -474,6 +477,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setCustomizeTab('itinerary');
     setDayWiseHotels([]);
     setSelectedUnoCab(null);
+    setExtraCabs([]);
     setStep(2);
   };
 
@@ -527,6 +531,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       normalized._apiRaw?.dayOptions?.stays || normalized.stays || []
     );
     setDayWiseHotels(seededHotels);
+    setExtraCabs([]);
 
     // Auto-select default package cab from day-options
     const defaultCab = packageCabs.find((c) => c.isDefault) || packageCabs[0] || null;
@@ -537,6 +542,14 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         normalized.baseStartingPrice ?? normalized.startingPrice ?? 0
       );
       const adminMarginPct = Number(normalized.destinationMarginPercent || 0) || 0;
+      const capacity = getPartyCapacityReadiness({
+        lead: selectedLead,
+        dayWiseHotels: seededHotels,
+        itinerary,
+        selectedCab: defaultCab,
+        extraCabs: [],
+        cabSeats: defaultCab?.seatingCapacity || 4,
+      });
       const aligned = buildWebsiteAlignedQuoteCosts({
         packageAnchor: packageStart,
         dayWiseHotels: seededHotels,
@@ -549,6 +562,13 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           baseStartingPrice: packageStart,
         },
         cabSeats: defaultCab?.seatingCapacity || 4,
+        extraCabs: [],
+        capacityReady: capacity.ready,
+        roomsReady: capacity.roomsReady,
+        cabReady: capacity.cabReady,
+        capacityMessage: capacity.message,
+        requiredRooms: capacity.requiredRooms,
+        requiredCabs: capacity.requiredCabs,
       });
       const party = aligned.party;
       const rawPricing = {
@@ -568,6 +588,13 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           cabCount: party.cabCount,
           cabSeats: party.cabSeats,
           perPersonRate: party.perPersonRate,
+          capacityPending: party.capacityPending,
+          capacityReady: party.capacityReady,
+          roomsReady: party.roomsReady,
+          cabReady: party.cabReady,
+          capacityMessage: party.capacityMessage,
+          requiredRooms: party.requiredRooms,
+          requiredCabs: party.requiredCabs,
         },
       };
       const baked = bakeCompanyMarginIntoLineCosts(rawPricing, adminMarginPct);
@@ -593,6 +620,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setSelectedPkgDetail(null);
     setDayWiseHotels([]);
     setSelectedUnoCab(null);
+    setExtraCabs([]);
     setOpeningPackageMeta({
       name: pkg.name || 'Your package',
       destination: pkg.destination || pkg.routing || selectedLead?.destination || '',
@@ -649,6 +677,14 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           state.pricing.adminMarginPercent ??
           0
       ) || 0;
+    const capacity = getPartyCapacityReadiness({
+      lead: selectedLead,
+      dayWiseHotels,
+      itinerary: customItinerary,
+      selectedCab: selectedUnoCab,
+      extraCabs,
+      cabSeats: selectedUnoCab?.seatingCapacity || 4,
+    });
     const aligned = buildWebsiteAlignedQuoteCosts({
       packageAnchor,
       dayWiseHotels,
@@ -663,6 +699,13 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       cabSeats: selectedUnoCab?.seatingCapacity || 4,
       flightCost,
       activityCost,
+      extraCabs,
+      capacityReady: capacity.ready,
+      roomsReady: capacity.roomsReady,
+      cabReady: capacity.cabReady,
+      capacityMessage: capacity.message,
+      requiredRooms: capacity.requiredRooms,
+      requiredCabs: capacity.requiredCabs,
     });
     const party = aligned.party;
     const rawPricing = {
@@ -713,6 +756,13 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           cabCount: party.cabCount,
           cabSeats: party.cabSeats,
           perPersonRate: party.perPersonRate,
+          capacityPending: party.capacityPending,
+          capacityReady: party.capacityReady,
+          roomsReady: party.roomsReady,
+          cabReady: party.cabReady,
+          capacityMessage: party.capacityMessage,
+          requiredRooms: party.requiredRooms,
+          requiredCabs: party.requiredCabs,
         },
       };
 
@@ -733,7 +783,9 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         Number(prev.extraDiscount || 0) === Number(nextPricing.extraDiscount || 0) &&
         Number(prev.party?.rooms || 0) === Number(nextPricing.party?.rooms || 0) &&
         Number(prev.party?.cabCount || 0) === Number(nextPricing.party?.cabCount || 0) &&
-        Number(prev.party?.adults || 0) === Number(nextPricing.party?.adults || 0);
+        Number(prev.party?.adults || 0) === Number(nextPricing.party?.adults || 0) &&
+        Boolean(prev.party?.capacityPending) === Boolean(nextPricing.party?.capacityPending) &&
+        String(prev.party?.capacityMessage || '') === String(nextPricing.party?.capacityMessage || '');
 
       if (same) return s;
       return { ...s, pricing: nextPricing };
@@ -753,6 +805,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     state.pricing.gstEnabled,
     state.pricing.markupPercent,
     dayWiseHotels,
+    extraCabs,
+    customItinerary,
   ]);
 
   const handleSave = async (saveAs) => {
@@ -992,6 +1046,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           onDayWiseHotelsChange={handleDayWiseHotelChange}
           selectedUnoCab={selectedUnoCab}
           onCabChange={setSelectedUnoCab}
+          extraCabs={extraCabs}
+          onExtraCabsChange={setExtraCabs}
           packageCabs={resolvePackageCabs(activePkg || {})}
           pricing={state.pricing}
           onPricingChange={(p) => setState((s) => ({ ...s, pricing: p }))}
