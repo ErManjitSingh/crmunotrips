@@ -60,10 +60,26 @@ function getOptionAmount(opt = {}) {
 function getAbsoluteNightly(opt = {}) {
   return (
     Number(opt.absolutePerNight ?? 0) ||
+    Number(opt.includedRate ?? 0) ||
     Number(opt.startingPrice ?? opt.starting_price ?? 0) ||
     Number(opt.perNight ?? opt.priceDelta ?? 0) ||
     0
   );
+}
+
+function isPackageIncludedHotel(option = {}, { selected = false, upgrade = 0 } = {}) {
+  if (Boolean(option.isDefault)) return true;
+  if (upgrade <= 0 && selected) return true;
+  return false;
+}
+
+function resolveHotelListNightly(option = {}, basePrice = 0, selected = false) {
+  const absolute = getAbsoluteNightly(option);
+  if (absolute > 0) return absolute;
+  if (selected && Number(basePrice || 0) > 0) return Number(basePrice);
+  if (Boolean(option.isDefault) && Number(basePrice || 0) > 0) return Number(basePrice);
+  const upgrade = Number(option.priceDelta ?? option.upgrade_price ?? 0) || 0;
+  return upgrade;
 }
 
 function formatRelativePrice(amount, basePrice, { isCurrent = false } = {}) {
@@ -239,10 +255,16 @@ function CabOptionCard({ cab, selected, onSelect, basePrice = 0 }) {
 function HotelListRow({ option, selected, loading, onSelect, showDay, index, basePrice = 0 }) {
   const image = option.image || option.images?.[0];
   const upgrade = Number(option.priceDelta ?? option.upgrade_price ?? 0) || 0;
+  const included = isPackageIncludedHotel(option, { selected, upgrade });
+  const displayNightly = resolveHotelListNightly(option, basePrice, selected);
   const absolute = getAbsoluteNightly(option);
   // Compare absolute nightly rates so upgrade-only options don't look like −₹base.
-  const compareAmount = absolute > 0 ? absolute : Number(basePrice || 0) + upgrade;
-  const amount = absolute > 0 ? absolute : upgrade;
+  const compareAmount =
+    absolute > 0
+      ? absolute
+      : Number(basePrice || 0) > 0
+        ? Number(basePrice) + upgrade
+        : displayNightly;
   const rel = formatRelativePrice(compareAmount, basePrice, { isCurrent: selected });
   const stars = Number(option.starRating || 0);
   const badge = hotelBadge(option, index);
@@ -327,19 +349,38 @@ function HotelListRow({ option, selected, loading, onSelect, showDay, index, bas
           <div className="sm:text-right shrink-0 space-y-2 sm:min-w-[148px]">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                {amount > 0 ? 'From' : 'Package'}
+                {included && upgrade <= 0 ? 'Included' : displayNightly > 0 ? 'From' : 'Package'}
               </p>
-              <p className="text-lg font-black text-violet-700 leading-none mt-0.5">
-                {amount > 0 ? formatINR(amount) : 'Not included'}
+              <p
+                className={cn(
+                  'text-lg font-black leading-none mt-0.5',
+                  included && upgrade <= 0 ? 'text-emerald-700' : 'text-violet-700'
+                )}
+              >
+                {included && upgrade <= 0
+                  ? displayNightly > 0
+                    ? formatINR(displayNightly)
+                    : 'Included in package'
+                  : displayNightly > 0
+                    ? formatINR(displayNightly)
+                    : 'Not included'}
               </p>
-              {amount > 0 && (
-                <p className="text-[10px] font-medium text-slate-400 mt-0.5">Per night</p>
+              {displayNightly > 0 && (
+                <p className="text-[10px] font-medium text-slate-400 mt-0.5">
+                  {included && upgrade <= 0 ? 'Package rate · per night' : 'Per night'}
+                </p>
               )}
               <p className={cn('text-sm font-black mt-1.5 leading-none', rel.tone)}>
                 {selected ? 'Current hotel' : rel.primary}
               </p>
               <p className="text-[10px] font-medium text-slate-400 mt-1">
-                {selected ? 'Your selection' : rel.hint}
+                {selected
+                  ? included && upgrade <= 0
+                    ? 'Included in package · no extra charge'
+                    : 'Your selection'
+                  : included && upgrade <= 0
+                    ? 'Included in package'
+                    : rel.hint}
               </p>
             </div>
             {!selected && (

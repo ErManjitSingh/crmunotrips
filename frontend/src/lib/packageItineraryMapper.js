@@ -154,7 +154,11 @@ export function mapHotelOption(option = {}) {
   const priceDelta = Number(
     option.price_delta ?? option.priceDelta ?? option.upgrade_price ?? 0
   ) || 0;
+  const isDefault = Boolean(option.is_default || option.isDefault || option.is_selected);
   const slug = option.slug || option.hotel_slug || '';
+  const includedRate =
+    Number(option.includedRate ?? option.included_rate ?? 0) ||
+    (isDefault && startingPrice > 0 ? startingPrice : 0);
   return {
     id: option.id || option.hotel_id || option.hotelId || name,
     name,
@@ -168,8 +172,8 @@ export function mapHotelOption(option = {}) {
     mealPlanKey: mealKey,
     mealsRaw: option.meals || null,
     startingPrice,
-    absolutePerNight: 0,
-    includedRate: 0,
+    absolutePerNight: Number(option.absolutePerNight ?? 0) || includedRate || 0,
+    includedRate,
     priceDelta,
     tierName:
       option.tier_name ||
@@ -177,7 +181,7 @@ export function mapHotelOption(option = {}) {
       option.roomType ||
       option.default_room_type_name ||
       '',
-    isDefault: Boolean(option.is_default || option.isDefault || option.is_selected),
+    isDefault,
     raw: option,
   };
 }

@@ -112,10 +112,10 @@ function HotelCard({
                 {(meta?.mealPlan?.label || meta?.meals) && (
                   <span>· {meta.mealPlan?.label || meta.meals}</span>
                 )}
-                {!showTotal || displayTotal <= 0 ? (
-                  <span className="font-medium text-slate-400">· Not included</span>
-                ) : isIncluded ? (
+                {isIncluded && (meta?.name || hotelSel?.hotel?.name) ? (
                   <span className="font-medium text-emerald-700">· Included in package</span>
+                ) : displayTotal <= 0 ? (
+                  <span className="font-medium text-slate-400">· Not included</span>
                 ) : null}
               </div>
             </div>
