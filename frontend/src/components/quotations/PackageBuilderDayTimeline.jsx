@@ -23,6 +23,7 @@ import {
   Sparkles,
   Star,
   RefreshCw,
+  TriangleAlert,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../../lib/utils';
@@ -65,16 +66,16 @@ function ChangeBtn({ onClick, label = 'Change' }) {
   );
 }
 
-function CapacityAlert({ message, tone = 'amber' }) {
+function CapacityAlert({ message }) {
   if (!message) return null;
-  const styles =
-    tone === 'sky'
-      ? 'border-sky-200 bg-sky-50 text-sky-900'
-      : 'border-amber-200 bg-amber-50 text-amber-950';
   return (
-    <p className={cn('rounded-lg border px-2.5 py-2 text-[11px] font-medium leading-snug', styles)}>
-      {message}
-    </p>
+    <div
+      role="alert"
+      className="flex items-start gap-2.5 rounded-lg border-2 border-red-500 bg-red-50 px-3 py-2.5 text-red-800 shadow-sm shadow-red-200/60"
+    >
+      <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-600" aria-hidden />
+      <p className="text-[12px] font-semibold leading-snug text-red-900">{message}</p>
+    </div>
   );
 }
 
@@ -229,7 +230,7 @@ function CabCard({
     <div className="rounded-xl border border-sky-200 bg-sky-50 overflow-hidden shadow-sm shadow-sky-100/60">
       {cabHint?.needsAction && (
         <div className="px-3 pt-3">
-          <CapacityAlert message={cabHint.message} tone="sky" />
+          <CapacityAlert message={cabHint.message} />
         </div>
       )}
       <div className="flex gap-3 p-3">
