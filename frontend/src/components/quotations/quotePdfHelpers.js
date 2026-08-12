@@ -53,6 +53,27 @@ export function formatQuoteDateShort(value) {
   return `${day}-${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 }
 
+export function toYmd(value) {
+  if (!value) return '';
+  const s = String(value);
+  const match = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) return match[1];
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function shiftYmd(ymd, days) {
+  const [y, m, d] = String(ymd || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + Number(days || 0));
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
 export function getDayDate(travelDate, dayNumber) {
   if (!travelDate || !dayNumber) return null;
   const d = new Date(travelDate);

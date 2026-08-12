@@ -20,7 +20,7 @@ import { parsePackageNights } from './UnoHotelSelector';
 import { WIZARD_STEPS } from './constants';
 import { calculatePricing, bakeCompanyMarginIntoLineCosts, defaultItineraryDay, defaultWizardState, formatINR, matchesResourceDestination } from './quotationUtils';
 import { buildWebsiteAlignedQuoteCosts } from './partyCosting';
-import { buildSelectedHotelsSnapshot } from './quotePdfHelpers';
+import { buildSelectedHotelsSnapshot, toYmd } from './quotePdfHelpers';
 import { hydrateWizardFromQuote } from './quotationHydrate';
 import { unwrapList } from '../../utils/apiHelpers';
 import PackageBuilderWorkspace from './PackageBuilderWorkspace';
@@ -602,7 +602,11 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         const res = await API.get(`/packages/${id}`, { skipErrorToast: true });
         applyPackageDetail(res.data, { source: 'local_crm', listItem: pkg, apiPath: `/packages/${id}` });
       } else {
-        const detail = await fetchUnoPublicPackageDetail(pkg.slug || id);
+        const detail = await fetchUnoPublicPackageDetail(pkg.slug || id, {
+          travelDate: toYmd(selectedLead?.travelDate),
+          adults: selectedLead?.adults || 2,
+          rooms: selectedLead?.numberOfRooms || 1,
+        });
         applyPackageDetail(detail, {
           source: 'uno_hotels',
           listItem: pkg,

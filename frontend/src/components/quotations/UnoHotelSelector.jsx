@@ -305,6 +305,10 @@ export default function UnoHotelSelector({
   onChange,
   nights = 1,
   preferredMealPlanKey = 'map',
+  checkIn = '',
+  checkOut = '',
+  rooms = 1,
+  adults = 2,
 }) {
   const [subStep, setSubStep] = useState('hotel');
   const [hotels, setHotels] = useState([]);
@@ -352,7 +356,14 @@ export default function UnoHotelSelector({
     onChange(null);
     try {
       const res = await API.get('/uno-hotels/detail', {
-        params: { city: hotel.city, slug: hotel.slug },
+        params: {
+          city: hotel.city,
+          slug: hotel.slug,
+          ...(checkIn ? { check_in: checkIn } : {}),
+          ...(checkOut ? { check_out: checkOut } : {}),
+          ...(rooms ? { rooms } : {}),
+          ...(adults ? { adults } : {}),
+        },
         skipErrorToast: true,
       });
       setHotelDetail(res.data);

@@ -118,6 +118,43 @@ function formatNamedList(items = []) {
     .join(' · ');
 }
 
+function normalizeYmd(value) {
+  if (!value) return '';
+  const s = String(value);
+  const match = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) return match[1];
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function todayYmd() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function shiftYmd(ymd, days) {
+  const [y, m, d] = String(ymd || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + Number(days || 0));
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+function stayCheckInOut(stay = {}, travelDate = '') {
+  if (!travelDate) return {};
+  const cin = Number(stay.check_in_day);
+  const cout = Number(stay.check_out_day);
+  if (!Number.isFinite(cin) || !Number.isFinite(cout)) return {};
+  return {
+    checkIn: shiftYmd(travelDate, cin - 1),
+    checkOut: shiftYmd(travelDate, cout - 1),
+  };
+}
+
 function stayCoversDay(stay = {}, dayNumber) {
   const cin = Number(stay.check_in_day);
   const cout = Number(stay.check_out_day);
@@ -238,8 +275,9 @@ function applyCatalogToOption(option = {}, catalog = null, stay = null) {
     stay?.destination_city ||
     '';
 
+  // Prefer dated day-options sell price (website package picker), not tax-inclusive catalog "from".
   const startingPrice = Number(
-    hotel.starting_price ?? hotel.startingPrice ?? option.starting_price ?? option.startingPrice ?? 0
+    option.starting_price ?? option.startingPrice ?? 0
   );
   // True package upgrade only — never fall back to catalog rate (that double-counts vs package baseCost).
   const priceDelta = Number(option.price_delta ?? option.upgrade_price ?? 0) || 0;
@@ -334,19 +372,34 @@ function pickStayMealPlan(room = null, mealKey = 'map') {
  * Day-options often ship stale hotel_slug values that 404 on /hotels/{city}/{slug}.
  * When that happens we resolve via hotel id / name search so absolute rates still load.
  */
-async function hydrateItinerarySelectedStays(itinerary = [], stays = [], catalog = null) {
+async function hydrateItinerarySelectedStays(itinerary = [], stays = [], catalog = null, pricingQuery = {}) {
   const days = Array.isArray(itinerary) ? itinerary : [];
   if (!days.length) return days;
 
   const detailCache = new Map();
   const searchCache = new Map();
+  const travelDate = normalizeYmd(pricingQuery.travelDate) || '';
+  const rooms = Number(pricingQuery.rooms) || 1;
+  const adults = Number(pricingQuery.adults) || 2;
 
-  const loadDetail = async (city, slug) => {
-    const key = `${String(city || '').trim().toLowerCase()}||${String(slug || '').trim().toLowerCase()}`;
+  const loadDetail = async (city, slug, stayDates = {}) => {
+    const key = [
+      String(city || '').trim().toLowerCase(),
+      String(slug || '').trim().toLowerCase(),
+      stayDates.checkIn || '',
+      stayDates.checkOut || '',
+    ].join('||');
     if (!city || !slug) return null;
     if (detailCache.has(key)) return detailCache.get(key);
     try {
-      const detail = await getUnoHotelDetail({ city, slug });
+      const detail = await getUnoHotelDetail({
+        city,
+        slug,
+        checkIn: stayDates.checkIn,
+        checkOut: stayDates.checkOut,
+        rooms,
+        adults,
+      });
       detailCache.set(key, detail);
       return detail;
     } catch {
@@ -439,8 +492,8 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = [], catalog
     return null;
   };
 
-  const resolveDetail = async ({ city, slug, hotelId, name }) => {
-    let detail = await loadDetail(city, slug);
+  const resolveDetail = async ({ city, slug, hotelId, name, stayDates = {} }) => {
+    let detail = await loadDetail(city, slug, stayDates);
     if (detail) return detail;
 
     // Prefer hotel-id endpoints when package slug is stale / 404
@@ -450,7 +503,7 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = [], catalog
           const raw = await unoFetch(path);
           const hotel = unwrapPayload(raw);
           if (hotel?.city && hotel?.slug) {
-            detail = await loadDetail(hotel.city, hotel.slug);
+            detail = await loadDetail(hotel.city, hotel.slug, stayDates);
             if (detail) return detail;
           }
           if (Array.isArray(hotel?.rooms) && hotel.rooms.length) {
@@ -468,7 +521,7 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = [], catalog
     // Stale package hotel_slug → resolve live catalog slug via shortened name search
     const hit = await searchHotel(city, name, hotelId);
     if (hit?.city && hit?.slug) {
-      detail = await loadDetail(hit.city, hit.slug);
+      detail = await loadDetail(hit.city, hit.slug, stayDates);
       if (detail) return detail;
     }
 
@@ -536,11 +589,13 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = [], catalog
       info.slug ||
       '';
 
+    const stayDates = stayCheckInOut(stay, travelDate);
     const detail = await resolveDetail({
       city,
       slug,
       hotelId,
       name: hotelName,
+      stayDates,
     });
     const resolvedCity = detail?.city || city;
     const resolvedSlug = detail?.slug || slug;
@@ -552,6 +607,7 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = [], catalog
       Number(mealPlan.absolutePrice || 0) ||
       Number(room?.rates?.[rateKey] || 0) ||
       Number(meta?.absolutePerNight || 0) ||
+      Number(meta?.startingPrice || matchedOpt?.starting_price || 0) ||
       0;
     const epRate =
       Number(room?.epPrice || room?.rates?.ep || room?.pricePerNight || 0) || 0;
@@ -902,8 +958,15 @@ function mapDayOptionsToItinerary(days = [], stays = [], catalog = null) {
   return buildMergedItinerary([], days, stays, catalog);
 }
 
-async function fetchUnoPackageDayOptionsPayload(slug) {
-  const payload = await unoFetch(`/v1/packages/${encodeURIComponent(slug)}/day-options`);
+async function fetchUnoPackageDayOptionsPayload(slug, pricing = {}) {
+  const travelDate = normalizeYmd(pricing.travelDate) || todayYmd();
+  const payload = await unoFetch(`/v1/packages/${encodeURIComponent(slug)}/day-options`, {
+    query: {
+      travel_date: travelDate,
+      adults: Number(pricing.adults) || 2,
+      rooms: Number(pricing.rooms) || 1,
+    },
+  });
   return unwrapPayload(payload);
 }
 
@@ -948,13 +1011,13 @@ async function fetchUnoPackageDayOptions(slug) {
   return [];
 }
 
-async function attachItineraryFromDayOptions(mapped, slug, itineraryDaysFromPackage = []) {
+async function attachItineraryFromDayOptions(mapped, slug, itineraryDaysFromPackage = [], pricingQuery = {}) {
   if (!slug) return mapped;
 
   const packageItineraryDays = Array.isArray(itineraryDaysFromPackage) ? itineraryDaysFromPackage : [];
 
   try {
-    const payload = await fetchUnoPackageDayOptionsPayload(slug);
+    const payload = await fetchUnoPackageDayOptionsPayload(slug, pricingQuery);
     mapped._apiRaw = { ...(mapped._apiRaw || {}), dayOptions: payload };
     const days = Array.isArray(payload?.days) ? payload.days : [];
     const stays = Array.isArray(payload?.stays) ? payload.stays : [];
@@ -979,7 +1042,7 @@ async function attachItineraryFromDayOptions(mapped, slug, itineraryDaysFromPack
         stays,
         catalog
       );
-      mapped.itinerary = await hydrateItinerarySelectedStays(merged, stays, catalog);
+      mapped.itinerary = await hydrateItinerarySelectedStays(merged, stays, catalog, pricingQuery);
       mapped.hotelCatalogSize = catalog.size;
       return mapped;
     }
@@ -1179,7 +1242,7 @@ async function listUnoPackages(query = {}) {
   );
 }
 
-async function fetchUnoPackageById(packageId) {
+async function fetchUnoPackageById(packageId, pricingQuery = {}) {
   const key = String(packageId || '').trim();
   if (!key) throw new ApiError(400, 'Package id is required');
 
@@ -1238,7 +1301,8 @@ async function fetchUnoPackageById(packageId) {
   mapped = await attachItineraryFromDayOptions(
     mapped,
     slug || mapped.slug,
-    rawPackageApi?.itinerary_days || []
+    rawPackageApi?.itinerary_days || [],
+    pricingQuery
   );
 
   if (!mapped.itinerary?.length) {
@@ -1262,10 +1326,14 @@ async function fetchUnoPackageById(packageId) {
   return mapped;
 }
 
-async function getUnoPackageById(packageId) {
+async function getUnoPackageById(packageId, query = {}) {
+  const travelDate = normalizeYmd(query.travelDate || query.travel_date) || todayYmd();
+  const adults = Math.max(1, Number(query.adults) || 2);
+  const rooms = Math.max(1, Number(query.rooms) || 1);
+  const pricingQuery = { travelDate, adults, rooms };
   return cacheService.getOrSet(
-    `uno:packages:detail:v7:${packageId}`,
-    () => fetchUnoPackageById(packageId),
+    `uno:packages:detail:v8:${packageId}:${travelDate}:${adults}:${rooms}`,
+    () => fetchUnoPackageById(packageId, pricingQuery),
     DETAIL_CACHE_TTL_MS
   );
 }

@@ -510,13 +510,19 @@ function resolveCity(option, destination) {
   return '';
 }
 
-async function fetchHotelDetailForOption(option, destination) {
+async function fetchHotelDetailForOption(option, destination, stayQuery = {}) {
   let city = resolveCity(option, destination);
   let slug = option.slug || option.hotel_slug || option.raw?.slug || option.raw?.hotel_slug || '';
+  const dateParams = {
+    ...(stayQuery.checkIn ? { check_in: stayQuery.checkIn } : {}),
+    ...(stayQuery.checkOut ? { check_out: stayQuery.checkOut } : {}),
+    ...(stayQuery.rooms ? { rooms: stayQuery.rooms } : {}),
+    ...(stayQuery.adults ? { adults: stayQuery.adults } : {}),
+  };
 
   if (city && slug) {
     const res = await API.get('/uno-hotels/detail', {
-      params: { city, slug },
+      params: { city, slug, ...dateParams },
       skipErrorToast: true,
     });
     return res.data;
@@ -539,7 +545,7 @@ async function fetchHotelDetailForOption(option, destination) {
   if (!hit?.city || !hit?.slug) throw new Error('Hotel catalog detail unavailable');
 
   const detailRes = await API.get('/uno-hotels/detail', {
-    params: { city: hit.city, slug: hit.slug },
+    params: { city: hit.city, slug: hit.slug, ...dateParams },
     skipErrorToast: true,
   });
   return detailRes.data;
@@ -593,6 +599,10 @@ export default function PackageResourcePickerDrawer({
   basePrice = 0,
   /** Package API meal for this day (map/ep/…). Defaults picker + costing baseline. */
   defaultMealPlanKey = 'map',
+  checkIn = '',
+  checkOut = '',
+  rooms = 1,
+  adults = 2,
 }) {
   const [query, setQuery] = useState('');
   const [starFilter, setStarFilter] = useState(0); // 0 = all, 1-5 = star rating
@@ -693,7 +703,12 @@ export default function PackageResourcePickerDrawer({
     setLoadingDetail(true);
     setStep('room');
     try {
-      const detail = await fetchHotelDetailForOption(option, destination);
+      const detail = await fetchHotelDetailForOption(option, destination, {
+        checkIn,
+        checkOut,
+        rooms,
+        adults,
+      });
       setHotelDetail(detail);
       const roomList = (detail?.rooms?.length ? detail.rooms : buildFallbackRooms(option)).map(
         (room) => ({ ...room, mealPlanOptions: ensureMealPlanOptions(room) })

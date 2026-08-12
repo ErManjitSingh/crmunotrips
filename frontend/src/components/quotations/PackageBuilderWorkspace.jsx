@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { getPackageTypeConfig, formatINR } from './quotationUtils';
+import { shiftYmd, toYmd } from './quotePdfHelpers';
 import PackageBuilderDayTimeline from './PackageBuilderDayTimeline';
 import PackageBuilderPriceSidebar from './PackageBuilderPriceSidebar';
 import MobileQuotationActionBar from './MobileQuotationActionBar';
@@ -919,6 +920,22 @@ export default function PackageBuilderWorkspace({
           normalizeMealPlanKey(picker?.day?.meals || picker?.day?.hotelMeta?.meals) ||
           'map'
         }
+        checkIn={
+          toYmd(lead?.travelDate)
+            ? shiftYmd(toYmd(lead.travelDate), Math.max(0, Number(picker?.day?.day || 1) - 1))
+            : ''
+        }
+        checkOut={
+          toYmd(lead?.travelDate)
+            ? shiftYmd(
+                toYmd(lead.travelDate),
+                Math.max(0, Number(picker?.day?.day || 1) - 1) +
+                  Math.max(1, Number(picker?.day?.stayNights || nights || 1))
+              )
+            : ''
+        }
+        rooms={lead?.numberOfRooms || 1}
+        adults={lead?.adults || 2}
       />
     </div>
   );

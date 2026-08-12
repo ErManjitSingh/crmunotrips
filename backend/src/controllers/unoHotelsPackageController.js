@@ -12,7 +12,11 @@ const listPackages = asyncHandler(async (req, res) => {
 });
 
 const getPackage = asyncHandler(async (req, res) => {
-  const pkg = await getUnoPackageById(req.params.id);
+  const pkg = await getUnoPackageById(req.params.id, {
+    travelDate: req.query.travel_date || req.query.travelDate,
+    adults: req.query.adults,
+    rooms: req.query.rooms,
+  });
   res.json(await applyMarginToPackage(pkg));
 });
 

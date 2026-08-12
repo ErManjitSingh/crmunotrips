@@ -333,11 +333,16 @@ export async function fetchUnoPublicPackages({ page = 1, limit = 50, search = ''
   };
 }
 
-export async function fetchUnoPublicPackageDetail(idOrSlug) {
+export async function fetchUnoPublicPackageDetail(idOrSlug, { travelDate, adults, rooms } = {}) {
   const key = String(idOrSlug || '').trim();
   if (!key) throw new Error('Package id is required');
 
   const { data } = await API.get(`/uno-packages/${encodeURIComponent(key)}`, {
+    params: {
+      travel_date: travelDate || undefined,
+      adults: adults || undefined,
+      rooms: rooms || undefined,
+    },
     skipErrorToast: true,
   });
 

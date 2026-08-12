@@ -23,6 +23,15 @@ function extractWebsiteRoomRates(rates) {
   return { ep, cp, map: mapRate, ap };
 }
 
+/**
+ * Quotation hotel rates: raw website rack only.
+ * Do not use weekend_markup_percent or dated rate_plan_prices (those bake ~10% markup).
+ * CRM adds destination admin margin separately.
+ */
+function resolveWebsiteSellRates(room = {}) {
+  return extractWebsiteRoomRates(room.rates);
+}
+
 function extractWebsiteExtraBedRates(rates) {
   if (!rates || typeof rates !== 'object') return null;
   const bed = rates.website?.extra_bed || rates.extra_bed || null;
@@ -35,8 +44,16 @@ function extractWebsiteExtraBedRates(rates) {
   return { ep, cp, map: mapRate, ap };
 }
 
-function buildMealPlanOptions(mealPlans = {}, rates = null) {
-  const fromRates = extractWebsiteRoomRates(rates);
+function buildMealPlanOptions(mealPlans = {}, sellRates = null) {
+  const fromRates =
+    sellRates && typeof sellRates === 'object' && (sellRates.ep || sellRates.cp || sellRates.map || sellRates.ap)
+      ? {
+          ep: Number(sellRates.ep || 0),
+          cp: Number(sellRates.cp || 0),
+          map: Number(sellRates.map || 0),
+          ap: Number(sellRates.ap || 0),
+        }
+      : extractWebsiteRoomRates(sellRates);
   const breakfast = Number(mealPlans.breakfast) || 0;
   const lunch = Number(mealPlans.lunch) || 0;
   const dinner = Number(mealPlans.dinner) || 0;
@@ -133,10 +150,11 @@ function mapHotelSummary(hotel = {}) {
 }
 
 function mapRoom(room = {}) {
-  const rateMap = extractWebsiteRoomRates(room.rates);
+  const rateMap = resolveWebsiteSellRates(room);
   const extraBedRates = extractWebsiteExtraBedRates(room.rates);
+  // Prefer raw website rack — price_per_night often already includes website 10% markup.
   const pricePerNight = Number(
-    room.price_per_night || rateMap?.ep || rateMap?.cp || rateMap?.map || rateMap?.ap || 0
+    rateMap?.ep || rateMap?.cp || rateMap?.map || rateMap?.ap || room.price_per_night || 0
   );
   return {
     _id: room.id,
@@ -155,7 +173,7 @@ function mapRoom(room = {}) {
     extraBedRates,
     available: room.available !== false,
     availableCount: room.available_count,
-    mealPlanOptions: buildMealPlanOptions(room.meal_plans, room.rates),
+    mealPlanOptions: buildMealPlanOptions(room.meal_plans, rateMap),
     rawMealPlans: room.meal_plans || {},
   };
 }
@@ -237,14 +255,21 @@ async function listUnoHotels(query = {}) {
   };
 }
 
-async function getUnoHotelDetail({ city, slug }) {
+async function getUnoHotelDetail({ city, slug, checkIn, checkOut, rooms, adults } = {}) {
   if (!city?.trim() || !slug?.trim()) {
     throw new ApiError(400, 'Hotel city and slug are required');
   }
 
   const encodedCity = encodeURIComponent(city.trim());
   const encodedSlug = encodeURIComponent(slug.trim());
-  const raw = await unoFetch(`/v1/hotels/${encodedCity}/${encodedSlug}`);
+  const raw = await unoFetch(`/v1/hotels/${encodedCity}/${encodedSlug}`, {
+    query: {
+      ...(checkIn ? { check_in: checkIn } : {}),
+      ...(checkOut ? { check_out: checkOut } : {}),
+      ...(rooms ? { rooms } : {}),
+      ...(adults ? { adults } : {}),
+    },
+  });
   const hotel = unwrapPayload(raw);
 
   return {
