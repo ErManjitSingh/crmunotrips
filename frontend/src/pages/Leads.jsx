@@ -32,11 +32,18 @@ import { applyPeriodPreset } from '../lib/periodFilters';
 
 function filtersFromLocation(location, config) {
   const params = new URLSearchParams(location.search);
+  let dateFrom = params.get('dateFrom') || '';
+  let dateTo = params.get('dateTo') || '';
+  if (config.todayOnly && !dateFrom && !dateTo) {
+    const today = applyPeriodPreset('today');
+    dateFrom = today.dateFrom;
+    dateTo = today.dateTo;
+  }
   return {
     ...emptyFilters,
     status: config.status || params.get('status') || '',
-    dateFrom: params.get('dateFrom') || '',
-    dateTo: params.get('dateTo') || '',
+    dateFrom,
+    dateTo,
     source: params.get('source') || '',
     agent: params.get('agent') || '',
   };
@@ -113,7 +120,7 @@ export default function Leads() {
     if (config.assignee === 'unassigned') base.filter = 'unassigned';
     else if (config.assignee === 'assigned') base.filter = 'assigned';
     else if (config.listFilter) base.filter = config.listFilter;
-    if (config.todayOnly) {
+    if (config.todayOnly && !base.dateFrom && !base.dateTo) {
       base.todayOnly = true;
     }
     return base;
@@ -136,8 +143,13 @@ export default function Leads() {
     const params = new URLSearchParams(location.search);
     const statusFromQuery = params.get('status') || '';
     const nextStatus = config.status || statusFromQuery || '';
-    const dateFrom = params.get('dateFrom') || '';
-    const dateTo = params.get('dateTo') || '';
+    let dateFrom = params.get('dateFrom') || '';
+    let dateTo = params.get('dateTo') || '';
+    if (config.todayOnly && !dateFrom && !dateTo) {
+      const today = applyPeriodPreset('today');
+      dateFrom = today.dateFrom;
+      dateTo = today.dateTo;
+    }
     const source = params.get('source') || '';
     setFilters((f) => ({ ...f, status: nextStatus, dateFrom, dateTo, source }));
     setAppliedFilters((f) => ({ ...f, status: nextStatus, dateFrom, dateTo, source }));
@@ -173,13 +185,25 @@ export default function Leads() {
   const navCounts = useSidebarCounts();
   const tableLeads = tableQuery.data?.data ?? [];
   const hasMoreLeads = tableQuery.data?.hasMore ?? false;
+  const hasListScope =
+    Boolean(
+      appliedFilters.dateFrom ||
+        appliedFilters.dateTo ||
+        appliedFilters.status ||
+        appliedFilters.source ||
+        appliedFilters.search ||
+        config.status ||
+        config.todayOnly ||
+        config.assignee ||
+        config.listFilter
+    );
   const totalLeads = resolveListTotal({
     apiTotal: tableQuery.data?.pagination?.total,
     rowCount: tableLeads.length,
     pageIndex: pagination.pageIndex,
     pageSize: pagination.pageSize,
     hasMore: hasMoreLeads,
-    fallbackTotal: isAllLeadsPage ? navCounts?.leads?.all : undefined,
+    fallbackTotal: isAllLeadsPage && !hasListScope ? navCounts?.leads?.all : undefined,
   });
   const loading = tableQuery.isLoading && !tableQuery.data;
 

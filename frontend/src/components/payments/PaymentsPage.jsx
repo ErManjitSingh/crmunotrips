@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -27,6 +27,8 @@ import CollectPaymentModal from './CollectPaymentModal';
 import AddPaymentModal from './AddPaymentModal';
 import RefundPaymentModal from './RefundPaymentModal';
 import PaymentInsightSidebar from './PaymentInsightSidebar';
+import { useUrlPeriodFilter } from '../../hooks/useUrlPeriodFilter';
+import { applyPeriodPreset } from '../../lib/periodFilters';
 
 const PAGE_SIZE = 5;
 
@@ -34,8 +36,13 @@ export default function PaymentsPage() {
   const { user, hasPermission } = useAuth();
   const toast = useToast();
   const queryClient = useQueryClient();
+  const { dateFrom, dateTo, setPeriod } = useUrlPeriodFilter();
 
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [filters, setFilters] = useState(() => ({
+    ...EMPTY_FILTERS,
+    dateFrom,
+    dateTo,
+  }));
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [selected, setSelected] = useState(null);
@@ -45,6 +52,11 @@ export default function PaymentsPage() {
   const [refundOpen, setRefundOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setFilters((f) => ({ ...f, dateFrom, dateTo }));
+    setPage(1);
+  }, [dateFrom, dateTo]);
 
   const canDelete = user?.role === 'admin' || hasPermission?.('payments', 'delete');
 
@@ -216,8 +228,15 @@ export default function PaymentsPage() {
             setFilters(next);
             setPage(1);
           }}
+          onPeriodSelect={(key) => {
+            const dates = applyPeriodPreset(key);
+            setFilters((f) => ({ ...f, ...dates, datePreset: key === 'all' ? '' : key }));
+            setPeriod(key);
+            setPage(1);
+          }}
           onReset={() => {
             setFilters(EMPTY_FILTERS);
+            setPeriod('all');
             setPage(1);
           }}
         />

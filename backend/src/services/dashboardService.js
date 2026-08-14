@@ -2032,7 +2032,13 @@ async function buildTeamLeaderDashboard(leaderId, options = {}) {
 }
 
 async function buildReportsAnalytics(options = {}) {
-  const { branchId } = options;
+  const { branchId, dateFrom, dateTo } = options;
+  const { isAllTime, periodStart, periodEnd } = resolveReportPeriod(dateFrom, dateTo);
+  const leadDate = isAllTime ? {} : { createdAt: { $gte: periodStart, $lte: periodEnd } };
+  const payDate = isAllTime ? {} : { paidAt: { $gte: periodStart, $lte: periodEnd } };
+  const leadScope = withBranch({ ...leadDate }, branchId);
+  const convertedScope = withBranch({ ...leadDate, status: 'converted' }, branchId);
+  const payScope = withBranch({ status: { $in: ['paid', 'partial'] }, ...payDate }, branchId);
   const [
     totalLeads,
     convertedLeads,
@@ -2044,14 +2050,14 @@ async function buildReportsAnalytics(options = {}) {
     packages,
     monthlyPayments,
   ] = await Promise.all([
-    Lead.countDocuments(withBranch({}, branchId)),
-    Lead.countDocuments(withBranch({ status: 'converted' }, branchId)),
+    Lead.countDocuments(leadScope),
+    Lead.countDocuments(convertedScope),
     Payment.aggregate([
-      { $match: withBranch({ status: { $in: ['paid', 'partial'] } }, branchId) },
+      { $match: payScope },
       { $group: { _id: null, total: { $sum: '$paidAmount' } } },
     ]),
     Lead.aggregate([
-      { $match: withBranch({}, branchId) },
+      { $match: leadScope },
       {
         $group: {
           _id: '$source',
@@ -2067,7 +2073,7 @@ async function buildReportsAnalytics(options = {}) {
       { $sort: { leads: -1 } },
     ]),
     Lead.aggregate([
-      { $match: withBranch({}, branchId) },
+      { $match: leadScope },
       {
         $group: {
           _id: '$destination',
@@ -2082,11 +2088,11 @@ async function buildReportsAnalytics(options = {}) {
       },
       { $sort: { leads: -1 } },
     ]),
-    Lead.aggregate([{ $match: withBranch({}, branchId) }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
+    Lead.aggregate([{ $match: leadScope }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
     User.find(withBranch({ role: 'sales_executive', status: 'active' }, branchId)).select('name email').lean(),
     Package.find().select('name').limit(6).lean(),
     Payment.aggregate([
-      { $match: withBranch({ status: { $in: ['paid', 'partial'] }, paidAt: { $exists: true } }, branchId) },
+      { $match: payScope },
       {
         $group: {
           _id: { year: { $year: '$paidAt' }, month: { $month: '$paidAt' } },
@@ -2104,9 +2110,9 @@ async function buildReportsAnalytics(options = {}) {
   const execStats = await Promise.all(
     executives.map(async (ex) => {
       const [assignedLeads, followUpsDone, conversions, revenue] = await Promise.all([
-        Lead.countDocuments({ assignedTo: ex._id }),
+        Lead.countDocuments({ assignedTo: ex._id, ...leadDate }),
         FollowUp.countDocuments({ assignedTo: ex._id, status: 'completed' }),
-        Lead.countDocuments({ assignedTo: ex._id, status: 'converted' }),
+        Lead.countDocuments({ assignedTo: ex._id, status: 'converted', ...leadDate }),
         sumConvertedPackageRevenue({ assigneeId: ex._id, branchId }),
       ]);
       const rev = revenue;

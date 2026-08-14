@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import {
-  CalendarDays,
   Sparkles,
   Inbox,
   UserCheck,
@@ -8,6 +7,7 @@ import {
   XCircle,
   Star,
   Copy,
+  Users,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import API from '../../api/axios';
@@ -76,18 +76,18 @@ export default function LeadKpiStrip() {
 
   const items = [
     {
-      label: 'Total Leads (Today)',
-      value: stats.todayLeads ?? 0,
-      icon: CalendarDays,
+      label: 'Total Leads',
+      value: stats.totalLeads ?? 0,
+      icon: Users,
       iconColor: 'bg-emerald-500',
-      href: '/leads/new-leads',
+      href: '/leads',
     },
     {
       label: 'New Leads',
-      value: stats.newLeads ?? 0,
+      value: stats.todayLeads ?? stats.newLeads ?? 0,
       icon: Sparkles,
       iconColor: 'bg-blue-500',
-      href: '/leads/inbox/new',
+      href: '/leads/new-leads',
     },
     {
       label: 'Unassigned Leads',

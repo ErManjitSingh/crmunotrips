@@ -300,8 +300,10 @@ const listLostLeads = asyncHandler(async (req, res) => {
 const getListKpis = asyncHandler(async (req, res) => {
   if (isRestrictedLeadViewer(req.user.role)) {
     return res.json({
+      totalLeads: 0,
       todayLeads: 0,
       newLeads: 0,
+      statusNewLeads: 0,
       unassignedLeads: 0,
       assignedLeads: 0,
       followUpPending: 0,

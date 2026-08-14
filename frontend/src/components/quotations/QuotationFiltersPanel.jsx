@@ -2,6 +2,8 @@ import { Filter, RefreshCw, Search, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { DESTINATIONS } from '../leads/constants';
 import { cn } from '../../lib/utils';
+import PeriodPresetChips from '../ui/PeriodPresetChips';
+import { applyPeriodPreset } from '../../lib/periodFilters';
 
 export default function QuotationFiltersPanel({
   filters,
@@ -16,11 +18,23 @@ export default function QuotationFiltersPanel({
   executives = [],
   segmentLabel,
   className,
+  onPeriodSelect,
 }) {
   const set = (key, val) => onChange({ ...filters, [key]: val });
 
   return (
     <div className={cn('rounded-2xl border border-indigo-500/20 bg-surface/80 p-3 shadow-sm', className)}>
+      <div className="mb-2.5">
+        <PeriodPresetChips
+          dateFrom={filters.dateFrom}
+          dateTo={filters.dateTo}
+          onSelect={(key) => {
+            const dates = applyPeriodPreset(key);
+            onChange({ ...filters, ...dates });
+            onPeriodSelect?.(key);
+          }}
+        />
+      </div>
       <div className="flex items-center gap-2 overflow-x-auto flex-nowrap">
         <div className="flex items-center gap-1.5 shrink-0 text-sm font-medium text-content-primary">
           <Filter className="w-4 h-4 text-indigo-600" />

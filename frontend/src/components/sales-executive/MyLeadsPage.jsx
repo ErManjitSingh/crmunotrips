@@ -87,13 +87,18 @@ export default function MyLeadsPage() {
   const navCounts = useSidebarCounts();
   const leads = data?.data ?? [];
   const hasMore = data?.hasMore ?? false;
+  const hasListScope = Boolean(dateFrom || dateTo);
   const total = resolveListTotal({
     apiTotal: data?.pagination?.total,
     rowCount: leads.length,
     pageIndex: pagination.pageIndex,
     pageSize: pagination.pageSize,
     hasMore,
-    fallbackTotal: isAllView ? navCounts?.leads?.all : navCounts?.leads?.[filter === 'follow-up' ? 'followUp' : filter === 'working-progress' ? 'workingProgress' : filter],
+    fallbackTotal: hasListScope
+      ? undefined
+      : isAllView
+        ? navCounts?.leads?.all
+        : navCounts?.leads?.[filter === 'follow-up' ? 'followUp' : filter === 'working-progress' ? 'workingProgress' : filter],
   }) ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pagination.pageSize) || 1);
 

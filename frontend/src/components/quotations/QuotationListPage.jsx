@@ -20,6 +20,8 @@ import { cn } from '../../lib/utils';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useQuotationsQuery, useQuotationStatsQuery } from '../../features/quotations/hooks/useQuotationsQuery';
 import { DEFAULT_PAGE_SIZE } from '../ui/TablePagination';
+import { applyPeriodPreset } from '../../lib/periodFilters';
+import { useUrlPeriodFilter } from '../../hooks/useUrlPeriodFilter';
 
 const KPI = [
   { key: 'total', label: 'Total Quotes', color: 'from-sky-500/20 to-blue-500/10 border-sky-400/40', icon: FileText, text: 'text-sky-700' },
@@ -32,8 +34,17 @@ const STATUS_OPTIONS = [{ value: '', label: 'All Statuses' }, ...QUOTE_STATUSES.
 
 export default function QuotationListPage() {
   const queryClient = useQueryClient();
-  const [draftFilters, setDraftFilters] = useState(emptyQuotationFilters);
-  const [appliedFilters, setAppliedFilters] = useState(emptyQuotationFilters);
+  const { dateFrom, dateTo, setPeriod } = useUrlPeriodFilter();
+  const [draftFilters, setDraftFilters] = useState(() => ({
+    ...emptyQuotationFilters,
+    dateFrom,
+    dateTo,
+  }));
+  const [appliedFilters, setAppliedFilters] = useState(() => ({
+    ...emptyQuotationFilters,
+    dateFrom,
+    dateTo,
+  }));
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   const [selected, setSelected] = useState(null);
   const [showPdf, setShowPdf] = useState(false);
@@ -70,12 +81,9 @@ export default function QuotationListPage() {
   }, [debouncedSearch, appliedFilters.status, appliedFilters.destination, appliedFilters.dateFrom, appliedFilters.dateTo]);
 
   useEffect(() => {
-    const dateFrom = searchParams.get('dateFrom') || '';
-    const dateTo = searchParams.get('dateTo') || '';
-    if (!dateFrom && !dateTo) return;
-    setDraftFilters((f) => (f.dateFrom || f.dateTo ? f : { ...f, dateFrom, dateTo }));
-    setAppliedFilters((f) => (f.dateFrom || f.dateTo ? f : { ...f, dateFrom, dateTo }));
-  }, [searchParams]);
+    setDraftFilters((f) => (f.dateFrom === dateFrom && f.dateTo === dateTo ? f : { ...f, dateFrom, dateTo }));
+    setAppliedFilters((f) => (f.dateFrom === dateFrom && f.dateTo === dateTo ? f : { ...f, dateFrom, dateTo }));
+  }, [dateFrom, dateTo]);
 
   useEffect(() => {
     const viewId = searchParams.get('view');
@@ -128,6 +136,13 @@ export default function QuotationListPage() {
         onClear={() => {
           setDraftFilters(emptyQuotationFilters);
           setAppliedFilters(emptyQuotationFilters);
+          setPeriod('all');
+        }}
+        onPeriodSelect={(key) => {
+          const dates = applyPeriodPreset(key);
+          setDraftFilters((f) => ({ ...f, ...dates }));
+          setAppliedFilters((f) => ({ ...f, ...dates }));
+          setPeriod(key);
         }}
         onRefresh={invalidate}
         hasActiveFilters={hasActiveFilters}

@@ -1,7 +1,9 @@
-import { CalendarDays, RotateCcw, Search } from 'lucide-react';
-import { DATE_PRESETS, PAYMENT_METHODS, PAYMENT_STATUSES } from './constants';
+import { RotateCcw, Search } from 'lucide-react';
+import { PAYMENT_METHODS, PAYMENT_STATUSES } from './constants';
+import PeriodPresetChips from '../ui/PeriodPresetChips';
+import { applyPeriodPreset } from '../../lib/periodFilters';
 
-export default function PaymentFilterBar({ filters, onChange, onReset, activeCount = 0 }) {
+export default function PaymentFilterBar({ filters, onChange, onReset, activeCount = 0, onPeriodSelect }) {
   const set = (key, value) => onChange({ ...filters, [key]: value });
 
   return (
@@ -17,26 +19,15 @@ export default function PaymentFilterBar({ filters, onChange, onReset, activeCou
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 xl:pb-0">
-          <CalendarDays className="w-4 h-4 shrink-0 text-violet-500 mr-0.5" />
-          {DATE_PRESETS.map((preset) => {
-            const active = (filters.datePreset || '') === preset.value;
-            return (
-              <button
-                key={preset.value || 'all'}
-                type="button"
-                onClick={() => set('datePreset', preset.value)}
-                className={`h-9 shrink-0 rounded-lg px-3 text-xs font-semibold transition-colors ${
-                  active
-                    ? 'bg-violet-600 text-white shadow-sm shadow-violet-500/20'
-                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-violet-50 hover:text-violet-700'
-                }`}
-              >
-                {preset.label}
-              </button>
-            );
-          })}
-        </div>
+        <PeriodPresetChips
+          dateFrom={filters.dateFrom}
+          dateTo={filters.dateTo}
+          onSelect={(key) => {
+            const dates = applyPeriodPreset(key);
+            onChange({ ...filters, ...dates, datePreset: key === 'all' ? '' : key });
+            onPeriodSelect?.(key);
+          }}
+        />
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">

@@ -1,10 +1,24 @@
 import { Calendar, MapPin, Megaphone, User, Package, RotateCcw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { DESTINATION_OPTIONS, EXECUTIVE_OPTIONS, FILTER_DEFAULTS, SOURCE_OPTIONS } from './constants';
+import PeriodPresetChips from '../ui/PeriodPresetChips';
+import { applyPeriodPreset } from '../../lib/periodFilters';
 
-export default function ReportsFilterBar({ filters, onChange, onReset }) {
+export default function ReportsFilterBar({ filters, onChange, onReset, onPeriodSelect }) {
   return (
     <div className="sticky top-16 z-20 mb-6 rounded-2xl border border-subtle bg-surface/90 backdrop-blur-md p-4 shadow-sm">
+      <div className="mb-3">
+        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-content-muted">Period</p>
+        <PeriodPresetChips
+          dateFrom={filters.dateFrom}
+          dateTo={filters.dateTo}
+          onSelect={(key) => {
+            const dates = applyPeriodPreset(key);
+            onChange({ ...filters, ...dates });
+            onPeriodSelect?.(key);
+          }}
+        />
+      </div>
       <div className="flex flex-wrap gap-3 items-end">
         <div>
           <label className="text-[10px] uppercase font-medium text-content-muted mb-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> From</label>

@@ -1,8 +1,24 @@
 const Lead = require('../models/Lead');
 const Quotation = require('../models/Quotation');
-const { QUOTATION_LIST_POPULATE, QUOTATION_LIST_SELECT, buildLeadSearchFilter } = require('../utils/queryHelpers');
+const { QUOTATION_LIST_POPULATE, QUOTATION_LIST_SELECT, buildLeadSearchFilter, startOfDay, endOfDay } = require('../utils/queryHelpers');
 const { parsePagination, parseSort, paginatedResponse } = require('../utils/pagination');
 const { withBranch } = require('../utils/branchScope');
+
+function parseLocalDayStart(dateStr) {
+  const parts = String(dateStr || '').split('-').map(Number);
+  if (parts.length === 3 && parts.every((n) => Number.isFinite(n))) {
+    return new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+  }
+  return startOfDay(new Date(dateStr));
+}
+
+function parseLocalDayEnd(dateStr) {
+  const parts = String(dateStr || '').split('-').map(Number);
+  if (parts.length === 3 && parts.every((n) => Number.isFinite(n))) {
+    return new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999);
+  }
+  return endOfDay(new Date(dateStr));
+}
 
 function escapeRegex(value = '') {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -23,12 +39,8 @@ async function applyQuotationQueryFilters(filter, query = {}, branchId) {
 
   if (dateFrom || dateTo) {
     filter.createdAt = {};
-    if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
-    if (dateTo) {
-      const end = new Date(dateTo);
-      end.setHours(23, 59, 59, 999);
-      filter.createdAt.$lte = end;
-    }
+    if (dateFrom) filter.createdAt.$gte = parseLocalDayStart(dateFrom);
+    if (dateTo) filter.createdAt.$lte = parseLocalDayEnd(dateTo);
   }
 
   const destinationTrim = destination?.trim();

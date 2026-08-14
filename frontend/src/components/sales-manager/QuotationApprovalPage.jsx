@@ -17,6 +17,7 @@ import {
   SEGMENT_LABELS,
 } from '../quotations/quotationFilterUtils';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { applyPeriodPreset } from '../../lib/periodFilters';
 import { toast } from '../../context/ToastContext';
 
 const META = {
@@ -111,6 +112,11 @@ export default function QuotationApprovalPage() {
         onClear={() => {
           setDraftFilters(emptyQuotationFilters);
           setAppliedFilters(emptyQuotationFilters);
+        }}
+        onPeriodSelect={(key) => {
+          const dates = applyPeriodPreset(key);
+          setDraftFilters((f) => ({ ...f, ...dates }));
+          setAppliedFilters((f) => ({ ...f, ...dates }));
         }}
         onRefresh={fetchQuotes}
         hasActiveFilters={hasActiveFilters}

@@ -295,6 +295,7 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
 
   if (filterKey === 'all' || !filterKey || filterKey === 'package-shared' || filterKey === 'package_shared') {
     if (query.status) owned.status = query.status;
+    else owned.status = { $nin: ['lost', 'booked_from_another_company'] };
     if (query.destination) owned.destination = query.destination;
     if (query.state) owned.state = query.state;
     if (query.statusReason) {

@@ -12,6 +12,7 @@ import PackagePerformance from './PackagePerformance';
 import RevenueAnalyticsChart from './RevenueAnalyticsChart';
 import ConversionFunnelReport from './ConversionFunnelReport';
 import ForecastPanel from './ForecastPanel';
+import { useUrlPeriodFilter } from '../../hooks/useUrlPeriodFilter';
 
 function applyFilters(data, filters) {
   if (!data) return null;
@@ -35,32 +36,30 @@ function applyFilters(data, filters) {
 }
 
 export default function ReportsPage() {
+  const { dateFrom, dateTo, setPeriod } = useUrlPeriodFilter();
   const [raw, setRaw] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ ...FILTER_DEFAULTS });
+  const [filters, setFilters] = useState({ ...FILTER_DEFAULTS, dateFrom, dateTo });
 
   const fetchData = useCallback(() => {
     setLoading(true);
-    API.get('/reports/analytics')
+    API.get('/reports/analytics', {
+      params: {
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      },
+    })
       .then((res) => setRaw(res.data))
       .finally(() => setLoading(false));
-  }, []);
+  }, [dateFrom, dateTo]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  useEffect(() => {
+    setFilters((f) => ({ ...f, dateFrom, dateTo }));
+  }, [dateFrom, dateTo]);
+
   const data = useMemo(() => applyFilters(raw, filters), [raw, filters]);
-
-  if (loading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-16 rounded-2xl bg-surface-elevated" />
-        <div className="grid grid-cols-6 gap-4">{[...Array(6)].map((_, i) => <div key={i} className="h-28 rounded-2xl bg-surface-elevated" />)}</div>
-        <div className="h-96 rounded-2xl bg-surface-elevated" />
-      </div>
-    );
-  }
-
-  if (!data) return null;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-8 print:p-4">
@@ -74,13 +73,33 @@ export default function ReportsPage() {
             <p className="text-sm text-content-muted">Business intelligence for travel agency owners</p>
           </div>
         </div>
-        <ExportActions data={data} />
+        {data ? <ExportActions data={data} /> : null}
       </div>
 
       <div className="print:hidden">
-        <ReportsFilterBar filters={filters} onChange={setFilters} onReset={() => setFilters({ ...FILTER_DEFAULTS })} />
+        <ReportsFilterBar
+          filters={filters}
+          onChange={(next) => {
+            setFilters(next);
+            if (next.dateFrom !== dateFrom || next.dateTo !== dateTo) {
+              setPeriod({ dateFrom: next.dateFrom || '', dateTo: next.dateTo || '' });
+            }
+          }}
+          onPeriodSelect={setPeriod}
+          onReset={() => {
+            setFilters({ ...FILTER_DEFAULTS });
+            setPeriod('all');
+          }}
+        />
       </div>
 
+      {!data ? (
+        <div className="space-y-6 animate-pulse">
+          <div className="grid grid-cols-6 gap-4">{[...Array(6)].map((_, i) => <div key={i} className="h-28 rounded-2xl bg-surface-elevated" />)}</div>
+          <div className="h-96 rounded-2xl bg-surface-elevated" />
+        </div>
+      ) : (
+        <div className={loading ? 'pointer-events-none opacity-60' : undefined}>
       <ReportsKpiCards summary={data.summary} />
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 mb-4">
@@ -130,6 +149,8 @@ export default function ReportsPage() {
           ))}
         </div>
       </div>
+        </div>
+      )}
     </motion.div>
   );
 }

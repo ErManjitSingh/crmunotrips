@@ -111,6 +111,7 @@ async function buildLeadListKpis(branchId) {
       { $match: match },
       {
         $facet: {
+          total: [{ $count: 'n' }],
           today: [
             { $match: { createdAt: { $gte: start, $lte: end } } },
             { $count: 'n' },
@@ -137,8 +138,10 @@ async function buildLeadListKpis(branchId) {
   const n = (key) => row?.[key]?.[0]?.n ?? 0;
 
   return {
+    totalLeads: n('total'),
     todayLeads: n('today'),
-    newLeads: n('statusNew'),
+    newLeads: n('today'),
+    statusNewLeads: n('statusNew'),
     unassignedLeads: n('unassigned'),
     assignedLeads: n('assigned'),
     followUpPending,
@@ -149,7 +152,7 @@ async function buildLeadListKpis(branchId) {
 }
 
 async function getLeadListKpis(branchId) {
-  const key = cacheKey('lead-list-kpis', branchId || 'global');
+  const key = cacheKey('lead-list-kpis-v2', branchId || 'global');
   return getOrSet(key, () => buildLeadListKpis(branchId), LIST_KPI_TTL_MS);
 }
 

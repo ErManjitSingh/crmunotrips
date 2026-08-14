@@ -75,7 +75,25 @@ function startOfDay(d) {
   return x;
 }
 
-export function getDateRange(preset) {
+function parseLocalDay(dateStr, end = false) {
+  const parts = String(dateStr || '').split('-').map(Number);
+  if (parts.length === 3 && parts.every((n) => Number.isFinite(n))) {
+    return new Date(parts[0], parts[1] - 1, parts[2], end ? 23 : 0, end ? 59 : 0, end ? 59 : 0, end ? 999 : 0);
+  }
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  if (end) d.setHours(23, 59, 59, 999);
+  else d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+export function getDateRange(preset, filters = {}) {
+  if (filters.dateFrom || filters.dateTo) {
+    return {
+      from: filters.dateFrom ? parseLocalDay(filters.dateFrom) : null,
+      to: filters.dateTo ? parseLocalDay(filters.dateTo, true) : null,
+    };
+  }
   const now = new Date();
   const today = startOfDay(now);
   if (preset === 'today') return { from: today, to: now };
@@ -105,7 +123,7 @@ export function getDateRange(preset) {
 }
 
 export function filterPayments(payments, filters, datePreset) {
-  const { from, to } = getDateRange(datePreset, filters);
+  const { from, to } = getDateRange(datePreset || filters.datePreset, filters);
   const q = filters.search?.trim().toLowerCase() || '';
 
   return payments.filter((p) => {

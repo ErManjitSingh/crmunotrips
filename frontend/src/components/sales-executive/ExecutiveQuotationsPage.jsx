@@ -28,6 +28,8 @@ import {
   buildQuotationQueryParams,
 } from '../quotations/quotationFilterUtils';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { applyPeriodPreset } from '../../lib/periodFilters';
+import { useUrlPeriodFilter } from '../../hooks/useUrlPeriodFilter';
 
 const STATUS_TABS = ['all', 'draft', 'pending_approval', 'approved', 'sent', 'rejected'];
 
@@ -74,6 +76,7 @@ function startOfMonth() {
 export default function ExecutiveQuotationsPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { dateFrom, dateTo, setPeriod } = useUrlPeriodFilter();
   const [quotes, setQuotes] = useState([]);
   const [kpiCounts, setKpiCounts] = useState({
     total: 0,
@@ -83,8 +86,16 @@ export default function ExecutiveQuotationsPage() {
     rejected: 0,
   });
   const [statusTab, setStatusTab] = useState('all');
-  const [draftFilters, setDraftFilters] = useState(emptyQuotationFilters);
-  const [appliedFilters, setAppliedFilters] = useState(emptyQuotationFilters);
+  const [draftFilters, setDraftFilters] = useState(() => ({
+    ...emptyQuotationFilters,
+    dateFrom,
+    dateTo,
+  }));
+  const [appliedFilters, setAppliedFilters] = useState(() => ({
+    ...emptyQuotationFilters,
+    dateFrom,
+    dateTo,
+  }));
   const [loading, setLoading] = useState(true);
   const [flash, setFlash] = useState(location.state?.message || '');
   const [selected, setSelected] = useState(null);
@@ -151,6 +162,11 @@ export default function ExecutiveQuotationsPage() {
   useEffect(() => {
     setPage(1);
   }, [statusTab, appliedFilters, debouncedSearch, pageSize]);
+
+  useEffect(() => {
+    setDraftFilters((f) => (f.dateFrom === dateFrom && f.dateTo === dateTo ? f : { ...f, dateFrom, dateTo }));
+    setAppliedFilters((f) => (f.dateFrom === dateFrom && f.dateTo === dateTo ? f : { ...f, dateFrom, dateTo }));
+  }, [dateFrom, dateTo]);
 
   useEffect(() => {
     if (location.state?.message) {
@@ -333,6 +349,13 @@ export default function ExecutiveQuotationsPage() {
         onClear={() => {
           setDraftFilters(emptyQuotationFilters);
           setAppliedFilters(emptyQuotationFilters);
+          setPeriod('all');
+        }}
+        onPeriodSelect={(key) => {
+          const dates = applyPeriodPreset(key);
+          setDraftFilters((f) => ({ ...f, ...dates }));
+          setAppliedFilters((f) => ({ ...f, ...dates }));
+          setPeriod(key);
         }}
         onRefresh={refreshAll}
         hasActiveFilters={hasActiveFilters}
