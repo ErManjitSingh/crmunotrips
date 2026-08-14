@@ -141,6 +141,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
   const [selectedPkgDetail, setSelectedPkgDetail] = useState(null);
   const [dayWiseHotels, setDayWiseHotels] = useState([]);
   const [extraCabs, setExtraCabs] = useState([]);
+  const [stayWithMattress, setStayWithMattress] = useState(false);
   const [loadingPackageDetail, setLoadingPackageDetail] = useState(false);
   const [openingPackageMeta, setOpeningPackageMeta] = useState({ name: '', destination: '' });
   const [packageSearch, setPackageSearch] = useState('');
@@ -272,6 +273,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         setDayWiseHotels(hydrated.dayWiseHotels);
         setSelectedUnoCab(hydrated.selectedUnoCab);
         setExtraCabs([]);
+        setStayWithMattress(Boolean(hydrated.pricing?.party?.stayWithMattress));
         setOpeningPackageMeta({
           name: hydrated.packageDetail?.name || 'Package',
           destination: hydrated.packageDetail?.destination || hydrated.lead?.destination || '',
@@ -478,6 +480,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setDayWiseHotels([]);
     setSelectedUnoCab(null);
     setExtraCabs([]);
+    setStayWithMattress(false);
     setStep(2);
   };
 
@@ -532,6 +535,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     );
     setDayWiseHotels(seededHotels);
     setExtraCabs([]);
+    setStayWithMattress(false);
 
     // Auto-select default package cab from day-options
     const defaultCab = packageCabs.find((c) => c.isDefault) || packageCabs[0] || null;
@@ -549,6 +553,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         selectedCab: defaultCab,
         extraCabs: [],
         cabSeats: defaultCab?.seatingCapacity || 4,
+        stayWithMattress: false,
       });
       const aligned = buildWebsiteAlignedQuoteCosts({
         packageAnchor: packageStart,
@@ -569,6 +574,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         capacityMessage: capacity.message,
         requiredRooms: capacity.requiredRooms,
         requiredCabs: capacity.requiredCabs,
+        occupancyOverride: capacity.occupancyOverride,
       });
       const party = aligned.party;
       const rawPricing = {
@@ -595,6 +601,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           capacityMessage: party.capacityMessage,
           requiredRooms: party.requiredRooms,
           requiredCabs: party.requiredCabs,
+          stayWithMattress: Boolean(party.stayWithMattress),
         },
       };
       const baked = bakeCompanyMarginIntoLineCosts(rawPricing, adminMarginPct);
@@ -621,6 +628,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     setDayWiseHotels([]);
     setSelectedUnoCab(null);
     setExtraCabs([]);
+    setStayWithMattress(false);
     setOpeningPackageMeta({
       name: pkg.name || 'Your package',
       destination: pkg.destination || pkg.routing || selectedLead?.destination || '',
@@ -684,6 +692,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       selectedCab: selectedUnoCab,
       extraCabs,
       cabSeats: selectedUnoCab?.seatingCapacity || 4,
+      stayWithMattress,
     });
     const aligned = buildWebsiteAlignedQuoteCosts({
       packageAnchor,
@@ -706,6 +715,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       capacityMessage: capacity.message,
       requiredRooms: capacity.requiredRooms,
       requiredCabs: capacity.requiredCabs,
+      occupancyOverride: capacity.occupancyOverride,
     });
     const party = aligned.party;
     const rawPricing = {
@@ -763,6 +773,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           capacityMessage: party.capacityMessage,
           requiredRooms: party.requiredRooms,
           requiredCabs: party.requiredCabs,
+          stayWithMattress: Boolean(party.stayWithMattress),
         },
       };
 
@@ -785,6 +796,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         Number(prev.party?.cabCount || 0) === Number(nextPricing.party?.cabCount || 0) &&
         Number(prev.party?.adults || 0) === Number(nextPricing.party?.adults || 0) &&
         Boolean(prev.party?.capacityPending) === Boolean(nextPricing.party?.capacityPending) &&
+        Boolean(prev.party?.stayWithMattress) === Boolean(nextPricing.party?.stayWithMattress) &&
         String(prev.party?.capacityMessage || '') === String(nextPricing.party?.capacityMessage || '');
 
       if (same) return s;
@@ -807,6 +819,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     dayWiseHotels,
     extraCabs,
     customItinerary,
+    stayWithMattress,
     isEditMode,
   ]);
 
@@ -1060,6 +1073,8 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           onCabChange={setSelectedUnoCab}
           extraCabs={extraCabs}
           onExtraCabsChange={setExtraCabs}
+          stayWithMattress={stayWithMattress}
+          onStayWithMattressChange={setStayWithMattress}
           packageCabs={resolvePackageCabs(activePkg || {})}
           pricing={state.pricing}
           onPricingChange={(p) => setState((s) => ({ ...s, pricing: p }))}

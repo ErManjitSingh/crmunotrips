@@ -9,6 +9,33 @@ function round2(n) {
   return Math.round(Number(n || 0) * 100) / 100;
 }
 
+/** Twin share without extra bed. */
+export const BASE_ADULTS_PER_ROOM = 2;
+/** Some hotels allow 5 adults in one room with extra mattresses (2 + 3). */
+export const MAX_ADULTS_PER_ROOM_WITH_MATTRESS = 5;
+
+/**
+ * Pack extra adults onto existing rooms with extra mattresses
+ * e.g. 5 adults in 1 room → 3 mattresses.
+ */
+export function resolveMattressPackedOccupancy(lead = {}, configuredRooms = 1) {
+  const occ = resolvePartyOccupancy(lead);
+  const rooms = Math.max(1, Number(configuredRooms) || 1);
+  const extra = Math.max(0, occ.adults - rooms * BASE_ADULTS_PER_ROOM);
+  return {
+    ...occ,
+    rooms,
+    mattresses: extra,
+    stayWithMattress: true,
+    canPack: occ.adults <= rooms * MAX_ADULTS_PER_ROOM_WITH_MATTRESS,
+  };
+}
+
+export function canStayWithExtraMattress(lead = {}, configuredRooms = 1) {
+  const packed = resolveMattressPackedOccupancy(lead, configuredRooms);
+  return packed.canPack && packed.mattresses > 0;
+}
+
 /**
  * 2 adults share a room; odd adult gets an extra mattress (not a full extra room).
  * Prefers lead.numberOfRooms / roomsWithMattress when set.
@@ -153,9 +180,16 @@ export function buildWebsiteAlignedQuoteCosts({
   capacityMessage = '',
   requiredRooms = null,
   requiredCabs = null,
+  occupancyOverride = null,
 } = {}) {
   void packageAnchor;
-  const occ = resolvePartyOccupancy(lead);
+  const occ = occupancyOverride?.rooms
+    ? {
+        ...resolvePartyOccupancy(lead),
+        rooms: Math.max(1, Number(occupancyOverride.rooms) || 1),
+        mattresses: Math.max(0, Number(occupancyOverride.mattresses) || 0),
+      }
+    : resolvePartyOccupancy(lead);
   const seats = Math.max(1, Number(selectedCab?.seatingCapacity) || Number(cabSeats) || 4);
   const cabUpgrade = resolveCabUpgradeCost(selectedCab, packageCabs);
   const cabUnitFare = resolveCabAbsoluteFare(selectedCab, packageCabs);
@@ -218,8 +252,9 @@ export function buildWebsiteAlignedQuoteCosts({
     activityCost: party.activityCost,
     party: {
       ...party,
-      rooms: roomsOk ? party.rooms : 1,
-      mattresses: roomsOk ? party.mattresses : 0,
+      rooms: roomsOk ? occ.rooms : 1,
+      mattresses: roomsOk ? occ.mattresses : 0,
+      stayWithMattress: Boolean(occupancyOverride?.stayWithMattress),
       cabCount: effectiveCabCount,
       cabSeats: seats,
       hotelRackSum,

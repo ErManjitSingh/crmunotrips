@@ -326,6 +326,8 @@ export default function PackageBuilderWorkspace({
   onCabChange,
   extraCabs = [],
   onExtraCabsChange,
+  stayWithMattress = false,
+  onStayWithMattressChange,
   packageCabs = [],
   pricing,
   onPricingChange,
@@ -895,6 +897,9 @@ export default function PackageBuilderWorkspace({
               onChangeCab={() => openCabPicker('change')}
               onAddCab={() => openCabPicker('add')}
               extraCabs={extraCabs}
+              stayWithMattress={stayWithMattress}
+              onStayWithMattress={() => onStayWithMattressChange?.(true)}
+              onClearStayWithMattress={() => onStayWithMattressChange?.(false)}
               destination={hotelDestination || pkg?.destination || 'Destination'}
               embedded
               lead={lead}

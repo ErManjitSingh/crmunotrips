@@ -24,6 +24,7 @@ import {
   Star,
   RefreshCw,
   TriangleAlert,
+  BedDouble,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../../lib/utils';
@@ -86,6 +87,8 @@ function HotelCard({
   onOpenPicker,
   onAddRoom,
   onChangeExtraRoom,
+  onStayWithMattress,
+  onClearStayWithMattress,
   emptyLabel,
   rooms = 1,
   showTotal = true,
@@ -108,6 +111,14 @@ function HotelCard({
 
   return (
     <div className="rounded-xl border border-violet-200 bg-violet-50/70 overflow-hidden shadow-sm shadow-violet-100/50">
+      {roomHint?.stayWithMattress && roomHint?.message && (
+        <div className="px-3 pt-3">
+          <div className="flex items-start gap-2.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-emerald-900">
+            <BedDouble className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" aria-hidden />
+            <p className="text-[12px] font-semibold leading-snug">{roomHint.message}</p>
+          </div>
+        </div>
+      )}
       {roomHint?.needsAction && (
         <div className="px-3 pt-3">
           <CapacityAlert message={roomHint.message} />
@@ -195,7 +206,7 @@ function HotelCard({
           ))}
         </div>
       )}
-      {(roomHint?.needsAction || onAddRoom) && (
+      {(roomHint?.needsAction || onAddRoom || roomHint?.stayWithMattress) && (
         <div className="flex flex-wrap gap-2 px-3 pb-3 pt-0">
           {onOpenPicker && (
             <button
@@ -215,6 +226,25 @@ function HotelCard({
             >
               <Plus className="w-3 h-3" />
               Add room
+            </button>
+          )}
+          {roomHint?.canStayWithMattress && onStayWithMattress && (
+            <button
+              type="button"
+              onClick={onStayWithMattress}
+              className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-emerald-400 bg-emerald-600 text-[11px] font-bold text-white hover:bg-emerald-500 shadow-sm"
+            >
+              <BedDouble className="w-3 h-3" />
+              Stay with extra mattress
+            </button>
+          )}
+          {roomHint?.stayWithMattress && onClearStayWithMattress && (
+            <button
+              type="button"
+              onClick={onClearStayWithMattress}
+              className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-emerald-300 bg-white text-[11px] font-bold text-emerald-800 hover:bg-emerald-50"
+            >
+              Remove extra mattress
             </button>
           )}
         </div>
@@ -368,6 +398,9 @@ function SortableDayCard({
   onChangeCab,
   onAddCab,
   extraCabs = [],
+  stayWithMattress = false,
+  onStayWithMattress,
+  onClearStayWithMattress,
   renderHotelActions,
   canRemove,
   isLastDay,
@@ -420,7 +453,11 @@ function SortableDayCard({
   const roomLines = getRoomLinesForDay(dayWiseHotels, dayNum);
   const primaryLine = roomLines[0] || hotelSel;
   const extraRoomLines = roomLines.slice(1);
-  const roomHint = getHotelRoomHint(lead, party, roomLines.length);
+  const roomHint = getHotelRoomHint(
+    lead,
+    { ...(party || {}), stayWithMattress: stayWithMattress || Boolean(party?.stayWithMattress) },
+    roomLines.length
+  );
   const cabHint =
     day.day === 1 ? getCabCapacityHint(lead, packageCab, party, extraCabs) : null;
 
@@ -560,6 +597,8 @@ function SortableDayCard({
             rooms={extraRoomLines.length > 0 ? 1 : rooms}
             roomHint={!isLastDay ? roomHint : null}
             extraRoomLines={extraRoomLines}
+            onStayWithMattress={!isLastDay ? onStayWithMattress : undefined}
+            onClearStayWithMattress={!isLastDay ? onClearStayWithMattress : undefined}
             showTotal={Boolean(
               !isLastDay && (primaryLine?.hotel || hotelSel?.hotel || hotelMeta?.name || day.hotel)
             )}
@@ -748,6 +787,9 @@ export default function PackageBuilderDayTimeline({
   onChangeCab,
   onAddCab,
   extraCabs = [],
+  stayWithMattress = false,
+  onStayWithMattress,
+  onClearStayWithMattress,
   renderHotelActions,
   destination = 'Destination',
   embedded = false,
@@ -841,6 +883,9 @@ export default function PackageBuilderDayTimeline({
                   onChangeCab={onChangeCab}
                   onAddCab={onAddCab}
                   extraCabs={extraCabs}
+                  stayWithMattress={stayWithMattress}
+                  onStayWithMattress={onStayWithMattress}
+                  onClearStayWithMattress={onClearStayWithMattress}
                   renderHotelActions={renderHotelActions}
                   canRemove={itinerary.length > 1}
                   isLastDay={idx === itinerary.length - 1}

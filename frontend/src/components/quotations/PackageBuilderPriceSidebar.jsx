@@ -216,7 +216,8 @@ export default function PackageBuilderPriceSidebar({
               ) : (
                 <>
                   {party.rooms || 1} room
-                  {party.mattresses ? ` + ${party.mattresses} mattress` : ''} ·{' '}
+                  {party.mattresses ? ` + ${party.mattresses} extra mattress` : ''}
+                  {party.stayWithMattress ? ' (same room)' : ''} ·{' '}
                   {party.cabCount || 1} cab
                   {party.cabSeats ? ` (${party.cabSeats}-seater)` : ''}
                 </>
