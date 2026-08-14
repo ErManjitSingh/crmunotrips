@@ -27,6 +27,7 @@ import {
   pickDefaultPackageRoom,
   pickPreferredMealPlan,
   resolveSelectedMealPlan,
+  resolveExtraBedNightRate,
 } from '../../lib/mealPlanDefaults';
 import { cn } from '../../lib/utils';
 
@@ -423,6 +424,7 @@ function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0, defaultMe
   const price = mealPlanNightlyRate(preferred, room) || Number(room.pricePerNight || room.epPrice || 0);
   const rel = formatRelativePrice(price, basePrice, { isCurrent: false });
   const mealKey = normalizeMealPlanKey(preferred?.key || defaultMealPlanKey) || 'map';
+  const extraBed = resolveExtraBedNightRate(room, mealKey);
 
   return (
     <button
@@ -466,6 +468,11 @@ function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0, defaultMe
                 EP {formatINR(room.rates.ep)}
               </span>
             )}
+            {extraBed > 0 && (
+              <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                Mattress {formatINR(extraBed)}/n
+              </span>
+            )}
           </div>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
             <div>
@@ -489,6 +496,7 @@ function RoomListRow({ room, hotel, selected, onSelect, basePrice = 0, defaultMe
 
 function MealPlanCard({ plan, room, nights, onSelect, basePrice = 0, selected = false }) {
   const perNight = mealPlanNightlyRate(plan, room);
+  const extraBed = resolveExtraBedNightRate(room, plan?.key || plan?.label);
   const total = perNight * Math.max(1, nights);
   const rel = formatRelativePrice(perNight, basePrice, { isCurrent: false });
   const hasSupplement = Number(plan.price || 0) > 0;
@@ -513,6 +521,7 @@ function MealPlanCard({ plan, room, nights, onSelect, basePrice = 0, selected = 
               : Number(plan.absolutePrice || 0) > 0
                 ? 'Room only rate'
                 : 'No meal supplement'}
+            {extraBed > 0 ? ` · Extra mattress ${formatINR(extraBed)}/night` : ''}
           </p>
         </div>
         {selected ? (
@@ -594,6 +603,7 @@ async function fetchHotelDetailForOption(option, destination, stayQuery = {}) {
 }
 
 function buildFallbackRooms(option) {
+  const mealKey = option.mealPlanKey || option.mealPlan?.key || 'map';
   if (option.rooms?.length) {
     return option.rooms.map((room, index) => {
       const mapped = {
@@ -602,6 +612,8 @@ function buildFallbackRooms(option) {
         description: room.description || 'Hotel room option',
         pricePerNight: Number(room.pricePerNight ?? room.baseRate ?? room.price ?? 0),
         rates: room.rates || null,
+        extraBedRates: room.extraBedRates || option.room?.extraBedRates || null,
+        extraBedRate: resolveExtraBedNightRate(room, mealKey),
         epPrice: Number(room.epPrice || room.pricePerNight || 0),
         images: room.images || option.images || (option.image ? [option.image] : []),
         bedType: room.bedType,
@@ -619,6 +631,8 @@ function buildFallbackRooms(option) {
     pricePerNight: Number(option.room?.rates?.map || option.absolutePerNight || 0),
     epPrice: Number(option.room?.epPrice || option.room?.rates?.ep || 0),
     rates: option.room?.rates || null,
+    extraBedRates: option.room?.extraBedRates || null,
+    extraBedRate: resolveExtraBedNightRate(option.room || option, mealKey),
     images: option.images || (option.image ? [option.image] : []),
     fromPackage: true,
     mealPlanOptions: option.room?.mealPlanOptions || [],
@@ -852,6 +866,8 @@ export default function PackageResourcePickerDrawer({
         pricePerNight: absolutePerNight || Number(room.pricePerNight || 0),
         epPrice: epRate,
         rates: room.rates || null,
+        extraBedRates: room.extraBedRates || null,
+        extraBedRate: resolveExtraBedNightRate(room, mealKey),
         bedType: room.bedType,
         maxOccupancy: room.maxOccupancy,
         mealPlanOptions: plans,
@@ -862,6 +878,7 @@ export default function PackageResourcePickerDrawer({
         price: Number(applied.price || 0),
         absolutePrice: absolutePerNight,
       },
+      extraBedPerNight: resolveExtraBedNightRate(room, mealKey),
       perNight: costDeltaPerNight,
       absolutePerNight,
       includedRate,

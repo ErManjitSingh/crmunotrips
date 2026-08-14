@@ -45,6 +45,17 @@ function extractWebsiteExtraBedRates(rates) {
   return { ep, cp, map: mapRate, ap };
 }
 
+function pickExtraBedNightRate(extraBedRates, mealKey = 'map') {
+  const rates = extraBedRates && typeof extraBedRates === 'object' ? extraBedRates : {};
+  const want = String(mealKey || 'map').toLowerCase();
+  const keyed = Number(rates[want] || 0);
+  if (keyed > 0) return keyed;
+  for (const key of ['map', 'cp', 'ep', 'ap']) {
+    if (Number(rates[key] || 0) > 0) return Number(rates[key]);
+  }
+  return 0;
+}
+
 function buildMealPlanOptions(mealPlans = {}, sellRates = null) {
   const fromRates =
     sellRates && typeof sellRates === 'object' && (sellRates.ep || sellRates.cp || sellRates.map || sellRates.ap)
@@ -290,4 +301,5 @@ module.exports = {
   buildMealPlanOptions,
   mapHotelSummary,
   mapRoom,
+  pickExtraBedNightRate,
 };

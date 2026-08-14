@@ -25,16 +25,19 @@ import {
   RefreshCw,
   TriangleAlert,
   BedDouble,
+  Minus,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../../lib/utils';
 import { defaultItineraryDay, formatINR } from './quotationUtils';
-import { resolvePartyOccupancy, resolveCabCount } from './partyCosting';
-import { resolveHotelNightDisplayRate } from '../../lib/mealPlanDefaults';
+import { resolvePartyOccupancy, resolveCabCount, clampExtraMattresses, MAX_EXTRA_MATTRESSES_PER_ROOM } from './partyCosting';
+import { resolveHotelNightDisplayRate, resolveExtraBedNightRate } from '../../lib/mealPlanDefaults';
 import {
   getCabCapacityHint,
   getHotelRoomHint,
   getRoomLinesForDay,
+  extraMattressesOnLine,
+  extraMattressesForDay,
 } from './partyCapacityHints';
 
 const DAY_ACCENTS = [
@@ -67,6 +70,40 @@ function ChangeBtn({ onClick, label = 'Change' }) {
   );
 }
 
+function MattressStepper({ count = 0, onChange, disabled = false, nightRate = 0 }) {
+  const n = clampExtraMattresses(count);
+  return (
+    <div className="inline-flex items-center gap-1 shrink-0 rounded-lg border border-emerald-300 bg-white px-1.5 py-0.5">
+      <BedDouble className="h-3 w-3 text-emerald-700" aria-hidden />
+      <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-800">Mattress</span>
+      <button
+        type="button"
+        disabled={disabled || n <= 0}
+        onClick={() => onChange?.(n - 1)}
+        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-emerald-800 hover:bg-emerald-50 disabled:opacity-40"
+        aria-label="Remove extra mattress"
+      >
+        <Minus className="h-3 w-3" />
+      </button>
+      <span className="min-w-[1rem] text-center text-[11px] font-bold text-emerald-900">{n}</span>
+      <button
+        type="button"
+        disabled={disabled || n >= MAX_EXTRA_MATTRESSES_PER_ROOM}
+        onClick={() => onChange?.(n + 1)}
+        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-emerald-800 hover:bg-emerald-50 disabled:opacity-40"
+        aria-label="Add extra mattress"
+      >
+        <Plus className="h-3 w-3" />
+      </button>
+      {nightRate > 0 && (
+        <span className="pl-0.5 text-[9px] font-bold text-emerald-700 whitespace-nowrap">
+          {formatINR(nightRate)}/n
+        </span>
+      )}
+    </div>
+  );
+}
+
 function CapacityAlert({ message }) {
   if (!message) return null;
   return (
@@ -87,13 +124,13 @@ function HotelCard({
   onOpenPicker,
   onAddRoom,
   onChangeExtraRoom,
-  onStayWithMattress,
-  onClearStayWithMattress,
+  onChangeRoomMattresses,
   emptyLabel,
   rooms = 1,
   showTotal = true,
   roomHint = null,
   extraRoomLines = [],
+  primaryExtraMattresses = 0,
 }) {
   const image = meta?.image || meta?.images?.[0];
   const stars = Math.min(5, Math.round(Number(meta?.starRating || 0)));
@@ -169,7 +206,21 @@ function HotelCard({
                   Included in package
                 </p>
               )}
-              {hasOptions && onOpenPicker && <ChangeBtn onClick={onOpenPicker} label="Change room" />}
+              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                {onChangeRoomMattresses && (meta?.name || hotelSel?.hotel?.name) && (
+                  <MattressStepper
+                    count={primaryExtraMattresses}
+                    nightRate={resolveExtraBedNightRate(
+                      hotelSel || meta,
+                      hotelSel?.mealPlan?.key || meta?.mealPlanKey || meta?.meals || 'map'
+                    )}
+                    onChange={(n) =>
+                      onChangeRoomMattresses(Number(hotelSel?.roomSlot || 1), n)
+                    }
+                  />
+                )}
+                {hasOptions && onOpenPicker && <ChangeBtn onClick={onOpenPicker} label="Change room" />}
+              </div>
             </div>
           </div>
         </div>
@@ -190,6 +241,13 @@ function HotelCard({
                   <span className="font-bold text-violet-700">
                     {formatINR(line.absolutePerNight)}/night
                   </span>
+                )}
+                {onChangeRoomMattresses && (
+                  <MattressStepper
+                    count={extraMattressesOnLine(line)}
+                    nightRate={resolveExtraBedNightRate(line, line.mealPlan?.key || 'map')}
+                    onChange={(n) => onChangeRoomMattresses(line.roomSlot || idx + 2, n)}
+                  />
                 )}
                 {onChangeExtraRoom && (
                   <button
@@ -226,25 +284,6 @@ function HotelCard({
             >
               <Plus className="w-3 h-3" />
               Add room
-            </button>
-          )}
-          {roomHint?.canStayWithMattress && onStayWithMattress && (
-            <button
-              type="button"
-              onClick={onStayWithMattress}
-              className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-emerald-400 bg-emerald-600 text-[11px] font-bold text-white hover:bg-emerald-500 shadow-sm"
-            >
-              <BedDouble className="w-3 h-3" />
-              Stay with extra mattress
-            </button>
-          )}
-          {roomHint?.stayWithMattress && onClearStayWithMattress && (
-            <button
-              type="button"
-              onClick={onClearStayWithMattress}
-              className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-emerald-300 bg-white text-[11px] font-bold text-emerald-800 hover:bg-emerald-50"
-            >
-              Remove extra mattress
             </button>
           )}
         </div>
@@ -395,12 +434,10 @@ function SortableDayCard({
   onOpenHotelPicker,
   onAddHotelRoom,
   onChangeExtraRoom,
+  onChangeRoomMattresses,
   onChangeCab,
   onAddCab,
   extraCabs = [],
-  stayWithMattress = false,
-  onStayWithMattress,
-  onClearStayWithMattress,
   renderHotelActions,
   canRemove,
   isLastDay,
@@ -455,8 +492,9 @@ function SortableDayCard({
   const extraRoomLines = roomLines.slice(1);
   const roomHint = getHotelRoomHint(
     lead,
-    { ...(party || {}), stayWithMattress: stayWithMattress || Boolean(party?.stayWithMattress) },
-    roomLines.length
+    party,
+    Math.max(1, roomLines.length || 1),
+    extraMattressesForDay(dayWiseHotels, dayNum)
   );
   const cabHint =
     day.day === 1 ? getCabCapacityHint(lead, packageCab, party, extraCabs) : null;
@@ -593,12 +631,16 @@ function SortableDayCard({
                 ? (line) => onChangeExtraRoom?.(day, line.roomSlot || 2)
                 : undefined
             }
+            onChangeRoomMattresses={
+              !isLastDay
+                ? (slot, count) => onChangeRoomMattresses?.(day, slot, count)
+                : undefined
+            }
             emptyLabel={isLastDay ? 'Departure day · no overnight stay' : 'Select hotel for this night'}
             rooms={extraRoomLines.length > 0 ? 1 : rooms}
             roomHint={!isLastDay ? roomHint : null}
             extraRoomLines={extraRoomLines}
-            onStayWithMattress={!isLastDay ? onStayWithMattress : undefined}
-            onClearStayWithMattress={!isLastDay ? onClearStayWithMattress : undefined}
+            primaryExtraMattresses={extraMattressesOnLine(primaryLine)}
             showTotal={Boolean(
               !isLastDay && (primaryLine?.hotel || hotelSel?.hotel || hotelMeta?.name || day.hotel)
             )}
@@ -784,12 +826,10 @@ export default function PackageBuilderDayTimeline({
   onOpenHotelPicker,
   onAddHotelRoom,
   onChangeExtraRoom,
+  onChangeRoomMattresses,
   onChangeCab,
   onAddCab,
   extraCabs = [],
-  stayWithMattress = false,
-  onStayWithMattress,
-  onClearStayWithMattress,
   renderHotelActions,
   destination = 'Destination',
   embedded = false,
@@ -880,12 +920,10 @@ export default function PackageBuilderDayTimeline({
                   onOpenHotelPicker={onOpenHotelPicker}
                   onAddHotelRoom={onAddHotelRoom}
                   onChangeExtraRoom={onChangeExtraRoom}
+                  onChangeRoomMattresses={onChangeRoomMattresses}
                   onChangeCab={onChangeCab}
                   onAddCab={onAddCab}
                   extraCabs={extraCabs}
-                  stayWithMattress={stayWithMattress}
-                  onStayWithMattress={onStayWithMattress}
-                  onClearStayWithMattress={onClearStayWithMattress}
                   renderHotelActions={renderHotelActions}
                   canRemove={itinerary.length > 1}
                   isLastDay={idx === itinerary.length - 1}

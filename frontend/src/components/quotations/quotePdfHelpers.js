@@ -1,5 +1,6 @@
 import { getPackageTypeConfig } from './quotationUtils';
 import { getPackageCategoryLabel, QUOTE_POLICIES, QUOTE_BANK_ACCOUNTS } from './quoteTemplateDefaults';
+import { resolveExtraBedNightRate } from '../../lib/mealPlanDefaults';
 
 export function resolveQuotePackage(quote) {
   const snap = quote?.packageSnapshot && typeof quote.packageSnapshot === 'object' ? quote.packageSnapshot : {};
@@ -100,7 +101,7 @@ export function buildSelectedHotelsSnapshot(dayWiseHotels, { rooms = 1, mattress
       : [];
 
   const roomCount = Math.max(1, Number(rooms) || 1);
-  const matCount = Math.max(0, Number(mattresses) || 0);
+  void mattresses;
 
   return list
     .filter((entry) => entry?.hotel)
@@ -109,18 +110,17 @@ export function buildSelectedHotelsSnapshot(dayWiseHotels, { rooms = 1, mattress
       const unitPerNight = Number(entry.perNight || 0);
       const unitTotal = Number(entry.totalCost ?? entry.perNight ?? 0);
       const absolute = Number(entry.absolutePerNight || 0);
-      const matNight =
-        Number(entry.extraBedPerNight || entry.room?.extraBedRate || 0) ||
-        (absolute > 0 ? absolute * 0.35 : 0);
+      const extraMats = Math.max(0, Number(entry.extraMattresses) || 0);
+      const extraBedRates = entry.extraBedRates || entry.room?.extraBedRates || null;
+      const extraBedPerNight = resolveExtraBedNightRate(entry, entry.mealPlan?.key || 'map');
       const lineRooms =
         Number(entry.roomSlot) > 1
           ? 1
           : list.filter((x) => x.day === entry.day).length > 1
             ? 1
             : roomCount;
-      const matCountForLine = Number(entry.roomSlot) > 1 ? 0 : matCount;
       const total =
-        Math.round((unitTotal * lineRooms + matNight * nights * matCountForLine) * 100) / 100;
+        Math.round((unitTotal * lineRooms + extraBedPerNight * nights * extraMats) * 100) / 100;
       return {
         day: entry.day,
         roomSlot: entry.roomSlot || 1,
@@ -133,12 +133,17 @@ export function buildSelectedHotelsSnapshot(dayWiseHotels, { rooms = 1, mattress
         reviewCount: entry.hotel.reviewCount,
         thumbnailUrl: entry.hotel.thumbnailUrl,
         images: entry.hotel.images,
-        room: entry.room,
+        room: entry.room
+          ? { ...entry.room, extraBedRates, extraBedRate: extraBedPerNight }
+          : entry.room,
         mealPlan: entry.mealPlan,
         meals: entry.mealPlan?.label || entry.mealPlan?.key || '',
         nights,
         rooms: lineRooms,
-        mattresses: matCount,
+        mattresses: extraMats,
+        extraMattresses: extraMats,
+        extraBedPerNight,
+        extraBedRates,
         price: Math.round(unitPerNight * lineRooms * 100) / 100,
         total,
         absolutePerNight: absolute,

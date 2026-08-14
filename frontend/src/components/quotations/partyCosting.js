@@ -1,5 +1,6 @@
 import { resolveCabAbsoluteFare, resolveCabUpgradeCost } from '../../lib/packageCabMapper';
 import { sumDayWiseHotelRackTotal } from './DayWiseHotelSelector';
+import { resolveExtraBedNightRate } from '../../lib/mealPlanDefaults';
 
 /**
  * Party-size costing: per-person package, 2 adults/room + mattress for odd, cab by seats.
@@ -11,8 +12,13 @@ function round2(n) {
 
 /** Twin share without extra bed. */
 export const BASE_ADULTS_PER_ROOM = 2;
-/** Some hotels allow 5 adults in one room with extra mattresses (2 + 3). */
-export const MAX_ADULTS_PER_ROOM_WITH_MATTRESS = 5;
+/** Extra mattresses after 2 adults — up to 6 people in one room (2 + 4 mattresses). */
+export const MAX_EXTRA_MATTRESSES_PER_ROOM = 4;
+export const MAX_ADULTS_PER_ROOM_WITH_MATTRESS = BASE_ADULTS_PER_ROOM + MAX_EXTRA_MATTRESSES_PER_ROOM;
+
+export function clampExtraMattresses(n = 0) {
+  return Math.max(0, Math.min(MAX_EXTRA_MATTRESSES_PER_ROOM, Math.floor(Number(n) || 0)));
+}
 
 /**
  * Pack extra adults onto existing rooms with extra mattresses
@@ -99,22 +105,29 @@ export function resolvePerPersonPackageRate(pkg = {}) {
   return round2(listed / 2);
 }
 
-/** Mattress surcharge from day-wise hotel absolutes (≈35% of room night when no extra-bed rate). */
+/** Mattress surcharge from hotel API extra_bed rates (same meal plan as the room). */
 export function estimateMattressCost(dayWiseHotels = [], mattresses = 0) {
+  const list = Array.isArray(dayWiseHotels) ? dayWiseHotels : [];
+  const nightRateFor = (item) => {
+    const nights = Math.max(1, Number(item?.nights) || 1);
+    const mealKey = item?.mealPlan?.key || item?.mealPlanKey || item?.meals || 'map';
+    return resolveExtraBedNightRate(item, mealKey) * nights;
+  };
+
+  const hasPerLine = list.some((item) => Number(item?.extraMattresses) > 0);
+  if (hasPerLine) {
+    return round2(
+      list.reduce((sum, item) => {
+        const extra = clampExtraMattresses(item?.extraMattresses);
+        if (!extra) return sum;
+        return sum + nightRateFor(item) * extra;
+      }, 0)
+    );
+  }
+
   const mats = Math.max(0, Number(mattresses) || 0);
   if (!mats) return 0;
-
-  const perMattress = (Array.isArray(dayWiseHotels) ? dayWiseHotels : []).reduce((sum, item) => {
-    const nights = Math.max(1, Number(item?.nights) || 1);
-    const absolute = Number(
-      item?.absolutePerNight || item?.includedRate || 0
-    );
-    const explicit =
-      Number(item?.extraBedPerNight ?? item?.room?.extraBedRate ?? item?.mealPlan?.extraBed ?? 0) || 0;
-    const nightRate = explicit > 0 ? explicit : absolute * 0.35;
-    return sum + nightRate * nights;
-  }, 0);
-
+  const perMattress = list.reduce((sum, item) => sum + nightRateFor(item), 0);
   return round2(perMattress * mats);
 }
 

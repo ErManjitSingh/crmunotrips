@@ -11,7 +11,7 @@ const {
   sanitizeImages,
   unoFetch,
 } = require('./unoHotelsApiClient');
-const { getUnoHotelDetail, mapHotelSummary, mapRoom } = require('./unoHotelsHotelService');
+const { getUnoHotelDetail, mapHotelSummary, mapRoom, pickExtraBedNightRate } = require('./unoHotelsHotelService');
 const { applyOpsRateOverridesToHotel } = require('./unoHotelsOpsService');
 
 const LIST_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -616,8 +616,7 @@ async function hydrateItinerarySelectedStays(itinerary = [], stays = [], catalog
     const epRate =
       Number(room?.epPrice || room?.rates?.ep || room?.pricePerNight || 0) || 0;
     const mealKeyForBed = String(mealPlan.key || mealKey || 'map').toLowerCase();
-    const extraBedPerNight =
-      Number(room?.extraBedRates?.[mealKeyForBed] || 0) || 0;
+    const extraBedPerNight = pickExtraBedNightRate(room?.extraBedRates, mealKeyForBed);
 
     hydrated.push({
       ...day,

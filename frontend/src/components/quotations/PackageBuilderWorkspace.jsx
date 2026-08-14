@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { getPackageTypeConfig, formatINR } from './quotationUtils';
 import { shiftYmd, toYmd } from './quotePdfHelpers';
+import { clampExtraMattresses } from './partyCosting';
 import PackageBuilderDayTimeline from './PackageBuilderDayTimeline';
 import PackageBuilderPriceSidebar from './PackageBuilderPriceSidebar';
 import MobileQuotationActionBar from './MobileQuotationActionBar';
@@ -28,7 +29,7 @@ import EmailComposerModal from '../email/EmailComposerModal';
 import { openWhatsApp } from '../../lib/whatsappContact';
 import { toast } from '../../context/ToastContext';
 import { cn } from '../../lib/utils';
-import { mealPlanFromCode, normalizeMealPlanKey } from '../../lib/mealPlanDefaults';
+import { mealPlanFromCode, normalizeMealPlanKey, resolveExtraBedNightRate } from '../../lib/mealPlanDefaults';
 
 function buildQuotationShareText({ lead, pkg, pricing, nights, daysCount, quoteNumber }) {
   const total = formatINR(pricing?.total || 0);
@@ -552,10 +553,24 @@ export default function PackageBuilderWorkspace({
         0
     );
 
+    const existingSlot = (dayWiseHotels || []).find(
+      (h) => h.day === day.day && Number(h.roomSlot || 1) === Number(roomSlot)
+    );
+    const extraBedRates = option.room?.extraBedRates || existingSlot?.room?.extraBedRates || null;
+    const extraBedPerNight = resolveExtraBedNightRate(
+      {
+        room: { ...(option.room || {}), extraBedRates },
+        extraBedPerNight: option.extraBedPerNight,
+        extraBedRates,
+      },
+      mealKey
+    );
+
     return {
       entry: {
         day: day.day,
         roomSlot,
+        extraMattresses: clampExtraMattresses(existingSlot?.extraMattresses),
         hotel: {
           id: option.id || option.hotelId,
           name: option.name,
@@ -568,8 +583,14 @@ export default function PackageBuilderWorkspace({
           slug: option.slug || '',
           startingPrice: absolutePerNight || option.startingPrice || 0,
         },
-        room: option.room || { name: roomName },
+        room: {
+          ...(option.room || { name: roomName }),
+          extraBedRates,
+          extraBedRate: extraBedPerNight,
+        },
         mealPlan: option.mealPlan || { key: mealKey, label: mealLabel },
+        extraBedRates,
+        extraBedPerNight,
         perNight,
         absolutePerNight,
         includedRate,
@@ -588,8 +609,14 @@ export default function PackageBuilderWorkspace({
               priceDelta: perNight,
               absolutePerNight,
               includedRate,
+              extraBedPerNight,
+              extraBedRates,
               startingPrice: absolutePerNight || option.startingPrice || 0,
-              room: option.room || { name: roomName },
+              room: {
+                ...(option.room || { name: roomName }),
+                extraBedRates,
+                extraBedRate: extraBedPerNight,
+              },
               mealPlan: option.mealPlan || { key: mealKey, label: mealLabel },
             }
           : null,
@@ -646,6 +673,36 @@ export default function PackageBuilderWorkspace({
       .sort((a, b) => a.day - b.day || (a.roomSlot || 1) - (b.roomSlot || 1));
     onDayWiseHotelsChange?.(nextHotels);
     setPicker(null);
+  };
+
+  const handleSetRoomMattresses = (day, roomSlot, count) => {
+    if (!day) return;
+    const slot = Math.max(1, Number(roomSlot) || 1);
+    const extra = clampExtraMattresses(count);
+    const overnight =
+      Array.isArray(itinerary) && itinerary.length > 1 ? itinerary.slice(0, -1) : [day];
+    const targetDays = overnight.length ? overnight : [day];
+    let lines = Array.isArray(dayWiseHotels) ? [...dayWiseHotels] : [];
+
+    targetDays.forEach((d) => {
+      const idx = lines.findIndex(
+        (h) => h.day === d.day && Number(h.roomSlot || 1) === slot
+      );
+      if (idx >= 0) {
+        lines[idx] = { ...lines[idx], extraMattresses: extra };
+        return;
+      }
+      if (slot !== 1) return;
+      const option = d.hotelMeta || (d.hotel ? { name: d.hotel } : null);
+      if (!option) return;
+      const { entry } = buildHotelStayEntry(d, option, 1);
+      entry.extraMattresses = extra;
+      lines.push(entry);
+    });
+
+    onDayWiseHotelsChange?.(
+      lines.sort((a, b) => a.day - b.day || (a.roomSlot || 1) - (b.roomSlot || 1))
+    );
   };
 
   const openCabPicker = (mode = 'change') => setPicker({ type: 'cab', cabMode: mode });
@@ -894,12 +951,10 @@ export default function PackageBuilderWorkspace({
               onOpenHotelPicker={openDayHotelPicker}
               onAddHotelRoom={openAddRoomPicker}
               onChangeExtraRoom={openChangeExtraRoomPicker}
+              onChangeRoomMattresses={handleSetRoomMattresses}
               onChangeCab={() => openCabPicker('change')}
               onAddCab={() => openCabPicker('add')}
               extraCabs={extraCabs}
-              stayWithMattress={stayWithMattress}
-              onStayWithMattress={() => onStayWithMattressChange?.(true)}
-              onClearStayWithMattress={() => onStayWithMattressChange?.(false)}
               destination={hotelDestination || pkg?.destination || 'Destination'}
               embedded
               lead={lead}

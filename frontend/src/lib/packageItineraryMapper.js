@@ -7,6 +7,7 @@ import {
   normalizeMealPlanKey,
   pickPreferredMealPlan,
   resolveHotelNightDisplayRate,
+  resolveExtraBedNightRate,
 } from './mealPlanDefaults';
 
 function formatMealsLabel(meals = {}) {
@@ -708,6 +709,7 @@ export function seedDayWiseHotelsFromItinerary(itinerary = [], preferredMealKey 
           }
         : { key: meal.key, label: meal.label, price: 0, absolutePrice: 0 };
       let absolutePerNight = Number(meta.absolutePerNight || mealPlan.absolutePrice || 0);
+      const wantKey = leadMealKey || 'map';
       const room = meta.room?.name
         ? {
             id: meta.room.id || meta.roomTypeId || null,
@@ -715,6 +717,8 @@ export function seedDayWiseHotelsFromItinerary(itinerary = [], preferredMealKey 
             pricePerNight: Number(meta.room.pricePerNight || absolutePerNight || 0),
             epPrice: Number(meta.room.epPrice || meta.room.rates?.ep || 0),
             rates: meta.room.rates || null,
+            extraBedRates: meta.room.extraBedRates || null,
+            extraBedRate: resolveExtraBedNightRate(meta, wantKey),
             mealPlanOptions: meta.room.mealPlanOptions || [],
             bedType: meta.room.bedType,
             maxOccupancy: meta.room.maxOccupancy,
@@ -725,11 +729,12 @@ export function seedDayWiseHotelsFromItinerary(itinerary = [], preferredMealKey 
             pricePerNight: absolutePerNight,
             epPrice: Number(meta.room?.epPrice || meta.room?.rates?.ep || 0),
             rates: meta.room?.rates || null,
+            extraBedRates: meta.room?.extraBedRates || null,
+            extraBedRate: resolveExtraBedNightRate(meta, wantKey),
             mealPlanOptions: meta.room?.mealPlanOptions || [],
           };
 
       // Always price Deluxe + MAP (or lead meal) — never catalog startingPrice (usually EP/from).
-      const wantKey = leadMealKey || 'map';
       const preferred = pickPreferredMealPlan(ensureMealPlanOptions(room), room, wantKey);
       const priced = mealPlanNightlyRate(preferred, room) || defaultPackageRoomNightly(room, wantKey);
       if (preferred) {
@@ -761,8 +766,14 @@ export function seedDayWiseHotelsFromItinerary(itinerary = [], preferredMealKey 
         totalCost: Number(meta.priceDelta || 0),
         absolutePerNight,
         includedRate: Number(meta.includedRate || absolutePerNight || 0),
-        extraBedPerNight: Number(meta.extraBedPerNight || room?.extraBedRate || 0) || 0,
+        extraBedRates: room.extraBedRates || meta.extraBedRates || null,
+        extraBedPerNight: resolveExtraBedNightRate(
+          { ...meta, room, extraBedPerNight: meta.extraBedPerNight },
+          wantKey
+        ),
         nights: 1,
+        roomSlot: 1,
+        extraMattresses: 0,
         fromPackage: true,
         selectedFromPackage: true,
         hotelOptions: day.hotelOptions || [],

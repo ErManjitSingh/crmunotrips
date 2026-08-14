@@ -246,3 +246,56 @@ export function resolveHotelNightDisplayRate(hotelSel = null, meta = null, mealK
     Number(hotelSel?.absolutePerNight ?? meta?.absolutePerNight ?? meta?.includedRate ?? 0) || 0
   );
 }
+
+const EXTRA_BED_FALLBACK_KEYS = ['map', 'cp', 'ep', 'ap'];
+
+/** Website extra-bed / extra-mattress rates (same shape as room.rates). */
+export function extraBedRatesFrom(source = {}) {
+  const room = source?.room && typeof source.room === 'object' ? source.room : source;
+  const raw =
+    room?.extraBedRates ||
+    source?.extraBedRates ||
+    room?.extra_bed ||
+    source?.extra_bed ||
+    room?.rates?.extra_bed ||
+    null;
+  if (!raw || typeof raw !== 'object') return null;
+  const ep = Number(raw.ep || 0) || 0;
+  const cp = Number(raw.cp || 0) || 0;
+  const map = Number(raw.map || 0) || 0;
+  const ap = Number(raw.ap || 0) || 0;
+  if (!ep && !cp && !map && !ap) return null;
+  return { ep, cp, map, ap };
+}
+
+/**
+ * Extra mattress nightly rate from hotel API extra_bed, matched to the selected meal plan.
+ * Does not invent a % of room rack — 0 when the API has no extra-bed rate.
+ */
+export function resolveExtraBedNightRate(source = {}, mealKey = 'map') {
+  const room = source?.room && typeof source.room === 'object' ? source.room : source;
+  const want =
+    normalizeMealPlanKey(
+      mealKey ||
+        source?.mealPlan?.key ||
+        source?.mealPlanKey ||
+        room?.mealPlanKey ||
+        source?.meals
+    ) || 'map';
+  const rates = extraBedRatesFrom(source) || extraBedRatesFrom(room);
+  if (rates) {
+    const keyed = Number(rates[want] || 0);
+    if (keyed > 0) return keyed;
+    for (const key of EXTRA_BED_FALLBACK_KEYS) {
+      if (Number(rates[key] || 0) > 0) return Number(rates[key]);
+    }
+  }
+  return (
+    Number(
+      source?.extraBedPerNight ??
+        room?.extraBedRate ??
+        source?.mealPlan?.extraBed ??
+        0
+    ) || 0
+  );
+}

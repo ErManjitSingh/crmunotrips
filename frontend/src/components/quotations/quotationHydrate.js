@@ -2,6 +2,7 @@ import { resolveQuotePackage } from './quotePdfHelpers';
 import { resolvePackageCabs } from '../../lib/packageCabMapper';
 import { seedDayWiseHotelsFromItinerary } from '../../lib/packageItineraryMapper';
 import { applyAskDiscount, bakeCompanyMarginIntoLineCosts, calculatePricing } from './quotationUtils';
+import { resolveExtraBedNightRate } from '../../lib/mealPlanDefaults';
 
 /**
  * Rebuild day-wise hotel selections from a saved quotation snapshot.
@@ -23,6 +24,8 @@ export function hydrateDayWiseHotelsFromQuote(quote = {}) {
       0;
     return {
       day: Number(h.day) || index + 1,
+      roomSlot: Number(h.roomSlot) || 1,
+      extraMattresses: Math.max(0, Math.min(4, Math.floor(Number(h.extraMattresses) || 0))),
       hotel: {
         id: h._id || h.id,
         name: h.name || 'Hotel',
@@ -36,7 +39,12 @@ export function hydrateDayWiseHotelsFromQuote(quote = {}) {
         externalSource: h.externalSource || 'uno_hotels',
         startingPrice: absolute || unitPerNight,
       },
-      room: h.room || null,
+      room: h.room
+        ? {
+            ...h.room,
+            extraBedRates: h.room.extraBedRates || h.extraBedRates || null,
+          }
+        : null,
       mealPlan: h.mealPlan || (h.meals ? { label: h.meals, key: h.meals } : null),
       nights,
       perNight: unitPerNight,
@@ -44,9 +52,8 @@ export function hydrateDayWiseHotelsFromQuote(quote = {}) {
       absolutePerNight: absolute,
       includedRate: absolute,
       priceDelta: unitPerNight,
-      extraBedPerNight:
-        Number(h.extraBedPerNight || h.room?.extraBedRate || 0) ||
-        (absolute > 0 ? absolute * 0.35 : 0),
+      extraBedRates: h.extraBedRates || h.room?.extraBedRates || null,
+      extraBedPerNight: resolveExtraBedNightRate(h, h.mealPlan?.key || h.meals || 'map'),
     };
   });
 }

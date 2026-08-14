@@ -113,7 +113,9 @@ export default function PackageBuilderPriceSidebar({
       : 0;
 
   const rows = [
-    { key: 'hotelCost', label: 'Hotel Cost' },
+    { key: 'hotelCost', label: party.mattressCost > 0
+      ? `Hotel Cost (+ ${formatINR(party.mattressCost)} mattress)`
+      : 'Hotel Cost' },
     { key: 'transportCost', label: 'Cab Cost' },
     { key: 'flightCost', label: 'Flight Cost' },
     { key: 'activityCost', label: 'Activities Cost' },
