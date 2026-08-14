@@ -21,6 +21,7 @@ import {
   Target,
   Trophy,
   User,
+  Loader,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
@@ -66,6 +67,17 @@ const KPI_CARDS = [
     iconBg: 'bg-emerald-500 text-white',
     valueClass: 'text-emerald-700',
     arrow: 'bg-emerald-500 text-white',
+  },
+  {
+    key: 'workingProgress',
+    title: 'Work in Progress',
+    hint: 'Requirements in motion',
+    path: '/sales-executive/leads/working-progress',
+    icon: Loader,
+    wrap: 'from-orange-50 to-amber-50 border-orange-100',
+    iconBg: 'bg-orange-500 text-white',
+    valueClass: 'text-orange-700',
+    arrow: 'bg-orange-500 text-white',
   },
   {
     key: 'converted',
@@ -232,6 +244,7 @@ export default function MobileExecutiveLeads({
       all: counts?.leads?.all ?? 0,
       new: counts?.leads?.new ?? 0,
       contacted: counts?.leads?.contacted ?? 0,
+      workingProgress: counts?.leads?.workingProgress ?? 0,
       converted: counts?.leads?.converted ?? 0,
     }),
     [counts],
@@ -526,6 +539,20 @@ export default function MobileExecutiveLeads({
                               {titleCaseStatus(status)}
                             </span>
                           </div>
+                          {lead.nextFollowUp ? (
+                            <p className={cn(
+                              'mt-0.5 flex items-center gap-1 truncate text-[11px]',
+                              new Date(lead.nextFollowUp).getTime() < Date.now() ? 'text-rose-600' : 'text-slate-500'
+                            )}>
+                              <CalendarClock className="h-3 w-3 shrink-0" />
+                              Next F/U · {formatDateTime(lead.nextFollowUp)}
+                            </p>
+                          ) : (
+                            <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-slate-400">
+                              <CalendarClock className="h-3 w-3 shrink-0" />
+                              No next follow-up
+                            </p>
+                          )}
                           <p className="mt-1 flex items-center gap-1 truncate text-[12px] text-slate-500">
                             <MapPin className="h-3 w-3 shrink-0 text-violet-500" />
                             {lead.destination || '—'}

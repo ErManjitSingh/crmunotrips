@@ -57,7 +57,7 @@ const {
   findScopedQuotationsPaginated,
 } = require('../repositories/roleScopedRepository');
 
-const LEAD_FILTER_KEYS = ['new', 'contacted', 'follow-up', 'hot', 'converted', 'lost', 'reactivated', 'all', 'package-shared'];
+const LEAD_FILTER_KEYS = ['new', 'contacted', 'working-progress', 'follow-up', 'hot', 'converted', 'lost', 'reactivated', 'all', 'package-shared'];
 
 const {
   hasExtraDiscountRequest,
@@ -118,6 +118,7 @@ function buildExecutiveLeadFilter(filter) {
     };
   }
   if (filter === 'contacted') return { status: 'contacted' };
+  if (filter === 'working-progress' || filter === 'working_progress') return { status: 'working_progress' };
   if (filter === 'follow-up') return { status: { $in: ['follow_up', 'negotiation'] } };
   if (filter === 'converted') return { status: 'converted' };
   if (filter === 'lost') return { status: { $in: ['lost', 'booked_from_another_company'] } };

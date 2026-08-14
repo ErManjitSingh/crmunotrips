@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Users, Inbox, UserCheck, Flame, XCircle, TrendingUp, Eye, UserPlus, RefreshCw, Undo2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -42,6 +42,7 @@ const TITLES = {
   },
   unassigned: { title: 'Unassigned Leads', desc: 'Leads waiting for executive assignment', icon: Inbox },
   assigned: { title: 'Assigned Leads', desc: 'Leads currently owned by executives', icon: UserCheck },
+  'working-progress': { title: 'Work in Progress', desc: 'Leads being worked — requirements not yet confirmed', icon: TrendingUp },
   hot: { title: 'Hot Leads', desc: 'High budget, urgent travel, and repeat customers', icon: Flame },
   lost: { title: 'Lost Leads', desc: 'Closed-lost opportunities for review', icon: XCircle },
 };
@@ -51,8 +52,9 @@ const columnHelper = createColumnHelper();
 export default function TeamLeadsPage() {
   const queryClient = useQueryClient();
   const { filter = 'all' } = useParams();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
   const [destinationFilter, setDestinationFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -82,6 +84,11 @@ export default function TeamLeadsPage() {
   const pageCount = Math.max(1, Math.ceil(total / pagination.pageSize) || 1);
 
   const fetchLeads = () => queryClient.invalidateQueries({ queryKey: ['leads', '/sales-manager/leads'] });
+
+  useEffect(() => {
+    const nextStatus = searchParams.get('status') || '';
+    setStatusFilter(nextStatus);
+  }, [searchParams]);
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));

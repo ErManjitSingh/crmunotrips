@@ -35,7 +35,7 @@ import { INDIAN_STATES } from '../lead-wizard/constants';
 import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
 import TrackedCallButton from './TrackedCallButton';
 import LeadCallStats from './LeadCallStats';
-import { LeadTimingLines } from '../sales-manager/LeadListBadges';
+import { LeadTimingLines, NextFollowUpLine } from '../sales-manager/LeadListBadges';
 import { TooltipProvider } from '../ui/tooltip';
 import API from '../../api/axios';
 const STATUS_STYLES = {
@@ -296,6 +296,7 @@ export default function MobileLeadList({
                           <h3 className="min-w-0 flex-1 truncate text-[12px] font-bold text-slate-900">{lead.name}</h3>
                           <span className={`rounded-full px-2 py-0.5 text-[7px] font-semibold ${STATUS_STYLES[lead.status] || 'bg-slate-100 text-slate-600'}`}>{titleCase(lead.status)}</span>
                         </div>
+                        <NextFollowUpLine lead={lead} className="!text-[9px] mt-0.5" />
                         <p className="mt-0.5 text-[8px] font-medium text-violet-600">{lead.leadId || formatLeadId(lead._id)}</p>
                         <LeadTimingLines lead={lead} className="!text-[9px] mt-1" />
                         <LeadCallStats lead={lead} compact className="mt-1.5" />

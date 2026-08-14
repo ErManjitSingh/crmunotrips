@@ -192,6 +192,7 @@ async function aggregateSalesManagerLeadCounts(branchId) {
           },
           { $count: 'n' },
         ],
+        workingProgress: [{ $match: { status: 'working_progress' } }, { $count: 'n' }],
         needsAttention: [{ $match: stallMatch }, { $count: 'n' }],
         lost: [
           { $match: { status: { $in: ['lost', 'booked_from_another_company'] } } },
@@ -218,6 +219,7 @@ async function aggregateSalesManagerLeadCounts(branchId) {
     assigned: facetCount(row, 'assigned'),
     hot: facetCount(row, 'hot'),
     inProgress: facetCount(row, 'inProgress'),
+    workingProgress: facetCount(row, 'workingProgress'),
     needsAttention: facetCount(row, 'needsAttention'),
     lost: facetCount(row, 'lost'),
     reactivated: facetCount(row, 'reactivated'),
@@ -282,6 +284,7 @@ async function aggregateExecutiveLeadCounts(userId, branchId) {
           { $count: 'n' },
         ],
         contacted: [{ $match: { status: 'contacted' } }, { $count: 'n' }],
+        workingProgress: [{ $match: { status: 'working_progress' } }, { $count: 'n' }],
         followUp: [{ $match: { status: { $in: ['follow_up', 'negotiation'] } } }, { $count: 'n' }],
         hot: [
           {
@@ -325,6 +328,7 @@ async function aggregateExecutiveLeadCounts(userId, branchId) {
       all: facetCount(row, 'all'),
       new: facetCount(row, 'new'),
       contacted: facetCount(row, 'contacted'),
+      workingProgress: facetCount(row, 'workingProgress'),
       followUp: facetCount(row, 'followUp'),
       hot: facetCount(row, 'hot'),
       converted: facetCount(row, 'converted'),
@@ -399,6 +403,7 @@ async function aggregateTeamLeaderLeadCounts(squadFilter) {
           },
           { $count: 'n' },
         ],
+        workingProgress: [{ $match: { status: 'working_progress' } }, { $count: 'n' }],
         needsAttention: [{ $match: stallMatch }, { $count: 'n' }],
         lost: [
           { $match: { status: { $in: ['lost', 'booked_from_another_company'] } } },
@@ -431,6 +436,7 @@ async function aggregateTeamLeaderLeadCounts(squadFilter) {
     statusNew: facetCount(row, 'statusNew'),
     hot: facetCount(row, 'hot'),
     inProgress: facetCount(row, 'inProgress'),
+    workingProgress: facetCount(row, 'workingProgress'),
     needsAttention: facetCount(row, 'needsAttention'),
     lost: facetCount(row, 'lost'),
     reactivated: facetCount(row, 'reactivated'),
@@ -493,6 +499,7 @@ async function buildTeamLeaderNavCounts(userId, { branchId } = {}) {
       statusNew: aggregated.statusNew,
       hot: aggregated.hot,
       inProgress: aggregated.inProgress,
+      workingProgress: aggregated.workingProgress,
       needsAttention: aggregated.needsAttention,
       lost: aggregated.lost,
       reactivated: aggregated.reactivated,

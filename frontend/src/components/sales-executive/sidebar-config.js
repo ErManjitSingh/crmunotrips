@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Mail,
   MessageCircle,
+  Loader,
 } from 'lucide-react';
 
 export const salesExecutiveNavItems = [
@@ -27,6 +28,7 @@ export const salesExecutiveNavItems = [
       { path: '/sales-executive/leads/all', label: 'Total Leads', icon: List, countKey: 'leads.all' },
       { path: '/sales-executive/whatsapp', label: 'WhatsApp Leads', icon: MessageCircle },
       { path: '/sales-executive/leads/contacted', label: 'Connected Leads', icon: Phone, countKey: 'leads.contacted' },
+      { path: '/sales-executive/leads/working-progress', label: 'Work in Progress', icon: Loader, countKey: 'leads.workingProgress' },
       { path: '/sales-executive/leads/follow-up', label: 'Follow-up Leads', icon: CalendarClock, countKey: 'leads.followUp' },
       { path: '/sales-executive/leads/hot', label: 'Hot Leads', icon: Flame, badgeKey: 'leads.hot' },
       { path: '/sales-executive/leads/reactivated', label: 'Reactivated Leads', icon: RefreshCw, badgeKey: 'leads.reactivated' },

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { Search, Users, MoreHorizontal, Eye, MessageSquare, AlertTriangle, UserPlus, RefreshCw, XCircle, Flame, Undo2 } from 'lucide-react';
@@ -55,6 +55,7 @@ const FILTER_META = {
     desc: 'Leads waiting to be reassigned',
     icon: Undo2,
   },
+  'working-progress': { title: 'Work in Progress', desc: 'Leads being worked — requirements not yet confirmed', icon: Users },
   lost: { title: 'Lost Leads', desc: 'Closed-lost opportunities from your team', icon: XCircle },
   reactivated: { title: 'Reactivated Leads', desc: 'Leads brought back into the pipeline', icon: RefreshCw },
   hot: { title: 'Hot Leads', desc: 'High-value or urgent squad leads', icon: Flame },
@@ -63,6 +64,7 @@ const FILTER_META = {
 export default function LeaderTeamLeadsPage() {
   const queryClient = useQueryClient();
   const { filter: routeFilter } = useParams();
+  const [searchParams] = useSearchParams();
   const filter = routeFilter && FILTER_META[routeFilter] ? routeFilter : 'all';
   const meta = FILTER_META[filter] || FILTER_META.all;
   const MetaIcon = meta.icon;
@@ -71,7 +73,7 @@ export default function LeaderTeamLeadsPage() {
   const isAllView = filter === 'all';
   const { data: myTeam = { team: null, members: [], message: null }, isLoading: teamLoading } = useMyTeamQuery();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '');
   const [destinationFilter, setDestinationFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [reactivateLeadRow, setReactivateLeadRow] = useState(null);
@@ -118,6 +120,10 @@ export default function LeaderTeamLeadsPage() {
       refreshAfterAssign();
     },
   });
+
+  useEffect(() => {
+    setStatusFilter(searchParams.get('status') || '');
+  }, [searchParams]);
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
@@ -246,7 +252,7 @@ export default function LeaderTeamLeadsPage() {
             loading={teamLoading}
           />
           <div className="flex flex-col xl:flex-row gap-4 items-stretch">
-            <ManagerLeadKpiStrip />
+            <ManagerLeadKpiStrip basePath="/team-leader/leads" />
             <ManagerPipelineCard dashboardPath="/team-leader/dashboard" />
           </div>
           <ExecutiveLeadsFilterBar

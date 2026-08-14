@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, Sparkles, Phone, Trophy } from 'lucide-react';
+import { Users, Sparkles, Phone, Trophy, Loader } from 'lucide-react';
 import { useSidebarCounts } from '../../hooks/useSidebarCounts';
 import { cn } from '../../lib/utils';
 
@@ -39,6 +39,17 @@ const CARDS = [
     blob: 'bg-white/15',
   },
   {
+    key: 'workingProgress',
+    label: 'Work in Progress',
+    path: '/sales-executive/leads/working-progress',
+    icon: Loader,
+    card: 'bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-600 shadow-orange-500/35',
+    iconWrap: 'bg-white/20 text-white ring-1 ring-white/30',
+    labelClass: 'text-white/85',
+    valueClass: 'text-white',
+    blob: 'bg-white/15',
+  },
+  {
     key: 'converted',
     label: 'Converted',
     path: '/sales-executive/leads/converted',
@@ -60,7 +71,7 @@ export default function ExecutiveLeadKpiStrip() {
   const counts = useSidebarCounts();
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 w-full">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 w-full">
       {CARDS.map(({ key, label, path, icon: Icon, card, iconWrap, labelClass, valueClass, blob }, i) => {
         const value = getCount(counts, key);
         return (
@@ -73,7 +84,7 @@ export default function ExecutiveLeadKpiStrip() {
             <Link
               to={path}
               className={cn(
-                'relative block overflow-hidden rounded-xl p-3 min-h-[84px] shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg',
+                'relative block cursor-pointer overflow-hidden rounded-xl p-3 min-h-[84px] shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg',
                 card
               )}
             >

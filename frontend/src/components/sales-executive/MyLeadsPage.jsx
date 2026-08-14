@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Plus, ChevronDown, Undo2 } from 'lucide-react';
+import { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Plus, ChevronDown, Undo2, Loader } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import API from '../../api/axios';
@@ -36,7 +36,7 @@ import { getFollowUpOutcome } from '../../constants/leadFollowUpOutcomes';
 import { useSidebarCounts } from '../../hooks/useSidebarCounts';
 import { resolveListTotal } from '../../lib/resolveListTotal';
 
-const ICONS = { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Undo2 };
+const ICONS = { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Undo2, Loader };
 
 const columnHelper = createColumnHelper();
 
@@ -89,7 +89,7 @@ export default function MyLeadsPage() {
     pageIndex: pagination.pageIndex,
     pageSize: pagination.pageSize,
     hasMore,
-    fallbackTotal: isAllView ? navCounts?.leads?.all : navCounts?.leads?.[filter === 'follow-up' ? 'followUp' : filter],
+    fallbackTotal: isAllView ? navCounts?.leads?.all : navCounts?.leads?.[filter === 'follow-up' ? 'followUp' : filter === 'working-progress' ? 'workingProgress' : filter],
   }) ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pagination.pageSize) || 1);
 

@@ -254,6 +254,7 @@ function mapStatusBucket(statusCounts) {
   const quotations = sumStatusCounts(statusCounts, QUOTATION_FUNNEL_STATUSES);
   const lost = LOST_STATUSES.reduce((s, k) => s + (statusCounts[k] || 0), 0);
   const conversions = statusCounts.converted || 0;
+  const workingProgress = statusCounts.working_progress || 0;
   return {
     fresh,
     followUpPending,
@@ -261,6 +262,7 @@ function mapStatusBucket(statusCounts) {
     negotiation,
     connected,
     qualified,
+    workingProgress,
     quotations,
     lost,
     conversions,
@@ -994,6 +996,10 @@ async function buildAdminDashboard(options = {}) {
     interested: withValue(changeMeta(changeBuckets.interested, prevBuckets.interested), valueBuckets.interested),
     connected: withValue(changeMeta(changeBuckets.connected, prevBuckets.connected), valueBuckets.connected),
     qualified: withValue(changeMeta(changeBuckets.qualified, prevBuckets.qualified), valueBuckets.qualified),
+    workingProgress: withValue(
+      changeMeta(changeBuckets.workingProgress, prevBuckets.workingProgress),
+      valueBuckets.workingProgress
+    ),
     quotations: withValue(changeMeta(changeBuckets.quotations, prevBuckets.quotations), valueBuckets.quotations),
     bookings: withValue(changeMeta(changeBuckets.conversions, prevBuckets.conversions), valueBuckets.conversions),
     lostLeads: withValue(changeMeta(changeBuckets.lost, prevBuckets.lost), valueBuckets.lost),
@@ -1134,6 +1140,7 @@ async function buildAdminDashboard(options = {}) {
     lostLeads: primaryLost,
     pendingFollowups,
     overdueFollowups,
+    workingProgress: usePeriodAsPrimary ? periodBuckets.workingProgress : (statusCounts.working_progress || 0),
     conversionRate: primaryConversionRate,
     totalBudget,
     revenue: primaryRevenue,
@@ -1571,6 +1578,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
       myLeads,
       todayLeads,
       connectedLeads,
+      workingProgress: statusCounts.working_progress || 0,
       followUpPending,
       todayFollowups: todayFollowupCount,
       hotLeads,
@@ -1586,6 +1594,7 @@ async function buildExecutiveDashboard(userId, options = {}) {
         period: isAllTime ? 'today' : trendPeriod,
       },
       connectedLeads: { change: 0, period: isAllTime ? 'live' : periodLabel },
+      workingProgress: { change: 0, period: isAllTime ? 'live' : periodLabel },
       followUpPending: { change: pctChange(followUpPending, prevFollowups), period: isAllTime ? 'pending' : trendPeriod },
       todayFollowups: {
         change: pctChange(todayFollowupCount, prevFollowups),
@@ -1696,6 +1705,7 @@ async function buildSalesManagerDashboard(options = {}) {
     newToday,
     pendingFollowups,
     converted,
+    workingProgress,
     pendingQuotes,
     teamRevenue,
     recentLeadsRaw,
@@ -1706,6 +1716,7 @@ async function buildSalesManagerDashboard(options = {}) {
     Lead.countDocuments(withBranch({ createdAt: { $gte: todayStart, $lte: todayEnd } }, branchId)),
     FollowUp.countDocuments(withBranch({ status: 'pending' }, branchId)),
     Lead.countDocuments(withBranch({ status: 'converted' }, branchId)),
+    Lead.countDocuments(withBranch({ status: 'working_progress' }, branchId)),
     Quotation.find(withBranch({ status: { $in: ['sent', 'negotiation', 'pending_approval'] } }, branchId))
       .populate('lead', 'name destination')
       .populate('createdByExecutive', 'name')
@@ -1828,6 +1839,7 @@ async function buildSalesManagerDashboard(options = {}) {
       totalTeamLeads,
       newLeadsToday: newToday,
       pendingFollowups,
+      workingProgress,
       convertedLeads: converted,
       teamRevenue,
       conversionRate,
@@ -1908,6 +1920,7 @@ async function buildTeamLeaderDashboard(leaderId, options = {}) {
             { $count: 'n' },
           ],
           converted: [{ $match: { status: 'converted' } }, { $count: 'n' }],
+          workingProgress: [{ $match: { status: 'working_progress' } }, { $count: 'n' }],
           new: [{ $match: { status: 'new' } }, { $count: 'n' }],
           contacted: [{ $match: { status: 'contacted' } }, { $count: 'n' }],
           followUp: [
@@ -1983,6 +1996,7 @@ async function buildTeamLeaderDashboard(leaderId, options = {}) {
     kpis: {
       teamLeads: activeLeads,
       activeFollowups,
+      workingProgress: facetCount(facet, 'workingProgress'),
       teamConversions: convertedCount,
       teamRevenue,
       conversionRate,

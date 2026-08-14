@@ -52,11 +52,16 @@ function applyReactivationQueryFilters(mongoFilter, query = {}) {
   }
 }
 
+function isWorkingProgressFilter(filter) {
+  return filter === 'working-progress' || filter === 'working_progress' || filter === 'working';
+}
+
 function buildManagerLeadFilter(query = {}) {
   const { filter, search, status, destination, priority } = query;
   const mongoFilter = { ...buildLeadSearchFilter(search) };
 
-  if (filter === 'unassigned') mongoFilter.assignedTo = null;
+  if (isWorkingProgressFilter(filter)) mongoFilter.status = 'working_progress';
+  else if (filter === 'unassigned') mongoFilter.assignedTo = null;
   else if (filter === 'assigned') mongoFilter.assignedTo = { $ne: null };
   else if (filter === 'lost') mongoFilter.status = { $in: ['lost', 'booked_from_another_company'] };
   else if (filter === 'reactivated') {
@@ -98,6 +103,7 @@ function buildExecutiveLeadFilter(filterKey) {
   if (filterKey === 'contacted') {
     return { status: { $in: ['contacted', 'working_progress', 'qualified', 'quotation_sent', 'follow_up', 'negotiation', 'converted'] } };
   }
+  if (isWorkingProgressFilter(filterKey)) return { status: 'working_progress' };
   if (filterKey === 'follow-up') return { status: { $in: ['follow_up', 'negotiation'] } };
   if (filterKey === 'converted') return { status: 'converted' };
   if (filterKey === 'lost') return { status: { $in: ['lost', 'booked_from_another_company'] } };
@@ -280,6 +286,7 @@ async function findTeamLeaderLeadsPaginated(squadFilter, query = {}, options = {
     extra['reactivation.isReactivated'] = true;
     applyReactivationQueryFilters(extra, query);
   }
+  if (isWorkingProgressFilter(query.filter)) extra.status = 'working_progress';
   if (query.filter === 'lost') extra.status = { $in: ['lost', 'booked_from_another_company'] };
   if (query.filter === 'assigned') extra.assignedTo = { $ne: null };
   if (query.filter === 'unassigned') extra.assignedTo = null;

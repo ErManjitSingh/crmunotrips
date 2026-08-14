@@ -239,6 +239,37 @@ export function formatFollowUpDate(date) {
   });
 }
 
+export function NextFollowUpLine({ lead, className }) {
+  const raw = lead?.nextFollowUp;
+  if (!raw) {
+    return (
+      <p className={cn('mt-0.5 flex items-center gap-1 min-w-0 text-[11px] leading-tight text-slate-400', className)}>
+        <Calendar className="w-3 h-3 shrink-0" />
+        <span className="truncate">No next follow-up</span>
+      </p>
+    );
+  }
+  const when = formatFollowUpDate(raw);
+  const overdue = new Date(raw).getTime() < Date.now();
+  return (
+    <p
+      className={cn(
+        'mt-0.5 flex items-center gap-1 min-w-0 text-[11px] leading-tight',
+        overdue ? 'text-rose-600' : 'text-slate-500',
+        className
+      )}
+      title={`Next follow-up ${when}`}
+    >
+      <Calendar className="w-3 h-3 shrink-0" />
+      <span className="truncate">
+        <span className="font-semibold text-slate-600">Next F/U</span>
+        {' · '}
+        {when}
+      </span>
+    </p>
+  );
+}
+
 export function CustomerCell({ name, lead, showPhone = false }) {
   const isRepeated = lead?.isRepeatCustomer || lead?.isVip;
   return (
@@ -255,6 +286,7 @@ export function CustomerCell({ name, lead, showPhone = false }) {
             </span>
           )}
         </div>
+        <NextFollowUpLine lead={lead} />
         <LeadTimingLines lead={lead} />
         {/* Same call chips as executive / converted lists — under the name */}
         <LeadCallStats lead={lead} compact className="mt-1.5" />
@@ -371,6 +403,12 @@ export const FILTER_THEMES = {
     border: 'border-emerald-500/25',
     header: 'from-emerald-500/10 via-teal-500/8 to-cyan-500/10',
     icon: 'text-emerald-600',
+  },
+  'working-progress': {
+    gradient: 'from-orange-500/25 via-amber-500/15 to-yellow-500/20',
+    border: 'border-orange-500/30',
+    header: 'from-orange-500/12 via-amber-500/8 to-yellow-500/10',
+    icon: 'text-orange-600',
   },
   hot: {
     gradient: 'from-rose-500/25 via-orange-500/20 to-amber-500/15',

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   Users,
   Phone,
-  BadgeCheck,
+  Loader,
   FileText,
   Briefcase,
   IndianRupee,
@@ -54,10 +54,11 @@ const KPI_ITEMS = [
     flatCls: 'text-emerald-50/85',
   },
   {
-    key: 'qualified',
-    label: 'Qualified',
-    icon: BadgeCheck,
-    path: '/leads?status=qualified',
+    key: 'workingProgress',
+    label: 'Work in Progress',
+    short: 'WIP',
+    icon: Loader,
+    path: '/leads?status=working_progress',
     card: 'bg-gradient-to-br from-orange-500 to-amber-600 border-orange-400/30 shadow-orange-500/20',
     iconWrap: 'bg-white/20 text-white',
     labelCls: 'text-orange-50',
@@ -157,7 +158,7 @@ export default function DashboardHero({ stats }) {
             <Link
               to={cfg.path}
               className={cn(
-                'flex h-full min-h-[88px] flex-col justify-between gap-2 rounded-2xl border px-2.5 py-2.5 shadow-md transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:min-h-[92px]',
+                'flex h-full min-h-[88px] cursor-pointer flex-col justify-between gap-2 rounded-2xl border px-2.5 py-2.5 shadow-md transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:min-h-[92px]',
                 cfg.card
               )}
             >

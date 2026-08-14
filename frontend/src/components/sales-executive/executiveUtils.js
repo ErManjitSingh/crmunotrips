@@ -9,6 +9,7 @@ export const LEAD_FILTERS = {
   },
   new: { title: 'Fresh / Today Leads', desc: 'Leads created or assigned to you today', icon: 'Sparkles' },
   contacted: { title: 'Connected Leads', desc: 'Leads where the call was picked / connected', icon: 'Phone' },
+  'working-progress': { title: 'Work in Progress', desc: 'Leads being worked — requirements not yet confirmed', icon: 'Loader' },
   'follow-up': { title: 'Follow-up Leads', desc: 'Active pipeline requiring nurturing', icon: 'CalendarClock' },
   hot: { title: 'Hot Leads', desc: 'High budget, urgent travel, or repeat customers', icon: 'Flame' },
   converted: { title: 'Converted Leads', desc: 'Successfully closed bookings', icon: 'Trophy' },
@@ -40,6 +41,11 @@ export const EXEC_FILTER_THEMES = {
     gradient: 'from-violet-500/20 via-purple-500/15 to-indigo-500/15',
     border: 'border-violet-500/25',
     icon: 'text-violet-600',
+  },
+  'working-progress': {
+    gradient: 'from-orange-500/25 via-amber-500/15 to-yellow-500/20',
+    border: 'border-orange-500/30',
+    icon: 'text-orange-600',
   },
   'follow-up': {
     gradient: 'from-amber-500/25 via-orange-500/15 to-yellow-500/20',

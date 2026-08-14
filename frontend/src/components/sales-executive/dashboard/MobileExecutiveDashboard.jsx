@@ -16,6 +16,7 @@ import {
   Upload,
   UserRoundCheck,
   Users,
+  Loader,
 } from 'lucide-react';
 import { toast } from '../../../context/ToastContext';
 import { useSidebar } from '../../../context/SidebarContext';
@@ -25,13 +26,14 @@ import ExecutiveDashboardPeriodFilter from './ExecutiveDashboardPeriodFilter';
 import RecentUpdatesRemindersRow from './RecentUpdatesRemindersRow';
 
 const KPI_CARDS = [
-  { key: 'myLeads', label: 'Total Leads', icon: Users, tone: 'bg-blue-500', spark: '#7c3aed' },
-  { key: 'todayLeads', label: 'Fresh / Today', icon: Sparkles, tone: 'bg-sky-500', spark: '#0ea5e9' },
-  { key: 'connectedLeads', label: 'Connected', icon: Phone, tone: 'bg-emerald-500', spark: '#10b981' },
-  { key: 'followUpPending', label: 'F/U Pending', icon: Clock3, tone: 'bg-amber-500', spark: '#f59e0b' },
-  { key: 'convertedLeads', label: 'Converted', icon: UserRoundCheck, tone: 'bg-orange-500', spark: '#f97316' },
-  { key: 'todayFollowups', label: "Today's F/U", icon: Phone, tone: 'bg-blue-500', spark: '#3b82f6' },
-  { key: 'monthlyRevenue', label: 'Revenue', icon: IndianRupee, tone: 'bg-rose-500', spark: '#f43f5e', currency: true },
+  { key: 'myLeads', label: 'Total Leads', icon: Users, tone: 'bg-blue-500', spark: '#7c3aed', path: '/sales-executive/leads/all' },
+  { key: 'todayLeads', label: 'Fresh / Today', icon: Sparkles, tone: 'bg-sky-500', spark: '#0ea5e9', path: '/sales-executive/leads/new' },
+  { key: 'connectedLeads', label: 'Connected', icon: Phone, tone: 'bg-emerald-500', spark: '#10b981', path: '/sales-executive/leads/contacted' },
+  { key: 'workingProgress', label: 'Work in Progress', icon: Loader, tone: 'bg-orange-500', spark: '#f97316', path: '/sales-executive/leads/working-progress' },
+  { key: 'followUpPending', label: 'F/U Pending', icon: Clock3, tone: 'bg-amber-500', spark: '#f59e0b', path: '/sales-executive/follow-ups' },
+  { key: 'convertedLeads', label: 'Converted', icon: UserRoundCheck, tone: 'bg-emerald-600', spark: '#059669', path: '/sales-executive/leads/converted' },
+  { key: 'todayFollowups', label: "Today's F/U", icon: CalendarDays, tone: 'bg-blue-500', spark: '#3b82f6', path: '/sales-executive/follow-ups' },
+  { key: 'monthlyRevenue', label: 'Revenue', icon: IndianRupee, tone: 'bg-rose-500', spark: '#f43f5e', currency: true, path: '/sales-executive/quotations' },
 ];
 
 const STATUS_STYLES = {
@@ -199,16 +201,8 @@ export default function MobileExecutiveDashboard({
             return (
               <Link
                 key={card.key}
-                to={
-                  card.key === 'todayFollowups' || card.key === 'followUpPending'
-                    ? '/sales-executive/follow-ups'
-                    : card.key === 'connectedLeads'
-                      ? '/sales-executive/leads/contacted'
-                      : card.key === 'todayLeads'
-                        ? '/sales-executive/leads/new'
-                        : '/sales-executive/leads/all'
-                }
-                className="min-w-0 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm"
+                to={card.path || '/sales-executive/leads/all'}
+                className="min-w-0 cursor-pointer rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm"
               >
                 <div className="flex items-start gap-1.5">
                   <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white ${card.tone}`}>

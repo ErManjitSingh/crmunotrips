@@ -26,6 +26,7 @@ import {
   Upload,
   UserRoundCheck,
   Users,
+  Loader,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useSidebar } from "../../context/SidebarContext";
@@ -41,6 +42,15 @@ const KPI_CONFIG = [
     tone: "from-indigo-500 to-violet-600",
     color: "#7c3aed",
     path: "/leads",
+  },
+  {
+    key: "workingProgress",
+    reportKey: "workingProgress",
+    label: "Work in Progress",
+    icon: Loader,
+    tone: "from-orange-400 to-amber-600",
+    color: "#f97316",
+    path: "/leads?status=working_progress",
   },
   {
     key: "totalBudget",
@@ -98,6 +108,7 @@ const STATUS_STYLES = {
   negotiation: "bg-blue-50 text-blue-600",
   quotation_sent: "bg-amber-50 text-amber-600",
   converted: "bg-emerald-50 text-emerald-600",
+  working_progress: "bg-orange-50 text-orange-600",
 };
 
 function formatCurrency(value) {
@@ -452,7 +463,7 @@ export default function MobileAdminDashboard({
               ? {
                   to: card.path,
                   className:
-                    "min-w-0 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm transition active:scale-[0.98]",
+                    "min-w-0 cursor-pointer rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm transition active:scale-[0.98]",
                 }
               : {
                   className:
