@@ -125,7 +125,7 @@ export default function Dashboard() {
           />
         )}
 
-        <DashboardHero stats={stats} />
+        <DashboardHero stats={stats} filters={filters} />
 
         {!isLeadProvider && (
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">

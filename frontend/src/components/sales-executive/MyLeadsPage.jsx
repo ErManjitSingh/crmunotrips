@@ -35,6 +35,7 @@ import LeadFollowUpOutcomeModal from './LeadFollowUpOutcomeModal';
 import { getFollowUpOutcome } from '../../constants/leadFollowUpOutcomes';
 import { useSidebarCounts } from '../../hooks/useSidebarCounts';
 import { resolveListTotal } from '../../lib/resolveListTotal';
+import { useUrlPeriodFilter } from '../../hooks/useUrlPeriodFilter';
 
 const ICONS = { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, Users, Undo2, Loader };
 
@@ -54,6 +55,7 @@ export default function MyLeadsPage() {
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 25 });
   const [modal, setModal] = useState(null);
   const [commercialLeadId, setCommercialLeadId] = useState(null);
+  const { dateFrom, dateTo, setPeriod } = useUrlPeriodFilter();
   const meta = LEAD_FILTERS[filter] || LEAD_FILTERS.new;
   const Icon = ICONS[meta.icon] || Sparkles;
 
@@ -76,6 +78,8 @@ export default function MyLeadsPage() {
     destination: destinationFilter,
     state: stateFilter,
     priority: priorityFilter,
+    dateFrom,
+    dateTo,
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
   });
@@ -100,7 +104,7 @@ export default function MyLeadsPage() {
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
-  }, [filter, debouncedSearch, statusFilter, destinationFilter, stateFilter, priorityFilter]);
+  }, [filter, debouncedSearch, statusFilter, destinationFilter, stateFilter, priorityFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     setStatusFilter('');
@@ -216,6 +220,9 @@ export default function MyLeadsPage() {
         onPriorityChange={setPriorityFilter}
         sourceFilter={sourceFilter}
         onSourceChange={setSourceFilter}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onPeriodSelect={setPeriod}
         onRefresh={fetchLeads}
         onOpenLead={(lead) => navigate(`/sales-executive/leads/${lead._id}/view`)}
       />
@@ -252,6 +259,9 @@ export default function MyLeadsPage() {
         onPriorityChange={setPriorityFilter}
         showStatusFilter={isAllView}
         showAddLead={false}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onPeriodSelect={setPeriod}
       />
 
       {isConvertedView ? (

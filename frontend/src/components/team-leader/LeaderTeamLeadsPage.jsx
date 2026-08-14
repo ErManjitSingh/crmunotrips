@@ -31,6 +31,8 @@ import { useLeadReactivate } from '../../hooks/useLeadReactivate';
 import { useMyTeamQuery } from '../../hooks/useMyTeamQuery';
 import MyTeamPanel from './MyTeamPanel';
 import { TooltipProvider } from '../ui/tooltip';
+import PeriodPresetChips from '../ui/PeriodPresetChips';
+import { useUrlPeriodFilter } from '../../hooks/useUrlPeriodFilter';
 import {
   DropdownMenuRoot, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
@@ -72,6 +74,7 @@ export default function LeaderTeamLeadsPage() {
   const showRecoveryUi = filter === 'lost' || filter === 'reactivated';
   const isAllView = filter === 'all';
   const { data: myTeam = { team: null, members: [], message: null }, isLoading: teamLoading } = useMyTeamQuery();
+  const { dateFrom, dateTo, setPeriod } = useUrlPeriodFilter();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '');
   const [destinationFilter, setDestinationFilter] = useState('');
@@ -89,6 +92,8 @@ export default function LeaderTeamLeadsPage() {
     status: isAllView ? statusFilter : '',
     destination: isAllView ? destinationFilter : '',
     priority: isAllView ? priorityFilter : '',
+    dateFrom,
+    dateTo,
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
   });
@@ -127,7 +132,7 @@ export default function LeaderTeamLeadsPage() {
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
-  }, [debouncedSearch, filter, statusFilter, destinationFilter, priorityFilter]);
+  }, [debouncedSearch, filter, statusFilter, destinationFilter, priorityFilter, dateFrom, dateTo]);
 
   const handleComment = async () => {
     if (!modal?.lead || !text.trim()) return;
@@ -265,6 +270,9 @@ export default function LeaderTeamLeadsPage() {
             priorityFilter={priorityFilter}
             onPriorityChange={setPriorityFilter}
             showAddLead={false}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onPeriodSelect={setPeriod}
           />
         </>
       )}
@@ -306,14 +314,17 @@ export default function LeaderTeamLeadsPage() {
       ) : null}
 
       {!isAllView && (
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search customer, destination, executive…"
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-subtle bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30"
-          />
+        <div className="max-w-md space-y-3">
+          <PeriodPresetChips dateFrom={dateFrom} dateTo={dateTo} onSelect={setPeriod} />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search customer, destination, executive…"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-subtle bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+            />
+          </div>
         </div>
       )}
       <TooltipProvider delayDuration={0}>

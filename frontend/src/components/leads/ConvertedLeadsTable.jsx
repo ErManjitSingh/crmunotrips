@@ -141,7 +141,7 @@ function ConvertedLeadRow({ lead, detailHref, onClick }) {
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') onClick?.(lead);
       }}
-      className="grid grid-cols-1 gap-4 border-b border-slate-100 bg-white px-4 py-4 transition-colors hover:bg-slate-50/80 xl:grid-cols-[220px_140px_minmax(200px,1.1fr)_minmax(220px,1.2fr)_minmax(240px,1.3fr)]"
+      className="grid grid-cols-1 gap-4 border-b border-slate-100 bg-white px-4 py-4 transition-colors hover:bg-slate-50/80 xl:grid-cols-[minmax(200px,0.9fr)_minmax(160px,0.75fr)_minmax(260px,1.3fr)_minmax(240px,1.2fr)_minmax(260px,1.3fr)]"
     >
       {/* Booked On */}
       <div className="space-y-2">
@@ -166,30 +166,30 @@ function ConvertedLeadRow({ lead, detailHref, onClick }) {
       </div>
 
       {/* Source */}
-      <div className="space-y-2">
-        <span className="inline-flex rounded-md bg-violet-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-violet-700">
+      <div className="min-w-0 space-y-2 overflow-visible">
+        <div className="inline-flex max-w-full flex-wrap rounded-md bg-violet-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-violet-700">
           <SourceBadge
             source={lead.source || lead.leadSource}
             label={lead.sourceLabel}
             sourceShort={lead.sourceShort}
           />
-        </span>
-        <p className="text-[12px] text-slate-600">
+        </div>
+        <p className="break-words text-[12px] text-slate-600">
           Sales by: <span className="font-bold text-slate-900">{salesBy}</span>
         </p>
       </div>
 
       {/* Guest Info */}
-      <div className="space-y-2">
+      <div className="min-w-0 space-y-2">
         <div>
-          <p className="text-[13px] font-bold text-slate-900">{lead.name}</p>
+          <p className="break-words text-[13px] font-bold leading-snug text-slate-900">{lead.name}</p>
           <LeadCallStats lead={lead} compact className="mt-1" />
-          <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500">
-            <Mail className="h-3 w-3 shrink-0" />
-            <span className="truncate">{lead.email || lead.phone || '—'}</span>
+          <p className="mt-0.5 flex items-start gap-1.5 text-[11px] text-slate-500">
+            <Mail className="mt-0.5 h-3 w-3 shrink-0" />
+            <span className="break-all">{lead.email || lead.phone || '—'}</span>
           </p>
           {lead.phone && lead.email && (
-            <p className="mt-0.5 text-[11px] text-slate-500 tabular-nums">{lead.phone}</p>
+            <p className="mt-0.5 break-all text-[11px] text-slate-500 tabular-nums">{lead.phone}</p>
           )}
         </div>
         <div className="inline-flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-semibold text-slate-700">
@@ -205,8 +205,8 @@ function ConvertedLeadRow({ lead, detailHref, onClick }) {
       </div>
 
       {/* Tour Info */}
-      <div className="space-y-2">
-        <p className="text-[12px] text-slate-600">
+      <div className="min-w-0 space-y-2">
+        <p className="break-words text-[12px] text-slate-600">
           Going To:{' '}
           <span className="font-bold text-slate-900">{lead.destination || 'Not set'}</span>
         </p>
@@ -299,8 +299,9 @@ export default function ConvertedLeadsTable({
 }) {
   return (
     <TooltipProvider delayDuration={150}>
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="hidden border-b border-slate-100 bg-slate-50/80 px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 xl:grid xl:grid-cols-[220px_140px_minmax(200px,1.1fr)_minmax(220px,1.2fr)_minmax(240px,1.3fr)] xl:gap-4">
+    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="min-w-[1080px]">
+      <div className="hidden border-b border-slate-100 bg-slate-50/80 px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 xl:grid xl:grid-cols-[minmax(200px,0.9fr)_minmax(160px,0.75fr)_minmax(260px,1.3fr)_minmax(240px,1.2fr)_minmax(260px,1.3fr)] xl:gap-4">
         <span>Booked On</span>
         <span>Source</span>
         <span>Guest Info</span>
@@ -349,6 +350,7 @@ export default function ConvertedLeadsTable({
           />
         </div>
       )}
+      </div>
     </div>
     </TooltipProvider>
   );

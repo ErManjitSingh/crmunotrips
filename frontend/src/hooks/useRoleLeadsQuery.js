@@ -3,7 +3,7 @@ import API from '../api/axios';
 import { buildListParams, unwrapPagination } from '../utils/apiHelpers';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 
-async function fetchRoleLeads(endpoint, { page, limit, filter, search, status, destination, priority, state, statusReason }) {
+async function fetchRoleLeads(endpoint, { page, limit, filter, search, status, destination, priority, state, statusReason, dateFrom, dateTo }) {
   const { data } = await API.get(endpoint, {
     params: buildListParams({
       page,
@@ -16,6 +16,8 @@ async function fetchRoleLeads(endpoint, { page, limit, filter, search, status, d
         priority: priority || undefined,
         state: state || undefined,
         statusReason: statusReason || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
       },
     }),
     skipSuccessToast: true,
@@ -32,6 +34,8 @@ export function useRoleLeadsQuery({
   priority = '',
   state = '',
   statusReason = '',
+  dateFrom = '',
+  dateTo = '',
   page = 1,
   limit = 50,
   enabled = true,
@@ -49,6 +53,8 @@ export function useRoleLeadsQuery({
       priority,
       state,
       statusReason,
+      dateFrom,
+      dateTo,
       page,
       limit,
     }],
@@ -63,6 +69,8 @@ export function useRoleLeadsQuery({
         priority,
         state,
         statusReason,
+        dateFrom,
+        dateTo,
       }),
     enabled,
     staleTime: 60_000,

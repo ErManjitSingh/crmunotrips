@@ -4,6 +4,7 @@ import { Search, SlidersHorizontal, Plus } from 'lucide-react';
 import { DESTINATIONS, INDIAN_STATES } from '../leads/constants';
 import { LEAD_FOLLOW_UP_OUTCOMES } from '../../constants/leadFollowUpOutcomes';
 import { executiveInput } from './executivePageStyles';
+import PeriodPresetChips from '../ui/PeriodPresetChips';
 
 const PRIORITY_OPTIONS = [
   { value: '', label: 'All intents' },
@@ -27,12 +28,21 @@ export default function ExecutiveLeadsFilterBar({
   onPriorityChange,
   showStatusFilter = true,
   showAddLead = true,
+  dateFrom = '',
+  dateTo = '',
+  onPeriodSelect,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const activeExtraFilters = statusFilter || destinationFilter || priorityFilter || stateFilter;
 
   return (
     <div className="rounded-2xl border border-subtle bg-white dark:bg-slate-900 shadow-sm p-4">
+      {onPeriodSelect && (
+        <div className="mb-3">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-content-muted">Period</p>
+          <PeriodPresetChips dateFrom={dateFrom} dateTo={dateTo} onSelect={onPeriodSelect} />
+        </div>
+      )}
       <div className="flex flex-col lg:flex-row gap-3 lg:items-center flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />

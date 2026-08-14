@@ -37,6 +37,8 @@ import TrackedCallButton from './TrackedCallButton';
 import LeadCallStats from './LeadCallStats';
 import { LeadTimingLines, NextFollowUpLine } from '../sales-manager/LeadListBadges';
 import { TooltipProvider } from '../ui/tooltip';
+import PeriodPresetChips from '../ui/PeriodPresetChips';
+import { applyPeriodPreset } from '../../lib/periodFilters';
 import API from '../../api/axios';
 const STATUS_STYLES = {
   new: 'bg-violet-50 text-violet-600',
@@ -188,6 +190,12 @@ export default function MobileLeadList({
             <button type="button" onClick={() => updateAndApply({ status: 'converted' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'converted' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Converted</button>
             <button type="button" onClick={() => updateAndApply({ status: 'negotiation' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'negotiation' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Negotiation</button>
           </div>
+          <PeriodPresetChips
+            className="mt-2"
+            dateFrom={filters.dateFrom}
+            dateTo={filters.dateTo}
+            onSelect={(key) => updateAndApply(applyPeriodPreset(key))}
+          />
 
           {filtersOpen && (
             <div ref={moreFiltersRef} className="mt-3 space-y-2 border-t border-slate-100 pt-3">
@@ -293,7 +301,7 @@ export default function MobileLeadList({
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <h3 className="min-w-0 flex-1 truncate text-[12px] font-bold text-slate-900">{lead.name}</h3>
+                          <h3 className="min-w-0 flex-1 break-words text-[12px] font-bold text-slate-900">{lead.name}</h3>
                           <span className={`rounded-full px-2 py-0.5 text-[7px] font-semibold ${STATUS_STYLES[lead.status] || 'bg-slate-100 text-slate-600'}`}>{titleCase(lead.status)}</span>
                         </div>
                         <NextFollowUpLine lead={lead} className="!text-[9px] mt-0.5" />

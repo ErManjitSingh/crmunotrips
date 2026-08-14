@@ -108,7 +108,7 @@ export function ExecCustomerCell({ lead }) {
 
   if (returned) {
     return (
-      <div className="block rounded-xl -m-1 p-1.5 min-w-[200px] max-w-[300px] opacity-90">
+      <div className="block rounded-xl -m-1 p-1.5 min-w-[200px] opacity-90">
         {inner}
       </div>
     );
@@ -117,7 +117,7 @@ export function ExecCustomerCell({ lead }) {
   return (
     <Link
       to={`/sales-executive/leads/${lead._id}/view`}
-      className="block rounded-xl -m-1 p-1.5 hover:bg-[#5D5FEF]/[0.04] transition-colors min-w-[200px] max-w-[300px]"
+      className="block rounded-xl -m-1 p-1.5 hover:bg-[#5D5FEF]/[0.04] transition-colors min-w-[200px]"
       onClick={(e) => e.stopPropagation()}
     >
       {inner}

@@ -32,6 +32,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useSidebar } from "../../context/SidebarContext";
 import { toast } from "../../context/ToastContext";
 import { useTimeGreeting } from "../../lib/greeting";
+import { withPeriodParams } from "../../lib/periodFilters";
 
 const KPI_CONFIG = [
   {
@@ -461,7 +462,7 @@ export default function MobileAdminDashboard({
             const Wrapper = card.path ? Link : "div";
             const wrapperProps = card.path
               ? {
-                  to: card.path,
+                  to: withPeriodParams(card.path, filters),
                   className:
                     "min-w-0 cursor-pointer rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm transition active:scale-[0.98]",
                 }

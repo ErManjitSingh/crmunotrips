@@ -23,6 +23,7 @@ import { useSidebar } from '../../../context/SidebarContext';
 import { formatCurrency } from '../executiveUtils';
 import ExecutiveMonthlyTargetCard from './ExecutiveMonthlyTargetCard';
 import ExecutiveDashboardPeriodFilter from './ExecutiveDashboardPeriodFilter';
+import { withPeriodParams } from '../../../lib/periodFilters';
 import RecentUpdatesRemindersRow from './RecentUpdatesRemindersRow';
 
 const KPI_CARDS = [
@@ -201,7 +202,7 @@ export default function MobileExecutiveDashboard({
             return (
               <Link
                 key={card.key}
-                to={card.path || '/sales-executive/leads/all'}
+                to={withPeriodParams(card.path || '/sales-executive/leads/all', filters)}
                 className="min-w-0 cursor-pointer rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm"
               >
                 <div className="flex items-start gap-1.5">

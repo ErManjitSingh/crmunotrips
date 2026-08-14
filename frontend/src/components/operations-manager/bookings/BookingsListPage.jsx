@@ -137,9 +137,9 @@ function buildColumns(listStatus, selection) {
             {getInitials(b.customerName)}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-content-primary truncate">{b.customerName}</p>
+            <p className="font-semibold text-content-primary break-words">{b.customerName}</p>
             <div className="flex items-center gap-1.5 text-xs text-content-muted">
-              <span>{b.customerPhone || '—'}</span>
+              <span className="break-all">{b.customerPhone || '—'}</span>
               {b.customerPhone && (
                 <a
                   href={`https://wa.me/${String(b.customerPhone).replace(/\D/g, '')}`}
@@ -171,7 +171,7 @@ function buildColumns(listStatus, selection) {
       key: 'package',
       header: 'Package',
       className: 'max-w-[190px]',
-      render: (b) => <span className="text-content-secondary block truncate">{b.packageName || '—'}</span>,
+      render: (b) => <span className="text-content-secondary block break-words whitespace-normal">{b.packageName || '—'}</span>,
     },
     {
       key: 'travel',

@@ -28,6 +28,19 @@ import MobileLeadList from '../components/leads/MobileLeadList';
 import ConvertedLeadsTable from '../components/leads/ConvertedLeadsTable';
 import { useSidebarCounts } from '../hooks/useSidebarCounts';
 import { resolveListTotal } from '../lib/resolveListTotal';
+import { applyPeriodPreset } from '../lib/periodFilters';
+
+function filtersFromLocation(location, config) {
+  const params = new URLSearchParams(location.search);
+  return {
+    ...emptyFilters,
+    status: config.status || params.get('status') || '',
+    dateFrom: params.get('dateFrom') || '',
+    dateTo: params.get('dateTo') || '',
+    source: params.get('source') || '',
+    agent: params.get('agent') || '',
+  };
+}
 
 export default function Leads() {
   const location = useLocation();
@@ -60,8 +73,8 @@ export default function Leads() {
   const isAllLeadsPage = location.pathname === '/leads';
   const isConvertedPage = location.pathname === '/leads/converted' || config.status === 'converted';
 
-  const [filters, setFilters] = useState({ ...emptyFilters, status: config.status || '' });
-  const [appliedFilters, setAppliedFilters] = useState({ ...emptyFilters, status: config.status || '' });
+  const [filters, setFilters] = useState(() => filtersFromLocation(location, config));
+  const [appliedFilters, setAppliedFilters] = useState(() => filtersFromLocation(location, config));
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: isAllLeadsPage ? ALL_LEADS_PAGE_SIZE : LEADS_PAGE_SIZE,
@@ -123,8 +136,11 @@ export default function Leads() {
     const params = new URLSearchParams(location.search);
     const statusFromQuery = params.get('status') || '';
     const nextStatus = config.status || statusFromQuery || '';
-    setFilters((f) => ({ ...f, status: nextStatus }));
-    setAppliedFilters((f) => ({ ...f, status: nextStatus }));
+    const dateFrom = params.get('dateFrom') || '';
+    const dateTo = params.get('dateTo') || '';
+    const source = params.get('source') || '';
+    setFilters((f) => ({ ...f, status: nextStatus, dateFrom, dateTo, source }));
+    setAppliedFilters((f) => ({ ...f, status: nextStatus, dateFrom, dateTo, source }));
     setPagination({
       pageIndex: 0,
       pageSize: isAllLeadsPage ? ALL_LEADS_PAGE_SIZE : LEADS_PAGE_SIZE,
@@ -187,15 +203,45 @@ export default function Leads() {
 
   const selectedLeadIds = Object.keys(rowSelection).filter((k) => rowSelection[k]);
 
-  const handleApply = () => setAppliedFilters({ ...filters });
+  const syncPeriodToUrl = useCallback((next) => {
+    const params = new URLSearchParams(location.search);
+    if (next.dateFrom) params.set('dateFrom', next.dateFrom);
+    else params.delete('dateFrom');
+    if (next.dateTo) params.set('dateTo', next.dateTo);
+    else params.delete('dateTo');
+    if (next.source) params.set('source', next.source);
+    else params.delete('source');
+    const search = params.toString();
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : '' }, { replace: true });
+  }, [location.pathname, location.search, navigate]);
+
+  const handleApply = () => {
+    setAppliedFilters({ ...filters });
+    syncPeriodToUrl(filters);
+  };
   const handleMobileApply = (next) => {
     setFilters(next);
     setAppliedFilters(next);
+    syncPeriodToUrl(next);
   };
   const handleReset = () => {
     const base = { ...emptyFilters, status: config.status || '' };
     setFilters(base);
     setAppliedFilters(base);
+    const params = new URLSearchParams(location.search);
+    params.delete('dateFrom');
+    params.delete('dateTo');
+    params.delete('source');
+    if (!config.status) params.delete('status');
+    const search = params.toString();
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : '' }, { replace: true });
+  };
+  const handlePeriodSelect = (key) => {
+    const dates = applyPeriodPreset(key);
+    const next = { ...filters, ...dates };
+    setFilters(next);
+    setAppliedFilters(next);
+    syncPeriodToUrl(next);
   };
 
   const handleDelete = async (id) => {
@@ -307,6 +353,7 @@ export default function Leads() {
           onChange={setFilters}
           onApply={handleApply}
           onReset={handleReset}
+          onPeriodSelect={handlePeriodSelect}
           activeCount={countActiveFilters(appliedFilters)}
         />
 

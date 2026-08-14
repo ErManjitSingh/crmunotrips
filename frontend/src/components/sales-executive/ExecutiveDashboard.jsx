@@ -230,7 +230,7 @@ export default function ExecutiveDashboard() {
           onMarkDone={handleMarkColdCallDone}
         />
 
-        <ExecutiveKpiCards kpis={data?.kpis} trends={data?.kpiTrends} />
+        <ExecutiveKpiCards kpis={data?.kpis} trends={data?.kpiTrends} filters={filters} />
 
         <ExecutiveMonthlyTargetCard target={data?.target} now={now} />
 

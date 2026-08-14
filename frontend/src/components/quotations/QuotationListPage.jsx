@@ -70,6 +70,14 @@ export default function QuotationListPage() {
   }, [debouncedSearch, appliedFilters.status, appliedFilters.destination, appliedFilters.dateFrom, appliedFilters.dateTo]);
 
   useEffect(() => {
+    const dateFrom = searchParams.get('dateFrom') || '';
+    const dateTo = searchParams.get('dateTo') || '';
+    if (!dateFrom && !dateTo) return;
+    setDraftFilters((f) => (f.dateFrom || f.dateTo ? f : { ...f, dateFrom, dateTo }));
+    setAppliedFilters((f) => (f.dateFrom || f.dateTo ? f : { ...f, dateFrom, dateTo }));
+  }, [searchParams]);
+
+  useEffect(() => {
     const viewId = searchParams.get('view');
     if (viewId && quotes.length) {
       const q = quotes.find((x) => x._id === viewId);

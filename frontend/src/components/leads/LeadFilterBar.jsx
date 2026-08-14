@@ -13,6 +13,8 @@ import { INDIAN_STATES } from '../lead-wizard/constants';
 import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
+import PeriodPresetChips from '../ui/PeriodPresetChips';
+import { applyPeriodPreset } from '../../lib/periodFilters';
 import API from '../../api/axios';
 
 const fieldClass =
@@ -39,7 +41,14 @@ function hasMoreFilterValues(filters = {}, canFilterBranch) {
   );
 }
 
-export default function LeadFilterBar({ filters, onChange, onApply, onReset, activeCount = 0 }) {
+export default function LeadFilterBar({
+  filters,
+  onChange,
+  onApply,
+  onReset,
+  activeCount = 0,
+  onPeriodSelect,
+}) {
   const { user } = useAuth();
   const { availableBranches = [] } = useSelector((s) => s.branch);
   const [executives, setExecutives] = useState([]);
@@ -99,6 +108,19 @@ export default function LeadFilterBar({ filters, onChange, onApply, onReset, act
           onChange={(e) => set('search', e.target.value)}
           placeholder="Search customer, phone, email, lead ID..."
           className="h-10 w-full rounded-xl border border-subtle bg-slate-50 pl-10 pr-4 text-sm text-content-primary placeholder:text-content-muted outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-500/40"
+        />
+      </div>
+
+      {/* Period chips — Today / Yesterday / This Month / All Time */}
+      <div className="mb-3">
+        <FieldLabel>Period</FieldLabel>
+        <PeriodPresetChips
+          dateFrom={filters.dateFrom}
+          dateTo={filters.dateTo}
+          onSelect={(key) => {
+            if (onPeriodSelect) onPeriodSelect(key);
+            else onChange({ ...filters, ...applyPeriodPreset(key) });
+          }}
         />
       </div>
 

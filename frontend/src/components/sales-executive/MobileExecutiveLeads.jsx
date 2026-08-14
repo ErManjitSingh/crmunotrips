@@ -33,6 +33,7 @@ import { LEAD_FOLLOW_UP_OUTCOMES } from '../../constants/leadFollowUpOutcomes';
 import { SourceBadge } from '../sales-manager/LeadListBadges';
 import { cn } from '../../lib/utils';
 import { toast } from '../../context/ToastContext';
+import PeriodPresetChips from '../ui/PeriodPresetChips';
 
 const KPI_CARDS = [
   {
@@ -227,6 +228,9 @@ export default function MobileExecutiveLeads({
   onPriorityChange,
   sourceFilter = '',
   onSourceChange,
+  dateFrom = '',
+  dateTo = '',
+  onPeriodSelect,
   onRefresh,
   onOpenLead,
   onOpenMenu,
@@ -406,6 +410,13 @@ export default function MobileExecutiveLeads({
 
           {moreFiltersOpen ? (
             <>
+              {onPeriodSelect && (
+                <PeriodPresetChips
+                  dateFrom={dateFrom}
+                  dateTo={dateTo}
+                  onSelect={onPeriodSelect}
+                />
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <FilterSelect
                   icon={MapPin}

@@ -133,7 +133,7 @@ export function SourceBadge({ source, label, sourceShort }) {
   }
 
   return (
-    <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium whitespace-nowrap', tone)}>
+    <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium break-words', tone)}>
       {Icon ? <Icon className={iconClass} /> : null}
       {display}
     </span>
@@ -143,7 +143,7 @@ export function SourceBadge({ source, label, sourceShort }) {
 export function DestinationChip({ name }) {
   if (!name) return <span className="text-sm text-content-muted">—</span>;
   return (
-    <span className={cn('inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset bg-gradient-to-r max-w-[130px] truncate', destStyle(name))}>
+    <span className={cn('inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset bg-gradient-to-r max-w-[220px] whitespace-normal break-words', destStyle(name))}>
       <MapPin className="w-3 h-3 shrink-0 opacity-70" />
       {name}
     </span>
@@ -273,11 +273,11 @@ export function NextFollowUpLine({ lead, className }) {
 export function CustomerCell({ name, lead, showPhone = false }) {
   const isRepeated = lead?.isRepeatCustomer || lead?.isVip;
   return (
-    <div className="flex items-start gap-2.5 min-w-0 max-w-[340px]">
+    <div className="flex min-w-0 items-start gap-2.5">
       <Avatar name={name} size="sm" className="!w-8 !h-8 !text-[11px] shrink-0 mt-0.5" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <p className="font-semibold text-sm text-content-primary truncate">{name}</p>
+          <p className="font-semibold text-sm text-content-primary break-words">{name}</p>
           {isRepeated ? (
             <RepeatedLeadBadge size="sm" />
           ) : (

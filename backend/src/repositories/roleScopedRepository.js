@@ -30,6 +30,59 @@ const {
 
 const LIST_PAGINATION = { defaultLimit: 20, maxLimit: 200 };
 
+function parseLocalDayStart(dateStr) {
+  const parts = String(dateStr || '').split('-').map(Number);
+  if (parts.length === 3 && parts.every((n) => Number.isFinite(n))) {
+    return new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+  }
+  return startOfDay(new Date(dateStr));
+}
+
+function parseLocalDayEnd(dateStr) {
+  const parts = String(dateStr || '').split('-').map(Number);
+  if (parts.length === 3 && parts.every((n) => Number.isFinite(n))) {
+    return new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999);
+  }
+  const end = new Date(dateStr);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
+function buildDateRange(query = {}) {
+  if (!query.dateFrom && !query.dateTo) return null;
+  const range = {};
+  if (query.dateFrom) range.$gte = parseLocalDayStart(query.dateFrom);
+  if (query.dateTo) range.$lte = parseLocalDayEnd(query.dateTo);
+  return range;
+}
+
+function applyCreatedAtRange(filter, query = {}) {
+  const range = buildDateRange(query);
+  if (!range) return filter;
+  filter.createdAt = range;
+  return filter;
+}
+
+function applyPeriodTouch(filter, query = {}) {
+  const range = buildDateRange(query);
+  if (!range) return filter;
+  const touch = {
+    $or: [
+      { createdAt: { ...range } },
+      { assignedAt: { ...range } },
+    ],
+  };
+  if (Array.isArray(filter.$and)) {
+    filter.$and.push(touch);
+  } else if (filter.$or) {
+    filter.$and = [{ $or: filter.$or }, touch];
+    delete filter.$or;
+  } else {
+    filter.$and = [touch];
+  }
+  return filter;
+}
+
 function withActiveLead(filter = {}) {
   return { ...filter, isDeleted: { $ne: true } };
 }
@@ -83,16 +136,20 @@ function buildManagerLeadFilter(query = {}) {
   return mongoFilter;
 }
 
-function buildExecutiveLeadFilter(filterKey) {
+function buildExecutiveLeadFilter(filterKey, query = {}) {
   if (filterKey === 'new') {
-    // Today / Fresh leads — created or assigned today (not just status=new)
-    const start = startOfDay();
-    const end = new Date(start);
-    end.setHours(23, 59, 59, 999);
+    const range = buildDateRange(query) || {
+      $gte: startOfDay(),
+      $lte: (() => {
+        const end = startOfDay();
+        end.setHours(23, 59, 59, 999);
+        return end;
+      })(),
+    };
     return {
       $or: [
-        { createdAt: { $gte: start, $lte: end } },
-        { assignedAt: { $gte: start, $lte: end } },
+        { createdAt: range },
+        { assignedAt: range },
       ],
     };
   }
@@ -127,6 +184,7 @@ async function findManagerLeadsPaginated(query = {}, options = {}) {
   const { page, limit, skip } = parsePagination(query);
   const sort = parseSort(query, { createdAt: -1 });
   const filter = withActiveLead(withBranch(buildManagerLeadFilter(query), options.branchId));
+  applyCreatedAtRange(filter, query);
 
   if (wantsPackageSharedLeads(query)) {
     const ids = await findPackageSharedLeadIds({ branchId: options.branchId });
@@ -181,7 +239,7 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
   // Expired acceptances are handled by notificationScheduler — not on every list request
 
   const searchPart = buildLeadSearchFilter(query.search);
-  const statusExtras = buildExecutiveLeadFilter(filterKey);
+  const statusExtras = buildExecutiveLeadFilter(filterKey, query);
 
   // Dedicated Returned Leads view — leads this exec did not accept in time
   if (filterKey === 'returned') {
@@ -228,6 +286,7 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
   }
   if (andParts.length) owned.$and = andParts;
   Object.assign(owned, withBranch({}, options.branchId));
+  if (filterKey !== 'new') applyPeriodTouch(owned, query);
 
   if (filterKey === 'hot') {
     owned.isHot = true;
@@ -310,6 +369,7 @@ async function findTeamLeaderLeadsPaginated(squadFilter, query = {}, options = {
   const filter = withActiveLead(
     withBranch({ ...squadFilter, ...extra, ...buildLeadSearchFilter(query.search) }, options.branchId)
   );
+  applyCreatedAtRange(filter, query);
 
   if (wantsPackageSharedLeads(query)) {
     const sharedIds = await findPackageSharedLeadIds({ branchId: options.branchId });

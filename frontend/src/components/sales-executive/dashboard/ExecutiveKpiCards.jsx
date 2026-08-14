@@ -14,6 +14,7 @@ import {
   Minus,
 } from 'lucide-react';
 import { formatCurrency } from '../executiveUtils';
+import { withPeriodParams } from '../../../lib/periodFilters';
 
 /** Primary lead KPIs — compact single-row strip */
 const cards = [
@@ -47,7 +48,7 @@ function TrendBadge({ trend }) {
   );
 }
 
-export default function ExecutiveKpiCards({ kpis, trends }) {
+export default function ExecutiveKpiCards({ kpis, trends, filters }) {
   if (!kpis) return null;
 
   return (
@@ -66,7 +67,7 @@ export default function ExecutiveKpiCards({ kpis, trends }) {
             title={label}
           >
             <Wrapper
-              {...(path ? { to: path } : {})}
+              {...(path ? { to: withPeriodParams(path, filters) } : {})}
               className="flex h-full min-h-0 cursor-pointer flex-col gap-1 rounded-lg border border-subtle bg-white px-1.5 py-1.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900/80 sm:flex-row sm:items-center sm:gap-1.5 sm:px-2 sm:py-2"
             >
               <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${iconBg} sm:h-7 sm:w-7`}>

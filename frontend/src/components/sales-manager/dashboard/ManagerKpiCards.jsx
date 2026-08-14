@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../managerUtils';
 import { cn } from '../../../lib/utils';
+import { applyPeriodPreset, withPeriodParams } from '../../../lib/periodFilters';
 
 const cards = [
   {
@@ -131,7 +132,7 @@ export default function ManagerKpiCards({ kpis }) {
             transition={{ delay: i * 0.04 }}
           >
             <Link
-              to={path}
+              to={key === 'newLeadsToday' ? withPeriodParams(path, applyPeriodPreset('today')) : path}
               className="block rounded-2xl border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/60 min-h-[118px] cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="flex items-start justify-between gap-2">

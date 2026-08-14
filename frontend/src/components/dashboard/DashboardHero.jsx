@@ -13,6 +13,7 @@ import {
   Minus,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { withPeriodParams } from '../../lib/periodFilters';
 
 function formatValue(value, { currency, suffix } = {}) {
   const n = Number(value || 0);
@@ -126,7 +127,7 @@ const KPI_ITEMS = [
   },
 ];
 
-export default function DashboardHero({ stats }) {
+export default function DashboardHero({ stats, filters }) {
   const kpis = stats?.report?.kpis || {};
 
   return (
@@ -156,7 +157,7 @@ export default function DashboardHero({ stats }) {
             title={cfg.label}
           >
             <Link
-              to={cfg.path}
+              to={withPeriodParams(cfg.path, filters)}
               className={cn(
                 'flex h-full min-h-[88px] cursor-pointer flex-col justify-between gap-2 rounded-2xl border px-2.5 py-2.5 shadow-md transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:min-h-[92px]',
                 cfg.card

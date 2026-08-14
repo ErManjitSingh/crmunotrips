@@ -32,6 +32,8 @@ import {
 } from './LeadListBadges';
 import { ExecutiveStallIndicator, executiveStallRowClass } from './ExecutiveStallIndicator';
 import { ReactivationFlowSteps, ReactivationEmptyState } from '../leads/ReactivationPanelUi';
+import PeriodPresetChips from '../ui/PeriodPresetChips';
+import { useUrlPeriodFilter } from '../../hooks/useUrlPeriodFilter';
 
 const TITLES = {
   all: { title: 'All Team Leads', desc: 'Complete pipeline across your sales team', icon: Users },
@@ -58,6 +60,7 @@ export default function TeamLeadsPage() {
   const [destinationFilter, setDestinationFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const { dateFrom, dateTo, setPeriod } = useUrlPeriodFilter();
   const debouncedSearch = useDebouncedValue(search, 350);
   const [assignLead, setAssignLead] = useState(null);
   const [reactivateLead, setReactivateLead] = useState(null);
@@ -75,6 +78,8 @@ export default function TeamLeadsPage() {
     status: isAllView ? statusFilter : '',
     destination: isAllView ? destinationFilter : '',
     priority: isAllView ? priorityFilter : '',
+    dateFrom,
+    dateTo,
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
   });
@@ -92,7 +97,7 @@ export default function TeamLeadsPage() {
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
-  }, [filter, debouncedSearch, statusFilter, destinationFilter, priorityFilter]);
+  }, [filter, debouncedSearch, statusFilter, destinationFilter, priorityFilter, dateFrom, dateTo]);
 
   const { assignees, assigneesLoading, handleAssign, assignConfirmDialog } = useLeadAssign({
     onAssigned: () => {
@@ -262,6 +267,9 @@ export default function TeamLeadsPage() {
             onDestinationChange={setDestinationFilter}
             priorityFilter={priorityFilter}
             onPriorityChange={setPriorityFilter}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onPeriodSelect={setPeriod}
           />
         </>
       ) : (
@@ -293,7 +301,8 @@ export default function TeamLeadsPage() {
             </div>
           </motion.div>
 
-          <div className="relative max-w-md">
+          <div className="relative max-w-md space-y-3">
+            <PeriodPresetChips dateFrom={dateFrom} dateTo={dateTo} onSelect={setPeriod} />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
