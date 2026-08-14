@@ -130,7 +130,7 @@ function applyRateOverrideToRoom(room = {}, override = null) {
       website: {
         ...website,
         room: roomRates,
-        ...(extraBedRates ? { extra_bed: extraBedRates } : {}),
+        extra_bed: website.extra_bed || extraBedRates,
       },
     },
     _opsRateOverride: {

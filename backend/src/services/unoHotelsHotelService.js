@@ -33,25 +33,53 @@ function resolveWebsiteSellRates(room = {}) {
   return extractWebsiteRoomRates(room.rates);
 }
 
-function extractWebsiteExtraBedRates(rates) {
-  if (!rates || typeof rates !== 'object') return null;
-  const bed = rates.website?.extra_bed || rates.extra_bed || null;
-  if (!bed || typeof bed !== 'object') return null;
-  const ep = Number(bed.ep || 0);
-  const cp = Number(bed.cp || 0);
-  const mapRate = Number(bed.map || 0);
-  const ap = Number(bed.ap || 0);
+function mealRateNumber(obj, key) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return 0;
+  const direct = obj[key];
+  if (typeof direct === 'number' || typeof direct === 'string') return Number(direct) || 0;
+  const upper = obj[String(key).toUpperCase()];
+  if (typeof upper === 'number' || typeof upper === 'string') return Number(upper) || 0;
+  return 0;
+}
+
+function flattenExtraBedRates(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  if (raw.extra_bed && typeof raw.extra_bed === 'object' && !Array.isArray(raw.extra_bed)) {
+    const nested = flattenExtraBedRates(raw.extra_bed);
+    if (nested) return nested;
+  }
+  if (raw.website && typeof raw.website === 'object') {
+    const nested = flattenExtraBedRates(raw.website.extra_bed || raw.website);
+    if (nested) return nested;
+  }
+  const ep = mealRateNumber(raw, 'ep');
+  const cp = mealRateNumber(raw, 'cp');
+  const mapRate = mealRateNumber(raw, 'map');
+  const ap = mealRateNumber(raw, 'ap');
   if (!ep && !cp && !mapRate && !ap) return null;
   return { ep, cp, map: mapRate, ap };
 }
 
+function extractWebsiteExtraBedRates(rates) {
+  return flattenExtraBedRates(rates);
+}
+
 function pickExtraBedNightRate(extraBedRates, mealKey = 'map') {
-  const rates = extraBedRates && typeof extraBedRates === 'object' ? extraBedRates : {};
-  const want = String(mealKey || 'map').toLowerCase();
-  const keyed = Number(rates[want] || 0);
+  const rates = flattenExtraBedRates(extraBedRates) || {};
+  const want = String(mealKey || 'map').toLowerCase().replace(/[^a-z]/g, '') || 'map';
+  const key = ['ep', 'cp', 'map', 'ap', 'ai'].includes(want) ? (want === 'ai' ? 'ap' : want) : 'map';
+  const keyed = Number(rates[key] || 0);
   if (keyed > 0) return keyed;
-  for (const key of ['map', 'cp', 'ep', 'ap']) {
-    if (Number(rates[key] || 0) > 0) return Number(rates[key]);
+  const fallback =
+    key === 'ap'
+      ? ['ap', 'map', 'cp', 'ep']
+      : key === 'map'
+        ? ['map', 'cp', 'ep']
+        : key === 'cp'
+          ? ['cp', 'ep']
+          : ['ep'];
+  for (const k of fallback) {
+    if (Number(rates[k] || 0) > 0) return Number(rates[k]);
   }
   return 0;
 }

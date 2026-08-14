@@ -247,55 +247,102 @@ export function resolveHotelNightDisplayRate(hotelSel = null, meta = null, mealK
   );
 }
 
-const EXTRA_BED_FALLBACK_KEYS = ['map', 'cp', 'ep', 'ap'];
+function mealRateNumber(obj, key) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return 0;
+  const direct = obj[key];
+  if (typeof direct === 'number' || typeof direct === 'string') {
+    return Number(direct) || 0;
+  }
+  const upper = obj[String(key).toUpperCase()];
+  if (typeof upper === 'number' || typeof upper === 'string') {
+    return Number(upper) || 0;
+  }
+  return 0;
+}
 
-/** Website extra-bed / extra-mattress rates (same shape as room.rates). */
-export function extraBedRatesFrom(source = {}) {
-  const room = source?.room && typeof source.room === 'object' ? source.room : source;
-  const raw =
-    room?.extraBedRates ||
-    source?.extraBedRates ||
-    room?.extra_bed ||
-    source?.extra_bed ||
-    room?.rates?.extra_bed ||
-    null;
-  if (!raw || typeof raw !== 'object') return null;
-  const ep = Number(raw.ep || 0) || 0;
-  const cp = Number(raw.cp || 0) || 0;
-  const map = Number(raw.map || 0) || 0;
-  const ap = Number(raw.ap || 0) || 0;
+function flattenExtraBedRates(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  if (raw.extra_bed && typeof raw.extra_bed === 'object' && !Array.isArray(raw.extra_bed)) {
+    const nested = flattenExtraBedRates(raw.extra_bed);
+    if (nested) return nested;
+  }
+  if (raw.website && typeof raw.website === 'object') {
+    const nested = flattenExtraBedRates(raw.website.extra_bed || raw.website);
+    if (nested) return nested;
+  }
+  const ep = mealRateNumber(raw, 'ep');
+  const cp = mealRateNumber(raw, 'cp');
+  const map = mealRateNumber(raw, 'map');
+  const ap = mealRateNumber(raw, 'ap');
   if (!ep && !cp && !map && !ap) return null;
   return { ep, cp, map, ap };
 }
 
+/** Website extra-bed / extra-mattress rates (same shape as room.rates). */
+export function extraBedRatesFrom(source = {}) {
+  const room = source?.room && typeof source.room === 'object' ? source.room : source;
+  const candidates = [
+    room?.extraBedRates,
+    source?.extraBedRates,
+    room?.extra_bed,
+    source?.extra_bed,
+    room?.rates?.website?.extra_bed,
+    source?.rates?.website?.extra_bed,
+    room?.rates?.extra_bed,
+    source?.rates?.extra_bed,
+    room?.rates,
+    source?.rates,
+  ];
+  for (const raw of candidates) {
+    const flat = flattenExtraBedRates(raw);
+    if (flat) {
+      // Skip flattened ROOM rack {ep,cp,map,ap} when it came from room.rates
+      // without an extra_bed key — only accept if source looks like extra_bed
+      // OR extraBedRates was set explicitly.
+      const isExplicit =
+        raw === room?.extraBedRates ||
+        raw === source?.extraBedRates ||
+        raw === room?.extra_bed ||
+        raw === source?.extra_bed ||
+        raw === room?.rates?.website?.extra_bed ||
+        raw === source?.rates?.website?.extra_bed ||
+        raw === room?.rates?.extra_bed ||
+        raw === source?.rates?.extra_bed ||
+        (raw && typeof raw === 'object' && (raw.extra_bed || raw.website?.extra_bed));
+      if (isExplicit) return flat;
+    }
+  }
+  return null;
+}
+
 /**
  * Extra mattress nightly rate from hotel API extra_bed, matched to the selected meal plan.
- * Does not invent a % of room rack — 0 when the API has no extra-bed rate.
+ * MAP/CP/EP never fall back to AP extra-bed (that is why every hotel showed ₹1,000).
  */
 export function resolveExtraBedNightRate(source = {}, mealKey = 'map') {
   const room = source?.room && typeof source.room === 'object' ? source.room : source;
   const want =
     normalizeMealPlanKey(
-      mealKey ||
-        source?.mealPlan?.key ||
-        source?.mealPlanKey ||
-        room?.mealPlanKey ||
-        source?.meals
+      mealKey || source?.mealPlan?.key || source?.mealPlanKey || room?.mealPlanKey
     ) || 'map';
   const rates = extraBedRatesFrom(source) || extraBedRatesFrom(room);
   if (rates) {
     const keyed = Number(rates[want] || 0);
     if (keyed > 0) return keyed;
-    for (const key of EXTRA_BED_FALLBACK_KEYS) {
+    const fallback =
+      want === 'ap'
+        ? ['ap', 'map', 'cp', 'ep']
+        : want === 'map'
+          ? ['map', 'cp', 'ep']
+          : want === 'cp'
+            ? ['cp', 'ep']
+            : ['ep'];
+    for (const key of fallback) {
       if (Number(rates[key] || 0) > 0) return Number(rates[key]);
     }
+    return 0;
   }
   return (
-    Number(
-      source?.extraBedPerNight ??
-        room?.extraBedRate ??
-        source?.mealPlan?.extraBed ??
-        0
-    ) || 0
+    Number(source?.extraBedPerNight ?? room?.extraBedRate ?? 0) || 0
   );
 }

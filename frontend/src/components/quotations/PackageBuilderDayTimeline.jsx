@@ -212,7 +212,11 @@ function HotelCard({
                     count={primaryExtraMattresses}
                     nightRate={resolveExtraBedNightRate(
                       hotelSel || meta,
-                      hotelSel?.mealPlan?.key || meta?.mealPlanKey || meta?.meals || 'map'
+                      hotelSel?.mealPlan?.key ||
+                        hotelSel?.mealPlanKey ||
+                        meta?.mealPlanKey ||
+                        meta?.mealPlan?.key ||
+                        'map'
                     )}
                     onChange={(n) =>
                       onChangeRoomMattresses(Number(hotelSel?.roomSlot || 1), n)
@@ -418,6 +422,8 @@ function buildHotelSelFromDay(day, dayNum) {
     totalCost: Number(meta.priceDelta || 0),
     absolutePerNight: absolute,
     includedRate: Number(meta.includedRate || absolute),
+    extraBedRates: meta.extraBedRates || meta.room?.extraBedRates || null,
+    extraBedPerNight: resolveExtraBedNightRate(meta, meta.mealPlanKey || meta.mealPlan?.key || 'map'),
     nights: 1,
     hotelOptions: day.hotelOptions || [],
     fromPackage: true,
