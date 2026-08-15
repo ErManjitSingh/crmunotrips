@@ -14,6 +14,8 @@ const {
   buildFollowUpTabFilter,
   buildFollowUpCategoryFilter,
   startOfDay,
+  isConvertedListQuery,
+  applyConvertedPeriodFilter,
 } = require('../utils/queryHelpers');
 const {
   parsePagination,
@@ -59,6 +61,9 @@ function buildDateRange(query = {}) {
 function applyCreatedAtRange(filter, query = {}) {
   const range = buildDateRange(query);
   if (!range) return filter;
+  if (isConvertedListQuery(query)) {
+    return applyConvertedPeriodFilter(filter, range);
+  }
   filter.createdAt = range;
   return filter;
 }
@@ -66,6 +71,9 @@ function applyCreatedAtRange(filter, query = {}) {
 function applyPeriodTouch(filter, query = {}) {
   const range = buildDateRange(query);
   if (!range) return filter;
+  if (isConvertedListQuery(query)) {
+    return applyConvertedPeriodFilter(filter, range);
+  }
   const touch = {
     $or: [
       { createdAt: { ...range } },
@@ -231,7 +239,10 @@ function maskReturnedLeadForExecutive(lead, executiveId) {
 async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
   const filterKey = query.filter || query.paramsFilter;
   const { page, limit, skip } = parsePagination(query);
-  const sort = parseSort(query, { createdAt: -1 });
+  const sort = parseSort(
+    query,
+    filterKey === 'converted' ? { convertedAt: -1, updatedAt: -1 } : { createdAt: -1 }
+  );
 
   // Expired acceptances are handled by notificationScheduler — not on every list request
 

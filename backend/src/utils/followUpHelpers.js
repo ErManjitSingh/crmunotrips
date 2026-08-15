@@ -106,6 +106,7 @@ async function applyCategoryToLead(lead, category, status, body = {}) {
   if (category === 'converted') {
     if (status === 'completed') {
       lead.status = 'converted';
+      if (!lead.convertedAt) lead.convertedAt = new Date();
     }
   } else if (category === 'expected_conv') {
     if (['new', 'contacted', 'follow_up'].includes(lead.status)) {

@@ -1,6 +1,6 @@
 const Lead = require('../models/Lead');
 const { LEAD_LIST_SELECT } = require('../utils/leadQueryFields');
-const { buildLeadSearchFilter, LEAD_LIST_POPULATE, enrichLead, startOfDay, endOfDay } = require('../utils/queryHelpers');
+const { buildLeadSearchFilter, LEAD_LIST_POPULATE, enrichLead, startOfDay, endOfDay, isConvertedListQuery, applyConvertedPeriodFilter } = require('../utils/queryHelpers');
 const {
   parsePagination,
   parseSort,
@@ -108,22 +108,26 @@ function buildLeadListFilter(query = {}) {
     if (budgetMax) mongoFilter.budget.$lte = Number(budgetMax);
   }
 
+  let dateRange = null;
   if (todayOnly === true || todayOnly === 'true') {
-    mongoFilter.createdAt = { $gte: startOfDay(), $lte: endOfDay() };
+    dateRange = { $gte: startOfDay(), $lte: endOfDay() };
   } else if (dateFrom || dateTo) {
-    mongoFilter.createdAt = {};
-    if (dateFrom) mongoFilter.createdAt.$gte = parseLocalDayStart(dateFrom);
-    if (dateTo) mongoFilter.createdAt.$lte = parseLocalDayEnd(dateTo);
+    dateRange = {};
+    if (dateFrom) dateRange.$gte = parseLocalDayStart(dateFrom);
+    if (dateTo) dateRange.$lte = parseLocalDayEnd(dateTo);
   }
 
-  // Arrivals = converted leads filtered by travelDate (trip arrival), not createdAt
-  if (listFilter === 'arrivals') {
-    if (mongoFilter.createdAt) {
-      mongoFilter.travelDate = mongoFilter.createdAt;
-      delete mongoFilter.createdAt;
+  // Arrivals = travel date; Bookings/converted = conversion date; else lead createdAt
+  if (dateRange) {
+    if (listFilter === 'arrivals') {
+      mongoFilter.travelDate = dateRange;
+    } else if (isConvertedListQuery({ status: mongoFilter.status, filter: listFilter })) {
+      applyConvertedPeriodFilter(mongoFilter, dateRange);
     } else {
-      mongoFilter.travelDate = { $exists: true, $ne: null };
+      mongoFilter.createdAt = dateRange;
     }
+  } else if (listFilter === 'arrivals') {
+    mongoFilter.travelDate = { $exists: true, $ne: null };
   }
 
   if (travelMonth !== undefined && travelMonth !== '') {
@@ -135,7 +139,10 @@ function buildLeadListFilter(query = {}) {
 
 async function findLeadsPaginated(query = {}, { branchId } = {}) {
   const { page, limit, skip } = parsePagination(query);
-  const sort = parseSort(query, { createdAt: -1 });
+  const sort = parseSort(
+    query,
+    isConvertedListQuery(query) ? { convertedAt: -1, updatedAt: -1 } : { createdAt: -1 }
+  );
   const sortField = Object.keys(sort)[0] || 'createdAt';
   const sortDir = sort[sortField] ?? -1;
   const filter = withBranch(buildLeadListFilter(query), branchId);

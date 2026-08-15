@@ -29,6 +29,7 @@ const LEAD_LIST_SELECT = [
   'branchId',
   'createdAt',
   'updatedAt',
+  'convertedAt',
   'priority',
   'isHot',
   'isRepeatCustomer',

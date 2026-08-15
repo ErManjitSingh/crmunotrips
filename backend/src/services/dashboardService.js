@@ -1270,7 +1270,15 @@ async function buildExecutiveDashboard(userId, options = {}) {
     : {
         ...leadScope,
         status: 'converted',
-        updatedAt: { $gte: periodStart, $lte: periodEnd },
+        $or: [
+          { convertedAt: { $gte: periodStart, $lte: periodEnd } },
+          {
+            $and: [
+              { $or: [{ convertedAt: null }, { convertedAt: { $exists: false } }] },
+              { updatedAt: { $gte: periodStart, $lte: periodEnd } },
+            ],
+          },
+        ],
       };
   const followPendingScope = isAllTime
     ? { ...followScope, status: 'pending' }
@@ -1427,7 +1435,15 @@ async function buildExecutiveDashboard(userId, options = {}) {
     Lead.countDocuments({
       ...leadScope,
       status: 'converted',
-      updatedAt: { $gte: prevStart, $lte: prevEnd },
+      $or: [
+        { convertedAt: { $gte: prevStart, $lte: prevEnd } },
+        {
+          $and: [
+            { $or: [{ convertedAt: null }, { convertedAt: { $exists: false } }] },
+            { updatedAt: { $gte: prevStart, $lte: prevEnd } },
+          ],
+        },
+      ],
     }),
     Payment.aggregate([
       { $match: prevRevenueMatch },
@@ -1446,10 +1462,28 @@ async function buildExecutiveDashboard(userId, options = {}) {
         $match: {
           ...leadScope,
           status: 'converted',
-          updatedAt: { $gte: chartStart, $lte: periodEnd },
+          $or: [
+            { convertedAt: { $gte: chartStart, $lte: periodEnd } },
+            {
+              $and: [
+                { $or: [{ convertedAt: null }, { convertedAt: { $exists: false } }] },
+                { updatedAt: { $gte: chartStart, $lte: periodEnd } },
+              ],
+            },
+          ],
         },
       },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$updatedAt' } }, count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: { $ifNull: ['$convertedAt', '$updatedAt'] },
+            },
+          },
+          count: { $sum: 1 },
+        },
+      },
     ]),
     LeadActivity.find({
       actorId: execId,

@@ -213,6 +213,49 @@ function generateQuoteNumber() {
   return `Q-${Date.now().toString().slice(-6)}`;
 }
 
+/** Bookings / converted lists: match conversion day, not lead create day. */
+function isConvertedListQuery(query = {}) {
+  const filterKey = query.filter || query.listFilter || query.paramsFilter;
+  if (filterKey === 'arrivals') return false;
+  return (
+    query.status === 'converted' ||
+    filterKey === 'converted' ||
+    filterKey === 'bookings'
+  );
+}
+
+function convertedPeriodClause(range) {
+  if (!range) return null;
+  return {
+    $or: [
+      { convertedAt: { ...range } },
+      {
+        $and: [
+          { $or: [{ convertedAt: null }, { convertedAt: { $exists: false } }] },
+          { updatedAt: { ...range } },
+        ],
+      },
+    ],
+  };
+}
+
+function mergeAndClause(filter, clause) {
+  if (!filter || !clause) return filter;
+  if (Array.isArray(filter.$and)) {
+    filter.$and.push(clause);
+  } else if (filter.$or) {
+    filter.$and = [{ $or: filter.$or }, clause];
+    delete filter.$or;
+  } else {
+    filter.$and = [clause];
+  }
+  return filter;
+}
+
+function applyConvertedPeriodFilter(filter, range) {
+  return mergeAndClause(filter, convertedPeriodClause(range));
+}
+
 const { buildFollowUpCategoryFilter } = require('./followUpHelpers');
 
 module.exports = {
@@ -233,4 +276,8 @@ module.exports = {
   isMissedFollowUp,
   formatNotification,
   generateQuoteNumber,
+  isConvertedListQuery,
+  convertedPeriodClause,
+  mergeAndClause,
+  applyConvertedPeriodFilter,
 };

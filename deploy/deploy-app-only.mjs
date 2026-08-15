@@ -138,6 +138,8 @@ echo "==> Sync lead_provider user-create permissions..."
 cd "$APP/backend" && node src/scripts/syncLeadProviderPermissions.js || echo "LEAD_PROVIDER_PERMS_SYNC_SKIPPED"
 echo "==> Backfill not-connected follow-ups stuck on New → Follow-up..."
 cd "$APP/backend" && node src/scripts/backfillNotConnectedFollowUpStatus.js || echo "NOT_CONNECTED_STATUS_BACKFILL_SKIPPED"
+echo "==> Backfill convertedAt for Bookings period filter..."
+cd "$APP/backend" && node src/scripts/backfillConvertedAt.js || echo "CONVERTED_AT_BACKFILL_SKIPPED"
 curl -sS https://app.unotrips.com/api/health
 echo
 echo APP_ONLY_DEPLOY_OK

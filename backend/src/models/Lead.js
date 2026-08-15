@@ -111,6 +111,8 @@ const leadSchema = new mongoose.Schema(
     status: { type: String, enum: LEAD_STATUSES, default: 'new', index: true },
     statusReason: { type: String, trim: true, default: '' },
     statusReasonUpdatedAt: { type: Date },
+    /** When status first became converted (Bookings period filter) */
+    convertedAt: { type: Date, index: true },
     source: {
       type: String,
       enum: [

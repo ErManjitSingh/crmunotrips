@@ -135,6 +135,12 @@ async function onLeadConverted(lead, actor, options = {}) {
   let quotation = await pickQuotationForLead(lead._id);
   quotation = await ensureQuotationApproved(quotation, actor);
 
+  if (!lead.convertedAt) {
+    const convertedAt = new Date();
+    lead.convertedAt = convertedAt;
+    await Lead.findByIdAndUpdate(lead._id, { convertedAt });
+  }
+
   if (quotation) {
     const total = quotation.pricing?.total || quotation.costing?.grandTotal || 0;
     if (total > 0 && (!lead.budget || lead.budget < total)) {

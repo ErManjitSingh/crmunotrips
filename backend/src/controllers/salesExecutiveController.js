@@ -317,6 +317,9 @@ const updateLead = asyncHandler(async (req, res) => {
 
     const prevStatus = lead.status;
     lead.status = status;
+    if (status === 'converted' && prevStatus !== 'converted' && !lead.convertedAt) {
+      lead.convertedAt = new Date();
+    }
 
     if (['lost', 'booked_from_another_company'].includes(status)) {
       const { assertValidLostReason, lostReasonLabel } = require('../services/salesSopService');

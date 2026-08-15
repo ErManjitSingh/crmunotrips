@@ -567,6 +567,9 @@ const updateLead = asyncHandler(async (req, res) => {
 
   const prevTemperature = lead.temperature;
   Object.assign(lead, data);
+  if (data.status === 'converted' && prevStatus !== 'converted' && !lead.convertedAt) {
+    lead.convertedAt = new Date();
+  }
   if (!lead.firstContactAt && (data.status === 'contacted' || ['contacted', 'working_progress', 'qualified', 'follow_up'].includes(nextStatus))) {
     lead.firstContactAt = new Date();
     if (!lead.slaContactedAt) lead.slaContactedAt = lead.firstContactAt;
@@ -808,7 +811,10 @@ const updateReactivationStage = asyncHandler(async (req, res) => {
   if (stage === 'contacted') lead.status = 'contacted';
   if (stage === 'follow_up_scheduled') lead.status = 'follow_up';
   if (stage === 'quotation_sent') lead.status = 'quotation_sent';
-  if (stage === 'converted') lead.status = 'converted';
+  if (stage === 'converted') {
+    lead.status = 'converted';
+    if (!lead.convertedAt) lead.convertedAt = new Date();
+  }
   await lead.save();
 
   await logActivity({
