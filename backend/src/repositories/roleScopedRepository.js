@@ -153,12 +153,9 @@ function buildExecutiveLeadFilter(filterKey, query = {}) {
       ],
     };
   }
-  // "Connected" should include the full lead pipeline segment that the UI/analytics
-  // considers connected (not just literal status='contacted').
-  // See leadAnalyticsService: connected bucket includes:
-  // contacted, working_progress, qualified, quotation_sent, follow_up, negotiation, converted
+  // Connected = status contacted only (call picked). WIP is a separate filter.
   if (filterKey === 'contacted') {
-    return { status: { $in: ['contacted', 'working_progress', 'qualified', 'quotation_sent', 'follow_up', 'negotiation', 'converted'] } };
+    return { status: 'contacted' };
   }
   if (isWorkingProgressFilter(filterKey)) return { status: 'working_progress' };
   if (filterKey === 'follow-up') return { status: { $in: ['follow_up', 'negotiation'] } };

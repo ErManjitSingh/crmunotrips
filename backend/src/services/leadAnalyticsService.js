@@ -72,24 +72,7 @@ async function getSourceAnalytics(branchId) {
         },
         connected: {
           $sum: {
-            $cond: [
-              {
-                $in: [
-                  '$status',
-                  [
-                    'contacted',
-                    'working_progress',
-                    'qualified',
-                    'quotation_sent',
-                    'follow_up',
-                    'negotiation',
-                    'converted',
-                  ],
-                ],
-              },
-              1,
-              0,
-            ],
+            $cond: [{ $eq: ['$status', 'contacted'] }, 1, 0],
           },
         },
         bookings: {

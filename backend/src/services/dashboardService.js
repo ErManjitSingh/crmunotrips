@@ -31,16 +31,11 @@ const INTERESTED_STATUSES = [
   'reactivated',
 ];
 const LOST_STATUSES = ['lost', 'booked_from_another_company'];
-/** Pipeline stages counted as "connected" — must match funnel + source table. */
-const CONNECTED_STATUSES = [
-  'contacted',
-  'working_progress',
-  'qualified',
-  'quotation_sent',
-  'follow_up',
-  'negotiation',
-  'converted',
-];
+/**
+ * Connected = only status `contacted` (call picked).
+ * WIP / qualified / quote / follow-up / converted are separate KPIs — must match list filter status=contacted.
+ */
+const CONNECTED_STATUSES = ['contacted'];
 const QUALIFIED_FUNNEL_STATUSES = [
   'qualified',
   'quotation_sent',
@@ -518,24 +513,7 @@ async function buildAdminDashboard(options = {}) {
           count: { $sum: 1 },
           connected: {
             $sum: {
-              $cond: [
-                {
-                  $in: [
-                    '$status',
-                    [
-                      'contacted',
-                      'working_progress',
-                      'qualified',
-                      'quotation_sent',
-                      'follow_up',
-                      'negotiation',
-                      'converted',
-                    ],
-                  ],
-                },
-                1,
-                0,
-              ],
+              $cond: [{ $in: ['$status', CONNECTED_STATUSES] }, 1, 0],
             },
           },
           bookings: {
@@ -607,24 +585,7 @@ async function buildAdminDashboard(options = {}) {
           count: { $sum: 1 },
           connected: {
             $sum: {
-              $cond: [
-                {
-                  $in: [
-                    '$status',
-                    [
-                      'contacted',
-                      'working_progress',
-                      'qualified',
-                      'quotation_sent',
-                      'follow_up',
-                      'negotiation',
-                      'converted',
-                    ],
-                  ],
-                },
-                1,
-                0,
-              ],
+              $cond: [{ $in: ['$status', CONNECTED_STATUSES] }, 1, 0],
             },
           },
           bookings: {
