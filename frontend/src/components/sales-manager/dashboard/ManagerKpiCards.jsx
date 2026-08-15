@@ -133,7 +133,7 @@ export default function ManagerKpiCards({ kpis }) {
           >
             <Link
               to={key === 'newLeadsToday' ? withPeriodParams(path, applyPeriodPreset('today')) : path}
-              className="block rounded-2xl border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/60 min-h-[118px] cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md"
+              className="block rounded-2xl border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/60 min-h-[118px] cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md hover:border-violet-100"
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 leading-tight">

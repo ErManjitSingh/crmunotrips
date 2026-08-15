@@ -10,13 +10,15 @@ export function formatBudget(n) {
 }
 
 export const STATUS_STYLES = {
-  new: 'bg-gradient-to-r from-sky-500/20 to-blue-500/15 text-sky-700 dark:text-sky-300 ring-sky-400/35',
-  contacted: 'bg-gradient-to-r from-violet-500/20 to-purple-500/15 text-violet-700 dark:text-violet-300 ring-violet-400/35',
-  follow_up: 'bg-gradient-to-r from-amber-500/20 to-yellow-500/15 text-amber-700 dark:text-amber-300 ring-amber-400/35',
-  quotation_sent: 'bg-gradient-to-r from-indigo-500/20 to-blue-500/15 text-indigo-700 dark:text-indigo-300 ring-indigo-400/35',
-  negotiation: 'bg-gradient-to-r from-orange-500/20 to-amber-500/15 text-orange-700 dark:text-orange-300 ring-orange-400/35',
-  reactivated: 'bg-gradient-to-r from-teal-500/20 to-cyan-500/15 text-teal-700 dark:text-teal-300 ring-teal-400/35',
-  active: 'bg-gradient-to-r from-emerald-500/20 to-teal-500/15 text-emerald-700 dark:text-emerald-300 ring-emerald-400/35',
-  converted: 'bg-gradient-to-r from-emerald-500/20 to-teal-500/15 text-emerald-700 dark:text-emerald-300 ring-emerald-400/35',
-  lost: 'bg-gradient-to-r from-rose-500/15 to-slate-500/10 text-rose-600 dark:text-rose-300 ring-rose-400/30',
+  new: 'bg-sky-50 text-sky-700 ring-sky-200',
+  contacted: 'bg-violet-50 text-violet-700 ring-violet-200',
+  working_progress: 'bg-orange-50 text-orange-700 ring-orange-200',
+  follow_up: 'bg-amber-50 text-amber-700 ring-amber-200',
+  quotation_sent: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
+  negotiation: 'bg-orange-50 text-orange-700 ring-orange-200',
+  reactivated: 'bg-teal-50 text-teal-700 ring-teal-200',
+  active: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  converted: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  lost: 'bg-rose-50 text-rose-600 ring-rose-200',
+  booked_from_another_company: 'bg-rose-50 text-rose-600 ring-rose-200',
 };

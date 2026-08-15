@@ -1729,10 +1729,10 @@ async function buildSalesManagerDashboard(options = {}) {
       .limit(8)
       .lean(),
     FollowUp.find(withBranch({ status: 'pending' }, branchId))
-      .populate('lead', 'name destination')
+      .populate('lead', 'name destination phone source sourceLabel')
       .populate('assignedTo', 'name')
       .sort({ scheduledAt: 1 })
-      .limit(6)
+      .limit(8)
       .lean(),
     Lead.aggregate([{ $match: withBranch({}, branchId) }, { $group: { _id: '$source', count: { $sum: 1 } } }]),
   ]);
@@ -1857,18 +1857,21 @@ async function buildSalesManagerDashboard(options = {}) {
     },
     leadSources,
     teamRevenueChart: await aggregateConvertedPackageRevenueByMonth({ branchId }),
+    teamRevenueWeek: await buildTeamRevenueWeekSeries({ branchId }),
     executivePerformance,
     monthlyConversion,
     recentLeads: recentLeads.map((l) => ({
       _id: l._id,
       leadId: l.leadId,
       name: l.name,
+      phone: l.phone || '',
       destination: l.destination,
       budget: l.budget,
       status: l.status,
       executive: l.assignedTo?.name || 'Unassigned',
       source: l.sourceLabel || l.source,
       isHot: l.isHot,
+      createdAt: l.createdAt,
     })),
     pendingApprovals: pendingQuotes.map((q) => ({
       _id: q._id,
@@ -1880,17 +1883,74 @@ async function buildSalesManagerDashboard(options = {}) {
       executive: q.createdByExecutive?.name || q.lead?.assignedTo?.name,
       status: q.status === 'negotiation' ? 'pending_approval' : q.status,
     })),
-    upcomingFollowups: upcomingFollowups.map((f) => ({
-      _id: f._id,
-      customer: f.lead?.name,
-      destination: f.lead?.destination,
-      executive: f.assignedTo?.name,
-      scheduledAt: f.scheduledAt,
-      priority: f.priority || 'medium',
-    })),
-    teamRanking: executivePerformance.sort((a, b) => b.revenue - a.revenue),
+    upcomingFollowups: upcomingFollowups.map((f) => {
+      const lead = f.lead || {};
+      return {
+        _id: f._id,
+        customer: lead.name,
+        phone: lead.phone || '',
+        destination: lead.destination,
+        source: lead.sourceLabel || formatSourceName(lead.source),
+        executive: f.assignedTo?.name,
+        scheduledAt: f.scheduledAt,
+        priority: f.priority || 'medium',
+      };
+    }),
+    teamRanking: [...executivePerformance]
+      .sort((a, b) => b.leads - a.leads || b.conversions - a.conversions || b.revenue - a.revenue)
+      .map((m, i) => ({ ...m, rank: i + 1 })),
     reactivationWidget,
   };
+}
+
+async function buildTeamRevenueWeekSeries({ branchId } = {}) {
+  const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const today = startOfDay();
+  const monday = startOfDay(new Date(today));
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const sundayEnd = endOfDay(sunday);
+
+  const rows = await Quotation.aggregate([
+    { $match: { status: 'approved', ...(branchId ? { branchId } : {}) } },
+    {
+      $lookup: {
+        from: 'leads',
+        localField: 'lead',
+        foreignField: '_id',
+        as: 'leadDoc',
+      },
+    },
+    { $unwind: '$leadDoc' },
+    {
+      $match: {
+        'leadDoc.status': 'converted',
+        updatedAt: { $gte: monday, $lte: sundayEnd },
+        ...(branchId ? { 'leadDoc.branchId': branchId } : {}),
+      },
+    },
+    { $sort: { updatedAt: -1 } },
+    {
+      $group: {
+        _id: { lead: '$lead', day: { $dayOfWeek: '$updatedAt' } },
+        amount: { $first: { $ifNull: ['$pricing.total', 0] } },
+      },
+    },
+    {
+      $group: {
+        _id: '$_id.day',
+        revenue: { $sum: '$amount' },
+      },
+    },
+  ]);
+
+  // Mongo $dayOfWeek: 1=Sun … 7=Sat → map to Mon-first index 0..6
+  const byDow = Object.fromEntries(rows.map((r) => [r._id, r.revenue]));
+  return DAY_LABELS.map((day, i) => {
+    const mongoDow = i === 6 ? 1 : i + 2;
+    return { day, revenue: byDow[mongoDow] || 0 };
+  });
 }
 
 async function buildTeamLeaderDashboard(leaderId, options = {}) {
