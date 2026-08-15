@@ -28,14 +28,16 @@ function FieldLabel({ children }) {
   );
 }
 
-function ChipButton({ active, onClick, children, activeClass = 'bg-violet-600 text-white shadow-sm shadow-violet-500/25' }) {
+function ChipButton({ active, onClick, children, activeClass, idleClass }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-lg px-3 py-1.5 text-[11px] font-semibold transition',
-        active ? activeClass : 'bg-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-700'
+        'rounded-lg px-3 py-1.5 text-[11px] font-semibold transition ring-1',
+        active
+          ? activeClass
+          : idleClass || 'bg-slate-100 text-slate-600 ring-slate-200 hover:bg-slate-200/80'
       )}
     >
       {children}
@@ -122,13 +124,15 @@ export default function LeadFilterBar({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1">
+        <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 ring-1 ring-slate-200/80">
           <button
             type="button"
             onClick={() => setMode('basic')}
             className={cn(
               'rounded-lg px-3 py-1.5 text-xs font-semibold transition',
-              mode === 'basic' ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              mode === 'basic'
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                : 'text-slate-500 hover:bg-blue-50 hover:text-blue-700'
             )}
           >
             Basic Search
@@ -138,7 +142,9 @@ export default function LeadFilterBar({
             onClick={() => setMode('advanced')}
             className={cn(
               'rounded-lg px-3 py-1.5 text-xs font-semibold transition',
-              mode === 'advanced' ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              mode === 'advanced'
+                ? 'bg-violet-600 text-white shadow-sm shadow-violet-500/30'
+                : 'text-slate-500 hover:bg-violet-50 hover:text-violet-700'
             )}
           >
             Advanced Search
@@ -163,6 +169,7 @@ export default function LeadFilterBar({
         <div className="min-w-0">
           <FieldLabel>Period</FieldLabel>
           <PeriodPresetChips
+            colorful
             accent="violet"
             dateFrom={filters.dateFrom}
             dateTo={filters.dateTo}
@@ -176,7 +183,8 @@ export default function LeadFilterBar({
           <span className="mr-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">Results</span>
           <ChipButton
             active={filters.status === 'converted' && filters.filter !== 'arrivals'}
-            activeClass="bg-emerald-600 text-white shadow-sm shadow-emerald-500/25"
+            activeClass="bg-emerald-600 text-white shadow-sm shadow-emerald-500/30 ring-emerald-700/20"
+            idleClass="bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100"
             onClick={() =>
               applyQuick(
                 filters.status === 'converted' && filters.filter !== 'arrivals'
@@ -189,6 +197,8 @@ export default function LeadFilterBar({
           </ChipButton>
           <ChipButton
             active={filters.filter === 'arrivals'}
+            activeClass="bg-amber-500 text-white shadow-sm shadow-amber-500/30 ring-amber-600/20"
+            idleClass="bg-amber-50 text-amber-700 ring-amber-200 hover:bg-amber-100"
             onClick={() =>
               applyQuick(
                 filters.filter === 'arrivals'
@@ -353,16 +363,16 @@ export default function LeadFilterBar({
         <button
           type="button"
           onClick={onApply}
-          className="h-10 rounded-xl bg-violet-600 px-5 text-sm font-semibold text-white shadow-sm shadow-violet-500/25 transition-colors hover:bg-violet-700"
+          className="h-10 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 text-sm font-semibold text-white shadow-md shadow-violet-500/30 transition hover:from-violet-700 hover:to-indigo-700"
         >
           Apply Filters
         </button>
         <button
           type="button"
           onClick={onReset}
-          className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 shadow-sm transition-colors hover:bg-rose-100"
         >
-          <RotateCcw className="h-4 w-4 text-slate-400" />
+          <RotateCcw className="h-4 w-4 text-rose-500" />
           Reset
         </button>
         <button
@@ -372,10 +382,10 @@ export default function LeadFilterBar({
             openMoreFilters();
           }}
           className={cn(
-            'inline-flex h-10 items-center gap-1.5 rounded-xl border px-4 text-sm font-semibold transition-colors',
+            'inline-flex h-10 items-center gap-1.5 rounded-xl border px-4 text-sm font-semibold shadow-sm transition-colors',
             showMore || mode === 'advanced'
-              ? 'border-violet-300 bg-violet-50 text-violet-700'
-              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              ? 'border-orange-300 bg-orange-500 text-white shadow-orange-500/25 hover:bg-orange-600'
+              : 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100'
           )}
         >
           <Filter className="h-4 w-4" />
