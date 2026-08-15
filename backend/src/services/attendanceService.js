@@ -67,29 +67,84 @@ function computeTotalHours(checkIn, checkOut) {
   return Math.round((ms / (1000 * 60 * 60)) * 100) / 100;
 }
 
+function computeLateByMinutes(checkIn) {
+  if (!checkIn) return null;
+  const { hour, minute } = timePartsInOrg(checkIn);
+  const checkMins = hour * 60 + minute;
+  const expectedMins = LATE_HOUR * 60 + LATE_MINUTE;
+  const diff = checkMins - expectedMins;
+  return diff > 0 ? diff : 0;
+}
+
+function formatHoursLabel(totalHours, checkIn, checkOut) {
+  if (totalHours != null && Number.isFinite(Number(totalHours))) {
+    const h = Math.floor(Number(totalHours));
+    const m = Math.round((Number(totalHours) - h) * 60);
+    return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`;
+  }
+  if (checkIn && !checkOut) {
+    const ms = Date.now() - new Date(checkIn).getTime();
+    if (ms < 0) return null;
+    const mins = Math.floor(ms / 60000);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`;
+  }
+  return null;
+}
+
+function expectedCheckInLabel() {
+  const d = new Date();
+  d.setHours(LATE_HOUR, LATE_MINUTE, 0, 0);
+  return new Intl.DateTimeFormat('en-IN', {
+    timeZone: ORG_TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  }).format(d);
+}
+
 function formatRecord(doc, userMap) {
   const u = userMap?.get(doc.userId?.toString()) || doc.userId;
+  const lateByMinutes = doc.status === 'late' ? computeLateByMinutes(doc.checkIn) : null;
   return {
     id: doc._id,
     userId: doc.userId?._id || doc.userId,
     userName: u?.name || 'Unknown',
     userEmail: u?.email,
     userRole: u?.role,
+    department: u?.department || ROLE_LABEL_FALLBACK(u?.role),
     date: doc.date,
     checkIn: doc.checkIn,
     checkOut: doc.checkOut,
     totalHours: doc.totalHours,
+    hoursLabel: formatHoursLabel(doc.totalHours, doc.checkIn, doc.checkOut),
     workMode: doc.workMode,
     status: doc.status,
     isAutoCheckout: doc.isAutoCheckout,
     isOnline: !doc.checkOut,
+    lateByMinutes,
+    expectedCheckIn: expectedCheckInLabel(),
     createdAt: doc.createdAt,
   };
 }
 
+function ROLE_LABEL_FALLBACK(role) {
+  const map = {
+    sales_executive: 'Sales',
+    team_leader: 'Sales',
+    sales_manager: 'Sales',
+    operations_manager: 'Operations',
+    accountant: 'Accounts',
+    admin: 'Admin',
+    lead_provider: 'Admin',
+  };
+  return map[role] || 'General';
+}
+
 async function buildUserMap(userIds) {
   const users = await User.find({ _id: { $in: userIds } })
-    .select('name email role')
+    .select('name email role department')
     .lean();
   return new Map(users.map((u) => [u._id.toString(), u]));
 }
@@ -271,7 +326,7 @@ async function buildRangeSummary(viewer, branchId = null, fromInput = null, toIn
       status: 'active',
       ...(branchId ? { branchId } : {}),
     })
-      .select('name email role')
+      .select('name email role department')
       .lean(),
   ]);
 
@@ -285,24 +340,42 @@ async function buildRangeSummary(viewer, branchId = null, fromInput = null, toIn
   const uniqueUsers = new Set(formatted.map((r) => r.userId?.toString())).size;
 
   let absentUsers = [];
+  let officeRows = [];
   if (isSingleDay) {
     const checkedInIds = new Set(records.map((r) => r.userId.toString()));
     absentUsers = scopedUsers
       .filter((u) => !checkedInIds.has(u._id.toString()))
       .map((u) => ({
+        id: `absent-${u._id}`,
         userId: u._id,
         userName: u.name,
         userEmail: u.email,
         userRole: u.role,
+        department: u.department || ROLE_LABEL_FALLBACK(u.role),
+        checkIn: null,
+        checkOut: null,
+        totalHours: null,
+        hoursLabel: null,
+        status: 'absent',
+        isOnline: false,
+        lateByMinutes: null,
+        expectedCheckIn: expectedCheckInLabel(),
       }));
+
+    officeRows = [
+      ...officeUsers,
+      ...absentUsers,
+    ];
   }
 
   const myStatus = isToday ? await getTodayStatus(viewer._id) : null;
+  const onLeaveToday = 0;
 
   const summary = {
     presentToday: present,
     absentToday: absentUsers.length,
     lateToday: late,
+    onLeaveToday,
     officeCount: officeUsers.length,
     onlineCount: onlineUsers.length,
     totalScoped: scopedUsers.length,
@@ -321,6 +394,7 @@ async function buildRangeSummary(viewer, branchId = null, fromInput = null, toIn
     isToday,
     summary,
     officeUsers: isSingleDay ? officeUsers : [],
+    officeRows: isSingleDay ? officeRows : [],
     lateUsers: isSingleDay ? formatted.filter((r) => r.status === 'late') : [],
     onlineUsers,
     absentUsers,

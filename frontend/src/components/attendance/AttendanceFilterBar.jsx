@@ -1,45 +1,33 @@
-import { motion } from 'framer-motion';
-import { CalendarDays, ChevronDown } from 'lucide-react';
+import { CalendarDays, Search, ChevronDown } from 'lucide-react';
 import { ATTENDANCE_PRESETS } from './attendanceDateUtils';
+import { cn } from '../../lib/utils';
 
 export default function AttendanceFilterBar({
   preset,
   onPresetChange,
   customFrom,
-  customTo,
   onCustomFromChange,
-  onCustomToChange,
   rangeLabel,
+  search,
+  onSearchChange,
+  branches = [],
+  branchId,
+  onBranchChange,
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-subtle bg-surface/90 backdrop-blur-xl shadow-sm overflow-hidden"
-    >
-      <div className="px-4 sm:px-5 py-4 border-b border-subtle/80 bg-gradient-to-r from-brand-600/[0.06] via-transparent to-violet-500/[0.05]">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-indigo-600 text-white shadow-md shadow-brand-600/25">
-              <CalendarDays className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-brand-600 dark:text-brand-400">
-                Time period
-              </p>
-              <p className="text-sm font-semibold text-content-primary leading-tight">{rangeLabel}</p>
-            </div>
-          </div>
+    <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <label className="relative inline-flex min-w-[180px] items-center">
+          <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-slate-400" />
+          <input
+            type="date"
+            value={customFrom}
+            onChange={(e) => onCustomFromChange(e.target.value)}
+            className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+            title={rangeLabel}
+          />
+        </label>
 
-          <div className="flex items-center gap-2 text-xs text-content-muted">
-            <span className="hidden sm:inline">Asia/Kolkata</span>
-            <span className="h-1 w-1 rounded-full bg-content-muted/40 hidden sm:inline" />
-            <span className="font-medium text-content-secondary">Custom range</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-4 sm:p-5 space-y-4">
         <div className="flex flex-wrap gap-2">
           {ATTENDANCE_PRESETS.map((p) => {
             const active = preset === p.id;
@@ -48,54 +36,46 @@ export default function AttendanceFilterBar({
                 key={p.id}
                 type="button"
                 onClick={() => onPresetChange(p.id)}
-                className={`relative px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                className={cn(
+                  'h-10 rounded-xl px-4 text-sm font-semibold transition-colors',
                   active
-                    ? 'text-white shadow-lg shadow-brand-600/30'
-                    : 'text-content-secondary bg-surface-elevated/80 border border-subtle hover:border-brand-500/30 hover:text-content-primary'
-                }`}
-              >
-                {active && (
-                  <motion.span
-                    layoutId="attendance-preset-bg"
-                    className="absolute inset-0 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600"
-                    transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                  />
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
+                    : 'border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
                 )}
-                <span className="relative z-10">{p.label}</span>
+              >
+                {p.label}
               </button>
             );
           })}
         </div>
-
-        <details className="group rounded-xl border border-subtle/80 bg-surface-elevated/40 open:bg-surface-elevated/60 transition-colors">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-content-secondary hover:text-content-primary [&::-webkit-details-marker]:hidden">
-            <span>Pick specific dates</span>
-            <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="px-4 pb-4 flex flex-wrap items-end gap-3 border-t border-subtle/60 pt-3">
-            <label className="space-y-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-content-muted">From</span>
-              <input
-                type="date"
-                value={customFrom}
-                max={customTo || undefined}
-                onChange={(e) => onCustomFromChange(e.target.value)}
-                className="input-premium h-10 rounded-xl text-sm w-full min-w-[150px]"
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-content-muted">To</span>
-              <input
-                type="date"
-                value={customTo}
-                min={customFrom || undefined}
-                onChange={(e) => onCustomToChange(e.target.value)}
-                className="input-premium h-10 rounded-xl text-sm w-full min-w-[150px]"
-              />
-            </label>
-          </div>
-        </details>
       </div>
-    </motion.div>
+
+      <div className="relative">
+        <select
+          value={branchId || ''}
+          onChange={(e) => onBranchChange?.(e.target.value)}
+          className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 pr-10 text-sm font-medium text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+        >
+          <option value="">All Branches & Offices</option>
+          {branches.map((b) => (
+            <option key={b._id} value={b._id}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      </div>
+
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => onSearchChange?.(e.target.value)}
+          placeholder="Search by name, department or role..."
+          className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+        />
+      </div>
+    </div>
   );
 }

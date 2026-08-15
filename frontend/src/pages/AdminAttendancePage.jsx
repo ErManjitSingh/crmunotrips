@@ -1,75 +1,75 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { FileText, CalendarDays, Plus } from 'lucide-react';
 import API from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 import { useDataRefresh } from '../hooks/useDataRefresh';
-import PageHeader from '../components/ui/PageHeader';
+import { toast } from '../context/ToastContext';
+import { requiresAttendanceCheckIn } from '../constants/attendance';
 import {
   AttendanceStatsCards,
-  AttendanceTeamList,
   AttendanceFilterBar,
 } from '../components/attendance';
+import {
+  OfficeTodayTable,
+  CurrentlyOnlineTable,
+  LateTodayTable,
+} from '../components/attendance/AttendanceTeamList';
 import {
   getRangeForPreset,
   formatRangeLabel,
   isSingleDayRange,
 } from '../components/attendance/attendanceDateUtils';
 
-function AbsentList({ users = [], title = 'Absent Today' }) {
-  if (!users.length) {
-    return (
-      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] p-5 text-sm text-emerald-700 dark:text-emerald-400 text-center">
-        Everyone has checked in
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-2xl border border-subtle bg-surface/80 overflow-hidden">
-      <div className="px-5 py-3 border-b border-subtle bg-rose-500/[0.04]">
-        <h3 className="font-semibold text-content-primary">{title} ({users.length})</h3>
-      </div>
-      <ul className="divide-y divide-subtle/60 max-h-64 overflow-y-auto">
-        {users.map((u) => (
-          <li key={u.userId} className="px-5 py-3 flex items-center justify-between gap-2">
-            <div>
-              <p className="font-medium text-content-primary text-sm">{u.userName}</p>
-              <p className="text-xs text-content-muted">{u.userEmail}</p>
-            </div>
-            <span className="text-[10px] font-semibold uppercase text-rose-600 dark:text-rose-400">Absent</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+function matchesSearch(row, q) {
+  if (!q) return true;
+  const hay = `${row.userName || ''} ${row.department || ''} ${row.userRole || ''} ${row.userEmail || ''}`.toLowerCase();
+  return hay.includes(q);
 }
 
 export default function AdminAttendancePage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const initialRange = getRangeForPreset('today');
   const [preset, setPreset] = useState('today');
   const [from, setFrom] = useState(initialRange.from);
   const [to, setTo] = useState(initialRange.to);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [branches, setBranches] = useState([]);
+  const [branchId, setBranchId] = useState('');
+  const [marking, setMarking] = useState(false);
+  const [focusList, setFocusList] = useState('office');
 
   const isSingleDay = isSingleDayRange(from, to);
-  const isRange = !isSingleDay;
   const rangeLabel = formatRangeLabel(from, to, preset);
+  const q = search.trim().toLowerCase();
 
   const load = useCallback(() => {
     setLoading(true);
     API.get('/attendance/summary', {
-      params: { from, to },
+      params: {
+        from,
+        to,
+        ...(branchId ? { branchId } : {}),
+      },
       skipSuccessToast: true,
     })
       .then((r) => setData(r.data))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, [from, to]);
+  }, [from, to, branchId]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    API.get('/branches', { skipSuccessToast: true, skipErrorToast: true })
+      .then((r) => setBranches(Array.isArray(r.data) ? r.data : r.data?.data || []))
+      .catch(() => setBranches([]));
+  }, []);
 
   useDataRefresh(['attendance'], load);
 
@@ -78,103 +78,180 @@ export default function AdminAttendancePage() {
     setPreset(id);
     setFrom(range.from);
     setTo(range.to);
+    setFocusList('office');
   };
 
   const handleCustomFrom = (value) => {
     if (!value) return;
     setPreset('custom');
     setFrom(value);
-    if (to && value > to) setTo(value);
-  };
-
-  const handleCustomTo = (value) => {
-    if (!value) return;
-    setPreset('custom');
     setTo(value);
-    if (from && value < from) setFrom(value);
   };
 
-  const sectionTitles = useMemo(() => {
-    return {
-      office: isSingleDay ? 'Office Today' : 'Office',
-      online: 'Currently Online',
-      late: isSingleDay ? 'Late Today' : 'Late',
-      all: isSingleDay ? 'All Attendance Today' : `All Check-ins (${rangeLabel})`,
-      absent: isSingleDay ? 'Absent Today' : 'Absent',
-    };
-  }, [isSingleDay, rangeLabel]);
+  const officeRows = useMemo(() => {
+    const rows = data?.officeRows?.length
+      ? data.officeRows
+      : [...(data?.officeUsers || []), ...(data?.absentUsers || [])];
+    return rows.filter((r) => matchesSearch(r, q));
+  }, [data, q]);
+
+  const onlineRows = useMemo(
+    () => (data?.onlineUsers || []).filter((r) => matchesSearch(r, q)),
+    [data, q]
+  );
+
+  const lateRows = useMemo(
+    () => (data?.lateUsers || []).filter((r) => matchesSearch(r, q)),
+    [data, q]
+  );
+
+  const handleMarkAttendance = async () => {
+    if (!requiresAttendanceCheckIn(user?.role)) {
+      toast.info('Team members mark attendance from their login / dashboard check-in.');
+      return;
+    }
+    setMarking(true);
+    try {
+      const { data: status } = await API.get('/attendance/status', { skipSuccessToast: true });
+      if (status?.canCheckOut) {
+        await API.post('/attendance/check-out', {}, { successMessage: 'Checked out successfully' });
+      } else if (status?.canCheckIn) {
+        await API.post(
+          '/attendance/check-in',
+          { workMode: 'office' },
+          { successMessage: 'Attendance marked — checked in' }
+        );
+      } else {
+        toast.info('Attendance already recorded for today');
+      }
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not mark attendance');
+    } finally {
+      setMarking(false);
+    }
+  };
+
+  const officeTitle = isSingleDay
+    ? data?.isToday || preset === 'today'
+      ? 'Office Today'
+      : `Office · ${rangeLabel}`
+    : `Attendance · ${rangeLabel}`;
 
   return (
-    <div className="space-y-6 pb-8">
-      <PageHeader
-        title="Attendance"
-        description="Filter by today, yesterday, last 7 days, or the full month — office, late & online"
-        breadcrumbs={['Team Management', 'Attendance']}
-      />
+    <div className="mx-auto max-w-[1400px] space-y-5 pb-10">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-[28px]">
+            Attendance
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Track employee attendance and working hours in real-time
+          </p>
+        </div>
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <button
+            type="button"
+            disabled={marking}
+            onClick={handleMarkAttendance}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-md shadow-blue-600/25 transition hover:bg-blue-700 disabled:opacity-60"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} />
+            Mark Attendance
+          </button>
+          <div className="flex flex-wrap items-center justify-end gap-4 text-sm font-medium text-slate-600">
+            <Link
+              to="/reports"
+              className="inline-flex items-center gap-1.5 hover:text-blue-600"
+            >
+              <FileText className="h-4 w-4" />
+              Attendance Report
+            </Link>
+            <button
+              type="button"
+              onClick={() => handlePreset('today')}
+              className="inline-flex items-center gap-1.5 hover:text-blue-600"
+            >
+              <CalendarDays className="h-4 w-4" />
+              Calendar View
+            </button>
+          </div>
+        </div>
+      </div>
 
       <AttendanceFilterBar
         preset={preset}
         onPresetChange={handlePreset}
         customFrom={from}
-        customTo={to}
         onCustomFromChange={handleCustomFrom}
-        onCustomToChange={handleCustomTo}
         rangeLabel={rangeLabel}
+        search={search}
+        onSearchChange={setSearch}
+        branches={branches}
+        branchId={branchId}
+        onBranchChange={setBranchId}
       />
-
-      {!loading && data && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex items-center gap-2 rounded-xl border border-brand-500/15 bg-brand-500/[0.04] px-4 py-2.5 text-xs text-content-secondary"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 shrink-0" />
-          {isRange
-            ? `Showing ${data.summary?.totalCheckIns ?? 0} check-ins across ${data.summary?.dayCount ?? 0} days · ${data.summary?.uniqueUsers ?? 0} team members`
-            : `Live view for ${rangeLabel} · Asia/Kolkata`}
-        </motion.div>
-      )}
 
       {loading ? (
         <div className="space-y-4">
-          <div className="h-28 rounded-2xl border border-subtle bg-surface/50 animate-pulse" />
-          <div className="h-64 rounded-2xl border border-subtle bg-surface/50 animate-pulse" />
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-[76px] animate-pulse rounded-2xl bg-slate-100" />
+            ))}
+          </div>
+          <div className="h-72 animate-pulse rounded-2xl bg-slate-100" />
         </div>
       ) : (
         <>
-          <AttendanceStatsCards summary={data?.summary} isRange={isRange} />
+          <AttendanceStatsCards summary={data?.summary} />
 
           {isSingleDay ? (
             <>
-              <AttendanceTeamList
-                records={data?.officeUsers}
-                title={sectionTitles.office}
-                emptyMessage="No office check-ins"
+              <OfficeTodayTable
+                records={
+                  focusList === 'online'
+                    ? onlineRows
+                    : focusList === 'late'
+                      ? lateRows
+                      : officeRows
+                }
+                title={
+                  focusList === 'online'
+                    ? 'Currently Online'
+                    : focusList === 'late'
+                      ? 'Late Today'
+                      : officeTitle
+                }
+                emptyMessage={
+                  focusList === 'online'
+                    ? 'No one is currently checked in'
+                    : focusList === 'late'
+                      ? 'No late check-ins'
+                      : 'No attendance records'
+                }
+                onView={(row) => {
+                  if (row?.userId) navigate(`/team/users/${row.userId}`);
+                }}
               />
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <AttendanceTeamList
-                  records={data?.onlineUsers}
-                  title={sectionTitles.online}
-                  emptyMessage="No one is currently checked in"
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <CurrentlyOnlineTable
+                  records={onlineRows}
+                  onViewAll={() => setFocusList('online')}
                 />
-                <AttendanceTeamList
-                  records={data?.lateUsers}
-                  title={sectionTitles.late}
-                  emptyMessage="No late check-ins"
+                <LateTodayTable
+                  records={lateRows}
+                  onViewAll={() => setFocusList('late')}
                 />
               </div>
-
-              <AbsentList users={data?.absentUsers} title={sectionTitles.absent} />
             </>
-          ) : null}
-
-          <AttendanceTeamList
-            records={data?.teamAttendance}
-            title={sectionTitles.all}
-            emptyMessage={isRange ? 'No check-ins in this period' : 'No check-ins yet'}
-            showDate={isRange}
-          />
+          ) : (
+            <OfficeTodayTable
+              records={(data?.teamAttendance || []).filter((r) => matchesSearch(r, q))}
+              title={officeTitle}
+              emptyMessage="No check-ins in this period"
+            />
+          )}
         </>
       )}
     </div>

@@ -41,8 +41,13 @@ const getToday = asyncHandler(async (req, res) => {
 });
 
 const getSummary = asyncHandler(async (req, res) => {
-  const { from, to } = req.query;
-  const data = await buildRangeSummary(req.user, req.branchId, from, to || from);
+  const { from, to, branchId: queryBranch } = req.query;
+  const canPickBranch = req.user.role === 'admin' || req.user.role === 'lead_provider';
+  const branchId =
+    canPickBranch && typeof queryBranch === 'string' && queryBranch
+      ? queryBranch
+      : req.branchId;
+  const data = await buildRangeSummary(req.user, branchId || null, from, to || from);
   res.json(data);
 });
 

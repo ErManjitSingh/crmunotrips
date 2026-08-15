@@ -1,46 +1,57 @@
-import { motion } from 'framer-motion';
-import { UserCheck, UserX, Clock, Building2, Wifi, Users, CalendarRange } from 'lucide-react';
+import { UserCheck, UserX, Clock, BedDouble } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
-const singleDayCards = [
-  { key: 'presentToday', label: 'Present', icon: UserCheck, gradient: 'from-emerald-500 to-teal-600' },
-  { key: 'absentToday', label: 'Absent', icon: UserX, gradient: 'from-rose-500 to-pink-600' },
-  { key: 'lateToday', label: 'Late', icon: Clock, gradient: 'from-amber-500 to-orange-600' },
-  { key: 'officeCount', label: 'Office', icon: Building2, gradient: 'from-blue-500 to-indigo-600' },
-  { key: 'onlineCount', label: 'Online Now', icon: Wifi, gradient: 'from-cyan-500 to-sky-600' },
+const CARDS = [
+  {
+    key: 'presentToday',
+    label: 'Present',
+    icon: UserCheck,
+    iconWrap: 'bg-emerald-100 text-emerald-600',
+    value: 'text-emerald-700',
+  },
+  {
+    key: 'absentToday',
+    label: 'Absent',
+    icon: UserX,
+    iconWrap: 'bg-rose-100 text-rose-600',
+    value: 'text-rose-700',
+  },
+  {
+    key: 'lateToday',
+    label: 'Late',
+    icon: Clock,
+    iconWrap: 'bg-orange-100 text-orange-600',
+    value: 'text-orange-700',
+  },
+  {
+    key: 'onLeaveToday',
+    label: 'On Leave',
+    icon: BedDouble,
+    iconWrap: 'bg-sky-100 text-sky-600',
+    value: 'text-sky-700',
+  },
 ];
 
-const rangeCards = [
-  { key: 'totalCheckIns', label: 'Check-ins', icon: CalendarRange, gradient: 'from-brand-600 to-indigo-600' },
-  { key: 'uniqueUsers', label: 'Team Members', icon: Users, gradient: 'from-sky-500 to-cyan-600' },
-  { key: 'presentToday', label: 'On Time', icon: UserCheck, gradient: 'from-emerald-500 to-teal-600' },
-  { key: 'lateToday', label: 'Late', icon: Clock, gradient: 'from-amber-500 to-orange-600' },
-  { key: 'officeCount', label: 'Office', icon: Building2, gradient: 'from-blue-500 to-indigo-600' },
-];
-
-export default function AttendanceStatsCards({ summary, isRange = false }) {
+export default function AttendanceStatsCards({ summary }) {
   if (!summary) return null;
 
-  const cards = isRange ? rangeCards : singleDayCards;
-
   return (
-    <div className={`grid gap-3 ${isRange ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-5' : 'grid-cols-2 md:grid-cols-3 xl:grid-cols-5'}`}>
-      {cards.map(({ key, label, icon: Icon, gradient }, i) => (
-        <motion.div
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {CARDS.map(({ key, label, icon: Icon, iconWrap, value }) => (
+        <div
           key={key}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.04 }}
-          className="relative overflow-hidden rounded-2xl border border-subtle bg-surface/80 backdrop-blur-xl p-4 min-h-[100px]"
+          className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3.5 shadow-sm"
         >
-          <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-[0.07]`} />
-          <div className="relative">
-            <div className={`inline-flex p-2 rounded-xl bg-gradient-to-br ${gradient} text-white shadow-md mb-2`}>
-              <Icon className="w-4 h-4" />
-            </div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-content-muted">{label}</p>
-            <p className="text-2xl font-bold text-content-primary tabular-nums mt-0.5">{summary[key] ?? 0}</p>
+          <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', iconWrap)}>
+            <Icon className="h-5 w-5" strokeWidth={2.25} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium text-slate-500">{label}</p>
+            <p className={cn('text-2xl font-bold tabular-nums leading-tight', value)}>
+              {summary[key] ?? 0}
+            </p>
           </div>
-        </motion.div>
+        </div>
       ))}
     </div>
   );
