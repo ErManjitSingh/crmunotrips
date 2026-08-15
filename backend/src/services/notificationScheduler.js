@@ -9,6 +9,7 @@ const {
 const { processFollowUpEscalations } = require('./escalationService');
 const { processSlaBreaches } = require('./slaService');
 const { processExpiredAcceptances } = require('./leadAcceptanceService');
+const { processConnectedToWorkingProgress } = require('./leadConnectedProgressService');
 const { startOfDay } = require('../utils/queryHelpers');
 
 const REMINDER_WINDOW_MS = 15 * 60 * 1000;
@@ -98,6 +99,7 @@ function startNotificationScheduler() {
       await processFollowUpEscalations();
       await processExpiredAcceptances();
       await processSlaBreaches();
+      await processConnectedToWorkingProgress();
     } catch (err) {
       console.error('[NotificationScheduler]', err.message);
     }
@@ -105,7 +107,7 @@ function startNotificationScheduler() {
 
   tick();
   const handle = setInterval(tick, TICK_MS);
-  console.log('[NotificationScheduler] Started (reminders, missed & escalations)');
+  console.log('[NotificationScheduler] Started (reminders, missed, escalations, connected→WIP)');
   return () => clearInterval(handle);
 }
 

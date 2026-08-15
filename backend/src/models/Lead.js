@@ -88,6 +88,8 @@ const leadSchema = new mongoose.Schema(
     isVip: { type: Boolean, default: false, index: true },
     responseRate: { type: Number, default: 0, min: 0, max: 100 },
     firstContactAt: { type: Date },
+    /** When lead entered Connected (`contacted`) — used for 24h → WIP auto-promote */
+    connectedAt: { type: Date, index: true },
     lastContactedAt: { type: Date, index: true },
     lastContactMethod: {
       type: String,
@@ -244,6 +246,14 @@ leadSchema.pre('save', async function generateLeadId(next) {
   } catch (err) {
     next(err);
   }
+});
+
+/** Stamp connectedAt when lead first enters Connected (`contacted`). */
+leadSchema.pre('save', function stampConnectedAt(next) {
+  if (this.isModified('status') && this.status === 'contacted' && !this.connectedAt) {
+    this.connectedAt = new Date();
+  }
+  next();
 });
 
 module.exports = mongoose.model('Lead', leadSchema);
