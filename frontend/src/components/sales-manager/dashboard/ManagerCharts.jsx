@@ -12,7 +12,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
-import { ArrowRight, Wallet } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { formatCurrency } from '../managerUtils';
 
 function ChartCard({ title, children, delay, action }) {
@@ -21,13 +21,13 @@ function ChartCard({ title, children, delay, action }) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm shadow-slate-200/50"
+      className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm shadow-slate-200/50 min-h-[320px] flex flex-col"
     >
       <div className="flex items-center justify-between mb-4 gap-2">
         <h3 className="text-sm font-bold text-slate-800">{title}</h3>
         {action}
       </div>
-      {children}
+      <div className="flex-1 flex flex-col">{children}</div>
     </motion.div>
   );
 }
@@ -48,30 +48,35 @@ export default function ManagerCharts({ data }) {
           { day: 'Sun', revenue: 0 },
         ];
   const weekTotal = weekRows.reduce((s, r) => s + (Number(r.revenue) || 0), 0);
-  const hasRevenue = weekTotal > 0;
-  const topSources = sources.slice(0, 5);
+  const top4 = sources.slice(0, 4);
+  const restSources = sources.slice(4);
+  const othersValue = restSources.reduce((s, x) => s + (x.value || 0), 0);
+  const legendSources =
+    othersValue > 0
+      ? [...top4, { name: 'Others', value: othersValue, color: '#94A3B8' }]
+      : sources.slice(0, 5);
 
   if (!data) return null;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <ChartCard title="Lead Sources" delay={0.08}>
-        <div className="flex flex-col sm:flex-row items-center gap-5">
-          <div className="relative w-[200px] h-[200px] shrink-0">
+        <div className="flex flex-col sm:flex-row items-center gap-5 flex-1">
+          <div className="relative w-[210px] h-[210px] shrink-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={topSources.length ? topSources : [{ name: 'None', value: 1, color: '#E2E8F0' }]}
+                  data={legendSources.length ? legendSources : [{ name: 'None', value: 1, color: '#E2E8F0' }]}
                   dataKey="value"
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  innerRadius={62}
-                  outerRadius={88}
-                  paddingAngle={topSources.length > 1 ? 3 : 0}
+                  innerRadius={64}
+                  outerRadius={92}
+                  paddingAngle={legendSources.length > 1 ? 3 : 0}
                   stroke="none"
                 >
-                  {(topSources.length ? topSources : [{ color: '#E2E8F0' }]).map((e) => (
+                  {(legendSources.length ? legendSources : [{ color: '#E2E8F0' }]).map((e) => (
                     <Cell key={e.name} fill={e.color} />
                   ))}
                 </Pie>
@@ -83,10 +88,10 @@ export default function ManagerCharts({ data }) {
             </div>
           </div>
           <div className="flex-1 w-full space-y-2.5">
-            {topSources.length === 0 && (
+            {legendSources.length === 0 && (
               <p className="text-sm text-slate-400 text-center py-6">No source data yet</p>
             )}
-            {topSources.map((s) => {
+            {legendSources.map((s) => {
               const pct = totalLeads ? ((s.value / totalLeads) * 100).toFixed(1) : 0;
               return (
                 <div key={s.name} className="flex items-center gap-2.5">
@@ -98,7 +103,7 @@ export default function ManagerCharts({ data }) {
             })}
             <Link
               to="/sales-manager/reports"
-              className="inline-flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-700 pt-1"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-700 pt-2"
             >
               View Full Report <ArrowRight className="w-3 h-3" />
             </Link>
@@ -115,7 +120,7 @@ export default function ManagerCharts({ data }) {
           </span>
         }
       >
-        {hasRevenue ? (
+        <div className="flex-1 min-h-[180px]">
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={weekRows} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
               <defs>
@@ -130,25 +135,25 @@ export default function ManagerCharts({ data }) {
                 tick={{ fontSize: 11, fill: '#94A3B8' }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => (v >= 100000 ? `₹${v / 100000}L` : `₹${v}`)}
+                width={36}
+                tickFormatter={(v) => (v >= 100000 ? `${(v / 100000).toFixed(0)}L` : v === 0 ? '0' : `${v}`)}
               />
               <Tooltip
                 formatter={(v) => [formatCurrency(v), 'Revenue']}
                 contentStyle={{ borderRadius: 12, border: '1px solid #E2E8F0' }}
               />
-              <Area type="monotone" dataKey="revenue" stroke="#7C3AED" strokeWidth={2.5} fill="url(#smRevFill)" />
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke="#7C3AED"
+                strokeWidth={2.5}
+                fill="url(#smRevFill)"
+                dot={{ r: 3.5, fill: '#7C3AED', strokeWidth: 0 }}
+              />
             </AreaChart>
           </ResponsiveContainer>
-        ) : (
-          <div className="h-[180px] flex flex-col items-center justify-center text-center px-4">
-            <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3">
-              <Wallet className="w-6 h-6 text-slate-300" />
-            </div>
-            <p className="text-sm font-semibold text-slate-600">No revenue this week</p>
-            <p className="text-xs text-slate-400 mt-1">Approved conversions will show here.</p>
-          </div>
-        )}
-        <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-3 gap-3">
+        </div>
+        <div className="mt-auto pt-4 border-t border-slate-100 grid grid-cols-3 gap-3">
           <div>
             <p className="text-[11px] font-medium text-slate-400">Total Revenue</p>
             <p className="text-sm font-bold text-slate-900 tabular-nums mt-0.5">{formatCurrency(weekTotal)}</p>

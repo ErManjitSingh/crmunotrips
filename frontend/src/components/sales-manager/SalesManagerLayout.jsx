@@ -9,12 +9,13 @@ import MissedFollowUpAlert from '../notifications/MissedFollowUpAlert';
 import RouteFallback from '../ui/RouteFallback';
 import PanelMobileNav from '../mobile/PanelMobileNav';
 import { salesManagerNavItems } from './sidebar-config';
-import ManagerSidebarHelp from './ManagerSidebarHelp';
+import ManagerCommandTopBar from './dashboard/ManagerCommandTopBar';
 
 function SalesManagerShell() {
   const { user } = useAuth();
   const { pathname } = useLocation();
   const isQuotationBuilder = pathname === '/sales-manager/quotations/new';
+  const isCommandCenter = pathname === '/sales-manager/dashboard' || pathname === '/sales-manager';
 
   const sidebarProps = {
     user,
@@ -22,11 +23,10 @@ function SalesManagerShell() {
     brandSubtitle: 'Sales Manager',
     accent: 'violet',
     profilePath: '/sales-manager/profile',
-    sidebarFooter: <ManagerSidebarHelp />,
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC]">
+    <div className="flex min-h-screen bg-[#F4F6FB]">
       <div className="hidden lg:block h-screen sticky top-0">
         <AppSidebar {...sidebarProps} className="h-screen border-r-violet-500/10" />
       </div>
@@ -35,10 +35,18 @@ function SalesManagerShell() {
 
       <div className="flex-1 flex flex-col min-w-0">
         <div className={isQuotationBuilder ? 'hidden lg:block' : ''}>
-          <TopBar />
+          {isCommandCenter ? <ManagerCommandTopBar /> : <TopBar />}
         </div>
         <main className={`flex-1 overflow-auto ${isQuotationBuilder ? 'pb-0' : 'pb-20 lg:pb-0'}`}>
-          <div className={`${isQuotationBuilder ? 'p-0 lg:p-8' : 'p-4 sm:p-6 lg:p-8'} max-w-[1600px] mx-auto`}>
+          <div
+            className={`${
+              isQuotationBuilder
+                ? 'p-0 lg:p-8'
+                : isCommandCenter
+                  ? 'p-4 sm:p-5 lg:p-6'
+                  : 'p-4 sm:p-6 lg:p-8'
+            } max-w-[1600px] mx-auto`}
+          >
             {!isQuotationBuilder && <MissedFollowUpAlert />}
             <Suspense fallback={<RouteFallback />}>
               <Outlet />

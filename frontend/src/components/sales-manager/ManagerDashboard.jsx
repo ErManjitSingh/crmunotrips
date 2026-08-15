@@ -1,6 +1,5 @@
 import { lazy, Suspense, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
 import { useDashboardQuery } from '../../features/dashboard/hooks/useDashboardQuery';
 import { invalidateDashboard } from '../../lib/queryInvalidation';
@@ -13,8 +12,8 @@ const ManagerCharts = lazy(() => import('./dashboard/ManagerCharts'));
 function ChartSkeleton() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div className="h-72 rounded-2xl bg-slate-100 animate-pulse" />
-      <div className="h-72 rounded-2xl bg-slate-100 animate-pulse" />
+      <div className="h-[320px] rounded-2xl bg-slate-100 animate-pulse" />
+      <div className="h-[320px] rounded-2xl bg-slate-100 animate-pulse" />
     </div>
   );
 }
@@ -38,17 +37,12 @@ export default function ManagerDashboard() {
   }
 
   return (
-    <div className="space-y-5 pb-6">
+    <div className="space-y-4 pb-4">
       {isFetching && (
         <div className="h-0.5 w-full bg-violet-500/30 rounded-full overflow-hidden">
           <div className="h-full w-1/3 bg-violet-500 animate-pulse" />
         </div>
       )}
-
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Sales Manager Command Center</h1>
-        <p className="text-sm text-slate-500 mt-1">Team pipeline, approvals, and performance at a glance.</p>
-      </motion.div>
 
       <ManagerDashboardHero
         pendingFollowups={data?.kpis?.pendingFollowups ?? 0}
@@ -64,7 +58,7 @@ export default function ManagerDashboard() {
 
       <ManagerDashboardPanels data={data} />
 
-      <footer className="pt-4 pb-2 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
+      <footer className="pt-3 pb-1 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
         <p>© {new Date().getFullYear()} UNO Trips CRM. All rights reserved.</p>
         <p>
           Made with <span className="text-rose-500">♥</span> for your success
