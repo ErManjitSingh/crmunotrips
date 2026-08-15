@@ -127,27 +127,29 @@ export default function Dashboard() {
 
         <DashboardHero stats={stats} filters={filters} />
 
-        {!isLeadProvider && (
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+          {!isLeadProvider && (
             <div className="min-w-0 xl:col-span-3">
               <ActionRequiredPanel items={actionRequired} />
             </div>
-            <div className="min-w-0 xl:col-span-5">
-              <AdminSalesFunnel data={funnel} />
-            </div>
-            <div className="min-w-0 xl:col-span-4">
-              <LeadSourcePerformanceTable data={sourceRows} />
-            </div>
+          )}
+          <div
+            className={
+              isLeadProvider ? "min-w-0 xl:col-span-7" : "min-w-0 xl:col-span-5"
+            }
+          >
+            <AdminSalesFunnel data={funnel} />
           </div>
-        )}
+          <div
+            className={
+              isLeadProvider ? "min-w-0 xl:col-span-5" : "min-w-0 xl:col-span-4"
+            }
+          >
+            <LeadSourcePerformanceTable data={sourceRows} />
+          </div>
+        </div>
 
-        <div
-          className={
-            isLeadProvider
-              ? "grid grid-cols-1 gap-5 md:grid-cols-2"
-              : "grid grid-cols-1 gap-5 xl:grid-cols-12"
-          }
-        >
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
           <div className="min-w-0 xl:col-span-5">
             <Suspense fallback={<PanelSkeleton />}>
               <LeadTrendChart stats={stats} />
@@ -156,11 +158,9 @@ export default function Dashboard() {
           <div className="min-w-0 xl:col-span-3">
             <TopDestinationsDonut data={report?.topDestinations || []} />
           </div>
-          {!isLeadProvider && (
-            <div className="min-w-0 xl:col-span-4">
-              <SalesTeamPerformanceTable data={stats.executivePerformance} />
-            </div>
-          )}
+          <div className="min-w-0 xl:col-span-4">
+            <SalesTeamPerformanceTable data={stats.executivePerformance} />
+          </div>
         </div>
 
         {!isLeadProvider && <FinancialMetricsRow financials={financials} />}

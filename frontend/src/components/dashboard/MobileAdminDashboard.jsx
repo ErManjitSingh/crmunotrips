@@ -281,7 +281,6 @@ export default function MobileAdminDashboard({
   isFetching,
 }) {
   const { user } = useAuth();
-  const isLeadProvider = user?.role === "lead_provider";
   const { toggleMobileOpen } = useSidebar();
   const greeting = useTimeGreeting();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -598,62 +597,54 @@ export default function MobileAdminDashboard({
           </div>
         </section>
 
-        <div
-          className={
-            isLeadProvider
-              ? "mt-3 grid grid-cols-1 gap-2"
-              : "mt-3 grid grid-cols-2 gap-2"
-          }
-        >
-          {!isLeadProvider && (
-            <section className="min-w-0 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-[9px] font-bold text-slate-900">
-                  Top Performing Executives
-                </h2>
-                <Link
-                  to="/team"
-                  className="text-[7px] font-semibold text-violet-600"
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <section className="min-w-0 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-[9px] font-bold text-slate-900">
+                Top Performing Executives
+              </h2>
+              <Link
+                to="/team"
+                className="text-[7px] font-semibold text-violet-600"
+              >
+                View All
+              </Link>
+            </div>
+            <div className="space-y-2">
+              {executives.slice(0, 3).map((executive, index) => (
+                <div
+                  key={executive._id || executive.name}
+                  className="flex items-center gap-1.5"
                 >
-                  View All
-                </Link>
-              </div>
-              <div className="space-y-2">
-                {executives.slice(0, 3).map((executive, index) => (
-                  <div
-                    key={executive._id || executive.name}
-                    className="flex items-center gap-1.5"
+                  <span
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[7px] font-bold ${
+                      index === 0
+                        ? "bg-violet-50 text-violet-600"
+                        : index === 1
+                          ? "bg-slate-100 text-slate-600"
+                          : "bg-orange-50 text-orange-600"
+                    }`}
                   >
-                    <span
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[7px] font-bold ${
-                        index === 0
-                          ? "bg-violet-50 text-violet-600"
-                          : index === 1
-                            ? "bg-slate-100 text-slate-600"
-                            : "bg-orange-50 text-orange-600"
-                      }`}
-                    >
-                      {index + 1}
-                    </span>
-                    <p className="min-w-0 flex-1 truncate text-[8px] font-semibold text-slate-800">
-                      {executive.name}
-                    </p>
-                    <span className="text-[7px] font-bold text-slate-700">
-                      {formatCurrency(executive.revenue)}
-                    </span>
-                    <span className="text-[8px]">
-                      {index === 0 ? "👑" : index === 1 ? "🥈" : "🥉"}
-                    </span>
-                  </div>
-                ))}
-                {!executives.length && (
-                  <p className="py-5 text-center text-[9px] text-slate-400">
-                    No executive data
+                    {index + 1}
+                  </span>
+                  <p className="min-w-0 flex-1 truncate text-[8px] font-semibold text-slate-800">
+                    {executive.name}
                   </p>
-                )}
-              </div>
-            </section>
-          )}
+                  <span className="text-[7px] font-bold text-slate-700">
+                    {formatCurrency(executive.revenue)}
+                  </span>
+                  <span className="text-[8px]">
+                    {index === 0 ? "👑" : index === 1 ? "🥈" : "🥉"}
+                  </span>
+                </div>
+              ))}
+              {!executives.length && (
+                <p className="py-5 text-center text-[9px] text-slate-400">
+                  No executive data
+                </p>
+              )}
+            </div>
+          </section>
 
           <section className="min-w-0 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
             <div className="mb-1 flex items-center justify-between">
