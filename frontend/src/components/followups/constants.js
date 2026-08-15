@@ -20,7 +20,7 @@ export const FOLLOWUP_PRIORITIES = [
   { value: 'urgent', label: 'Urgent', color: 'text-red-800 bg-gradient-to-r from-red-400/30 to-orange-400/15 border-red-400/50 shadow-sm shadow-red-500/15 animate-pulse' },
 ];
 
-/** Outcomes shown when category = Call picked */
+/** Outcomes when category = Connected lead (call picked) */
 export const CALL_PICKED_OUTCOMES = [
   { value: 'interested_quotation', label: 'Interested — needs quotation' },
   { value: 'requested_callback', label: 'Requested callback later' },
@@ -30,6 +30,9 @@ export const CALL_PICKED_OUTCOMES = [
   { value: 'not_interested', label: 'Not interested' },
   { value: 'converted', label: 'Converted to customer' },
   { value: 'rescheduled', label: 'Rescheduled per customer request' },
+  { value: 'discussed_package', label: 'Discussed package' },
+  { value: 'qualified', label: 'Qualified (requirements confirmed)' },
+  { value: 'working_progress', label: 'Working in progress' },
 ];
 
 /** @deprecated Use CALL_PICKED_OUTCOMES */
@@ -45,11 +48,12 @@ export const FOLLOWUP_TYPES = [
 
 /** Pipeline follow-up categories */
 export const FOLLOWUP_CATEGORIES = [
-  { value: 'call_picked', label: 'Call picked', color: 'text-emerald-800 bg-gradient-to-r from-emerald-400/25 to-teal-400/15 border-emerald-400/50' },
-  { value: 'call_not_picked', label: 'Call not picked', color: 'text-amber-800 bg-gradient-to-r from-amber-400/25 to-orange-400/15 border-amber-400/50' },
+  { value: 'call_picked', label: 'Connected lead', color: 'text-emerald-800 bg-gradient-to-r from-emerald-400/25 to-teal-400/15 border-emerald-400/50' },
+  { value: 'call_not_picked', label: 'Not connected', color: 'text-amber-800 bg-gradient-to-r from-amber-400/25 to-orange-400/15 border-amber-400/50' },
+  { value: 'cold', label: 'Cold Lead', color: 'text-sky-800 bg-gradient-to-r from-sky-400/25 to-cyan-400/15 border-sky-400/50' },
+  { value: 'lost', label: 'Lost lead', color: 'text-red-800 bg-gradient-to-r from-red-400/25 to-rose-400/15 border-red-400/50' },
+  // legacy
   { value: 'dead_lead', label: 'Dead lead', color: 'text-red-800 bg-gradient-to-r from-red-400/25 to-rose-400/15 border-red-400/50' },
-  { value: 'cold', label: 'Cold lead', color: 'text-sky-800 bg-gradient-to-r from-sky-400/25 to-cyan-400/15 border-sky-400/50' },
-  // legacy values (existing records / filters)
   { value: 'warm', label: 'Warm', color: 'text-orange-800 bg-gradient-to-r from-orange-400/25 to-amber-400/15 border-orange-400/50' },
   { value: 'converted', label: 'Converted', color: 'text-emerald-800 bg-gradient-to-r from-emerald-400/25 to-teal-400/15 border-emerald-400/50' },
   { value: 'expected_conv', label: 'Expected Conversion', color: 'text-violet-800 bg-gradient-to-r from-violet-400/25 to-purple-400/15 border-violet-400/50' },
@@ -57,14 +61,26 @@ export const FOLLOWUP_CATEGORIES = [
 
 /** Categories shown when creating/editing a follow-up */
 export const FOLLOWUP_CATEGORY_OPTIONS = FOLLOWUP_CATEGORIES.filter((c) =>
-  ['call_picked', 'call_not_picked', 'dead_lead', 'cold'].includes(c.value)
+  ['call_picked', 'call_not_picked', 'cold', 'lost'].includes(c.value)
 );
 
+/** Not connected reasons */
 export const CALL_NOT_PICKED_REASONS = [
-  { value: 'switched_off', label: 'Switched off' },
+  { value: 'invalid_number', label: 'Invalid no' },
+  { value: 'switched_off', label: 'Switch off' },
+  { value: 'speaking_to_someone_else', label: 'Speaking to someone else' },
   { value: 'not_reachable', label: 'Not reachable' },
-  { value: 'not_answering', label: 'Not answering' },
-  { value: 'does_not_exist', label: 'Does not exist' },
+  { value: 'not_answering', label: 'Not answer' },
+];
+
+/** Cold lead reasons (follow-up) */
+export const FOLLOWUP_COLD_REASONS = [
+  { value: 'not_interested', label: 'Not interested' },
+  { value: 'just_inquiring', label: 'Just inquiry' },
+  { value: 'no_plan', label: 'No plan' },
+  { value: 'language_barrier', label: 'Language barrier' },
+  { value: 'wants_group_tour', label: 'Wants to group tour' },
+  { value: 'unknown_destination', label: 'Unknown destination' },
 ];
 
 export const KPI_CONFIG = [

@@ -3,17 +3,18 @@ import { Button } from '../ui/button';
 import { ActionModal } from '../sales-executive/LeadActionsMenu';
 import PaymentScreenshotField from '../leads/PaymentScreenshotField';
 import {
-  LEAD_FOLLOW_UP_OUTCOMES,
-  getFollowUpOutcome,
-  resolveOutcomeFromLead,
-} from '../../constants/leadFollowUpOutcomes';
-import { buildLostStatusReason } from '../../constants/salesSop';
+  CALL_PICKED_OUTCOMES,
+  CALL_NOT_PICKED_REASONS,
+  FOLLOWUP_COLD_REASONS,
+  FOLLOWUP_CATEGORY_OPTIONS,
+} from '../followups/constants';
+import { LOST_REASONS, buildLostStatusReason } from '../../constants/salesSop';
 import { toast } from '../../context/ToastContext';
 
 /**
- * Replaces the old multi-status picker for sales executives.
- * One "Lead follow up" outcome + optional comment (+ convert payment fields).
- * Lost outcomes require a comment before status can change.
+ * Lead follow-up outcome: Connected / Not connected / Cold / Lost.
+ * Connected options mark lead as contacted → auto WIP after 24h.
+ * Lost always requires a comment.
  */
 export default function LeadFollowUpOutcomeModal({
   open,
@@ -21,7 +22,8 @@ export default function LeadFollowUpOutcomeModal({
   onClose,
   onSubmit,
 }) {
-  const [outcome, setOutcome] = useState('');
+  const [category, setCategory] = useState('call_picked');
+  const [option, setOption] = useState('');
   const [comment, setComment] = useState('');
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('upi');
@@ -30,16 +32,25 @@ export default function LeadFollowUpOutcomeModal({
 
   useEffect(() => {
     if (!open) return;
-    setOutcome(resolveOutcomeFromLead(lead) || '');
+    setCategory('call_picked');
+    setOption('');
     setComment('');
     setAdvanceAmount('');
     setPaymentMethod('upi');
     setPaymentShots([]);
   }, [open, lead]);
 
-  const selected = getFollowUpOutcome(outcome);
-  const isConverted = selected?.status === 'converted';
-  const isLost = selected && ['lost', 'booked_from_another_company'].includes(selected.status);
+  const optionList =
+    category === 'call_picked'
+      ? CALL_PICKED_OUTCOMES
+      : category === 'call_not_picked'
+        ? CALL_NOT_PICKED_REASONS
+        : category === 'cold'
+          ? FOLLOWUP_COLD_REASONS
+          : LOST_REASONS;
+
+  const isConverted = category === 'call_picked' && option === 'converted';
+  const isLost = category === 'lost';
   const convertInvalid =
     isConverted &&
     (!advanceAmount ||
@@ -48,9 +59,65 @@ export default function LeadFollowUpOutcomeModal({
       !paymentShots.length);
   const lostInvalid = isLost && !comment.trim();
 
+  const handleCategoryChange = (next) => {
+    setCategory(next);
+    setOption('');
+  };
+
+  const buildPayload = () => {
+    const note = comment.trim();
+
+    if (category === 'call_picked') {
+      if (option === 'converted') {
+        return {
+          status: 'converted',
+          statusReason: note || 'converted',
+          advanceAmount: Number(advanceAmount),
+          paymentMethod,
+          sendReceipt: true,
+          paymentScreenshots: paymentShots.map((f) => ({ base64: f.base64, name: f.name })),
+          paymentScreenshotBase64: paymentShots[0]?.base64,
+          paymentScreenshotName: paymentShots[0]?.name,
+        };
+      }
+      if (option === 'working_progress') {
+        return { status: 'working_progress', statusReason: note ? `working_progress — ${note}` : 'working_progress' };
+      }
+      if (option === 'qualified') {
+        return { status: 'qualified', statusReason: note ? `qualified — ${note}` : 'qualified' };
+      }
+      return {
+        status: 'contacted',
+        statusReason: note ? `${option} — ${note}` : option,
+      };
+    }
+
+    if (category === 'call_not_picked') {
+      return null;
+    }
+
+    if (category === 'cold') {
+      return {
+        status: 'follow_up',
+        statusReason: note ? `${option} — ${note}` : option,
+        temperature: 'cold',
+        coldReason: option,
+      };
+    }
+
+    if (category === 'lost') {
+      return {
+        status: 'lost',
+        statusReason: buildLostStatusReason(option, note),
+      };
+    }
+
+    return null;
+  };
+
   const handleSave = async () => {
-    if (!selected) {
-      toast.error('Select a lead follow-up outcome');
+    if (!option) {
+      toast.error('Select an option');
       return;
     }
     if (convertInvalid) {
@@ -62,34 +129,18 @@ export default function LeadFollowUpOutcomeModal({
       return;
     }
 
-    const note = comment.trim();
-    const payload = {
-      status: selected.status,
-      statusReason: selected.lostReason || selected.value,
-    };
-
-    if (['lost', 'booked_from_another_company'].includes(selected.status)) {
-      payload.statusReason = buildLostStatusReason(selected.lostReason || selected.value, note);
-    } else if (note && selected.status !== 'converted') {
-      payload.statusReason = `${selected.lostReason || selected.value} — ${note}`;
-    }
-
-    if (isConverted) {
-      payload.advanceAmount = Number(advanceAmount);
-      payload.paymentMethod = paymentMethod;
-      payload.sendReceipt = true;
-      payload.paymentScreenshots = paymentShots.map((f) => ({
-        base64: f.base64,
-        name: f.name,
-      }));
-      payload.paymentScreenshotBase64 = paymentShots[0]?.base64;
-      payload.paymentScreenshotName = paymentShots[0]?.name;
-      if (note) payload.statusReason = note;
+    const payload = buildPayload();
+    if (!payload) {
+      toast.error('Invalid selection');
+      return;
     }
 
     setSaving(true);
     try {
-      await onSubmit(payload, { outcome: selected, comment: note });
+      await onSubmit(payload, {
+        outcome: { value: option, category, label: optionList.find((o) => o.value === option)?.label },
+        comment: comment.trim(),
+      });
       onClose();
     } finally {
       setSaving(false);
@@ -101,20 +152,41 @@ export default function LeadFollowUpOutcomeModal({
       <div className="space-y-4">
         <div>
           <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">
-            Outcome *
+            Category *
           </label>
           <select
-            value={outcome}
-            onChange={(e) => setOutcome(e.target.value)}
-            className="w-full rounded-xl border border-subtle bg-white p-3 text-sm"
+            value={category}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+            className="w-full rounded-xl border border-subtle bg-white p-3 text-sm font-medium"
           >
-            <option value="">Select follow-up outcome…</option>
-            {LEAD_FOLLOW_UP_OUTCOMES.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
+            {FOLLOWUP_CATEGORY_OPTIONS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">
+            Option *
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {optionList.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setOption(item.value)}
+                className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+                  option === item.value
+                    ? 'border-violet-500 bg-violet-50 text-violet-900'
+                    : 'border-subtle bg-white text-content-secondary hover:border-violet-300'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {isConverted && (
@@ -180,7 +252,7 @@ export default function LeadFollowUpOutcomeModal({
           <Button variant="secondary" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!outcome || convertInvalid || lostInvalid || saving}>
+          <Button onClick={handleSave} disabled={!option || convertInvalid || lostInvalid || saving}>
             {saving ? 'Saving…' : isConverted ? 'Convert & Send Voucher' : 'Save follow up'}
           </Button>
         </div>

@@ -49,7 +49,7 @@ async function createFollowUpForLead({ body, user, leadFilter = null }) {
   }
 
   const followup = await FollowUp.create(payload);
-  await applyCategoryToLead(lead, payload.category, 'pending');
+  await applyCategoryToLead(lead, payload.category, 'pending', body);
   await syncLeadFollowUpDates(lead._id);
   await resolveMissedAlertsForLead(lead._id, followup._id);
 
@@ -106,7 +106,7 @@ async function updateFollowUpRecord({ followup, body, user } = {}) {
 
   const lead = await Lead.findById(followup.lead);
   if (lead) {
-    await applyCategoryToLead(lead, followup.category, followup.status);
+    await applyCategoryToLead(lead, followup.category, followup.status, body);
     await syncLeadFollowUpDates(lead._id);
     if (
       (action === 'complete' || followup.status === 'completed') &&

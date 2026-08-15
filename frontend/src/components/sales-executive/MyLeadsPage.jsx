@@ -327,7 +327,10 @@ export default function MyLeadsPage() {
         onSubmit={async (data) => {
           if (data.statusUpdate) {
             await handleFollowUpOutcome(data.statusUpdate, {
-              outcome: getFollowUpOutcome(data.leadOutcome),
+              outcome: {
+                value: data.outcome || data.pickedOutcome || data.notPickedReason || data.coldReason || data.lostReason,
+                category: data.category,
+              },
               comment: data.remarks || '',
             });
           }

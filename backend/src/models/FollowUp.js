@@ -30,6 +30,7 @@ const followUpSchema = new mongoose.Schema(
         'call_picked',
         'call_not_picked',
         'dead_lead',
+        'lost',
         'cold',
         'warm',
         'converted',

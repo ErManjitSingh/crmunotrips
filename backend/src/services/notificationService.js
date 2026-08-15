@@ -372,7 +372,7 @@ async function notifyFollowUpMissed(followUp, lead) {
 
 async function notifyFollowUpOutcome(followUp, lead) {
   const category = followUp.category;
-  if (!category || !['warm', 'converted', 'expected_conv', 'cold', 'call_picked', 'call_not_picked', 'dead_lead'].includes(category)) return;
+  if (!category || !['warm', 'converted', 'expected_conv', 'cold', 'call_picked', 'call_not_picked', 'dead_lead', 'lost'].includes(category)) return;
 
   const branchId = lead?.branchId || followUp.branchId || null;
   const leadName = lead?.name || 'Lead';

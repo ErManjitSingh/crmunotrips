@@ -10,7 +10,6 @@ import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/foll
 import { useLeadActivities } from '../../features/leads/hooks/useLeadActivities';
 import { isLeadStatusLocked } from '../../utils/leadUtils';
 import PostConvertCommercialModal from '../leads/PostConvertCommercialModal';
-import { getFollowUpOutcome } from '../../constants/leadFollowUpOutcomes';
 
 export default function ExecutiveLeadDetailPage() {
   const { id } = useParams();
@@ -170,7 +169,10 @@ export default function ExecutiveLeadDetailPage() {
           const becameConverted = data.statusUpdate?.status === 'converted';
           if (data.statusUpdate) {
             await applyLeadOutcome(data.statusUpdate, {
-              outcome: getFollowUpOutcome(data.leadOutcome),
+              outcome: {
+                value: data.outcome || data.pickedOutcome || data.notPickedReason || data.coldReason || data.lostReason,
+                category: data.category,
+              },
               comment: data.remarks || '',
             });
           }

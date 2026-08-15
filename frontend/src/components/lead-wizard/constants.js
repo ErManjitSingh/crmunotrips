@@ -45,6 +45,13 @@ export const PRIORITIES = [
 export const INTENT_LABEL = 'Intent';
 
 export const COLD_LEAD_REASONS = [
+  { value: 'not_interested', label: 'Not interested' },
+  { value: 'just_inquiring', label: 'Just inquiry' },
+  { value: 'no_plan', label: 'No plan' },
+  { value: 'language_barrier', label: 'Language barrier' },
+  { value: 'wants_group_tour', label: 'Wants to group tour' },
+  { value: 'unknown_destination', label: 'Unknown destination' },
+  // legacy (older records)
   { value: 'not_answering', label: 'Not answering' },
   { value: 'asked_callback_later', label: 'Asked to call later' },
   { value: 'budget_not_ready', label: 'Budget not ready' },
