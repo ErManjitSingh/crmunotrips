@@ -8,8 +8,8 @@ const mongoose = require('mongoose');
 (async () => {
   const uri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/app_unotrips_crm';
   await mongoose.connect(uri);
-  const Lead = require('./src/models/Lead');
-  const FollowUp = require('./src/models/FollowUp');
+  const Lead = require('../models/Lead');
+  const FollowUp = require('../models/FollowUp');
 
   const notConnectedKeys = [
     'not_answering',
