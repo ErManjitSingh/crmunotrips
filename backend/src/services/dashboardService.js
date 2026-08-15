@@ -729,7 +729,7 @@ async function buildAdminDashboard(options = {}) {
   const [enterpriseKpis, sourceAnalytics, executivePerformance, emailStats] = await Promise.all([
     getEnterpriseKpis(branchId),
     getSourceAnalytics(branchId),
-    getExecutivePerformance(branchId),
+    getExecutivePerformance(branchId, { dateFrom, dateTo, source }),
     getEmailDashboardStats({ branchId }),
   ]);
 

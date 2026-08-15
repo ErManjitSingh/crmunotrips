@@ -28,7 +28,37 @@ const HEADERS = [
   { key: 'status', label: 'Status', align: 'right' },
 ];
 
-export default function SalesTeamPerformanceTable({ data }) {
+function formatPeriodTitle(filters = {}, periodLabel) {
+  if (periodLabel && !String(periodLabel).toLowerCase().includes('vs')) {
+    const short = String(periodLabel).split('·')[0].trim();
+    if (short) return `Sales Team Performance (${short})`;
+  }
+  if (!filters.dateFrom && !filters.dateTo) return 'Sales Team Performance (All Time)';
+  if (filters.dateFrom && filters.dateFrom === filters.dateTo) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayKey = `${yyyy}-${mm}-${dd}`;
+    if (filters.dateFrom === todayKey) return 'Sales Team Performance (Today)';
+    const d = new Date(`${filters.dateFrom}T12:00:00`);
+    return `Sales Team Performance (${d.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    })})`;
+  }
+  if (filters.dateFrom && filters.dateTo) {
+    const from = new Date(`${filters.dateFrom}T12:00:00`);
+    const to = new Date(`${filters.dateTo}T12:00:00`);
+    const fmt = (d) =>
+      d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    return `Sales Team Performance (${fmt(from)} – ${fmt(to)})`;
+  }
+  return 'Sales Team Performance';
+}
+
+export default function SalesTeamPerformanceTable({ data, filters, periodLabel }) {
   const executives = (data?.executives || [])
     .slice(0, 6)
     .map((ex) => ({
@@ -43,7 +73,7 @@ export default function SalesTeamPerformanceTable({ data }) {
 
   return (
     <DashboardPanel
-      title="Sales Team Performance (Today)"
+      title={formatPeriodTitle(filters, periodLabel)}
       className="h-full"
       action={
         <Link to="/team" className="text-xs font-semibold text-violet-600 hover:underline">

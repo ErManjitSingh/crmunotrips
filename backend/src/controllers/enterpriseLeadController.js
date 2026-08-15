@@ -484,7 +484,14 @@ const getSourceAnalyticsHandler = asyncHandler(async (req, res) => {
 });
 
 const getExecutivePerformanceHandler = asyncHandler(async (req, res) => {
-  const result = await getExecutivePerformance(req.branchId);
+  const dateFrom = typeof req.query.dateFrom === 'string' ? req.query.dateFrom : '';
+  const dateTo = typeof req.query.dateTo === 'string' ? req.query.dateTo : '';
+  const source = typeof req.query.source === 'string' ? req.query.source : '';
+  const result = await getExecutivePerformance(req.branchId, {
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+    source: source || undefined,
+  });
   res.json(result);
 });
 

@@ -2,6 +2,7 @@ const Lead = require('../models/Lead');
 const FollowUp = require('../models/FollowUp');
 const User = require('../models/User');
 const { withBranch } = require('../utils/branchScope');
+const { startOfDay, endOfDay } = require('../utils/queryHelpers');
 
 const SOURCE_LABELS = {
   dpw: 'DPW',
@@ -106,7 +107,35 @@ async function getSourceAnalytics(branchId) {
   };
 }
 
-async function getExecutivePerformance(branchId) {
+function resolvePerformancePeriod(dateFrom, dateTo) {
+  const now = new Date();
+  const isAllTime = !dateFrom && !dateTo;
+  if (isAllTime) {
+    return { isAllTime: true, periodStart: null, periodEnd: null };
+  }
+  return {
+    isAllTime: false,
+    periodStart: dateFrom ? startOfDay(new Date(dateFrom)) : startOfDay(new Date(now.getFullYear(), now.getMonth(), 1)),
+    periodEnd: dateTo ? endOfDay(new Date(dateTo)) : endOfDay(now),
+  };
+}
+
+function periodTouchFilter(periodStart, periodEnd) {
+  if (!periodStart || !periodEnd) return {};
+  return {
+    $or: [
+      { createdAt: { $gte: periodStart, $lte: periodEnd } },
+      { assignedAt: { $gte: periodStart, $lte: periodEnd } },
+    ],
+  };
+}
+
+async function getExecutivePerformance(branchId, options = {}) {
+  const { dateFrom, dateTo, source } = options;
+  const { isAllTime, periodStart, periodEnd } = resolvePerformancePeriod(dateFrom, dateTo);
+  const sourceFilter = source ? { source } : {};
+  const touch = periodTouchFilter(periodStart, periodEnd);
+
   const execFilter = {
     role: 'sales_executive',
     status: 'active',
@@ -115,11 +144,41 @@ async function getExecutivePerformance(branchId) {
   const executives = await User.find(execFilter).select('name email').lean();
   const execIds = executives.map((e) => e._id);
 
-  if (!execIds.length) return { executives: [] };
+  if (!execIds.length) return { executives: [], period: { isAllTime, dateFrom: dateFrom || '', dateTo: dateTo || '' } };
+
+  const baseLeadMatch = {
+    ...branchMatch(branchId),
+    assignedTo: { $in: execIds },
+    ...sourceFilter,
+  };
+  const periodLeadMatch = isAllTime ? baseLeadMatch : { ...baseLeadMatch, ...touch };
+  const convertedMatch = isAllTime
+    ? { ...baseLeadMatch, status: 'converted' }
+    : {
+        ...baseLeadMatch,
+        status: 'converted',
+        updatedAt: { $gte: periodStart, $lte: periodEnd },
+      };
+  const quoteMatch = isAllTime
+    ? { ...baseLeadMatch, status: { $in: ['quotation_sent', 'follow_up', 'negotiation'] } }
+    : {
+        ...baseLeadMatch,
+        status: { $in: ['quotation_sent', 'follow_up', 'negotiation'] },
+        ...touch,
+      };
+  const hotMatch = isAllTime
+    ? { ...baseLeadMatch, temperature: { $in: ['hot', 'vip'] } }
+    : { ...baseLeadMatch, temperature: { $in: ['hot', 'vip'] }, ...touch };
+
+  const followMatch = {
+    ...(branchId ? { branchId } : {}),
+    assignedTo: { $in: execIds },
+    ...(isAllTime ? {} : { scheduledAt: { $gte: periodStart, $lte: periodEnd } }),
+  };
 
   const [assignedAgg, convertedAgg, followUpAgg, hotAgg, quoteAgg] = await Promise.all([
     Lead.aggregate([
-      { $match: { ...branchMatch(branchId), assignedTo: { $in: execIds } } },
+      { $match: periodLeadMatch },
       {
         $group: {
           _id: '$assignedTo',
@@ -128,77 +187,31 @@ async function getExecutivePerformance(branchId) {
             $sum: { $cond: [{ $ne: ['$status', 'converted'] }, 1, 0] },
           },
           revenue: { $sum: '$budget' },
-          todayLeads: {
-            $sum: {
-              $cond: [
-                { $gte: ['$createdAt', new Date(new Date().setHours(0, 0, 0, 0))] },
-                1,
-                0,
-              ],
-            },
-          },
         },
       },
     ]),
     Lead.aggregate([
-      {
-        $match: {
-          ...branchMatch(branchId),
-          assignedTo: { $in: execIds },
-          status: 'converted',
-        },
-      },
+      { $match: convertedMatch },
       { $group: { _id: '$assignedTo', converted: { $sum: 1 }, revenue: { $sum: '$budget' } } },
     ]),
     FollowUp.aggregate([
-      { $match: { ...(branchId ? { branchId } : {}), assignedTo: { $in: execIds } } },
+      { $match: followMatch },
       {
         $group: {
           _id: '$assignedTo',
           total: { $sum: 1 },
           completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
           missed: { $sum: { $cond: [{ $eq: ['$status', 'missed'] }, 1, 0] } },
-          todayPending: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $eq: ['$status', 'pending'] },
-                    { $gte: ['$scheduledAt', new Date(new Date().setHours(0, 0, 0, 0))] },
-                    {
-                      $lt: [
-                        '$scheduledAt',
-                        new Date(new Date().setHours(23, 59, 59, 999)),
-                      ],
-                    },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
+          pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
         },
       },
     ]),
     Lead.aggregate([
-      {
-        $match: {
-          ...branchMatch(branchId),
-          assignedTo: { $in: execIds },
-          temperature: { $in: ['hot', 'vip'] },
-        },
-      },
+      { $match: hotMatch },
       { $group: { _id: '$assignedTo', hot: { $sum: 1 } } },
     ]),
     Lead.aggregate([
-      {
-        $match: {
-          ...branchMatch(branchId),
-          assignedTo: { $in: execIds },
-          status: { $in: ['quotation_sent', 'follow_up', 'negotiation'] },
-        },
-      },
+      { $match: quoteMatch },
       { $group: { _id: '$assignedTo', quotes: { $sum: 1 } } },
     ]),
   ]);
@@ -219,10 +232,10 @@ async function getExecutivePerformance(branchId) {
     const conversionRate = assigned ? Math.round((converted / assigned) * 1000) / 10 : 0;
     const followUpCompletion = fuTotal ? Math.round((fuCompleted / fuTotal) * 100) : 0;
     let performanceStatus = 'Inactive';
-    if (assigned > 0) {
+    if (assigned > 0 || fuTotal > 0 || converted > 0) {
       if (conversionRate >= 15 || followUpCompletion >= 80) performanceStatus = 'Excellent';
       else if (conversionRate >= 8 || followUpCompletion >= 60) performanceStatus = 'Good';
-      else if (followUpCompletion >= 40) performanceStatus = 'Needs Attention';
+      else if (followUpCompletion >= 40 || assigned > 0) performanceStatus = 'Needs Attention';
       else performanceStatus = 'Low';
     }
     return {
@@ -230,8 +243,8 @@ async function getExecutivePerformance(branchId) {
       name: exec.name,
       email: exec.email,
       assigned,
-      leads: assignedMap[id]?.todayLeads || assigned,
-      followUps: fu.todayPending || 0,
+      leads: assigned,
+      followUps: fu.pending || fuTotal || 0,
       quotes: quoteMap[id] || 0,
       bookings: converted,
       converted,
@@ -245,9 +258,16 @@ async function getExecutivePerformance(branchId) {
     };
   });
 
-  executives_data.sort((a, b) => b.converted - a.converted || b.conversionRate - a.conversionRate);
+  executives_data.sort((a, b) => b.converted - a.converted || b.leads - a.leads || b.conversionRate - a.conversionRate);
 
-  return { executives: executives_data };
+  return {
+    executives: executives_data,
+    period: {
+      isAllTime,
+      dateFrom: dateFrom || '',
+      dateTo: dateTo || '',
+    },
+  };
 }
 
 async function getEnterpriseKpis(branchId) {

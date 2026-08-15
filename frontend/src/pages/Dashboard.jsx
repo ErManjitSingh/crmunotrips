@@ -159,7 +159,11 @@ export default function Dashboard() {
             <TopDestinationsDonut data={report?.topDestinations || []} />
           </div>
           <div className="min-w-0 xl:col-span-4">
-            <SalesTeamPerformanceTable data={stats.executivePerformance} />
+            <SalesTeamPerformanceTable
+              data={stats.executivePerformance}
+              filters={filters}
+              periodLabel={report?.period?.label}
+            />
           </div>
         </div>
 
