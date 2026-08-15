@@ -13,7 +13,6 @@ import { beginLeadCall } from '../../lib/callSession';
 import Avatar from '../ui/Avatar';
 import { STATUS_STYLES, formatBudget } from '../sales-manager/managerUtils';
 import { CustomerCell } from '../sales-manager/LeadListBadges';
-import { getLeadStatusLabel } from '../../lib/leadStatusLabel';
 import { getExecutiveSetStatusDisplay } from '../../lib/executiveStatusDisplay';
 
 function formatCreatedAt(date) {
@@ -68,7 +67,7 @@ const STATUS_DOT = {
 
 export function ExecLeadIdCell({ lead }) {
   const status = lead?.status || 'new';
-  const label = status === 'new' ? 'New' : getLeadStatusLabel(status);
+  const display = getExecutiveSetStatusDisplay(lead);
   const created = formatCreatedAt(lead?.createdAt || lead?.assignedAt);
 
   return (
@@ -78,13 +77,14 @@ export function ExecLeadIdCell({ lead }) {
       </p>
       <span
         className={cn(
-          'inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold capitalize',
+          'inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold max-w-[140px] truncate',
           status === 'new'
             ? 'bg-[#5D5FEF]/12 text-[#5D5FEF]'
             : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
         )}
+        title={display.title}
       >
-        {label}
+        {display.label}
       </span>
       {created && (
         <p className="text-[11px] text-content-muted leading-snug whitespace-nowrap">{created}</p>

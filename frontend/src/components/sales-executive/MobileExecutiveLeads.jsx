@@ -31,6 +31,7 @@ import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
 import { DESTINATIONS, INDIAN_STATES } from '../leads/constants';
 import { LEAD_FOLLOW_UP_OUTCOMES } from '../../constants/leadFollowUpOutcomes';
 import { SourceBadge } from '../sales-manager/LeadListBadges';
+import { getExecutiveSetStatusDisplay } from '../../lib/executiveStatusDisplay';
 import { cn } from '../../lib/utils';
 import { toast } from '../../context/ToastContext';
 import PeriodPresetChips from '../ui/PeriodPresetChips';
@@ -141,15 +142,6 @@ function initials(name) {
 
 function avatarTone(name = '') {
   return AVATAR_TONES[(name.charCodeAt(0) || 0) % AVATAR_TONES.length];
-}
-
-function titleCaseStatus(status) {
-  if (status === 'new') return 'New Lead';
-  if (status === 'contacted') return 'Connected';
-  if (status === 'follow_up') return 'Follow-up';
-  return String(status || 'New')
-    .replaceAll('_', ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function formatDateTime(iso) {
@@ -525,6 +517,7 @@ export default function MobileExecutiveLeads({
           ) : (
             visibleLeads.map((lead) => {
               const status = lead.status || 'new';
+              const statusDisplay = getExecutiveSetStatusDisplay(lead);
               const hot = isHot(lead);
               const due = isFollowUpDue(lead);
               const open = menuLeadId === lead._id;
@@ -546,8 +539,11 @@ export default function MobileExecutiveLeads({
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <p className="truncate text-[15px] font-bold text-slate-900">{lead.name}</p>
-                            <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold', STATUS_PILL[status] || STATUS_PILL.new)}>
-                              {titleCaseStatus(status)}
+                            <span
+                              className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold max-w-[160px] truncate', STATUS_PILL[status] || STATUS_PILL.new)}
+                              title={statusDisplay.title}
+                            >
+                              {statusDisplay.label}
                             </span>
                           </div>
                           {lead.nextFollowUp ? (

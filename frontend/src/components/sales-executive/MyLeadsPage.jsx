@@ -143,7 +143,19 @@ export default function MyLeadsPage() {
     void leadOutcome;
 
     // Always persist the follow-up first — status update failures must not block it
-    await createExecutiveFollowUp(buildFollowUpPayload({ ...followUpData, lead: leadId }));
+    await createExecutiveFollowUp(
+      buildFollowUpPayload({
+        ...followUpData,
+        lead: leadId,
+        statusReason:
+          statusUpdate?.statusReason ||
+          followUpData.outcome ||
+          followUpData.pickedOutcome ||
+          followUpData.notPickedReason ||
+          followUpData.coldReason ||
+          followUpData.lostReason,
+      })
+    );
 
     if (statusUpdate) {
       try {

@@ -109,7 +109,19 @@ export default function ExecutiveLeadDetailPage() {
     void leadOutcome;
     const becameConverted = statusUpdate?.status === 'converted';
 
-    await createExecutiveFollowUp(buildFollowUpPayload({ ...followUpData, lead: lead._id }));
+    await createExecutiveFollowUp(
+      buildFollowUpPayload({
+        ...followUpData,
+        lead: lead._id,
+        statusReason:
+          statusUpdate?.statusReason ||
+          followUpData.outcome ||
+          followUpData.pickedOutcome ||
+          followUpData.notPickedReason ||
+          followUpData.coldReason ||
+          followUpData.lostReason,
+      })
+    );
 
     if (statusUpdate) {
       try {

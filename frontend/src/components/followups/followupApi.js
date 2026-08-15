@@ -24,5 +24,7 @@ export function buildFollowUpPayload(form) {
     notPickedReason: form.notPickedReason || undefined,
     pickedOutcome: form.pickedOutcome || undefined,
     lostReason: form.lostReason || undefined,
+    // Exact option key / "key — note" so list shows what executive selected
+    statusReason: form.statusReason || undefined,
   };
 }

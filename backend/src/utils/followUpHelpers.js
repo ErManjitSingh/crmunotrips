@@ -125,8 +125,10 @@ async function applyCategoryToLead(lead, category, status, body = {}) {
       if (!TERMINAL_STATUSES.includes(lead.status)) lead.status = 'qualified';
     } else if (!TERMINAL_STATUSES.includes(lead.status)) {
       lead.status = 'contacted';
-      if (picked) lead.statusReason = String(picked);
     }
+    // Always stamp the exact option the executive selected (for list display)
+    if (body.statusReason) lead.statusReason = String(body.statusReason).trim();
+    else if (picked) lead.statusReason = String(picked);
   } else if (category === 'dead_lead' || category === 'lost') {
     if (outcomeKey === 'booked_elsewhere') {
       lead.status = 'booked_from_another_company';
@@ -151,13 +153,17 @@ async function applyCategoryToLead(lead, category, status, body = {}) {
     } else {
       lead.status = 'follow_up';
     }
-    if (outcomeKey) lead.statusReason = String(outcomeKey);
+    if (body.statusReason) lead.statusReason = String(body.statusReason).trim();
+    else if (outcomeKey) lead.statusReason = String(outcomeKey);
   } else if (category === 'cold') {
     if (!TERMINAL_STATUSES.includes(lead.status)) {
       lead.status = 'follow_up';
     }
     lead.temperature = 'cold';
     lead.isHot = false;
+    if (body.statusReason) lead.statusReason = String(body.statusReason).trim();
+    else if (outcomeKey) lead.statusReason = String(outcomeKey);
+    else if (body.coldReason) lead.statusReason = String(body.coldReason).trim();
   }
 
   promoteReactivatedLeadOnFollowUp(lead, lead.assignedTo);
