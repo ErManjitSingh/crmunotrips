@@ -36,6 +36,7 @@ import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
 import TrackedCallButton from './TrackedCallButton';
 import LeadCallStats from './LeadCallStats';
 import { LeadTimingLines, NextFollowUpLine } from '../sales-manager/LeadListBadges';
+import { getExecutiveSetStatusDisplay } from '../../lib/executiveStatusDisplay';
 import { TooltipProvider } from '../ui/tooltip';
 import PeriodPresetChips from '../ui/PeriodPresetChips';
 import { applyPeriodPreset } from '../../lib/periodFilters';
@@ -307,6 +308,9 @@ export default function MobileLeadList({
             {leads.map((lead, index) => {
               const phoneDigits = String(lead.phone || '').replace(/\D/g, '');
               const whatsapp = phoneDigits.length === 10 ? `91${phoneDigits}` : phoneDigits;
+              const statusDisplay = getExecutiveSetStatusDisplay(lead);
+              const statusStyleKey =
+                lead.status === 'new' && statusDisplay.label !== 'New' ? 'follow_up' : lead.status;
               const lostReason =
                 lead.status === 'lost' || lead.status === 'booked_from_another_company'
                   ? formatLostReasonDisplay(lead.statusReason)
@@ -336,7 +340,12 @@ export default function MobileLeadList({
                           >
                             {lead.name}
                           </h3>
-                          <span className={`rounded-full px-2 py-0.5 text-[7px] font-semibold ${STATUS_STYLES[lead.status] || 'bg-slate-100 text-slate-600'}`}>{titleCase(lead.status)}</span>
+                          <span
+                            className={`max-w-[120px] truncate rounded-full px-2 py-0.5 text-[7px] font-semibold ${STATUS_STYLES[statusStyleKey] || 'bg-slate-100 text-slate-600'}`}
+                            title={statusDisplay.title}
+                          >
+                            {statusDisplay.label}
+                          </span>
                         </div>
                         {lostReason ? (
                           <p className="mt-0.5 truncate text-[8px] font-medium text-red-600" title={lostReason}>

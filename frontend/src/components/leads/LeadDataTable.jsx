@@ -164,6 +164,7 @@ export default function LeadDataTable({
           <LeadStatusBadge
             status={row.original.status}
             reason={row.original.statusReason}
+            lead={row.original}
             pulse={row.original.status === 'new'}
             size="sm"
           />

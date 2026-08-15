@@ -136,6 +136,8 @@ echo "==> Retag non-Meta WhatsApp leads → DPW WA (Google)..."
 cd "$APP" && node deploy/retag-whatsapp-google-source.mjs || echo "WA_SOURCE_RETAG_SKIPPED"
 echo "==> Sync lead_provider user-create permissions..."
 cd "$APP/backend" && node src/scripts/syncLeadProviderPermissions.js || echo "LEAD_PROVIDER_PERMS_SYNC_SKIPPED"
+echo "==> Backfill not-connected follow-ups stuck on New → Follow-up..."
+cd "$APP/backend" && node src/scripts/backfillNotConnectedFollowUpStatus.js || echo "NOT_CONNECTED_STATUS_BACKFILL_SKIPPED"
 curl -sS https://app.unotrips.com/api/health
 echo
 echo APP_ONLY_DEPLOY_OK
