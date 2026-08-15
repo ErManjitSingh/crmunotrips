@@ -15,6 +15,7 @@ import { STATUS_STYLES, formatBudget } from '../sales-manager/managerUtils';
 import { CustomerCell } from '../sales-manager/LeadListBadges';
 import { getLeadStatusLabel } from '../../lib/leadStatusLabel';
 import { LEAD_FOLLOW_UP_OUTCOMES } from '../../constants/leadFollowUpOutcomes';
+import { formatLostReasonDisplay } from '../../constants/salesSop';
 
 function formatCreatedAt(date) {
   if (!date) return null;
@@ -270,7 +271,7 @@ export function ExecStatusCell({ lead }) {
     lead?.reactivation?.isReactivated &&
     ['follow_up', 'working_progress', 'contacted', 'negotiation', 'quotation_sent'].includes(status);
   const reason = String(lead?.statusReason || '').trim();
-  const reasonKey = reason.split('—')[0].trim();
+  const reasonKey = reason.split(/[—–]/)[0].trim();
   const outcome =
     LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.value === reasonKey) ||
     LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.lostReason === reasonKey) ||
@@ -283,24 +284,35 @@ export function ExecStatusCell({ lead }) {
     ? 'Active'
     : outcome?.label || getLeadStatusLabel(status);
   const styleKey = isActiveReactivated ? 'active' : status;
+  const reasonLabel =
+    status === 'lost' || status === 'booked_from_another_company'
+      ? formatLostReasonDisplay(reason)
+      : '';
 
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ring-1 ring-inset whitespace-nowrap max-w-[180px] truncate',
-        STATUS_STYLES[styleKey] || STATUS_STYLES.new
-      )}
-      title={label}
-    >
+    <div className="flex min-w-0 flex-col items-start gap-0.5">
       <span
         className={cn(
-          'w-1.5 h-1.5 rounded-full shrink-0',
-          status === 'new' && 'animate-pulse',
-          STATUS_DOT[isActiveReactivated ? 'reactivated' : status] || 'bg-sky-500'
+          'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ring-1 ring-inset whitespace-nowrap max-w-[180px] truncate',
+          STATUS_STYLES[styleKey] || STATUS_STYLES.new
         )}
-      />
-      {label}
-    </span>
+        title={reasonLabel ? `${label} — ${reasonLabel}` : label}
+      >
+        <span
+          className={cn(
+            'w-1.5 h-1.5 rounded-full shrink-0',
+            status === 'new' && 'animate-pulse',
+            STATUS_DOT[isActiveReactivated ? 'reactivated' : status] || 'bg-sky-500'
+          )}
+        />
+        {label}
+      </span>
+      {reasonLabel ? (
+        <span className="max-w-[180px] truncate text-[10px] font-medium text-red-600/90" title={reasonLabel}>
+          {reasonLabel}
+        </span>
+      ) : null}
+    </div>
   );
 }
 

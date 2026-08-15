@@ -1,5 +1,6 @@
 import { cn } from '../../lib/utils';
 import { getLeadStatusLabel } from '../../lib/leadStatusLabel';
+import { formatLostReasonDisplay } from '../../constants/salesSop';
 
 const config = {
   new: {
@@ -70,20 +71,35 @@ const config = {
   },
 };
 
-export default function LeadStatusBadge({ status, pulse = false, size = 'md' }) {
+export default function LeadStatusBadge({ status, pulse = false, size = 'md', reason }) {
   const c = config[status] || config.new;
+  const reasonLabel =
+    status === 'lost' || status === 'booked_from_another_company'
+      ? formatLostReasonDisplay(reason)
+      : '';
+
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full font-medium ring-1 ring-inset whitespace-nowrap',
-        size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs',
-        c.class,
-        pulse && 'animate-pulse-soft'
-      )}
-      title={getLeadStatusLabel(status)}
-    >
-      <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', c.dot, pulse && 'animate-pulse')} />
-      {c.label}
-    </span>
+    <div className="flex min-w-0 flex-col items-start gap-0.5">
+      <span
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full font-medium ring-1 ring-inset whitespace-nowrap',
+          size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs',
+          c.class,
+          pulse && 'animate-pulse-soft'
+        )}
+        title={reasonLabel ? `${getLeadStatusLabel(status)} — ${reasonLabel}` : getLeadStatusLabel(status)}
+      >
+        <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', c.dot, pulse && 'animate-pulse')} />
+        {c.label}
+      </span>
+      {reasonLabel ? (
+        <span
+          className="max-w-[160px] truncate text-[10px] font-medium leading-tight text-red-600/90"
+          title={reasonLabel}
+        >
+          {reasonLabel}
+        </span>
+      ) : null}
+    </div>
   );
 }

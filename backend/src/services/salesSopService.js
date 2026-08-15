@@ -158,20 +158,35 @@ function assertQualifiedForQuotation(lead) {
   return true;
 }
 
-function assertValidLostReason(reason) {
+/** Accepts enum key or `key — comment`. Returns normalized storage value. */
+function assertValidLostReason(reason, { requireComment = false } = {}) {
   const value = String(reason || '').trim();
   if (!value) throw new ApiError(400, 'Lost reason is required');
-  if (!LOST_REASON_VALUES.includes(value)) {
+
+  const parts = value.split(/\s*[—–]\s*/).map((p) => p.trim()).filter(Boolean);
+  const key = parts[0] || '';
+  const comment = parts.slice(1).join(' — ').trim();
+
+  if (!LOST_REASON_VALUES.includes(key)) {
     throw new ApiError(
       400,
       `Invalid lost reason. Use one of: ${LOST_REASONS.map((r) => r.label).join(', ')}`
     );
   }
-  return value;
+  if (requireComment && !comment) {
+    throw new ApiError(400, 'Lost reason comment is required before marking lead as lost');
+  }
+  return comment ? `${key} — ${comment}` : key;
 }
 
 function lostReasonLabel(value) {
-  return LOST_REASONS.find((r) => r.value === value)?.label || value;
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const parts = raw.split(/\s*[—–]\s*/).map((p) => p.trim()).filter(Boolean);
+  const key = parts[0] || '';
+  const comment = parts.slice(1).join(' — ').trim();
+  const label = LOST_REASONS.find((r) => r.value === key)?.label || key;
+  return comment ? `${label} — ${comment}` : label;
 }
 
 module.exports = {

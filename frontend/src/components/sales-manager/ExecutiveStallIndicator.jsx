@@ -30,6 +30,9 @@ export function ExecutiveStallIndicator({ lead, className }) {
 }
 
 export function executiveStallRowClass(lead) {
+  if (lead?.status === 'converted') {
+    return 'bg-emerald-50 hover:bg-emerald-100/80';
+  }
   if (!lead?.executiveStallActive) return '';
   return 'bg-rose-50/80 dark:bg-rose-950/25 hover:bg-rose-100/80 dark:hover:bg-rose-950/40 ring-1 ring-inset ring-rose-500/20';
 }

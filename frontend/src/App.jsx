@@ -691,6 +691,17 @@ function App() {
                     }
                   />
                   <Route
+                    path="leads/arrivals"
+                    element={
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
+                        <Leads />
+                      </PermissionRoute>
+                    }
+                  />
+                  <Route
                     path="leads/lost"
                     element={
                       <PermissionRoute

@@ -7,9 +7,9 @@ function toInputDate(d) {
 }
 
 export const LIST_PERIOD_PRESETS = [
-  { key: 'today', label: 'Today' },
+  { key: 'today', label: 'Days' },
   { key: 'yesterday', label: 'Yesterday' },
-  { key: 'month', label: 'This Month' },
+  { key: 'month', label: 'Month' },
   { key: 'all', label: 'All Time' },
 ];
 

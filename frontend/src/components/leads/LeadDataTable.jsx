@@ -30,6 +30,7 @@ import {
   LEAD_LIST_TD,
   LEAD_LIST_ROW_HOVER,
   leadListRowBg,
+  leadListStickyBg,
 } from './leadListStyles';
 
 const defaultMenuActions = {
@@ -156,8 +157,13 @@ export default function LeadDataTable({
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ getValue }) => (
-          <LeadStatusBadge status={getValue()} pulse={getValue() === 'new'} size="sm" />
+        cell: ({ row }) => (
+          <LeadStatusBadge
+            status={row.original.status}
+            reason={row.original.statusReason}
+            pulse={row.original.status === 'new'}
+            size="sm"
+          />
         ),
       },
       {
@@ -272,8 +278,10 @@ export default function LeadDataTable({
             )}
             {virtualRows.map((virtualRow) => {
               const row = tableRows[virtualRow.index];
+              const status = row.original?.status;
               const isOdd = virtualRow.index % 2 === 0;
-              const rowBg = leadListRowBg(virtualRow.index);
+              const rowBg = leadListRowBg(virtualRow.index, status);
+              const stickyBg = leadListStickyBg(virtualRow.index, status);
               return (
                 <tr
                   key={row.id}
@@ -287,7 +295,7 @@ export default function LeadDataTable({
                       colId === 'rowActions' &&
                         cn(
                           'text-right sticky right-0 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.04)]',
-                          isOdd ? 'bg-sky-50 group-hover:bg-sky-100/80' : 'bg-white group-hover:bg-sky-100/80'
+                          stickyBg
                         )
                     );
                     return (

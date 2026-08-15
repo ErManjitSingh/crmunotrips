@@ -104,7 +104,7 @@ export default function VirtualizedRoleTable({
                       key={row.id}
                       className={cn(
                         rowClassName,
-                        stallOrExtra || leadListRowBg(virtualRow.index)
+                        stallOrExtra || leadListRowBg(virtualRow.index, row.original?.status)
                       )}
                     >
                       {row.getVisibleCells().map((cell) => (

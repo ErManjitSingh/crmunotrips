@@ -299,7 +299,11 @@ export default function MyLeadsPage() {
           onPaginationChange={setPagination}
           estimateRowHeight={72}
           maxHeight="min(72vh, 720px)"
-          getRowClassName={(lead) => (lead?.isHot ? 'bg-orange-50' : undefined)}
+          getRowClassName={(lead) => {
+            if (lead?.status === 'converted') return 'bg-emerald-50 hover:bg-emerald-100/80';
+            if (lead?.isHot) return 'bg-orange-50';
+            return undefined;
+          }}
         />
       )}
 

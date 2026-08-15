@@ -317,10 +317,10 @@ const updateLead = asyncHandler(async (req, res) => {
 
     if (['lost', 'booked_from_another_company'].includes(status)) {
       const { assertValidLostReason, lostReasonLabel } = require('../services/salesSopService');
-      const reasonValue =
-        status === 'booked_from_another_company' && !trimmedReason
-          ? 'booked_elsewhere'
-          : assertValidLostReason(trimmedReason || (status === 'booked_from_another_company' ? 'booked_elsewhere' : ''));
+      const reasonValue = assertValidLostReason(
+        trimmedReason || (status === 'booked_from_another_company' ? 'booked_elsewhere' : ''),
+        { requireComment: true }
+      );
       lead.statusReason = reasonValue;
       req._lostReasonLabel = lostReasonLabel(reasonValue);
     } else {

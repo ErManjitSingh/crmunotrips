@@ -80,9 +80,16 @@ export const pageConfig = {
   },
   '/leads/assigned': { title: 'Assigned Leads', subtitle: 'Leads assigned to team members', status: '', assignee: 'assigned' },
   '/leads/converted': { title: 'Bookings', subtitle: 'Confirmed / paid customers', status: 'converted', assignee: '' },
+  '/leads/arrivals': {
+    title: 'Arrivals',
+    subtitle: 'Converted leads by travel / arrival date',
+    status: 'converted',
+    assignee: '',
+    listFilter: 'arrivals',
+  },
   '/leads/lost': { title: 'Lost Leads', subtitle: 'Did not convert', status: 'lost', assignee: '' },
   '/leads/duplicates': {
-    title: 'Duplicate Leads',
+    title: 'Repeated Leads',
     subtitle: 'Leads sharing the same phone number',
     status: '',
     assignee: '',
@@ -96,11 +103,11 @@ export function formatLeadId(id) {
 
 export const BUDGET_FILTER_OPTIONS = [
   { value: '', label: 'All Budgets', min: '', max: '' },
-  { value: 'under_20000', label: 'Under ₹20k', min: '0', max: '20000' },
-  { value: '20000_40000', label: '₹20k – ₹40k', min: '20000', max: '40000' },
-  { value: '40000_60000', label: '₹40k – ₹60k', min: '40000', max: '60000' },
-  { value: '60000_100000', label: '₹60k – ₹1L', min: '60000', max: '100000' },
-  { value: 'above_100000', label: 'Above ₹1L', min: '100000', max: '' },
+  { value: 'under_50000', label: 'Under ₹50k', min: '0', max: '50000' },
+  { value: '50000_100000', label: '₹50k – ₹1L', min: '50000', max: '100000' },
+  { value: '100000_200000', label: '₹1L – ₹2L', min: '100000', max: '200000' },
+  { value: '200000_300000', label: '₹2L – ₹3L', min: '200000', max: '300000' },
+  { value: 'above_300000', label: '₹3L & Above', min: '300000', max: '' },
 ];
 
 export const emptyFilters = {
@@ -109,6 +116,7 @@ export const emptyFilters = {
   source: '',
   agent: '',
   status: '',
+  filter: '',
   travelMonth: '',
   budgetMin: '',
   budgetMax: '',

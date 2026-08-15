@@ -347,9 +347,19 @@ const addCallNote = asyncHandler(async (req, res) => {
 });
 
 const bulkUpdateStatus = asyncHandler(async (req, res) => {
-  const { leadIds, status } = req.body;
+  const { leadIds, status, statusReason } = req.body;
   if (!Array.isArray(leadIds) || !leadIds.length) throw new ApiError(400, 'leadIds required');
   if (!status) throw new ApiError(400, 'status required');
+
+  const LOST_STATUSES = ['lost', 'booked_from_another_company'];
+  let normalizedLostReason = '';
+  if (LOST_STATUSES.includes(status)) {
+    const { assertValidLostReason } = require('../services/salesSopService');
+    normalizedLostReason = assertValidLostReason(
+      String(statusReason || '').trim() || (status === 'booked_from_another_company' ? 'booked_elsewhere' : ''),
+      { requireComment: true }
+    );
+  }
 
   const { getLeadViewerExtraFilter } = require('../services/leadAccessScope');
   const viewerFilter = await getLeadViewerExtraFilter(req);
@@ -368,6 +378,10 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
   for (const lead of leads) {
     const prev = lead.status;
     lead.status = status;
+    if (normalizedLostReason) {
+      lead.statusReason = normalizedLostReason;
+      lead.statusReasonUpdatedAt = new Date();
+    }
     await applyLeadMetrics(lead);
     await lead.save();
     await logLeadActivity({
@@ -376,7 +390,7 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
       type: 'status_changed',
       description: `Status changed from ${prev} to ${status} (bulk)`,
       actor: req.user,
-      meta: { from: prev, to: status },
+      meta: { from: prev, to: status, statusReason: normalizedLostReason || undefined },
     });
     results.push({ _id: lead._id, status: lead.status });
   }

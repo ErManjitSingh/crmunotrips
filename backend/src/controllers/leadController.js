@@ -552,11 +552,11 @@ const updateLead = asyncHandler(async (req, res) => {
   }
   if (data.status && LOST_LEAD_STATUSES.includes(data.status)) {
     const { assertValidLostReason } = require('../services/salesSopService');
-    const incoming = data.statusReason?.trim() || lead.statusReason?.trim() || '';
-    const reasonValue =
-      data.status === 'booked_from_another_company' && !incoming
-        ? 'booked_elsewhere'
-        : assertValidLostReason(incoming || (data.status === 'booked_from_another_company' ? 'booked_elsewhere' : ''));
+    const incoming = data.statusReason?.trim() || '';
+    const reasonValue = assertValidLostReason(
+      incoming || (data.status === 'booked_from_another_company' ? 'booked_elsewhere' : ''),
+      { requireComment: true }
+    );
     data.statusReason = reasonValue;
   }
   if (data.status && data.status !== prevStatus && isLeadStatusLocked(prevStatus)) {

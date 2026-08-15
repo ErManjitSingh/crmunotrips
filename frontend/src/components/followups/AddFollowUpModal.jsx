@@ -16,6 +16,7 @@ import {
   getFollowUpOutcome,
   resolveOutcomeFromLead,
 } from '../../constants/leadFollowUpOutcomes';
+import { buildLostStatusReason } from '../../constants/salesSop';
 import { toast } from '../../context/ToastContext';
 
 const emptyForm = {
@@ -43,18 +44,17 @@ function plusFourHoursLocal() {
 
 function buildLeadStatusPayload(selected, comment, convertFields = {}) {
   if (!selected) return null;
-  const statusReason = selected.lostReason || selected.value;
   const note = String(comment || '').trim();
   const payload = {
     status: selected.status,
-    statusReason:
-      note && !['lost', 'booked_from_another_company', 'converted'].includes(selected.status)
-        ? `${statusReason} — ${note}`
-        : statusReason,
+    statusReason: selected.lostReason || selected.value,
   };
 
   if (['lost', 'booked_from_another_company'].includes(selected.status)) {
-    payload.statusReason = selected.lostReason || selected.value;
+    if (!note) return null;
+    payload.statusReason = buildLostStatusReason(selected.lostReason || selected.value, note);
+  } else if (note && selected.status !== 'converted') {
+    payload.statusReason = `${selected.lostReason || selected.value} — ${note}`;
   }
 
   if (selected.status === 'converted') {
@@ -133,6 +133,9 @@ export default function AddFollowUpModal({
 
   const selectedLeadOutcome = showLeadOutcome ? getFollowUpOutcome(form.leadOutcome) : null;
   const isConverted = selectedLeadOutcome?.status === 'converted';
+  const isLostOutcome =
+    selectedLeadOutcome &&
+    ['lost', 'booked_from_another_company'].includes(selectedLeadOutcome.status);
   const convertInvalid =
     isConverted &&
     (!advanceAmount ||
@@ -172,6 +175,10 @@ export default function AddFollowUpModal({
     }
     if (convertInvalid) {
       setError('Enter advance and upload payment screenshot to convert');
+      return;
+    }
+    if (isLostOutcome && !form.remarks?.trim()) {
+      setError('Add a comment before marking lead as lost');
       return;
     }
     if (!form.date) {
@@ -260,7 +267,9 @@ export default function AddFollowUpModal({
     }
   };
 
-  const remarksOptional = form.category === 'cold' || form.category === 'call_not_picked' || form.category === 'call_picked';
+  const remarksOptional =
+    !isLostOutcome &&
+    (form.category === 'cold' || form.category === 'call_not_picked' || form.category === 'call_picked');
 
   return (
     <AppModal open={open} onClose={onClose} size="lg" className="p-6">
@@ -488,13 +497,15 @@ export default function AddFollowUpModal({
             rows={3}
             className="input-premium w-full rounded-xl resize-none"
             placeholder={
-              form.category === 'cold'
-                ? 'Add notes about this cold lead…'
-                : form.category === 'call_not_picked'
-                  ? 'Optional notes…'
-                  : form.category === 'call_picked'
-                    ? 'Optional notes about the call…'
-                    : 'What to discuss on this follow-up...'
+              isLostOutcome
+                ? 'Required: why is this lead lost?'
+                : form.category === 'cold'
+                  ? 'Add notes about this cold lead…'
+                  : form.category === 'call_not_picked'
+                    ? 'Optional notes…'
+                    : form.category === 'call_picked'
+                      ? 'Optional notes about the call…'
+                      : 'What to discuss on this follow-up...'
             }
           />
         </div>

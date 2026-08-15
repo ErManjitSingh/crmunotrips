@@ -10,6 +10,7 @@ const LEAD_LIST_SELECT = [
   'budget',
   'mealPlan',
   'status',
+  'statusReason',
   'source',
   'sourceLabel',
   'leadSource',

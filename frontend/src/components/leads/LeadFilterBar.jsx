@@ -37,6 +37,7 @@ function hasMoreFilterValues(filters = {}, canFilterBranch) {
       filters.budgetRange ||
       filters.travelMonth ||
       filters.status ||
+      filters.filter ||
       (canFilterBranch && filters.branchId)
   );
 }
@@ -48,6 +49,7 @@ export default function LeadFilterBar({
   onReset,
   activeCount = 0,
   onPeriodSelect,
+  onQuickFilter,
 }) {
   const { user } = useAuth();
   const { availableBranches = [] } = useSelector((s) => s.branch);
@@ -111,7 +113,7 @@ export default function LeadFilterBar({
         />
       </div>
 
-      {/* Period chips — Today / Yesterday / This Month / All Time */}
+      {/* Period chips — Days / Month / All Time + custom dates below */}
       <div className="mb-3">
         <FieldLabel>Period</FieldLabel>
         <PeriodPresetChips
@@ -124,8 +126,48 @@ export default function LeadFilterBar({
         />
       </div>
 
-      {/* Primary 5 filters */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      {/* Quick results filters */}
+      <div className="mb-3">
+        <FieldLabel>Results</FieldLabel>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {[
+            { key: 'booking', label: 'Booking', status: 'converted', filter: '' },
+            { key: 'arrivals', label: 'Arrivals', status: 'converted', filter: 'arrivals' },
+          ].map((chip) => {
+            const isActive =
+              chip.key === 'arrivals'
+                ? filters.filter === 'arrivals'
+                : filters.status === 'converted' && filters.filter !== 'arrivals';
+            return (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => {
+                  const patch = isActive
+                    ? { status: '', filter: '' }
+                    : { status: chip.status, filter: chip.filter };
+                  const next = { ...filters, ...patch };
+                  if (onQuickFilter) onQuickFilter(next);
+                  else onChange(next);
+                }}
+                className={cn(
+                  'rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition',
+                  isActive
+                    ? chip.key === 'arrivals'
+                      ? 'bg-violet-600 text-white shadow-sm shadow-violet-500/20'
+                      : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                    : 'bg-slate-50 text-slate-600 hover:bg-sky-50 hover:text-sky-700'
+                )}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Primary filters */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
         <div>
           <FieldLabel>Date From</FieldLabel>
           <input
@@ -163,6 +205,18 @@ export default function LeadFilterBar({
             <option value="">All Destinations</option>
             {DESTINATIONS.map((d) => (
               <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <FieldLabel>Budget</FieldLabel>
+          <select
+            value={filters.budgetRange || ''}
+            onChange={(e) => setBudgetRange(e.target.value)}
+            className={fieldClass}
+          >
+            {BUDGET_FILTER_OPTIONS.map((b) => (
+              <option key={b.value || 'all'} value={b.value}>{b.label}</option>
             ))}
           </select>
         </div>
@@ -248,18 +302,6 @@ export default function LeadFilterBar({
                 >
                   {PRIORITY_FILTER_OPTIONS.map((p) => (
                     <option key={p.value || 'all'} value={p.value}>{p.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <FieldLabel>Budget</FieldLabel>
-                <select
-                  value={filters.budgetRange || ''}
-                  onChange={(e) => setBudgetRange(e.target.value)}
-                  className={fieldClass}
-                >
-                  {BUDGET_FILTER_OPTIONS.map((b) => (
-                    <option key={b.value || 'all'} value={b.value}>{b.label}</option>
                   ))}
                 </select>
               </div>

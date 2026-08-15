@@ -125,7 +125,7 @@ export default function LeadKpiStrip() {
       href: '/leads/converted',
     },
     {
-      label: 'Duplicate Leads',
+      label: 'Repeated Leads',
       value: stats.duplicateLeads ?? 0,
       icon: Copy,
       iconColor: 'bg-slate-700',

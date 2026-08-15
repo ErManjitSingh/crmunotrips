@@ -7,11 +7,13 @@ import {
   getFollowUpOutcome,
   resolveOutcomeFromLead,
 } from '../../constants/leadFollowUpOutcomes';
+import { buildLostStatusReason } from '../../constants/salesSop';
 import { toast } from '../../context/ToastContext';
 
 /**
  * Replaces the old multi-status picker for sales executives.
  * One "Lead follow up" outcome + optional comment (+ convert payment fields).
+ * Lost outcomes require a comment before status can change.
  */
 export default function LeadFollowUpOutcomeModal({
   open,
@@ -37,12 +39,14 @@ export default function LeadFollowUpOutcomeModal({
 
   const selected = getFollowUpOutcome(outcome);
   const isConverted = selected?.status === 'converted';
+  const isLost = selected && ['lost', 'booked_from_another_company'].includes(selected.status);
   const convertInvalid =
     isConverted &&
     (!advanceAmount ||
       Number(advanceAmount) < 0 ||
       Number.isNaN(Number(advanceAmount)) ||
       !paymentShots.length);
+  const lostInvalid = isLost && !comment.trim();
 
   const handleSave = async () => {
     if (!selected) {
@@ -53,19 +57,21 @@ export default function LeadFollowUpOutcomeModal({
       toast.error('Enter advance and upload payment screenshot to convert');
       return;
     }
+    if (lostInvalid) {
+      toast.error('Add a comment before marking lead as lost');
+      return;
+    }
 
-    const statusReason = selected.lostReason || selected.value;
     const note = comment.trim();
     const payload = {
       status: selected.status,
-      statusReason: note && !['lost', 'booked_from_another_company', 'converted'].includes(selected.status)
-        ? `${statusReason} — ${note}`
-        : statusReason,
+      statusReason: selected.lostReason || selected.value,
     };
 
-    // Keep lost reason enum-clean for backend validation
     if (['lost', 'booked_from_another_company'].includes(selected.status)) {
-      payload.statusReason = selected.lostReason || selected.value;
+      payload.statusReason = buildLostStatusReason(selected.lostReason || selected.value, note);
+    } else if (note && selected.status !== 'converted') {
+      payload.statusReason = `${selected.lostReason || selected.value} — ${note}`;
     }
 
     if (isConverted) {
@@ -158,13 +164,14 @@ export default function LeadFollowUpOutcomeModal({
 
         <div>
           <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">
-            Comment
+            Comment {isLost ? '*' : ''}
           </label>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             rows={3}
-            placeholder="Add a comment (optional)…"
+            required={Boolean(isLost)}
+            placeholder={isLost ? 'Required: why is this lead lost?' : 'Add a comment (optional)…'}
             className="w-full rounded-xl border border-subtle bg-white p-3 text-sm"
           />
         </div>
@@ -173,7 +180,7 @@ export default function LeadFollowUpOutcomeModal({
           <Button variant="secondary" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!outcome || convertInvalid || saving}>
+          <Button onClick={handleSave} disabled={!outcome || convertInvalid || lostInvalid || saving}>
             {saving ? 'Saving…' : isConverted ? 'Convert & Send Voucher' : 'Save follow up'}
           </Button>
         </div>

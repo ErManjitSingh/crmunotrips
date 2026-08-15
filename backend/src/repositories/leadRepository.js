@@ -84,6 +84,10 @@ function buildLeadListFilter(query = {}) {
   } else if (listFilter === 'returned') {
     mongoFilter.assignedTo = null;
     mongoFilter.assignmentAcceptance = 'expired';
+  } else if (listFilter === 'arrivals') {
+    mongoFilter.status = 'converted';
+  } else if (listFilter === 'bookings') {
+    mongoFilter.status = 'converted';
   }
   if (destination) mongoFilter.destination = destination;
   if (source) mongoFilter.source = source;
@@ -110,6 +114,16 @@ function buildLeadListFilter(query = {}) {
     mongoFilter.createdAt = {};
     if (dateFrom) mongoFilter.createdAt.$gte = parseLocalDayStart(dateFrom);
     if (dateTo) mongoFilter.createdAt.$lte = parseLocalDayEnd(dateTo);
+  }
+
+  // Arrivals = converted leads filtered by travelDate (trip arrival), not createdAt
+  if (listFilter === 'arrivals') {
+    if (mongoFilter.createdAt) {
+      mongoFilter.travelDate = mongoFilter.createdAt;
+      delete mongoFilter.createdAt;
+    } else {
+      mongoFilter.travelDate = { $exists: true, $ne: null };
+    }
   }
 
   if (travelMonth !== undefined && travelMonth !== '') {

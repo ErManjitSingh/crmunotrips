@@ -40,6 +40,8 @@ import { TooltipProvider } from '../ui/tooltip';
 import PeriodPresetChips from '../ui/PeriodPresetChips';
 import { applyPeriodPreset } from '../../lib/periodFilters';
 import API from '../../api/axios';
+import { formatLostReasonDisplay } from '../../constants/salesSop';
+import { cn } from '../../lib/utils';
 const STATUS_STYLES = {
   new: 'bg-violet-50 text-violet-600',
   contacted: 'bg-emerald-50 text-emerald-600',
@@ -47,8 +49,9 @@ const STATUS_STYLES = {
   follow_up: 'bg-blue-50 text-blue-600',
   quotation_sent: 'bg-amber-50 text-amber-600',
   negotiation: 'bg-orange-50 text-orange-600',
-  converted: 'bg-emerald-50 text-emerald-600',
-  lost: 'bg-rose-50 text-rose-600',
+  converted: 'bg-emerald-100 text-emerald-700',
+  lost: 'bg-red-100 text-red-700',
+  booked_from_another_company: 'bg-red-100 text-red-700',
 };
 
 const AVATAR_TONES = [
@@ -184,11 +187,24 @@ export default function MobileLeadList({
               <Filter className="h-3.5 w-3.5" />
               <ChevronDown className={`h-3 w-3 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
             </button>
-            <button type="button" onClick={() => updateAndApply({ status: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${!filters.status ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>All</button>
-            <button type="button" onClick={() => updateAndApply({ status: 'new' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'new' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>New</button>
-            <button type="button" onClick={() => updateAndApply({ status: 'follow_up' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'follow_up' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Follow-up</button>
-            <button type="button" onClick={() => updateAndApply({ status: 'converted' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'converted' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Converted</button>
-            <button type="button" onClick={() => updateAndApply({ status: 'negotiation' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'negotiation' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Negotiation</button>
+            <button type="button" onClick={() => updateAndApply({ status: '', filter: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${!filters.status && filters.filter !== 'arrivals' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>All</button>
+            <button type="button" onClick={() => updateAndApply({ status: 'new', filter: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'new' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>New</button>
+            <button type="button" onClick={() => updateAndApply({ status: 'follow_up', filter: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'follow_up' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Follow-up</button>
+            <button
+              type="button"
+              onClick={() => updateAndApply({ status: 'converted', filter: '' })}
+              className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'converted' && filters.filter !== 'arrivals' ? 'bg-emerald-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}
+            >
+              Booking
+            </button>
+            <button
+              type="button"
+              onClick={() => updateAndApply({ status: 'converted', filter: 'arrivals' })}
+              className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.filter === 'arrivals' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}
+            >
+              Arrivals
+            </button>
+            <button type="button" onClick={() => updateAndApply({ status: 'negotiation', filter: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'negotiation' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Negotiation</button>
           </div>
           <PeriodPresetChips
             className="mt-2"
@@ -291,8 +307,18 @@ export default function MobileLeadList({
             {leads.map((lead, index) => {
               const phoneDigits = String(lead.phone || '').replace(/\D/g, '');
               const whatsapp = phoneDigits.length === 10 ? `91${phoneDigits}` : phoneDigits;
+              const lostReason =
+                lead.status === 'lost' || lead.status === 'booked_from_another_company'
+                  ? formatLostReasonDisplay(lead.statusReason)
+                  : '';
+              const isLost =
+                lead.status === 'lost' || lead.status === 'booked_from_another_company';
+              const cardTone =
+                lead.status === 'converted'
+                  ? 'border-emerald-200 bg-emerald-50'
+                  : 'border-slate-100 bg-white';
               return (
-                <article key={lead._id} className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+                <article key={lead._id} className={cn('overflow-hidden rounded-2xl border shadow-sm', cardTone)}>
                   <button type="button" onClick={() => onOpenLead(lead)} className="w-full p-3 text-left">
                     <div className="flex items-start gap-3">
                       <span className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[11px] font-bold text-white ${AVATAR_TONES[index % AVATAR_TONES.length]}`}>
@@ -301,9 +327,21 @@ export default function MobileLeadList({
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <h3 className="min-w-0 flex-1 break-words text-[12px] font-bold text-slate-900">{lead.name}</h3>
+                          <h3
+                            className={cn(
+                              'min-w-0 flex-1 break-words text-[12px] font-bold',
+                              isLost ? 'text-red-600' : 'text-slate-900'
+                            )}
+                          >
+                            {lead.name}
+                          </h3>
                           <span className={`rounded-full px-2 py-0.5 text-[7px] font-semibold ${STATUS_STYLES[lead.status] || 'bg-slate-100 text-slate-600'}`}>{titleCase(lead.status)}</span>
                         </div>
+                        {lostReason ? (
+                          <p className="mt-0.5 truncate text-[8px] font-medium text-red-600" title={lostReason}>
+                            {lostReason}
+                          </p>
+                        ) : null}
                         <NextFollowUpLine lead={lead} className="!text-[9px] mt-0.5" />
                         <p className="mt-0.5 text-[8px] font-medium text-violet-600">{lead.leadId || formatLeadId(lead._id)}</p>
                         <LeadTimingLines lead={lead} className="!text-[9px] mt-1" />

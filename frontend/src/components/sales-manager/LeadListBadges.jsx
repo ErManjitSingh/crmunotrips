@@ -8,6 +8,7 @@ import { STATUS_STYLES, formatBudget } from './managerUtils';
 import RepeatedLeadBadge from '../leads/RepeatedLeadBadge';
 import LeadCallStats from '../leads/LeadCallStats';
 import { getLeadStatusLabel } from '../../lib/leadStatusLabel';
+import { formatLostReasonDisplay } from '../../constants/salesSop';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from '../../context/ToastContext';
 import { openCrmWhatsApp } from '../../lib/openCrmWhatsApp';
@@ -208,23 +209,34 @@ export function ManagerStatusBadge({ status, lead }) {
     lead?.reactivation?.isReactivated &&
     ['follow_up', 'working_progress', 'contacted', 'negotiation', 'quotation_sent'].includes(status);
   const label = isActiveReactivated ? 'active' : getLeadStatusLabel(status || 'new');
+  const reasonLabel =
+    status === 'lost' || status === 'booked_from_another_company'
+      ? formatLostReasonDisplay(lead?.statusReason)
+      : '';
   return (
-    <span className={cn(
-      'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide ring-1 ring-inset capitalize whitespace-nowrap',
-      STATUS_STYLES[status] || STATUS_STYLES.new
-    )}>
-      <span className={cn('w-1.5 h-1.5 rounded-full', status === 'new' && 'animate-pulse', {
-        'bg-sky-500': status === 'new',
-        'bg-violet-500': status === 'contacted',
-        'bg-amber-500': status === 'follow_up',
-        'bg-indigo-500': status === 'quotation_sent',
-        'bg-orange-500': status === 'negotiation',
-        'bg-emerald-500': status === 'converted',
-        'bg-rose-500': status === 'lost',
-        'bg-teal-500': isActiveReactivated,
-      }[isActiveReactivated ? 'active' : status] || 'bg-sky-500')} />
-      {label}
-    </span>
+    <div className="flex min-w-0 flex-col items-start gap-0.5">
+      <span className={cn(
+        'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide ring-1 ring-inset capitalize whitespace-nowrap',
+        STATUS_STYLES[status] || STATUS_STYLES.new
+      )}>
+        <span className={cn('w-1.5 h-1.5 rounded-full', status === 'new' && 'animate-pulse', {
+          'bg-sky-500': status === 'new',
+          'bg-violet-500': status === 'contacted',
+          'bg-amber-500': status === 'follow_up',
+          'bg-indigo-500': status === 'quotation_sent',
+          'bg-orange-500': status === 'negotiation',
+          'bg-emerald-500': status === 'converted',
+          'bg-rose-500': status === 'lost',
+          'bg-teal-500': isActiveReactivated,
+        }[isActiveReactivated ? 'active' : status] || 'bg-sky-500')} />
+        {label}
+      </span>
+      {reasonLabel ? (
+        <span className="max-w-[140px] truncate text-[10px] font-medium text-red-600/90" title={reasonLabel}>
+          {reasonLabel}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -272,12 +284,21 @@ export function NextFollowUpLine({ lead, className }) {
 
 export function CustomerCell({ name, lead, showPhone = false }) {
   const isRepeated = lead?.isRepeatCustomer || lead?.isVip;
+  const isLost =
+    lead?.status === 'lost' || lead?.status === 'booked_from_another_company';
   return (
     <div className="flex min-w-0 items-start gap-2.5">
       <Avatar name={name} size="sm" className="!w-8 !h-8 !text-[11px] shrink-0 mt-0.5" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <p className="font-semibold text-sm text-content-primary break-words">{name}</p>
+          <p
+            className={cn(
+              'font-semibold text-sm break-words',
+              isLost ? 'text-red-600' : 'text-content-primary'
+            )}
+          >
+            {name}
+          </p>
           {isRepeated ? (
             <RepeatedLeadBadge size="sm" />
           ) : (

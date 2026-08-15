@@ -42,6 +42,7 @@ function filtersFromLocation(location, config) {
   return {
     ...emptyFilters,
     status: config.status || params.get('status') || '',
+    filter: config.listFilter || params.get('filter') || '',
     dateFrom,
     dateTo,
     source: params.get('source') || '',
@@ -119,7 +120,7 @@ export default function Leads() {
     if (config.status && !base.status) base.status = config.status;
     if (config.assignee === 'unassigned') base.filter = 'unassigned';
     else if (config.assignee === 'assigned') base.filter = 'assigned';
-    else if (config.listFilter) base.filter = config.listFilter;
+    else if (config.listFilter && !base.filter) base.filter = config.listFilter;
     if (config.todayOnly && !base.dateFrom && !base.dateTo) {
       base.todayOnly = true;
     }
@@ -151,14 +152,15 @@ export default function Leads() {
       dateTo = today.dateTo;
     }
     const source = params.get('source') || '';
-    setFilters((f) => ({ ...f, status: nextStatus, dateFrom, dateTo, source }));
-    setAppliedFilters((f) => ({ ...f, status: nextStatus, dateFrom, dateTo, source }));
+    const nextFilter = config.listFilter || params.get('filter') || '';
+    setFilters((f) => ({ ...f, status: nextStatus, filter: nextFilter, dateFrom, dateTo, source }));
+    setAppliedFilters((f) => ({ ...f, status: nextStatus, filter: nextFilter, dateFrom, dateTo, source }));
     setPagination({
       pageIndex: 0,
       pageSize: isAllLeadsPage ? ALL_LEADS_PAGE_SIZE : LEADS_PAGE_SIZE,
     });
     setPageCursors({});
-  }, [config.status, config.assignee, isAllLeadsPage, location.pathname, location.search]);
+  }, [config.status, config.assignee, config.listFilter, isAllLeadsPage, location.pathname, location.search]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -249,7 +251,11 @@ export default function Leads() {
     syncPeriodToUrl(next);
   };
   const handleReset = () => {
-    const base = { ...emptyFilters, status: config.status || '' };
+    const base = {
+      ...emptyFilters,
+      status: config.status || '',
+      filter: config.listFilter || '',
+    };
     setFilters(base);
     setAppliedFilters(base);
     const params = new URLSearchParams(location.search);
@@ -263,6 +269,11 @@ export default function Leads() {
   const handlePeriodSelect = (key) => {
     const dates = applyPeriodPreset(key);
     const next = { ...filters, ...dates };
+    setFilters(next);
+    setAppliedFilters(next);
+    syncPeriodToUrl(next);
+  };
+  const handleQuickFilter = (next) => {
     setFilters(next);
     setAppliedFilters(next);
     syncPeriodToUrl(next);
@@ -303,9 +314,9 @@ export default function Leads() {
     }
   };
 
-  const handleBulkStatus = async (status) => {
+  const handleBulkStatus = async (status, statusReason) => {
     const ids = Object.keys(rowSelection).filter((k) => rowSelection[k]);
-    await bulkUpdateLeadStatus(ids, status);
+    await bulkUpdateLeadStatus(ids, status, statusReason);
     setRowSelection({});
     setBulkStatusOpen(false);
     invalidateLeads();
@@ -378,6 +389,7 @@ export default function Leads() {
           onApply={handleApply}
           onReset={handleReset}
           onPeriodSelect={handlePeriodSelect}
+          onQuickFilter={handleQuickFilter}
           activeCount={countActiveFilters(appliedFilters)}
         />
 
