@@ -293,8 +293,8 @@ export function CustomerCell({ name, lead, showPhone = false }) {
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           <p
             className={cn(
-              'font-semibold text-sm break-words',
-              isLost ? 'text-red-600' : 'text-content-primary'
+              'font-semibold text-sm break-words text-content-primary',
+              isLost && 'rounded-md bg-red-100 px-2 py-0.5 ring-1 ring-inset ring-red-300'
             )}
           >
             {name}

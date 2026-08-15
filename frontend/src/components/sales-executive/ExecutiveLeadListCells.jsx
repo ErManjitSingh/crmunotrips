@@ -271,23 +271,25 @@ export function ExecStatusCell({ lead }) {
     lead?.reactivation?.isReactivated &&
     ['follow_up', 'working_progress', 'contacted', 'negotiation', 'quotation_sent'].includes(status);
   const reason = String(lead?.statusReason || '').trim();
-  const reasonKey = reason.split(/[—–]/)[0].trim();
+  const reasonKey = reason.split(/[—–:]/)[0].trim();
+  const isLostStatus = status === 'lost' || status === 'booked_from_another_company';
   const outcome =
-    LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.value === reasonKey) ||
-    LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.lostReason === reasonKey) ||
-    (status === 'converted'
-      ? LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.value === 'converted')
-      : status === 'working_progress'
-        ? LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.value === 'working_progress')
-        : null);
+    !isLostStatus && !isActiveReactivated
+      ? LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.value === reasonKey) ||
+        LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.lostReason === reasonKey) ||
+        (status === 'converted'
+          ? LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.value === 'converted')
+          : status === 'working_progress'
+            ? LEAD_FOLLOW_UP_OUTCOMES.find((o) => o.value === 'working_progress')
+            : null)
+      : null;
   const label = isActiveReactivated
     ? 'Active'
-    : outcome?.label || getLeadStatusLabel(status);
+    : isLostStatus
+      ? getLeadStatusLabel(status)
+      : outcome?.label || getLeadStatusLabel(status);
   const styleKey = isActiveReactivated ? 'active' : status;
-  const reasonLabel =
-    status === 'lost' || status === 'booked_from_another_company'
-      ? formatLostReasonDisplay(reason)
-      : '';
+  const reasonLabel = isLostStatus ? formatLostReasonDisplay(reason) : '';
 
   return (
     <div className="flex min-w-0 flex-col items-start gap-0.5">

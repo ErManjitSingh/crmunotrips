@@ -329,8 +329,8 @@ export default function MobileLeadList({
                         <div className="flex items-center gap-2">
                           <h3
                             className={cn(
-                              'min-w-0 flex-1 break-words text-[12px] font-bold',
-                              isLost ? 'text-red-600' : 'text-slate-900'
+                              'min-w-0 flex-1 break-words text-[12px] font-bold text-slate-900',
+                              isLost && 'rounded-md bg-red-100 px-2 py-0.5 ring-1 ring-inset ring-red-300'
                             )}
                           >
                             {lead.name}
