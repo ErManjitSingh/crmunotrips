@@ -139,11 +139,19 @@ async function applyCategoryToLead(lead, category, status, body = {}) {
       lead.statusReason = body.statusReason || body.lostReason || body.outcome;
     }
   } else if (category === 'call_not_picked') {
+    // Keep already-connected / advanced pipeline statuses.
+    // First attempt with no answer should leave "New" so the list reflects work done.
     if (lead.status === 'contacted') {
-      /* keep connected if already was */
-    } else if (!TERMINAL_STATUSES.includes(lead.status) && lead.status !== 'working_progress') {
-      lead.status = 'new';
+      /* keep connected */
+    } else if (
+      TERMINAL_STATUSES.includes(lead.status) ||
+      ['working_progress', 'qualified', 'quotation_sent', 'negotiation', 'follow_up'].includes(lead.status)
+    ) {
+      /* keep current pipeline status */
+    } else {
+      lead.status = 'follow_up';
     }
+    if (outcomeKey) lead.statusReason = String(outcomeKey);
   } else if (category === 'cold') {
     if (!TERMINAL_STATUSES.includes(lead.status)) {
       lead.status = 'follow_up';

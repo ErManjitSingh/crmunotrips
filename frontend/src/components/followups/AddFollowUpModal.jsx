@@ -81,7 +81,10 @@ function buildStatusFromCategory(form, convertFields = {}) {
   }
 
   if (category === 'call_not_picked') {
-    return null;
+    return {
+      status: 'follow_up',
+      statusReason: note ? `${notPickedReason} — ${note}` : notPickedReason,
+    };
   }
 
   if (category === 'cold') {

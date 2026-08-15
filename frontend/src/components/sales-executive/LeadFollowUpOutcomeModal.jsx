@@ -102,12 +102,17 @@ export default function LeadFollowUpOutcomeModal({
     }
 
     if (category === 'call_not_picked') {
-      const keepConnected = ['contacted', 'working_progress', 'qualified', 'quotation_sent', 'negotiation'].includes(
-        lead?.status
-      );
+      const keepAdvanced = [
+        'contacted',
+        'working_progress',
+        'qualified',
+        'quotation_sent',
+        'negotiation',
+        'follow_up',
+      ].includes(lead?.status);
       return {
-        status: keepConnected ? lead.status : 'new',
-        statusReason: note ? `not_connected:${option} — ${note}` : `not_connected:${option}`,
+        status: keepAdvanced ? lead.status : 'follow_up',
+        statusReason: note ? `${option} — ${note}` : option,
       };
     }
 
