@@ -4,7 +4,7 @@
  */
 const STATUS_LABELS = {
   new: 'New',
-  contacted: 'Contacted',
+  contacted: 'Connected',
   working_progress: 'Working',
   qualified: 'Qualified',
   quotation_sent: 'Quotation',
@@ -18,11 +18,11 @@ const STATUS_LABELS = {
 
 const STATUS_MEANINGS = {
   new: 'Lead just received',
-  contacted: 'Executive has spoken / message exchanged',
+  contacted: 'Call connected / spoken with customer',
   working_progress: 'Customer is interested but requirements aren’t confirmed',
   qualified: 'Genuine buyer + requirements confirmed',
   quotation_sent: 'Price / package sent',
-  follow_up: 'Waiting for customer decision',
+  follow_up: 'Waiting for customer / next follow-up set',
   converted: 'Customer has confirmed / paid',
   lost: 'Not converting / rejected',
 };
