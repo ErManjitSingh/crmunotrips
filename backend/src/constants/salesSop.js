@@ -25,6 +25,7 @@ const LOST_REASONS = [
   { value: 'destination_changed', label: 'Destination Changed' },
   { value: 'duplicate_lead', label: 'Repeated Lead' },
   { value: 'invalid_number', label: 'Invalid number / wrong' },
+  { value: 'not_interested', label: 'Not interested' },
   { value: 'lost_contacted', label: 'Lost contacted' },
   { value: 'does_not_exist', label: 'Does not exist' },
 ];

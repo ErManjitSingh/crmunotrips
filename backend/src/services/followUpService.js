@@ -53,7 +53,7 @@ async function createFollowUpForLead({ body, user, leadFilter = null }) {
   await syncLeadFollowUpDates(lead._id);
   await resolveMissedAlertsForLead(lead._id, followup._id);
 
-  if (payload.category === 'cold') {
+  if (payload.category === 'cold' && !['invalid_number', 'not_interested', 'booked_elsewhere'].includes(String(body.coldReason || payload.outcome || ''))) {
     const LeadNote = require('../models/LeadNote');
     lead.temperature = 'cold';
     lead.isHot = false;

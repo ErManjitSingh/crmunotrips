@@ -10,9 +10,26 @@ export const LOST_REASONS = [
   { value: 'destination_changed', label: 'Destination Changed' },
   { value: 'duplicate_lead', label: 'Repeated Lead' },
   { value: 'invalid_number', label: 'Invalid number / wrong' },
+  { value: 'not_interested', label: 'Not interested' },
   { value: 'lost_contacted', label: 'Lost contacted' },
   { value: 'does_not_exist', label: 'Does not exist' },
 ];
+
+/** Selecting these outcomes always marks the lead Lost (or booked elsewhere). */
+export const DIRECT_LOST_OUTCOMES = [
+  { value: 'invalid_number', label: 'Invalid', status: 'lost', lostReason: 'invalid_number' },
+  { value: 'not_interested', label: 'Not interested', status: 'lost', lostReason: 'not_interested' },
+  {
+    value: 'booked_elsewhere',
+    label: 'Booked from another company',
+    status: 'booked_from_another_company',
+    lostReason: 'booked_elsewhere',
+  },
+];
+
+export function getDirectLostOutcome(value) {
+  return DIRECT_LOST_OUTCOMES.find((o) => o.value === value) || null;
+}
 
 /** Display only the human comment for lost reasons — never raw keys like `no_plan`. */
 export function formatLostReasonDisplay(statusReason) {

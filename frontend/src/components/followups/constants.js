@@ -28,6 +28,7 @@ export const CALL_PICKED_OUTCOMES = [
   { value: 'budget_issues', label: 'Budget issues / Costing issue' },
   { value: 'ready_to_book', label: 'Ready to book' },
   { value: 'not_interested', label: 'Not interested' },
+  { value: 'booked_elsewhere', label: 'Booked from another company' },
   { value: 'converted', label: 'Converted to customer' },
   { value: 'rescheduled', label: 'Rescheduled per customer request' },
   { value: 'discussed_package', label: 'Discussed package' },

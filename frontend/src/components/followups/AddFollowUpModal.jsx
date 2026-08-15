@@ -11,7 +11,7 @@ import {
   CALL_PICKED_OUTCOMES,
   FOLLOWUP_COLD_REASONS,
 } from './constants';
-import { LOST_REASONS, buildLostStatusReason } from '../../constants/salesSop';
+import { LOST_REASONS, buildLostStatusReason, getDirectLostOutcome } from '../../constants/salesSop';
 import { toast } from '../../context/ToastContext';
 
 const emptyForm = {
@@ -28,18 +28,28 @@ const emptyForm = {
   lostReason: '',
 };
 
-function plusFourHoursLocal() {
-  const d = new Date(Date.now() + 4 * 60 * 60 * 1000);
-  const pad = (n) => String(n).padStart(2, '0');
-  return {
-    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
-  };
-}
-
 function buildStatusFromCategory(form, convertFields = {}) {
   const note = String(form.remarks || '').trim();
   const { category, pickedOutcome, notPickedReason, coldReason, lostReason } = form;
+
+  const directKey =
+    category === 'call_picked'
+      ? pickedOutcome
+      : category === 'call_not_picked'
+        ? notPickedReason
+        : category === 'cold'
+          ? coldReason
+          : category === 'lost'
+            ? lostReason
+            : '';
+  const direct = getDirectLostOutcome(directKey);
+  if (direct) {
+    if (!note) return null;
+    return {
+      status: direct.status,
+      statusReason: buildLostStatusReason(direct.lostReason, note),
+    };
+  }
 
   if (category === 'call_picked') {
     if (pickedOutcome === 'converted') {
@@ -71,7 +81,6 @@ function buildStatusFromCategory(form, convertFields = {}) {
   }
 
   if (category === 'call_not_picked') {
-    // Don't force lead status — stay New / current pipeline; reason is on follow-up
     return null;
   }
 
@@ -86,6 +95,12 @@ function buildStatusFromCategory(form, convertFields = {}) {
 
   if (category === 'lost') {
     if (!lostReason || !note) return null;
+    if (lostReason === 'booked_elsewhere') {
+      return {
+        status: 'booked_from_another_company',
+        statusReason: buildLostStatusReason('booked_elsewhere', note),
+      };
+    }
     return {
       status: 'lost',
       statusReason: buildLostStatusReason(lostReason, note),
@@ -154,7 +169,18 @@ export default function AddFollowUpModal({
   }, [editData, open, fixedLeadId, lead]);
 
   const isConvertedPick = form.category === 'call_picked' && form.pickedOutcome === 'converted';
-  const isLostCategory = form.category === 'lost';
+  const directLostKey =
+    form.category === 'call_picked'
+      ? form.pickedOutcome
+      : form.category === 'call_not_picked'
+        ? form.notPickedReason
+        : form.category === 'cold'
+          ? form.coldReason
+          : form.category === 'lost'
+            ? form.lostReason
+            : '';
+  const isDirectLost = Boolean(getDirectLostOutcome(directLostKey));
+  const isLostCategory = form.category === 'lost' || isDirectLost;
   const convertInvalid =
     isConvertedPick &&
     (!advanceAmount ||
@@ -163,20 +189,6 @@ export default function AddFollowUpModal({
       !paymentShots.length);
 
   const applyCategoryDefaults = (nextCategory) => {
-    if (nextCategory === 'cold') {
-      const slot = plusFourHoursLocal();
-      setForm((prev) => ({
-        ...prev,
-        category: 'cold',
-        type: 'call',
-        date: slot.date,
-        time: slot.time,
-        notPickedReason: '',
-        pickedOutcome: '',
-        lostReason: '',
-      }));
-      return;
-    }
     setForm((prev) => ({
       ...prev,
       category: nextCategory,
@@ -216,10 +228,10 @@ export default function AddFollowUpModal({
         setError('Please select a lost reason');
         return;
       }
-      if (!form.remarks?.trim()) {
-        setError('Comment is required for Lost lead');
-        return;
-      }
+    }
+    if (isLostCategory && !form.remarks?.trim()) {
+      setError('Comment is required for Lost lead');
+      return;
     }
     if (convertInvalid) {
       setError('Enter advance and upload payment screenshot to convert');
@@ -251,7 +263,7 @@ export default function AddFollowUpModal({
         ? buildStatusFromCategory(form, { advanceAmount, paymentMethod, paymentShots })
         : null;
 
-      if (showLeadOutcome && form.category === 'lost' && !statusUpdate) {
+      if (showLeadOutcome && isLostCategory && !statusUpdate) {
         setError('Comment is required for Lost lead');
         setSaving(false);
         return;
@@ -389,7 +401,7 @@ export default function AddFollowUpModal({
         {form.category === 'cold' && (
           <div className="rounded-xl border border-sky-200 bg-sky-50/80 p-3 space-y-3">
             <p className="text-xs font-semibold text-sky-800">
-              Cold Lead — choose why (4-hour call reminder will be set)
+              Cold Lead — choose why (follow-up time as you set below)
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {FOLLOWUP_COLD_REASONS.map((reason) => (

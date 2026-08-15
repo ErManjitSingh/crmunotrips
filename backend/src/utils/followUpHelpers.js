@@ -30,6 +30,7 @@ const CALL_PICKED_OUTCOME_LABELS = {
   budget_issues: 'Budget issues / Costing issue',
   ready_to_book: 'Ready to book',
   not_interested: 'Not interested',
+  booked_elsewhere: 'Booked from another company',
   converted: 'Converted to customer',
   rescheduled: 'Rescheduled per customer request',
   discussed_package: 'Discussed package',
@@ -38,6 +39,19 @@ const CALL_PICKED_OUTCOME_LABELS = {
 };
 
 const TERMINAL_STATUSES = ['converted', 'lost', 'booked_from_another_company'];
+
+/** These outcomes always move the lead to Lost / Booked elsewhere. */
+const DIRECT_LOST_KEYS = new Set(['invalid_number', 'not_interested', 'booked_elsewhere']);
+
+function resolveDirectLostStatus(reasonKey) {
+  if (reasonKey === 'booked_elsewhere') {
+    return { status: 'booked_from_another_company', lostReason: 'booked_elsewhere' };
+  }
+  if (DIRECT_LOST_KEYS.has(reasonKey)) {
+    return { status: 'lost', lostReason: reasonKey };
+  }
+  return null;
+}
 
 function buildFollowUpCategoryFilter(category) {
   if (category && FOLLOWUP_CATEGORIES.includes(category)) {
@@ -73,6 +87,22 @@ async function syncLeadFollowUpDates(leadId) {
 async function applyCategoryToLead(lead, category, status, body = {}) {
   if (!lead || !category) return;
 
+  const outcomeKey = String(
+    body.pickedOutcome || body.notPickedReason || body.coldReason || body.lostReason || body.outcome || ''
+  ).trim();
+  const directLost = resolveDirectLostStatus(outcomeKey);
+
+  if (directLost) {
+    lead.status = directLost.status;
+    lead.temperature = 'cold';
+    lead.isHot = false;
+    if (body.statusReason) lead.statusReason = body.statusReason;
+    else if (outcomeKey) lead.statusReason = outcomeKey;
+    promoteReactivatedLeadOnFollowUp(lead, lead.assignedTo);
+    await lead.save();
+    return;
+  }
+
   if (category === 'converted') {
     if (status === 'completed') {
       lead.status = 'converted';
@@ -88,25 +118,27 @@ async function applyCategoryToLead(lead, category, status, body = {}) {
   } else if (category === 'call_picked') {
     const picked = body.pickedOutcome || body.outcome || '';
     if (picked === 'converted') {
-      // conversion usually applied via statusUpdate API; keep if already converted
+      // conversion usually applied via statusUpdate API
     } else if (picked === 'working_progress') {
       if (!TERMINAL_STATUSES.includes(lead.status)) lead.status = 'working_progress';
     } else if (picked === 'qualified') {
       if (!TERMINAL_STATUSES.includes(lead.status)) lead.status = 'qualified';
     } else if (!TERMINAL_STATUSES.includes(lead.status)) {
-      // Connected → contacted; scheduler moves to WIP after 24h
       lead.status = 'contacted';
       if (picked) lead.statusReason = String(picked);
     }
   } else if (category === 'dead_lead' || category === 'lost') {
-    lead.status = 'lost';
+    if (outcomeKey === 'booked_elsewhere') {
+      lead.status = 'booked_from_another_company';
+    } else {
+      lead.status = 'lost';
+    }
     lead.temperature = 'cold';
     lead.isHot = false;
-    if (body.lostReason || body.outcome) {
+    if (body.lostReason || body.outcome || body.statusReason) {
       lead.statusReason = body.statusReason || body.lostReason || body.outcome;
     }
   } else if (category === 'call_not_picked') {
-    // Tried calling but not answered — stay New (not Connected)
     if (lead.status === 'contacted') {
       /* keep connected if already was */
     } else if (!TERMINAL_STATUSES.includes(lead.status) && lead.status !== 'working_progress') {
@@ -131,6 +163,7 @@ function normalizeFollowUpPayload(body, user, lead) {
   let category = FOLLOWUP_CATEGORIES.includes(body.category) ? body.category : 'call_picked';
   if (category === 'dead_lead') category = 'lost';
 
+  // Only default cold reminder when executive did not provide a time
   if ((!scheduledAt || Number.isNaN(scheduledAt.getTime())) && category === 'cold') {
     scheduledAt = buildColdReminderAt();
   }
@@ -146,8 +179,8 @@ function normalizeFollowUpPayload(body, user, lead) {
 
   if (category === 'cold' && body.coldReason) {
     const reasonText = coldReasonLabel(body.coldReason);
-    const prefix = `Cold lead — reason: ${reasonText}. Auto reminder in 4 hours.`;
-    notes = notes ? `${prefix} ${notes}` : prefix;
+    const prefix = `Cold lead — reason: ${reasonText}`;
+    notes = notes ? `${prefix}. ${notes}` : prefix;
     outcome = body.coldReason;
   }
 
@@ -181,6 +214,15 @@ function normalizeFollowUpPayload(body, user, lead) {
     outcome = lostKey || 'lost';
     const prefix = 'Lost lead';
     notes = notes ? `${prefix}. ${notes}` : prefix;
+  }
+
+  // Direct-lost options also require a comment
+  if (DIRECT_LOST_KEYS.has(String(outcome || body.coldReason || body.notPickedReason || body.pickedOutcome || ''))) {
+    if (!String(notes || '').trim() && !String(body.remarks || '').trim()) {
+      const err = new Error('Comment is required for Lost lead');
+      err.statusCode = 400;
+      throw err;
+    }
   }
 
   return {

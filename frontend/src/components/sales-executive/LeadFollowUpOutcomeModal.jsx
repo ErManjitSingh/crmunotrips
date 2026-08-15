@@ -8,13 +8,13 @@ import {
   FOLLOWUP_COLD_REASONS,
   FOLLOWUP_CATEGORY_OPTIONS,
 } from '../followups/constants';
-import { LOST_REASONS, buildLostStatusReason } from '../../constants/salesSop';
+import { LOST_REASONS, buildLostStatusReason, getDirectLostOutcome } from '../../constants/salesSop';
 import { toast } from '../../context/ToastContext';
 
 /**
  * Lead follow-up outcome: Connected / Not connected / Cold / Lost.
- * Connected options mark lead as contacted → auto WIP after 24h.
- * Lost always requires a comment.
+ * Invalid / Not interested / Booked elsewhere → direct Lost.
+ * Follow-up date/time is whatever the executive sets on the schedule modal.
  */
 export default function LeadFollowUpOutcomeModal({
   open,
@@ -50,7 +50,8 @@ export default function LeadFollowUpOutcomeModal({
           : LOST_REASONS;
 
   const isConverted = category === 'call_picked' && option === 'converted';
-  const isLost = category === 'lost';
+  const directLost = getDirectLostOutcome(option);
+  const isLost = category === 'lost' || Boolean(directLost);
   const convertInvalid =
     isConverted &&
     (!advanceAmount ||
@@ -66,6 +67,14 @@ export default function LeadFollowUpOutcomeModal({
 
   const buildPayload = () => {
     const note = comment.trim();
+
+    if (directLost) {
+      if (!note) return null;
+      return {
+        status: directLost.status,
+        statusReason: buildLostStatusReason(directLost.lostReason, note),
+      };
+    }
 
     if (category === 'call_picked') {
       if (option === 'converted') {
@@ -106,6 +115,12 @@ export default function LeadFollowUpOutcomeModal({
     }
 
     if (category === 'lost') {
+      if (option === 'booked_elsewhere') {
+        return {
+          status: 'booked_from_another_company',
+          statusReason: buildLostStatusReason('booked_elsewhere', note),
+        };
+      }
       return {
         status: 'lost',
         statusReason: buildLostStatusReason(option, note),
