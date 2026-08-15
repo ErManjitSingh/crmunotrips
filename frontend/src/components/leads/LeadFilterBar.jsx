@@ -18,13 +18,28 @@ import { applyPeriodPreset } from '../../lib/periodFilters';
 import API from '../../api/axios';
 
 const fieldClass =
-  'h-10 w-full rounded-xl border border-subtle bg-slate-50 px-3 text-sm text-content-primary outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-500/40';
+  'h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-violet-500/25 focus:border-violet-400';
 
 function FieldLabel({ children }) {
   return (
-    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-content-muted">
+    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
       {children}
     </label>
+  );
+}
+
+function ChipButton({ active, onClick, children, activeClass = 'bg-violet-600 text-white shadow-sm shadow-violet-500/25' }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'rounded-lg px-3 py-1.5 text-[11px] font-semibold transition',
+        active ? activeClass : 'bg-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-700'
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -34,10 +49,7 @@ function hasMoreFilterValues(filters = {}, canFilterBranch) {
       filters.teamId ||
       filters.state ||
       filters.priority ||
-      filters.budgetRange ||
       filters.travelMonth ||
-      filters.status ||
-      filters.filter ||
       (canFilterBranch && filters.branchId)
   );
 }
@@ -56,6 +68,7 @@ export default function LeadFilterBar({
   const [executives, setExecutives] = useState([]);
   const [teams, setTeams] = useState([]);
   const canFilterBranch = ['admin', 'lead_provider', 'hr_admin'].includes(user?.role);
+  const [mode, setMode] = useState('basic');
   const [showMore, setShowMore] = useState(() => hasMoreFilterValues(filters, canFilterBranch));
   const morePanelRef = useRef(null);
 
@@ -92,31 +105,64 @@ export default function LeadFilterBar({
     });
   };
 
+  const applyQuick = (patch) => {
+    const next = { ...filters, ...patch };
+    if (onQuickFilter) onQuickFilter(next);
+    else onChange(next);
+  };
+
   return (
-    <div className="mb-4 rounded-2xl border border-subtle bg-white p-4 shadow-sm">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-content-primary">Filters</h3>
-        {activeCount > 0 && (
-          <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white">
-            {activeCount} active
-          </span>
-        )}
+    <div className="mb-5 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-bold text-slate-900">Filters</h3>
+          {activeCount > 0 && (
+            <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white">
+              {activeCount} active
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1">
+          <button
+            type="button"
+            onClick={() => setMode('basic')}
+            className={cn(
+              'rounded-lg px-3 py-1.5 text-xs font-semibold transition',
+              mode === 'basic' ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            )}
+          >
+            Basic Search
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('advanced')}
+            className={cn(
+              'rounded-lg px-3 py-1.5 text-xs font-semibold transition',
+              mode === 'advanced' ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            )}
+          >
+            Advanced Search
+          </button>
+        </div>
       </div>
 
-      <div className="relative mb-3">
-        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-content-muted" />
+      <div className="relative mb-4">
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
           value={filters.search}
           onChange={(e) => set('search', e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onApply?.();
+          }}
           placeholder="Search customer, phone, email, lead ID..."
-          className="h-10 w-full rounded-xl border border-subtle bg-slate-50 pl-10 pr-4 text-sm text-content-primary placeholder:text-content-muted outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-500/40"
+          className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-violet-500/25 focus:border-violet-400"
         />
       </div>
 
-      {/* Period chips — Days / Month / All Time + custom dates below */}
-      <div className="mb-3">
+      <div className="mb-4">
         <FieldLabel>Period</FieldLabel>
         <PeriodPresetChips
+          accent="violet"
           dateFrom={filters.dateFrom}
           dateTo={filters.dateTo}
           onSelect={(key) => {
@@ -126,48 +172,38 @@ export default function LeadFilterBar({
         />
       </div>
 
-      {/* Quick results filters */}
-      <div className="mb-3">
+      <div className="mb-4">
         <FieldLabel>Results</FieldLabel>
         <div className="flex flex-wrap items-center gap-1.5">
-          {[
-            { key: 'booking', label: 'Booking', status: 'converted', filter: '' },
-            { key: 'arrivals', label: 'Arrivals', status: 'converted', filter: 'arrivals' },
-          ].map((chip) => {
-            const isActive =
-              chip.key === 'arrivals'
-                ? filters.filter === 'arrivals'
-                : filters.status === 'converted' && filters.filter !== 'arrivals';
-            return (
-              <button
-                key={chip.key}
-                type="button"
-                onClick={() => {
-                  const patch = isActive
-                    ? { status: '', filter: '' }
-                    : { status: chip.status, filter: chip.filter };
-                  const next = { ...filters, ...patch };
-                  if (onQuickFilter) onQuickFilter(next);
-                  else onChange(next);
-                }}
-                className={cn(
-                  'rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition',
-                  isActive
-                    ? chip.key === 'arrivals'
-                      ? 'bg-violet-600 text-white shadow-sm shadow-violet-500/20'
-                      : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
-                    : 'bg-slate-50 text-slate-600 hover:bg-sky-50 hover:text-sky-700'
-                )}
-              >
-                {chip.label}
-              </button>
-            );
-          })}
+          <ChipButton
+            active={filters.status === 'converted' && filters.filter !== 'arrivals'}
+            activeClass="bg-emerald-600 text-white shadow-sm shadow-emerald-500/25"
+            onClick={() =>
+              applyQuick(
+                filters.status === 'converted' && filters.filter !== 'arrivals'
+                  ? { status: '', filter: '' }
+                  : { status: 'converted', filter: '' }
+              )
+            }
+          >
+            Booking
+          </ChipButton>
+          <ChipButton
+            active={filters.filter === 'arrivals'}
+            onClick={() =>
+              applyQuick(
+                filters.filter === 'arrivals'
+                  ? { status: '', filter: '' }
+                  : { status: 'converted', filter: 'arrivals' }
+              )
+            }
+          >
+            Arrivals
+          </ChipButton>
         </div>
       </div>
 
-      {/* Primary filters */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <div>
           <FieldLabel>Date From</FieldLabel>
           <input
@@ -229,28 +265,10 @@ export default function LeadFilterBar({
             ))}
           </select>
         </div>
-        <div className="flex items-end">
-          <button
-            type="button"
-            onClick={openMoreFilters}
-            aria-expanded={showMore}
-            aria-label="More filters"
-            className={cn(
-              'inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition-colors',
-              showMore
-                ? 'border-blue-300 bg-blue-50 text-blue-700'
-                : 'border-subtle bg-white text-content-primary hover:bg-slate-50'
-            )}
-          >
-            <Filter className="h-4 w-4" />
-            More
-            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showMore && 'rotate-180')} />
-          </button>
-        </div>
       </div>
 
-      <AnimatePresence initial={false}>
-        {showMore && (
+      {(mode === 'advanced' || showMore) && (
+        <AnimatePresence initial={false}>
           <motion.div
             ref={morePanelRef}
             initial={{ height: 0, opacity: 0 }}
@@ -259,7 +277,7 @@ export default function LeadFilterBar({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="mt-3 grid grid-cols-1 gap-3 rounded-xl border border-blue-100 bg-blue-50/40 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="mt-3 grid grid-cols-1 gap-3 rounded-xl border border-violet-100 bg-violet-50/40 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {canFilterBranch && (
                 <div>
                   <FieldLabel>Branch</FieldLabel>
@@ -329,24 +347,41 @@ export default function LeadFilterBar({
               </div>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>
+      )}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-subtle pt-4">
+      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
         <button
           type="button"
           onClick={onApply}
-          className="h-10 rounded-xl bg-blue-500 px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-600"
+          className="h-10 rounded-xl bg-violet-600 px-5 text-sm font-semibold text-white shadow-sm shadow-violet-500/25 transition-colors hover:bg-violet-700"
         >
           Apply Filters
         </button>
         <button
           type="button"
           onClick={onReset}
-          className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-subtle bg-white px-4 text-sm font-medium text-content-primary transition-colors hover:bg-slate-50"
+          className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
         >
-          <RotateCcw className="h-4 w-4 text-content-muted" />
+          <RotateCcw className="h-4 w-4 text-slate-400" />
           Reset
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMode('advanced');
+            openMoreFilters();
+          }}
+          className={cn(
+            'inline-flex h-10 items-center gap-1.5 rounded-xl border px-4 text-sm font-semibold transition-colors',
+            showMore || mode === 'advanced'
+              ? 'border-violet-300 bg-violet-50 text-violet-700'
+              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+          )}
+        >
+          <Filter className="h-4 w-4" />
+          More Filters
+          <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', (showMore || mode === 'advanced') && 'rotate-180')} />
         </button>
       </div>
     </div>

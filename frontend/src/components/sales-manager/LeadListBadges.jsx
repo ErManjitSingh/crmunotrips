@@ -286,6 +286,7 @@ export function CustomerCell({ name, lead, showPhone = false }) {
   const isRepeated = lead?.isRepeatCustomer || lead?.isVip;
   const isLost =
     lead?.status === 'lost' || lead?.status === 'booked_from_another_company';
+  const isConverted = lead?.status === 'converted';
   return (
     <div className="flex min-w-0 items-start gap-2.5">
       <Avatar name={name} size="sm" className="!w-8 !h-8 !text-[11px] shrink-0 mt-0.5" />
@@ -294,7 +295,8 @@ export function CustomerCell({ name, lead, showPhone = false }) {
           <p
             className={cn(
               'font-semibold text-sm break-words text-content-primary',
-              isLost && 'rounded-md bg-red-100 px-2 py-0.5 ring-1 ring-inset ring-red-300'
+              isLost && 'rounded-md bg-red-100 px-2 py-0.5 ring-1 ring-inset ring-red-300',
+              isConverted && 'rounded-md bg-emerald-100 px-2 py-0.5 ring-1 ring-inset ring-emerald-300'
             )}
           >
             {name}

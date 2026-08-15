@@ -377,8 +377,8 @@ export default function Leads() {
       <div className={isAdmin ? (isMobileViewport ? 'hidden' : 'block') : ''}>
         <LeadPageHeader
           title={config.title}
-          total={totalLeads ?? undefined}
-          showImportExport={canImportExport}
+          total={isAllLeadsPage ? undefined : totalLeads ?? undefined}
+          compact={isAllLeadsPage}
         />
 
         {isAllLeadsPage && <LeadKpiStrip />}
@@ -434,6 +434,7 @@ export default function Leads() {
             canEditLead={(isManagerRole || isLeadProvider) && canEditLead}
             menuActions={leadMenuActions}
             showAssignButton={userCanAssignLeads}
+            onExport={canImportExport ? handleBulkExport : undefined}
             serverPagination={{
               pageIndex: pagination.pageIndex,
               pageSize: pagination.pageSize,

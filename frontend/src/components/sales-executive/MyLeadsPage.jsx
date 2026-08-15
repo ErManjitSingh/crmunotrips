@@ -300,7 +300,6 @@ export default function MyLeadsPage() {
           estimateRowHeight={72}
           maxHeight="min(72vh, 720px)"
           getRowClassName={(lead) => {
-            if (lead?.status === 'converted') return 'bg-emerald-50 hover:bg-emerald-100/80';
             if (lead?.isHot) return 'bg-orange-50';
             return undefined;
           }}

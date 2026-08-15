@@ -330,7 +330,8 @@ export default function MobileLeadList({
                           <h3
                             className={cn(
                               'min-w-0 flex-1 break-words text-[12px] font-bold text-slate-900',
-                              isLost && 'rounded-md bg-red-100 px-2 py-0.5 ring-1 ring-inset ring-red-300'
+                              isLost && 'rounded-md bg-red-100 px-2 py-0.5 ring-1 ring-inset ring-red-300',
+                              lead.status === 'converted' && 'rounded-md bg-emerald-100 px-2 py-0.5 ring-1 ring-inset ring-emerald-300'
                             )}
                           >
                             {lead.name}

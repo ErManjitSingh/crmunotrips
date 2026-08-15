@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-table';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { Columns3, Download } from 'lucide-react';
 import LeadStatusBadge from './LeadStatusBadge';
 import LeadRowActions from './LeadRowActions';
 import { formatLeadId } from './constants';
@@ -58,6 +59,8 @@ export default function LeadDataTable({
   menuActions = defaultMenuActions,
   showAssignButton = true,
   serverPagination = null,
+  listTitle = 'Leads List',
+  onExport,
 }) {
   const actions = useMemo(
     () => ({ ...defaultMenuActions, ...menuActions }),
@@ -245,6 +248,37 @@ export default function LeadDataTable({
   return (
     <TooltipProvider delayDuration={150}>
     <div className={LEAD_LIST_CONTAINER}>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5">
+        <div>
+          <h3 className="text-base font-bold text-slate-900">
+            {listTitle}
+            {typeof (serverPagination?.total ?? leads.length) === 'number' && (
+              <span className="ml-1.5 font-semibold text-slate-500">
+                ({Number(serverPagination?.total ?? leads.length).toLocaleString('en-IN')} Leads Found)
+              </span>
+            )}
+          </h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+          >
+            <Columns3 className="h-3.5 w-3.5" />
+            Columns
+          </button>
+          {onExport && (
+            <button
+              type="button"
+              onClick={onExport}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export
+            </button>
+          )}
+        </div>
+      </div>
       <div ref={scrollRef} className="overflow-auto max-h-[min(70vh,680px)]">
         <table className="w-full text-sm table-auto border-collapse min-w-[1100px]">
           <thead className="sticky top-0 z-20">
@@ -278,10 +312,8 @@ export default function LeadDataTable({
             )}
             {virtualRows.map((virtualRow) => {
               const row = tableRows[virtualRow.index];
-              const status = row.original?.status;
-              const isOdd = virtualRow.index % 2 === 0;
-              const rowBg = leadListRowBg(virtualRow.index, status);
-              const stickyBg = leadListStickyBg(virtualRow.index, status);
+              const rowBg = leadListRowBg(virtualRow.index);
+              const stickyBg = leadListStickyBg(virtualRow.index);
               return (
                 <tr
                   key={row.id}

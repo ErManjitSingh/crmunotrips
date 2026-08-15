@@ -6,8 +6,17 @@ export default function PeriodPresetChips({
   dateTo = '',
   onSelect,
   className,
+  accent = 'sky',
 }) {
   const active = activePeriodPreset({ dateFrom, dateTo });
+  const activeClass =
+    accent === 'violet'
+      ? 'bg-violet-600 text-white shadow-sm shadow-violet-500/25'
+      : 'bg-sky-600 text-white shadow-sm shadow-sky-500/20';
+  const idleClass =
+    accent === 'violet'
+      ? 'bg-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-700'
+      : 'bg-slate-50 text-slate-600 hover:bg-sky-50 hover:text-sky-700';
 
   return (
     <div
@@ -24,9 +33,7 @@ export default function PeriodPresetChips({
             onClick={() => onSelect?.(preset.key)}
             className={cn(
               'rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition',
-              isActive
-                ? 'bg-sky-600 text-white shadow-sm shadow-sky-500/20'
-                : 'bg-slate-50 text-slate-600 hover:bg-sky-50 hover:text-sky-700'
+              isActive ? activeClass : idleClass
             )}
           >
             {preset.label}
