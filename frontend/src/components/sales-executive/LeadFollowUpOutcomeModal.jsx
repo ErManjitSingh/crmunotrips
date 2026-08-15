@@ -102,7 +102,13 @@ export default function LeadFollowUpOutcomeModal({
     }
 
     if (category === 'call_not_picked') {
-      return null;
+      const keepConnected = ['contacted', 'working_progress', 'qualified', 'quotation_sent', 'negotiation'].includes(
+        lead?.status
+      );
+      return {
+        status: keepConnected ? lead.status : 'new',
+        statusReason: note ? `not_connected:${option} — ${note}` : `not_connected:${option}`,
+      };
     }
 
     if (category === 'cold') {
@@ -146,7 +152,7 @@ export default function LeadFollowUpOutcomeModal({
 
     const payload = buildPayload();
     if (!payload) {
-      toast.error('Invalid selection');
+      toast.error(isLost ? 'Add a comment before marking lead as lost' : 'Invalid selection');
       return;
     }
 

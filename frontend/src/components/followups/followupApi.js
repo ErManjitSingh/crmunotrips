@@ -15,10 +15,14 @@ export function buildFollowUpPayload(form) {
   return {
     lead: form.lead,
     type: form.type || 'call',
-    category: form.category || 'warm',
+    category: form.category || 'call_picked',
     scheduledAt: new Date(form.scheduledAt).toISOString(),
     notes: form.notes || form.remarks || '',
     priority: form.priority || 'medium',
     outcome: form.outcome || '',
+    coldReason: form.coldReason || undefined,
+    notPickedReason: form.notPickedReason || undefined,
+    pickedOutcome: form.pickedOutcome || undefined,
+    lostReason: form.lostReason || undefined,
   };
 }

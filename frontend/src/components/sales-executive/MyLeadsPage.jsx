@@ -4,6 +4,7 @@ import { Sparkles, Phone, CalendarClock, Flame, Trophy, XCircle, RefreshCw, User
 import { useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import API from '../../api/axios';
+import { toast } from '../../context/ToastContext';
 import { isLeadStatusLocked } from '../../utils/leadUtils';
 import { useRoleLeadsQuery } from '../../hooks/useRoleLeadsQuery';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -132,6 +133,43 @@ export default function MyLeadsPage() {
     setModal(null);
     fetchLeads();
     if (becameConverted) setCommercialLeadId(convertedId);
+  };
+
+  const saveFollowUpForLead = async (data, lead) => {
+    const leadId = lead?._id;
+    if (!leadId) throw new Error('Lead missing');
+
+    const { statusUpdate, leadOutcome, ...followUpData } = data;
+    void leadOutcome;
+
+    // Always persist the follow-up first — status update failures must not block it
+    await createExecutiveFollowUp(buildFollowUpPayload({ ...followUpData, lead: leadId }));
+
+    if (statusUpdate) {
+      try {
+        await API.put(`/sales-executive/leads/${leadId}`, statusUpdate);
+        if (
+          (data.remarks || statusUpdate.statusReason) &&
+          ['lost', 'booked_from_another_company'].includes(statusUpdate.status)
+        ) {
+          await API.post(`/sales-executive/leads/${leadId}/notes`, {
+            text: data.remarks || statusUpdate.statusReason,
+          }).catch(() => {});
+        }
+        if (statusUpdate.status === 'converted') {
+          setCommercialLeadId(leadId);
+        }
+      } catch (err) {
+        const msg =
+          err.response?.data?.message ||
+          err.message ||
+          'Lead status could not be updated';
+        toast.error(`Follow-up saved. ${msg}`);
+      }
+    }
+
+    setModal(null);
+    fetchLeads();
   };
 
   const columns = useMemo(() => [
@@ -325,21 +363,7 @@ export default function MyLeadsPage() {
         lead={modal?.lead}
         showLeadOutcome={modal?.lead ? !isLeadStatusLocked(modal.lead.status) : false}
         onSubmit={async (data) => {
-          if (data.statusUpdate) {
-            await handleFollowUpOutcome(data.statusUpdate, {
-              outcome: {
-                value: data.outcome || data.pickedOutcome || data.notPickedReason || data.coldReason || data.lostReason,
-                category: data.category,
-              },
-              comment: data.remarks || '',
-            });
-          }
-          const { statusUpdate, leadOutcome, ...followUpData } = data;
-          void statusUpdate;
-          void leadOutcome;
-          await createExecutiveFollowUp(buildFollowUpPayload({ ...followUpData, lead: modal.lead._id }));
-          setModal(null);
-          fetchLeads();
+          await saveFollowUpForLead(data, modal?.lead);
         }}
       />
 

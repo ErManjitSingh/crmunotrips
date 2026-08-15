@@ -163,7 +163,8 @@ function assertValidLostReason(reason, { requireComment = false } = {}) {
   const value = String(reason || '').trim();
   if (!value) throw new ApiError(400, 'Lost reason is required');
 
-  const parts = value.split(/\s*[—–]\s*/).map((p) => p.trim()).filter(Boolean);
+  // Accept em/en dash or plain " - " between key and free-text comment
+  const parts = value.split(/\s*[—–]\s*|\s+-\s+/).map((p) => p.trim()).filter(Boolean);
   const key = parts[0] || '';
   const comment = parts.slice(1).join(' — ').trim();
 

@@ -3,6 +3,7 @@ import { useDataRefresh } from '../../hooks/useDataRefresh';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import API from '../../api/axios';
+import { toast } from '../../context/ToastContext';
 import { Button } from '../ui/button';
 import { LeadDetailLayout } from '../lead-detail';
 import AddFollowUpModal from '../followups/AddFollowUpModal';
@@ -103,6 +104,33 @@ export default function ExecutiveLeadDetailPage() {
     }
   };
 
+  const saveFollowUp = async (data) => {
+    const { statusUpdate, leadOutcome, ...followUpData } = data;
+    void leadOutcome;
+    const becameConverted = statusUpdate?.status === 'converted';
+
+    await createExecutiveFollowUp(buildFollowUpPayload({ ...followUpData, lead: lead._id }));
+
+    if (statusUpdate) {
+      try {
+        await applyLeadOutcome(statusUpdate, {
+          outcome: {
+            value: data.outcome || data.pickedOutcome || data.notPickedReason || data.coldReason || data.lostReason,
+            category: data.category,
+          },
+          comment: data.remarks || '',
+        });
+      } catch (err) {
+        const msg = err.response?.data?.message || err.message || 'Lead status could not be updated';
+        toast.error(`Follow-up saved. ${msg}`);
+      }
+    }
+
+    setFollowUpModalOpen(false);
+    await loadLead();
+    if (becameConverted) setCommercialOpen(true);
+  };
+
   const handleColdCallDone = async () => {
     if (!id || markingCallDone) return;
     setMarkingCallDone(true);
@@ -165,25 +193,7 @@ export default function ExecutiveLeadDetailPage() {
         fixedLeadName={lead.name}
         lead={lead}
         showLeadOutcome={!isLeadStatusLocked(lead.status)}
-        onSubmit={async (data) => {
-          const becameConverted = data.statusUpdate?.status === 'converted';
-          if (data.statusUpdate) {
-            await applyLeadOutcome(data.statusUpdate, {
-              outcome: {
-                value: data.outcome || data.pickedOutcome || data.notPickedReason || data.coldReason || data.lostReason,
-                category: data.category,
-              },
-              comment: data.remarks || '',
-            });
-          }
-          const { statusUpdate, leadOutcome, ...followUpData } = data;
-          void statusUpdate;
-          void leadOutcome;
-          await createExecutiveFollowUp(buildFollowUpPayload({ ...followUpData, lead: lead._id }));
-          setFollowUpModalOpen(false);
-          await loadLead();
-          if (becameConverted) setCommercialOpen(true);
-        }}
+        onSubmit={saveFollowUp}
       />
 
       <PostConvertCommercialModal
