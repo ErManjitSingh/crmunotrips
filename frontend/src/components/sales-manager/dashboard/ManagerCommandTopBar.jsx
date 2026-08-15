@@ -1,10 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { Bell, Menu, X, LogOut, User, Search, Command, ChevronDown } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useNotifications } from '../../context/NotificationContext';
-import { NOTIFICATIONS_ENABLED } from '../../config/notifications';
-import { useSidebar } from '../../context/SidebarContext';
+import { useAuth } from '../../../context/AuthContext';
+import { useNotifications } from '../../../context/NotificationContext';
+import { NOTIFICATIONS_ENABLED } from '../../../config/notifications';
+import { useSidebar } from '../../../context/SidebarContext';
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -12,8 +12,8 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from '../ui/dropdown-menu';
-import { cn } from '../../lib/utils';
+} from '../../ui/dropdown-menu';
+import { cn } from '../../../lib/utils';
 
 function getInitials(name) {
   return (
