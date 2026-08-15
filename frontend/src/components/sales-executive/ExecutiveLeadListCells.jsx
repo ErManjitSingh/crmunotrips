@@ -15,7 +15,6 @@ import { STATUS_STYLES, formatBudget } from '../sales-manager/managerUtils';
 import { CustomerCell } from '../sales-manager/LeadListBadges';
 import { getLeadStatusLabel } from '../../lib/leadStatusLabel';
 import { getExecutiveSetStatusDisplay } from '../../lib/executiveStatusDisplay';
-import { formatLostReasonDisplay } from '../../constants/salesSop';
 
 function formatCreatedAt(date) {
   if (!date) return null;
