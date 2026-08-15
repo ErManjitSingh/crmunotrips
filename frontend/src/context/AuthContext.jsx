@@ -6,6 +6,7 @@ import store from '../store';
 import { setCredentials, clearCredentials } from '../store/slices/authSlice';
 import { clearBranchState, setSelectedBranch } from '../store/slices/branchSlice';
 import { useRestrictedSessionTimeout } from '../hooks/useRestrictedSessionTimeout';
+import { useSalesExecutiveEodLogout } from '../hooks/useSalesExecutiveEodLogout';
 
 const AuthContext = createContext(null);
 
@@ -21,6 +22,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useRestrictedSessionTimeout(user, logout);
+  useSalesExecutiveEodLogout(user, logout);
 
   useEffect(() => {
     const bootstrap = async () => {

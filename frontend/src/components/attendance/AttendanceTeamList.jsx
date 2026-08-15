@@ -83,7 +83,16 @@ export function OfficeTodayTable({
                   className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70"
                 >
                   <td className="px-5 py-3.5 font-semibold text-slate-800">{r.userName}</td>
-                  <td className="px-4 py-3.5 tabular-nums text-slate-600">{formatTime(r.checkIn)}</td>
+                  <td className="px-4 py-3.5 tabular-nums text-slate-600">
+                    <div>{formatTime(r.checkIn)}</div>
+                    {r.firstCheckIn &&
+                      r.checkIn &&
+                      new Date(r.firstCheckIn).getTime() !== new Date(r.checkIn).getTime() && (
+                        <div className="mt-0.5 text-[10px] font-medium text-slate-400">
+                          First {formatTime(r.firstCheckIn)}
+                        </div>
+                      )}
+                  </td>
                   <td className="px-4 py-3.5 tabular-nums text-slate-600">{formatTime(r.checkOut)}</td>
                   <td className="px-4 py-3.5 tabular-nums text-slate-600">
                     {r.hoursLabel || (r.totalHours != null ? `${r.totalHours}h` : '—')}
@@ -196,9 +205,8 @@ export function LateTodayTable({
               records.slice(0, 6).map((r) => (
                 <tr key={r.id || r.userId} className="border-b border-slate-50 last:border-0">
                   <td className="px-5 py-3 font-medium text-slate-800">{r.userName}</td>
-                  <td className="px-3 py-3 tabular-nums text-slate-600">{formatTime(r.checkIn)}</td>
                   <td className="px-3 py-3 tabular-nums text-slate-600">
-                    {r.expectedCheckIn || '09:30 AM'}
+                    {formatTime(r.firstCheckIn || r.checkIn)}
                   </td>
                   <td className="px-5 py-3 font-semibold tabular-nums text-orange-600">
                     {formatLateBy(r.lateByMinutes)}

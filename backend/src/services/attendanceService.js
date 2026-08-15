@@ -17,6 +17,12 @@ const TRACKED_ROLES = [...CHECK_IN_ROLES];
 const ORG_TZ = process.env.ATTENDANCE_TZ || 'Asia/Kolkata';
 const LATE_HOUR = Number(process.env.ATTENDANCE_LATE_HOUR ?? 10);
 const LATE_MINUTE = Number(process.env.ATTENDANCE_LATE_MINUTE ?? 15);
+/** Sales executive panels force-logout / auto check-out (IST). */
+const EOD_HOUR = Number(process.env.ATTENDANCE_EOD_HOUR ?? 18);
+const EOD_MINUTE = Number(process.env.ATTENDANCE_EOD_MINUTE ?? 20);
+const EOD_LOGOUT_ROLES = ['sales_executive'];
+
+let lastEodProcessedDayKey = null;
 
 function calendarParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -67,6 +73,44 @@ function computeTotalHours(checkIn, checkOut) {
   return Math.round((ms / (1000 * 60 * 60)) * 100) / 100;
 }
 
+function priorSessionsHours(sessions = []) {
+  return (sessions || []).reduce((sum, s) => sum + (Number(s.totalHours) || 0), 0);
+}
+
+function firstCheckInOfDay(doc) {
+  if (doc?.sessions?.length) return doc.sessions[0].checkIn;
+  return doc?.checkIn || null;
+}
+
+/** Today's forced logout cutoff in org timezone (default 18:20 IST). */
+function getForcedLogoutCutoff(date = new Date()) {
+  const { y, m, d } = calendarParts(date);
+  const hh = String(EOD_HOUR).padStart(2, '0');
+  const mm = String(EOD_MINUTE).padStart(2, '0');
+  return new Date(`${y}-${m}-${d}T${hh}:${mm}:00+05:30`);
+}
+
+function isPastForcedLogoutTime(date = new Date()) {
+  return date.getTime() >= getForcedLogoutCutoff(date).getTime();
+}
+
+function requiresEodLogout(role) {
+  return EOD_LOGOUT_ROLES.includes(role);
+}
+
+/**
+ * Reject JWT issued before today's EOD cutoff once past 6:20 PM IST.
+ * Re-login after cutoff gets a fresh iat and is allowed (attendance check-in records the time).
+ */
+function shouldRejectTokenForEod(role, tokenIatSeconds, now = new Date()) {
+  if (!requiresEodLogout(role)) return false;
+  if (!isPastForcedLogoutTime(now)) return false;
+  const cutoffMs = getForcedLogoutCutoff(now).getTime();
+  const iatMs = Number(tokenIatSeconds) * 1000;
+  if (!Number.isFinite(iatMs)) return true;
+  return iatMs < cutoffMs;
+}
+
 function computeLateByMinutes(checkIn) {
   if (!checkIn) return null;
   const { hour, minute } = timePartsInOrg(checkIn);
@@ -106,7 +150,18 @@ function expectedCheckInLabel() {
 
 function formatRecord(doc, userMap) {
   const u = userMap?.get(doc.userId?.toString()) || doc.userId;
-  const lateByMinutes = doc.status === 'late' ? computeLateByMinutes(doc.checkIn) : null;
+  const sessions = Array.isArray(doc.sessions) ? doc.sessions : [];
+  const firstCheckIn = firstCheckInOfDay(doc);
+  const lateByMinutes = doc.status === 'late' ? computeLateByMinutes(firstCheckIn) : null;
+  const priorHours = priorSessionsHours(sessions);
+  const openHoursLabel = formatHoursLabel(doc.totalHours, doc.checkIn, doc.checkOut);
+  let hoursLabel = openHoursLabel;
+  if (doc.checkOut == null && priorHours > 0) {
+    const currentPartial = doc.checkIn
+      ? Math.max(0, (Date.now() - new Date(doc.checkIn).getTime()) / (1000 * 60 * 60))
+      : 0;
+    hoursLabel = formatHoursLabel(priorHours + currentPartial, doc.checkIn, null);
+  }
   return {
     id: doc._id,
     userId: doc.userId?._id || doc.userId,
@@ -116,13 +171,16 @@ function formatRecord(doc, userMap) {
     department: u?.department || ROLE_LABEL_FALLBACK(u?.role),
     date: doc.date,
     checkIn: doc.checkIn,
+    firstCheckIn,
+    lastLoginAt: doc.checkIn,
     checkOut: doc.checkOut,
     totalHours: doc.totalHours,
-    hoursLabel: formatHoursLabel(doc.totalHours, doc.checkIn, doc.checkOut),
+    hoursLabel,
     workMode: doc.workMode,
     status: doc.status,
     isAutoCheckout: doc.isAutoCheckout,
     isOnline: !doc.checkOut,
+    sessions,
     lateByMinutes,
     expectedCheckIn: expectedCheckInLabel(),
     createdAt: doc.createdAt,
@@ -228,13 +286,25 @@ async function checkIn(userId, workMode = 'office') {
   const existing = await Attendance.findOne({ userId, date: dayStart });
   const now = new Date();
 
-  // Same-day return after check-out: reopen attendance so Check Out is available again
+  // Same-day return after check-out: reopen so Check Out is available again.
+  // Keep morning status; stamp checkIn with this login time for the attendance sheet.
   if (existing?.checkOut) {
+    const sessions = Array.isArray(existing.sessions) ? [...existing.sessions] : [];
+    sessions.push({
+      checkIn: existing.checkIn,
+      checkOut: existing.checkOut,
+      totalHours: existing.totalHours != null
+        ? Math.max(0, Number(existing.totalHours) - priorSessionsHours(existing.sessions))
+        : computeTotalHours(existing.checkIn, existing.checkOut),
+      isAutoCheckout: Boolean(existing.isAutoCheckout),
+    });
+    const firstCheckIn = sessions[0]?.checkIn || existing.checkIn;
+    existing.sessions = sessions;
     existing.checkIn = now;
     existing.checkOut = null;
     existing.totalHours = null;
     existing.workMode = workMode;
-    existing.status = deriveStatus(now);
+    existing.status = deriveStatus(firstCheckIn);
     existing.isAutoCheckout = false;
     await existing.save();
     return formatRecord(existing.toObject());
@@ -269,12 +339,62 @@ async function checkOut(userId) {
   if (record.checkOut) throw new ApiError(400, 'Already checked out for today');
 
   const now = new Date();
+  const sessionHours = computeTotalHours(record.checkIn, now);
   record.checkOut = now;
-  record.totalHours = computeTotalHours(record.checkIn, now);
+  record.totalHours = Math.round((priorSessionsHours(record.sessions) + sessionHours) * 100) / 100;
   record.isAutoCheckout = false;
   await record.save();
 
   return formatRecord(record.toObject());
+}
+
+/**
+ * Auto check-out open sales-executive attendance at/after 6:20 PM IST (once per calendar day).
+ */
+async function processEndOfDayCheckout(now = new Date()) {
+  if (!isPastForcedLogoutTime(now)) {
+    return { processed: 0, skipped: true, reason: 'before_eod' };
+  }
+
+  const dayKey = calendarParts(now).key;
+  if (lastEodProcessedDayKey === dayKey) {
+    return { processed: 0, skipped: true, reason: 'already_ran' };
+  }
+
+  const dayStart = startOfCalendarDay(now);
+  const seUsers = await User.find({
+    role: { $in: EOD_LOGOUT_ROLES },
+    status: 'active',
+  })
+    .select('_id')
+    .lean();
+
+  if (!seUsers.length) {
+    lastEodProcessedDayKey = dayKey;
+    return { processed: 0 };
+  }
+
+  const openRecords = await Attendance.find({
+    userId: { $in: seUsers.map((u) => u._id) },
+    date: dayStart,
+    checkOut: null,
+  });
+
+  let processed = 0;
+  for (const record of openRecords) {
+    const sessionHours = computeTotalHours(record.checkIn, now);
+    record.checkOut = now;
+    record.totalHours = Math.round((priorSessionsHours(record.sessions) + sessionHours) * 100) / 100;
+    record.isAutoCheckout = true;
+    await record.save();
+    processed += 1;
+  }
+
+  lastEodProcessedDayKey = dayKey;
+  if (processed > 0) {
+    console.log(`[AttendanceEOD] Auto-checked out ${processed} sales executive(s) for ${dayKey}`);
+  }
+  return { processed, dayKey };
 }
 
 async function getMyHistory(userId, limit = 30) {
@@ -410,6 +530,9 @@ async function buildTodaySummary(viewer, branchId = null) {
 module.exports = {
   CHECK_IN_ROLES,
   TRACKED_ROLES,
+  EOD_LOGOUT_ROLES,
+  EOD_HOUR,
+  EOD_MINUTE,
   checkIn,
   checkOut,
   getTodayStatus,
@@ -418,4 +541,9 @@ module.exports = {
   buildRangeSummary,
   startOfCalendarDay,
   calendarParts,
+  getForcedLogoutCutoff,
+  isPastForcedLogoutTime,
+  requiresEodLogout,
+  shouldRejectTokenForEod,
+  processEndOfDayCheckout,
 };

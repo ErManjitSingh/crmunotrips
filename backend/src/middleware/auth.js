@@ -47,6 +47,11 @@ const protect = asyncHandler(async (req, res, next) => {
   const user = await loadAuthUser(decoded.id);
   if (!user || user.status === 'disabled') throw new ApiError(401, 'User not found or disabled');
 
+  const { shouldRejectTokenForEod } = require('../services/attendanceService');
+  if (shouldRejectTokenForEod(user.role, decoded.iat)) {
+    throw new ApiError(401, 'Work day ended at 6:20 PM. Please sign in again.');
+  }
+
   const branchIdFromHeader = req.headers['x-branch-id'];
   const branchIdFromQuery = typeof req.query?.branchId === 'string' ? req.query.branchId.trim() : '';
   const requestedBranchId = branchIdFromQuery || branchIdFromHeader || null;
