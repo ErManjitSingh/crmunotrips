@@ -159,22 +159,21 @@ export default function LeadFilterBar({
         />
       </div>
 
-      <div className="mb-4">
-        <FieldLabel>Period</FieldLabel>
-        <PeriodPresetChips
-          accent="violet"
-          dateFrom={filters.dateFrom}
-          dateTo={filters.dateTo}
-          onSelect={(key) => {
-            if (onPeriodSelect) onPeriodSelect(key);
-            else onChange({ ...filters, ...applyPeriodPreset(key) });
-          }}
-        />
-      </div>
-
-      <div className="mb-4">
-        <FieldLabel>Results</FieldLabel>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <FieldLabel>Period</FieldLabel>
+          <PeriodPresetChips
+            accent="violet"
+            dateFrom={filters.dateFrom}
+            dateTo={filters.dateTo}
+            onSelect={(key) => {
+              if (onPeriodSelect) onPeriodSelect(key);
+              else onChange({ ...filters, ...applyPeriodPreset(key) });
+            }}
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">Results</span>
           <ChipButton
             active={filters.status === 'converted' && filters.filter !== 'arrivals'}
             activeClass="bg-emerald-600 text-white shadow-sm shadow-emerald-500/25"
