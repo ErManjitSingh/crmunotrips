@@ -8,6 +8,23 @@ const { logActivity, getClientIp } = require('../services/activityService');
 const crypto = require('crypto');
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
 
+/** Roles lead providers may not assign when creating/inviting users. */
+const LEAD_PROVIDER_BLOCKED_ROLE_SLUGS = new Set(['admin', 'hr_admin', 'lead_provider']);
+
+function assertActorCanAssignRole(actorRole, roleSlug) {
+  if (actorRole === 'admin') return;
+  if (actorRole === 'lead_provider' && LEAD_PROVIDER_BLOCKED_ROLE_SLUGS.has(roleSlug)) {
+    throw new ApiError(403, 'Lead providers cannot create admin or privileged users');
+  }
+}
+
+function resolveCreatedUserBranchId(req, bodyBranchId) {
+  if (req.user.role === 'admin' || req.user.role === 'lead_provider') {
+    return bodyBranchId || req.branchId || req.user.branchId || null;
+  }
+  return req.user.branchId || null;
+}
+
 async function attachLeadCounts(users) {
   if (!users.length) return users;
   const ids = users.map((u) => u._id);
@@ -94,6 +111,7 @@ const createUser = asyncHandler(async (req, res) => {
   if (!ROLES.includes(role.slug)) {
     throw new ApiError(400, 'Role is not a valid system role');
   }
+  assertActorCanAssignRole(req.user.role, role.slug);
 
   const normalizedEmail = email.toLowerCase().trim();
   const exists = await User.findOne({ email: normalizedEmail });
@@ -113,7 +131,7 @@ const createUser = asyncHandler(async (req, res) => {
     department: department || 'Sales',
     status: status || 'active',
     password: plainPassword,
-    branchId: req.user.role === 'admin' ? (branchId || req.branchId || null) : (req.user.branchId || null),
+    branchId: resolveCreatedUserBranchId(req, branchId),
   });
 
   await logActivity({
@@ -240,6 +258,7 @@ const deleteUser = asyncHandler(async (req, res) => {
 const inviteUser = asyncHandler(async (req, res) => {
   const role = await Role.findById(req.body.roleId);
   if (!role) throw new ApiError(400, 'Invalid role');
+  assertActorCanAssignRole(req.user.role, role.slug);
 
   const token = `inv-${crypto.randomBytes(16).toString('hex')}`;
   const invitePassword = crypto.randomBytes(8).toString('hex');
@@ -253,7 +272,7 @@ const inviteUser = asyncHandler(async (req, res) => {
     roleId: role._id,
     department: req.body.department || 'Sales',
     status: 'invited',
-    branchId: req.user.role === 'admin' ? (req.body.branchId || req.branchId || null) : (req.user.branchId || null),
+    branchId: resolveCreatedUserBranchId(req, req.body.branchId),
     inviteToken: token,
     inviteExpiresAt: new Date(Date.now() + 7 * 86400000),
   });

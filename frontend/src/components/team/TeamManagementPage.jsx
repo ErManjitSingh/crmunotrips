@@ -56,6 +56,10 @@ export default function TeamManagementPage() {
   const { confirm, dialogNode } = useConfirmDialog();
 
   const canSetTargets = TARGET_SETTER_ROLES.has(authUser?.role);
+  const assignableRoles =
+    authUser?.role === 'lead_provider'
+      ? roles.filter((r) => !['admin', 'hr_admin', 'lead_provider'].includes(r.slug))
+      : roles;
 
   const fetchUsers = useCallback(() => {
     const params = {
@@ -458,8 +462,8 @@ export default function TeamManagementPage() {
         </AnimatePresence>
       )}
 
-      <UserFormModal open={modalOpen} onClose={() => { setModalOpen(false); setEditUser(null); }} onSave={handleSaveUser} user={editUser} roles={roles} />
-      <InviteUserModal open={inviteOpen} onClose={() => setInviteOpen(false)} onInvite={handleInvite} roles={roles} />
+      <UserFormModal open={modalOpen} onClose={() => { setModalOpen(false); setEditUser(null); }} onSave={handleSaveUser} user={editUser} roles={assignableRoles} />
+      <InviteUserModal open={inviteOpen} onClose={() => setInviteOpen(false)} onInvite={handleInvite} roles={assignableRoles} />
       <SetMonthlyTargetModal
         open={!!targetUser}
         user={targetUser}
