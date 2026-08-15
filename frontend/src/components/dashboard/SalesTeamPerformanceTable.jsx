@@ -29,10 +29,6 @@ const HEADERS = [
 ];
 
 function formatPeriodTitle(filters = {}, periodLabel) {
-  if (periodLabel && !String(periodLabel).toLowerCase().includes('vs')) {
-    const short = String(periodLabel).split('·')[0].trim();
-    if (short) return `Sales Team Performance (${short})`;
-  }
   if (!filters.dateFrom && !filters.dateTo) return 'Sales Team Performance (All Time)';
   if (filters.dateFrom && filters.dateFrom === filters.dateTo) {
     const today = new Date();
@@ -41,6 +37,10 @@ function formatPeriodTitle(filters = {}, periodLabel) {
     const dd = String(today.getDate()).padStart(2, '0');
     const todayKey = `${yyyy}-${mm}-${dd}`;
     if (filters.dateFrom === todayKey) return 'Sales Team Performance (Today)';
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    const yKey = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`;
+    if (filters.dateFrom === yKey) return 'Sales Team Performance (Yesterday)';
     const d = new Date(`${filters.dateFrom}T12:00:00`);
     return `Sales Team Performance (${d.toLocaleDateString('en-IN', {
       day: 'numeric',
@@ -55,6 +55,7 @@ function formatPeriodTitle(filters = {}, periodLabel) {
       d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
     return `Sales Team Performance (${fmt(from)} – ${fmt(to)})`;
   }
+  if (periodLabel) return `Sales Team Performance (${String(periodLabel).split('·')[0].trim()})`;
   return 'Sales Team Performance';
 }
 
