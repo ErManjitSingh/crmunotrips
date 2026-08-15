@@ -75,14 +75,36 @@ export function leadArrivedFullTitle(date) {
   return formatLeadArrivedAt(date) || undefined;
 }
 
-/** Compact date+time lines under lead name (created / assigned). */
+/** Compact date+time lines under lead name (created / assigned / creator). */
 export function LeadTimingLines({ lead, className }) {
   const created = formatLeadArrivedAt(lead?.createdAt);
   const assigned = formatLeadArrivedAt(lead?.assignedAt);
-  if (!created && !assigned) return null;
+  const creatorRole = lead?.createdBy?.role;
+  const creatorName = lead?.createdBy?.name;
+  const assigneeName = lead?.assignedTo?.name;
+  const creatorId = lead?.createdBy?._id || lead?.createdBy;
+  const assigneeId = lead?.assignedTo?._id || lead?.assignedTo;
+  const sameOwner =
+    Boolean(creatorId) && Boolean(assigneeId) && String(creatorId) === String(assigneeId);
+  const selfCreatedByExec =
+    Boolean(creatorName) &&
+    (creatorRole === 'sales_executive' ||
+      (sameOwner && lead?.assigneeRole === 'sales_executive'));
+
+  if (!created && !assigned && !selfCreatedByExec) return null;
 
   return (
     <div className={cn('mt-0.5 space-y-0.5 text-[11px] leading-tight text-slate-500', className)}>
+      {selfCreatedByExec ? (
+        <p className="flex items-center gap-1 min-w-0" title={`Created by ${creatorName}`}>
+          <User className="w-3 h-3 shrink-0 text-emerald-500" />
+          <span className="truncate">
+            <span className="font-semibold text-emerald-700">Created by</span>
+            {' · '}
+            {creatorName}
+          </span>
+        </p>
+      ) : null}
       {created ? (
         <p className="flex items-center gap-1 min-w-0" title={`Created ${created}`}>
           <Clock className="w-3 h-3 shrink-0 text-slate-400" />

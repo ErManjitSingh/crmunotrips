@@ -16,7 +16,7 @@ const LEAD_POPULATE = [
   { path: 'assignedTo', select: 'name email phone' },
   { path: 'assignedManager', select: 'name email' },
   { path: 'assignedTeamLeader', select: 'name email' },
-  { path: 'createdBy', select: 'name email' },
+  { path: 'createdBy', select: 'name email role' },
   { path: 'lastContactedBy', select: 'name email' },
   { path: 'teamId', select: 'name' },
   { path: 'reactivation.reactivatedBy', select: 'name email' },
@@ -29,7 +29,7 @@ const LEAD_POPULATE = [
 const LEAD_LIST_POPULATE = [
   { path: 'assignedTo', select: 'name email' },
   { path: 'assignedTeamLeader', select: 'name email' },
-  { path: 'createdBy', select: 'name email' },
+  { path: 'createdBy', select: 'name email role' },
 ];
 
 const FOLLOWUP_POPULATE = [

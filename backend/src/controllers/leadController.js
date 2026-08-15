@@ -350,9 +350,11 @@ const createLead = asyncHandler(async (req, res) => {
   } else {
     data.branchId = req.branchId || req.user.branchId || null;
   }
-  // Only executives auto-own new leads; admin/manager leads stay unassigned until assigned
+  // Sales executives who create a lead own it immediately (admin can see their name).
   if (!data.assignedTo && req.user.role === 'sales_executive') {
     data.assignedTo = req.user._id;
+    data.assigneeRole = 'sales_executive';
+    stampPendingAcceptance(data, data);
   }
 
   const prior = await findDuplicateLeads({
