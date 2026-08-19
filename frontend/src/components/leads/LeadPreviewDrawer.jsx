@@ -68,29 +68,6 @@ function splitDateTime(value) {
   };
 }
 
-function TemperatureBadge({ temperature }) {
-  if (!temperature) return null;
-  const key = String(temperature).toLowerCase();
-  const styles = {
-    hot: 'bg-orange-50 text-orange-600 border-orange-100',
-    warm: 'bg-amber-50 text-amber-600 border-amber-100',
-    cold: 'bg-slate-50 text-slate-600 border-slate-200',
-    vip: 'bg-violet-50 text-violet-600 border-violet-100',
-  };
-  const dots = {
-    hot: 'bg-orange-500',
-    warm: 'bg-amber-500',
-    cold: 'bg-slate-400',
-    vip: 'bg-violet-500',
-  };
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase border', styles[key] || styles.warm)}>
-      <span className={cn('w-1.5 h-1.5 rounded-full', dots[key] || dots.warm)} />
-      {key}
-    </span>
-  );
-}
-
 function OverviewCard({ icon: Icon, label, value, tone }) {
   const tones = {
     blue: 'bg-blue-50 border-blue-100',
@@ -192,8 +169,13 @@ export default function LeadPreviewDrawer({
                 <div className="min-w-0 pt-0.5">
                   <p className="text-xs font-semibold text-blue-600">{formatLeadId(lead._id)}</p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    <LeadStatusBadge status={lead.status} pulse={lead.status === 'new'} size="sm" />
-                    <TemperatureBadge temperature={lead.temperature || lead.leadScore} />
+                    <LeadStatusBadge
+                      status={lead.status}
+                      reason={lead.statusReason}
+                      lead={lead}
+                      pulse={lead.status === 'new'}
+                      size="sm"
+                    />
                   </div>
                   <h2 className="mt-2 text-xl font-bold text-slate-900 leading-tight break-words">{lead.name}</h2>
                   {(lead.isRepeatCustomer || lead.isVip) && (

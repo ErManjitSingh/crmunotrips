@@ -136,7 +136,7 @@ export default function MobileLeadDetailSummary({
                 <h1 className="text-xl font-bold tracking-tight text-slate-900">
                   {lead.name}
                 </h1>
-                <LeadStatusBadge status={status} pulse={status === 'new'} size="sm" />
+                <LeadStatusBadge status={status} reason={lead.statusReason} lead={lead} pulse={status === 'new'} size="sm" />
               </div>
               <p className="text-sm text-slate-500">
                 {formatLeadId(lead._id || lead.leadId)} · Lead 360 · {lead.destination || '—'}
