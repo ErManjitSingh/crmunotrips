@@ -100,8 +100,6 @@ const TABS = [
   { key: 'lost', label: 'Archived', countKey: 'lost', path: '/sales-executive/leads/lost' },
 ];
 
-];
-
 const AVATAR_TONES = [
   'bg-rose-500',
   'bg-sky-500',
