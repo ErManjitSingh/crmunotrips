@@ -60,12 +60,17 @@ export default {
       },
       animation: {
         'pulse-soft': 'pulse-soft 2s ease-in-out infinite',
+        'hot-text': 'hot-text 1s ease-in-out infinite',
         'fade-up': 'fade-up 0.3s ease-out',
       },
       keyframes: {
         'pulse-soft': {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.7' },
+        },
+        'hot-text': {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.45', transform: 'scale(1.12)' },
         },
         'fade-up': {
           '0%': { opacity: '0', transform: 'translateY(8px)' },

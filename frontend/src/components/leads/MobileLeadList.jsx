@@ -36,7 +36,7 @@ import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
 import TrackedCallButton from './TrackedCallButton';
 import LeadCallStats from './LeadCallStats';
 import { LeadTimingLines, NextFollowUpLine } from '../sales-manager/LeadListBadges';
-import { getLeadListStatusDisplay } from '../../lib/executiveStatusDisplay';
+import { getLeadListStatusDisplay, LIST_STATUS_FILTERS, listStatusTextClass } from '../../lib/executiveStatusDisplay';
 import { TooltipProvider } from '../ui/tooltip';
 import PeriodPresetChips from '../ui/PeriodPresetChips';
 import { applyPeriodPreset } from '../../lib/periodFilters';
@@ -176,24 +176,27 @@ export default function MobileLeadList({
               <Filter className="h-3.5 w-3.5" />
               <ChevronDown className={`h-3 w-3 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
             </button>
-            <button type="button" onClick={() => updateAndApply({ status: '', filter: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${!filters.status && filters.filter !== 'arrivals' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>All</button>
-            <button type="button" onClick={() => updateAndApply({ status: 'new', filter: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'new' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>New</button>
-            <button type="button" onClick={() => updateAndApply({ status: 'follow_up', filter: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'follow_up' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Follow-up</button>
-            <button
-              type="button"
-              onClick={() => updateAndApply({ status: 'converted', filter: '' })}
-              className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'converted' && filters.filter !== 'arrivals' ? 'bg-emerald-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}
-            >
-              Booking
-            </button>
-            <button
-              type="button"
-              onClick={() => updateAndApply({ status: 'converted', filter: 'arrivals' })}
-              className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.filter === 'arrivals' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}
-            >
-              Arrivals
-            </button>
-            <button type="button" onClick={() => updateAndApply({ status: 'negotiation', filter: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'negotiation' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Negotiation</button>
+            <button type="button" onClick={() => updateAndApply({ status: '', filter: '', listStatus: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${!filters.status && filters.filter !== 'arrivals' && !filters.listStatus ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>All</button>
+            <button type="button" onClick={() => updateAndApply({ status: 'converted', filter: '', listStatus: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'converted' && filters.filter !== 'arrivals' && !filters.listStatus ? 'bg-emerald-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Booking</button>
+            <button type="button" onClick={() => updateAndApply({ status: 'converted', filter: 'arrivals', listStatus: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.filter === 'arrivals' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Arrivals</button>
+            {LIST_STATUS_FILTERS.map((chip) => (
+              <button
+                key={chip.value}
+                type="button"
+                onClick={() =>
+                  updateAndApply(
+                    filters.listStatus === chip.value
+                      ? { listStatus: '' }
+                      : { listStatus: chip.value, status: '', filter: '' }
+                  )
+                }
+                className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${
+                  filters.listStatus === chip.value ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'
+                }`}
+              >
+                {chip.label}
+              </button>
+            ))}
           </div>
           <PeriodPresetChips
             className="mt-2"
@@ -325,7 +328,7 @@ export default function MobileLeadList({
                             className={`max-w-[120px] truncate rounded-full px-2 py-0.5 text-[7px] font-semibold ring-1 ring-inset ${statusDisplay.className}`}
                             title={statusDisplay.title}
                           >
-                            {statusDisplay.label}
+                            <span className={listStatusTextClass(statusDisplay)}>{statusDisplay.label}</span>
                           </span>
                         </div>
                         <NextFollowUpLine lead={lead} className="!text-[9px] mt-0.5" />

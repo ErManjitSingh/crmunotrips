@@ -14,6 +14,7 @@ const {
   findPackageSharedLeadIds,
   wantsPackageSharedLeads,
 } = require('../utils/packageSharedLeads');
+const { applyListStatusBucket } = require('../utils/listStatusBucketFilter');
 
 function parseLocalDayStart(dateStr) {
   const parts = String(dateStr || '').split('-').map(Number);
@@ -40,6 +41,7 @@ function buildLeadListFilter(query = {}) {
     status,
     search,
     filter: listFilter,
+    listStatus,
     destination,
     source,
     agent,
@@ -61,7 +63,7 @@ function buildLeadListFilter(query = {}) {
 
   const mongoFilter = { ...buildLeadSearchFilter(search), isDeleted: { $ne: true } };
 
-  if (status) mongoFilter.status = status;
+  if (status && !listStatus) mongoFilter.status = status;
   if (reactivatedOnly === 'true') mongoFilter['reactivation.isReactivated'] = true;
   if (reactivationStage) mongoFilter['reactivation.stage'] = reactivationStage;
   if (executiveId) mongoFilter.assignedTo = executiveId;
@@ -133,6 +135,8 @@ function buildLeadListFilter(query = {}) {
   if (travelMonth !== undefined && travelMonth !== '') {
     mongoFilter.$expr = { $eq: [{ $month: '$travelDate' }, Number(travelMonth) + 1] };
   }
+
+  applyListStatusBucket(mongoFilter, listStatus);
 
   return mongoFilter;
 }

@@ -13,7 +13,7 @@ import { beginLeadCall } from '../../lib/callSession';
 import Avatar from '../ui/Avatar';
 import { formatBudget } from '../sales-manager/managerUtils';
 import { CustomerCell } from '../sales-manager/LeadListBadges';
-import { getLeadListStatusDisplay } from '../../lib/executiveStatusDisplay';
+import { getLeadListStatusDisplay, listStatusTextClass } from '../../lib/executiveStatusDisplay';
 
 function formatCreatedAt(date) {
   if (!date) return null;
@@ -68,7 +68,7 @@ export function ExecLeadIdCell({ lead }) {
         )}
         title={display.title}
       >
-        {display.label}
+        <span className={listStatusTextClass(display)}>{display.label}</span>
       </span>
       {created && (
         <p className="text-[11px] text-content-muted leading-snug whitespace-nowrap">{created}</p>
@@ -267,7 +267,7 @@ export function ExecStatusCell({ lead }) {
             display.bucket === 'new' && 'animate-pulse'
           )}
         />
-        {display.label}
+        <span className={listStatusTextClass(display)}>{display.label}</span>
       </span>
     </div>
   );

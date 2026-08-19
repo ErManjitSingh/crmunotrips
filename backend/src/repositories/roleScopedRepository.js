@@ -24,6 +24,7 @@ const {
   DEEP_PAGE_THRESHOLD,
 } = require('../utils/pagination');
 const { withBranch } = require('../utils/branchScope');
+const { applyListStatusBucket } = require('../utils/listStatusBucketFilter');
 const { applyQuotationQueryFilters } = require('./quotationRepository');
 const {
   findPackageSharedLeadIds,
@@ -190,6 +191,7 @@ async function findManagerLeadsPaginated(query = {}, options = {}) {
   const sort = parseSort(query, { createdAt: -1 });
   const filter = withActiveLead(withBranch(buildManagerLeadFilter(query), options.branchId));
   applyCreatedAtRange(filter, query);
+  applyListStatusBucket(filter, query.listStatus);
 
   if (wantsPackageSharedLeads(query)) {
     const ids = await findPackageSharedLeadIds({ branchId: options.branchId });
@@ -379,6 +381,7 @@ async function findTeamLeaderLeadsPaginated(squadFilter, query = {}, options = {
     withBranch({ ...squadFilter, ...extra, ...buildLeadSearchFilter(query.search) }, options.branchId)
   );
   applyCreatedAtRange(filter, query);
+  applyListStatusBucket(filter, query.listStatus);
 
   if (wantsPackageSharedLeads(query)) {
     const sharedIds = await findPackageSharedLeadIds({ branchId: options.branchId });

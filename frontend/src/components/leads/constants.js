@@ -117,6 +117,7 @@ export const emptyFilters = {
   agent: '',
   status: '',
   filter: '',
+  listStatus: '',
   travelMonth: '',
   budgetMin: '',
   budgetMax: '',

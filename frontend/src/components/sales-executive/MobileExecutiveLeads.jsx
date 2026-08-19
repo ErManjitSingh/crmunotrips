@@ -31,7 +31,7 @@ import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
 import { DESTINATIONS, INDIAN_STATES } from '../leads/constants';
 import { LEAD_FOLLOW_UP_OUTCOMES } from '../../constants/leadFollowUpOutcomes';
 import { SourceBadge } from '../sales-manager/LeadListBadges';
-import { getLeadListStatusDisplay } from '../../lib/executiveStatusDisplay';
+import { getLeadListStatusDisplay, listStatusTextClass } from '../../lib/executiveStatusDisplay';
 import { cn } from '../../lib/utils';
 import { toast } from '../../context/ToastContext';
 import PeriodPresetChips from '../ui/PeriodPresetChips';
@@ -532,7 +532,7 @@ export default function MobileExecutiveLeads({
                               )}
                               title={statusDisplay.title}
                             >
-                              {statusDisplay.label}
+                              <span className={listStatusTextClass(statusDisplay)}>{statusDisplay.label}</span>
                             </span>
                           </div>
                           {lead.nextFollowUp ? (

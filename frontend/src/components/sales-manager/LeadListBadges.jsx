@@ -7,7 +7,7 @@ import Avatar from '../ui/Avatar';
 import { formatBudget } from './managerUtils';
 import RepeatedLeadBadge from '../leads/RepeatedLeadBadge';
 import LeadCallStats from '../leads/LeadCallStats';
-import { getLeadListStatusDisplay } from '../../lib/executiveStatusDisplay';
+import { getLeadListStatusDisplay, listStatusTextClass } from '../../lib/executiveStatusDisplay';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from '../../context/ToastContext';
 import { openCrmWhatsApp } from '../../lib/openCrmWhatsApp';
@@ -243,7 +243,7 @@ export function ManagerStatusBadge({ status, lead }) {
             display.bucket === 'new' && 'animate-pulse'
           )}
         />
-        {display.label}
+        <span className={listStatusTextClass(display)}>{display.label}</span>
       </span>
     </div>
   );

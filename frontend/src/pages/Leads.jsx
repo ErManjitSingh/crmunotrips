@@ -43,6 +43,7 @@ function filtersFromLocation(location, config) {
     ...emptyFilters,
     status: config.status || params.get('status') || '',
     filter: config.listFilter || params.get('filter') || '',
+    listStatus: params.get('listStatus') || '',
     dateFrom,
     dateTo,
     source: params.get('source') || '',

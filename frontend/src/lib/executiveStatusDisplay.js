@@ -216,7 +216,7 @@ export function getLeadListStatusDisplay(lead) {
     warm: 'Warm',
     hot: 'Hot',
     lost: 'Lost lead',
-    new: 'New',
+    new: 'No status',
     converted: 'Booking',
   };
 
@@ -229,5 +229,37 @@ export function getLeadListStatusDisplay(lead) {
     title: `${labels[bucket]} · ${exact.label}`,
     className: LIST_STATUS_STYLES[bucket] || LIST_STATUS_STYLES.cold,
     dotClass: LIST_STATUS_DOT[bucket] || LIST_STATUS_DOT.cold,
+    animateLabel: bucket === 'hot',
   };
 }
+
+export function listStatusTextClass(display) {
+  return display?.animateLabel ? 'inline-block origin-center animate-hot-text' : undefined;
+}
+
+export const LIST_STATUS_FILTERS = [
+  {
+    value: 'cold',
+    label: 'Cold',
+    activeClass: 'bg-slate-700 text-white shadow-sm shadow-slate-500/30 ring-slate-800/20',
+    idleClass: 'bg-slate-100 text-slate-700 ring-slate-200 hover:bg-slate-200/80',
+  },
+  {
+    value: 'warm',
+    label: 'Warm',
+    activeClass: 'bg-amber-500 text-white shadow-sm shadow-amber-500/30 ring-amber-600/20',
+    idleClass: 'bg-amber-50 text-amber-800 ring-amber-200 hover:bg-amber-100',
+  },
+  {
+    value: 'hot',
+    label: 'Hot',
+    activeClass: 'bg-rose-600 text-white shadow-sm shadow-rose-500/30 ring-rose-700/20',
+    idleClass: 'bg-rose-50 text-rose-700 ring-rose-200 hover:bg-rose-100',
+  },
+  {
+    value: 'lost',
+    label: 'Lost lead',
+    activeClass: 'bg-red-600 text-white shadow-sm shadow-red-500/30 ring-red-700/20',
+    idleClass: 'bg-red-50 text-red-700 ring-red-200 hover:bg-red-100',
+  },
+];

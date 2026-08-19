@@ -2,6 +2,7 @@ import { cn } from '../../lib/utils';
 import {
   getExecutiveSetStatusDisplay,
   getLeadListStatusDisplay,
+  listStatusTextClass,
 } from '../../lib/executiveStatusDisplay';
 
 const config = {
@@ -94,7 +95,7 @@ export default function LeadStatusBadge({
         title={display.title}
       >
         <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', c.dot, showPulse && 'animate-pulse')} />
-        {display.label}
+        <span className={listMode ? listStatusTextClass(display) : undefined}>{display.label}</span>
       </span>
       {display.detail ? (
         <span
