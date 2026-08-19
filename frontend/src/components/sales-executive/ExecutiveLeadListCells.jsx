@@ -12,7 +12,7 @@ import { cn } from '../../lib/utils';
 import { beginLeadCall } from '../../lib/callSession';
 import Avatar from '../ui/Avatar';
 import { formatBudget } from '../sales-manager/managerUtils';
-import { CustomerCell } from '../sales-manager/LeadListBadges';
+import { CustomerCell, LeadListStatusIcon } from '../sales-manager/LeadListBadges';
 import { getLeadListStatusDisplay, listStatusTextClass } from '../../lib/executiveStatusDisplay';
 
 function formatCreatedAt(date) {
@@ -53,7 +53,6 @@ function splitDestination(name = '') {
 }
 
 export function ExecLeadIdCell({ lead }) {
-  const display = getLeadListStatusDisplay(lead);
   const created = formatCreatedAt(lead?.createdAt || lead?.assignedAt);
 
   return (
@@ -61,15 +60,7 @@ export function ExecLeadIdCell({ lead }) {
       <p className="text-sm font-bold text-[#5D5FEF] tracking-tight whitespace-nowrap">
         {lead?.leadId || '—'}
       </p>
-      <span
-        className={cn(
-          'inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold max-w-[140px] truncate ring-1 ring-inset',
-          display.className
-        )}
-        title={display.title}
-      >
-        <span className={listStatusTextClass(display)}>{display.label}</span>
-      </span>
+      <LeadListStatusIcon lead={lead} />
       {created && (
         <p className="text-[11px] text-content-muted leading-snug whitespace-nowrap">{created}</p>
       )}

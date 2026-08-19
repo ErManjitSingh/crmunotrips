@@ -29,6 +29,7 @@ import {
 import { toast } from '../../context/ToastContext';
 import { cn } from '../../lib/utils';
 import RepeatedLeadBadge from '../leads/RepeatedLeadBadge';
+import { LeadListStatusIcon } from '../sales-manager/LeadListBadges';
 
 function formatTravelRange(lead) {
   const start = lead?.travelDate || lead?.travelStartDate;
@@ -251,6 +252,9 @@ export default function LeadDetailHeader({
                   <span className="font-semibold text-violet-600">{formatLeadId(lead._id || lead.leadId)}</span>
                   {' · '}Lead 360 · {lead.destination || '—'}
                 </p>
+                <div className="mt-1.5">
+                  <LeadListStatusIcon lead={lead} />
+                </div>
 
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {lead.phone ? (

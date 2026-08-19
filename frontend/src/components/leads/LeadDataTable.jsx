@@ -106,7 +106,7 @@ export default function LeadDataTable({
       {
         accessorKey: 'id',
         header: 'Lead ID',
-        cell: ({ row }) => <LeadIdPill id={formatLeadId(row.original._id)} />,
+        cell: ({ row }) => <LeadIdPill id={formatLeadId(row.original._id)} lead={row.original} />,
       },
       {
         accessorKey: 'name',

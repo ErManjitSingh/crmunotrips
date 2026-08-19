@@ -156,7 +156,7 @@ export default function TeamLeadsPage() {
     base.push(
       columnHelper.accessor('leadId', {
         header: 'Lead ID',
-        cell: (i) => <LeadIdPill id={i.getValue()} />,
+        cell: ({ row }) => <LeadIdPill id={row.original.leadId} lead={row.original} />,
       }),
       columnHelper.accessor('name', {
         header: 'Customer',

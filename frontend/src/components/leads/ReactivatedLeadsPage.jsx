@@ -266,7 +266,7 @@ export default function ReactivatedLeadsPage() {
                     key={lead._id}
                     className={leadListRowClass(i)}
                   >
-                    <td className={compactTd}><LeadIdPill id={lead.leadId} /></td>
+                    <td className={compactTd}><LeadIdPill id={lead.leadId} lead={lead} /></td>
                     <td className={compactTd}>
                       <CustomerCell name={lead.name} lead={lead} />
                     </td>

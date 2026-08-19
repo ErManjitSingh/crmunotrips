@@ -239,7 +239,7 @@ export default function LeadAssignmentPage() {
                             {selected.includes(lead._id) ? <CheckSquare className="w-3.5 h-3.5 text-amber-600" /> : <Square className="w-3.5 h-3.5" />}
                           </button>
                         </td>
-                        <td className={LEAD_LIST_TD}><LeadIdPill id={lead.leadId} /></td>
+                        <td className={LEAD_LIST_TD}><LeadIdPill id={lead.leadId} lead={lead} /></td>
                         <td className={LEAD_LIST_TD}><div className="flex items-center gap-1 min-w-0 flex-wrap"><CustomerCell name={lead.name} lead={lead} /><PriorityBadge lead={lead} /></div></td>
                         <td className={LEAD_LIST_TD}><DestinationChip name={lead.destination} /></td>
                         <td className={LEAD_LIST_TD}><MealPlanBadge mealPlan={lead.mealPlan} mealPreference={lead.mealPreference} /></td>
