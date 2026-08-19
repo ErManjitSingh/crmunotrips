@@ -84,7 +84,7 @@ export default function RecentLeadsTable({
                 </td>
               )}
               <td className={LEAD_LIST_TD}>
-                <LeadStatusBadge status={lead.status} pulse={lead.status === 'new'} size="sm" />
+                <LeadStatusBadge status={lead.status} lead={lead} pulse={lead.status === 'new'} size="sm" listMode />
               </td>
               <td className={LEAD_LIST_TD}>
                 <SourceBadge

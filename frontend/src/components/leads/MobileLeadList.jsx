@@ -36,24 +36,12 @@ import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
 import TrackedCallButton from './TrackedCallButton';
 import LeadCallStats from './LeadCallStats';
 import { LeadTimingLines, NextFollowUpLine } from '../sales-manager/LeadListBadges';
-import { getExecutiveSetStatusDisplay } from '../../lib/executiveStatusDisplay';
+import { getLeadListStatusDisplay } from '../../lib/executiveStatusDisplay';
 import { TooltipProvider } from '../ui/tooltip';
 import PeriodPresetChips from '../ui/PeriodPresetChips';
 import { applyPeriodPreset } from '../../lib/periodFilters';
 import API from '../../api/axios';
-import { formatLostReasonDisplay } from '../../constants/salesSop';
 import { cn } from '../../lib/utils';
-const STATUS_STYLES = {
-  new: 'bg-violet-50 text-violet-600',
-  contacted: 'bg-emerald-50 text-emerald-600',
-  working_progress: 'bg-cyan-50 text-cyan-600',
-  follow_up: 'bg-blue-50 text-blue-600',
-  quotation_sent: 'bg-amber-50 text-amber-600',
-  negotiation: 'bg-orange-50 text-orange-600',
-  converted: 'bg-emerald-100 text-emerald-700',
-  lost: 'bg-red-100 text-red-700',
-  booked_from_another_company: 'bg-red-100 text-red-700',
-};
 
 const AVATAR_TONES = [
   'from-violet-500 to-indigo-600',
@@ -308,15 +296,8 @@ export default function MobileLeadList({
             {leads.map((lead, index) => {
               const phoneDigits = String(lead.phone || '').replace(/\D/g, '');
               const whatsapp = phoneDigits.length === 10 ? `91${phoneDigits}` : phoneDigits;
-              const statusDisplay = getExecutiveSetStatusDisplay(lead);
-              const statusStyleKey =
-                lead.status === 'new' && statusDisplay.label !== 'New' ? 'follow_up' : lead.status;
-              const lostReason =
-                lead.status === 'lost' || lead.status === 'booked_from_another_company'
-                  ? formatLostReasonDisplay(lead.statusReason)
-                  : '';
-              const isLost =
-                lead.status === 'lost' || lead.status === 'booked_from_another_company';
+              const statusDisplay = getLeadListStatusDisplay(lead);
+              const isLost = statusDisplay.bucket === 'lost';
               const cardTone =
                 lead.status === 'converted'
                   ? 'border-emerald-200 bg-emerald-50'
@@ -341,17 +322,12 @@ export default function MobileLeadList({
                             {lead.name}
                           </h3>
                           <span
-                            className={`max-w-[120px] truncate rounded-full px-2 py-0.5 text-[7px] font-semibold ${STATUS_STYLES[statusStyleKey] || 'bg-slate-100 text-slate-600'}`}
+                            className={`max-w-[120px] truncate rounded-full px-2 py-0.5 text-[7px] font-semibold ring-1 ring-inset ${statusDisplay.className}`}
                             title={statusDisplay.title}
                           >
                             {statusDisplay.label}
                           </span>
                         </div>
-                        {lostReason ? (
-                          <p className="mt-0.5 truncate text-[8px] font-medium text-red-600" title={lostReason}>
-                            {lostReason}
-                          </p>
-                        ) : null}
                         <NextFollowUpLine lead={lead} className="!text-[9px] mt-0.5" />
                         <p className="mt-0.5 text-[8px] font-medium text-violet-600">{lead.leadId || formatLeadId(lead._id)}</p>
                         <LeadTimingLines lead={lead} className="!text-[9px] mt-1" />

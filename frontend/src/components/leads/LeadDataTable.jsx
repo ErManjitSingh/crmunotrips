@@ -167,6 +167,7 @@ export default function LeadDataTable({
             lead={row.original}
             pulse={row.original.status === 'new'}
             size="sm"
+            listMode
           />
         ),
       },

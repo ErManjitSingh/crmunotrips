@@ -11,9 +11,9 @@ import {
 import { cn } from '../../lib/utils';
 import { beginLeadCall } from '../../lib/callSession';
 import Avatar from '../ui/Avatar';
-import { STATUS_STYLES, formatBudget } from '../sales-manager/managerUtils';
+import { formatBudget } from '../sales-manager/managerUtils';
 import { CustomerCell } from '../sales-manager/LeadListBadges';
-import { getExecutiveSetStatusDisplay } from '../../lib/executiveStatusDisplay';
+import { getLeadListStatusDisplay } from '../../lib/executiveStatusDisplay';
 
 function formatCreatedAt(date) {
   if (!date) return null;
@@ -52,22 +52,8 @@ function splitDestination(name = '') {
   return { city: parts[0] || '', region: parts.slice(1).join(', ') };
 }
 
-const STATUS_DOT = {
-  new: 'bg-sky-500',
-  contacted: 'bg-violet-500',
-  working_progress: 'bg-indigo-500',
-  follow_up: 'bg-amber-500',
-  quotation_sent: 'bg-indigo-500',
-  negotiation: 'bg-orange-500',
-  converted: 'bg-emerald-500',
-  lost: 'bg-rose-500',
-  booked_from_another_company: 'bg-rose-500',
-  reactivated: 'bg-teal-500',
-};
-
 export function ExecLeadIdCell({ lead }) {
-  const status = lead?.status || 'new';
-  const display = getExecutiveSetStatusDisplay(lead);
+  const display = getLeadListStatusDisplay(lead);
   const created = formatCreatedAt(lead?.createdAt || lead?.assignedAt);
 
   return (
@@ -77,10 +63,8 @@ export function ExecLeadIdCell({ lead }) {
       </p>
       <span
         className={cn(
-          'inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold max-w-[140px] truncate',
-          status === 'new'
-            ? 'bg-[#5D5FEF]/12 text-[#5D5FEF]'
-            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+          'inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold max-w-[140px] truncate ring-1 ring-inset',
+          display.className
         )}
         title={display.title}
       >
@@ -265,37 +249,26 @@ export function ExecMealPlanCell({ mealPlan, mealPreference }) {
 }
 
 export function ExecStatusCell({ lead }) {
-  const status = lead?.status || 'new';
-  const display = getExecutiveSetStatusDisplay(lead);
-  const styleKey =
-    lead?.reactivation?.isReactivated &&
-    ['follow_up', 'working_progress', 'contacted', 'negotiation', 'quotation_sent'].includes(status)
-      ? 'active'
-      : status;
+  const display = getLeadListStatusDisplay(lead);
 
   return (
     <div className="flex min-w-0 flex-col items-start gap-0.5">
       <span
         className={cn(
           'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ring-1 ring-inset whitespace-nowrap max-w-[200px] truncate',
-          STATUS_STYLES[styleKey] || STATUS_STYLES.new
+          display.className
         )}
         title={display.title}
       >
         <span
           className={cn(
             'w-1.5 h-1.5 rounded-full shrink-0',
-            status === 'new' && 'animate-pulse',
-            STATUS_DOT[styleKey === 'active' ? 'reactivated' : status] || 'bg-sky-500'
+            display.dotClass,
+            display.bucket === 'new' && 'animate-pulse'
           )}
         />
         {display.label}
       </span>
-      {display.detail ? (
-        <span className="max-w-[200px] truncate text-[10px] font-medium text-slate-500" title={display.detail}>
-          {display.detail}
-        </span>
-      ) : null}
     </div>
   );
 }

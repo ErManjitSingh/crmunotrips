@@ -1,5 +1,8 @@
 import { cn } from '../../lib/utils';
-import { getExecutiveSetStatusDisplay } from '../../lib/executiveStatusDisplay';
+import {
+  getExecutiveSetStatusDisplay,
+  getLeadListStatusDisplay,
+} from '../../lib/executiveStatusDisplay';
 
 const config = {
   new: {
@@ -56,14 +59,28 @@ const config = {
   },
 };
 
-export default function LeadStatusBadge({ status, pulse = false, size = 'md', reason, lead }) {
+export default function LeadStatusBadge({
+  status,
+  pulse = false,
+  size = 'md',
+  reason,
+  lead,
+  listMode = false,
+}) {
   const resolved = lead || { status, statusReason: reason };
-  const display = getExecutiveSetStatusDisplay(resolved);
+  const display = listMode
+    ? getLeadListStatusDisplay(resolved)
+    : getExecutiveSetStatusDisplay(resolved);
   // If executive set an option but pipeline still says new, style as follow-up
-  const styleKey =
-    status === 'new' && display.label && display.label !== 'New' ? 'follow_up' : status || 'new';
-  const c = config[styleKey] || config.new;
-  const showPulse = pulse && styleKey === 'new';
+  const styleKey = listMode
+    ? display.bucket || 'new'
+    : status === 'new' && display.label && display.label !== 'New'
+      ? 'follow_up'
+      : status || 'new';
+  const c = listMode
+    ? { class: display.className, dot: display.dotClass }
+    : config[styleKey] || config.new;
+  const showPulse = pulse && (listMode ? display.bucket === 'new' : styleKey === 'new');
 
   return (
     <div className="flex min-w-0 flex-col items-start gap-0.5">

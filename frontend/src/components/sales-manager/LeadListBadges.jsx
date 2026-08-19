@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { getLeadSourceChannel, getLeadSourceShortLabel } from '../../lib/leadSourceLabels';
 import Avatar from '../ui/Avatar';
-import { STATUS_STYLES, formatBudget } from './managerUtils';
+import { formatBudget } from './managerUtils';
 import RepeatedLeadBadge from '../leads/RepeatedLeadBadge';
 import LeadCallStats from '../leads/LeadCallStats';
-import { getExecutiveSetStatusDisplay } from '../../lib/executiveStatusDisplay';
+import { getLeadListStatusDisplay } from '../../lib/executiveStatusDisplay';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from '../../context/ToastContext';
 import { openCrmWhatsApp } from '../../lib/openCrmWhatsApp';
@@ -226,42 +226,25 @@ export function ExecutiveBadge({ name, unassigned }) {
 }
 
 export function ManagerStatusBadge({ status, lead }) {
-  const display = getExecutiveSetStatusDisplay(lead || { status });
-  const styleStatus =
-    status === 'new' && display.label && display.label !== 'New' ? 'follow_up' : status || 'new';
-  const isActiveReactivated =
-    lead?.reactivation?.isReactivated &&
-    ['follow_up', 'working_progress', 'contacted', 'negotiation', 'quotation_sent'].includes(status);
-  const label = isActiveReactivated ? display.label || 'Active' : display.label;
-  const styleKey = isActiveReactivated ? 'active' : styleStatus;
+  const display = getLeadListStatusDisplay(lead || { status });
   return (
     <div className="flex min-w-0 flex-col items-start gap-0.5">
       <span
         className={cn(
           'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium tracking-wide ring-1 ring-inset whitespace-nowrap max-w-[160px] truncate',
-          STATUS_STYLES[styleKey] || STATUS_STYLES.new
+          display.className
         )}
         title={display.title}
       >
         <span
-          className={cn('w-1.5 h-1.5 rounded-full shrink-0', styleStatus === 'new' && 'animate-pulse', {
-            'bg-sky-500': styleStatus === 'new',
-            'bg-violet-500': styleStatus === 'contacted',
-            'bg-amber-500': styleStatus === 'follow_up',
-            'bg-indigo-500': styleStatus === 'quotation_sent' || styleStatus === 'working_progress',
-            'bg-orange-500': styleStatus === 'negotiation',
-            'bg-emerald-500': styleStatus === 'converted',
-            'bg-rose-500': styleStatus === 'lost' || styleStatus === 'booked_from_another_company',
-            'bg-teal-500': isActiveReactivated,
-          }[isActiveReactivated ? 'active' : styleStatus] || 'bg-sky-500')}
+          className={cn(
+            'w-1.5 h-1.5 rounded-full shrink-0',
+            display.dotClass,
+            display.bucket === 'new' && 'animate-pulse'
+          )}
         />
-        {label}
+        {display.label}
       </span>
-      {display.detail ? (
-        <span className="max-w-[140px] truncate text-[10px] font-medium text-slate-500" title={display.detail}>
-          {display.detail}
-        </span>
-      ) : null}
     </div>
   );
 }

@@ -31,7 +31,7 @@ import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
 import { DESTINATIONS, INDIAN_STATES } from '../leads/constants';
 import { LEAD_FOLLOW_UP_OUTCOMES } from '../../constants/leadFollowUpOutcomes';
 import { SourceBadge } from '../sales-manager/LeadListBadges';
-import { getExecutiveSetStatusDisplay } from '../../lib/executiveStatusDisplay';
+import { getLeadListStatusDisplay } from '../../lib/executiveStatusDisplay';
 import { cn } from '../../lib/utils';
 import { toast } from '../../context/ToastContext';
 import PeriodPresetChips from '../ui/PeriodPresetChips';
@@ -100,18 +100,7 @@ const TABS = [
   { key: 'lost', label: 'Archived', countKey: 'lost', path: '/sales-executive/leads/lost' },
 ];
 
-const STATUS_PILL = {
-  new: 'bg-violet-100 text-violet-700',
-  contacted: 'bg-emerald-100 text-emerald-700',
-  working_progress: 'bg-cyan-100 text-cyan-700',
-  follow_up: 'bg-sky-100 text-sky-700',
-  quotation_sent: 'bg-amber-100 text-amber-700',
-  negotiation: 'bg-orange-100 text-orange-700',
-  converted: 'bg-emerald-100 text-emerald-700',
-  lost: 'bg-rose-100 text-rose-700',
-  reactivated: 'bg-teal-100 text-teal-700',
-  booked_from_another_company: 'bg-rose-100 text-rose-700',
-};
+];
 
 const AVATAR_TONES = [
   'bg-rose-500',
@@ -516,8 +505,7 @@ export default function MobileExecutiveLeads({
             </div>
           ) : (
             visibleLeads.map((lead) => {
-              const status = lead.status || 'new';
-              const statusDisplay = getExecutiveSetStatusDisplay(lead);
+              const statusDisplay = getLeadListStatusDisplay(lead);
               const hot = isHot(lead);
               const due = isFollowUpDue(lead);
               const open = menuLeadId === lead._id;
@@ -540,7 +528,10 @@ export default function MobileExecutiveLeads({
                           <div className="flex flex-wrap items-center gap-1.5">
                             <p className="truncate text-[15px] font-bold text-slate-900">{lead.name}</p>
                             <span
-                              className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold max-w-[160px] truncate', STATUS_PILL[status] || STATUS_PILL.new)}
+                              className={cn(
+                                'rounded-full px-2 py-0.5 text-[10px] font-bold max-w-[160px] truncate ring-1 ring-inset',
+                                statusDisplay.className
+                              )}
                               title={statusDisplay.title}
                             >
                               {statusDisplay.label}
