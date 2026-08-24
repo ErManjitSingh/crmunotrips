@@ -2,9 +2,9 @@ import DashboardPanel from './DashboardPanel';
 
 const STAGES = [
   { key: 'leads', label: 'Leads', color: '#7C3AED' },
-  { key: 'connected', label: 'Connected', color: '#10B981' },
-  { key: 'qualified', label: 'Qualified', color: '#F97316' },
-  { key: 'quotations', label: 'Quotations', color: '#EC4899' },
+  { key: 'warm', label: 'Warm', color: '#F59E0B' },
+  { key: 'hot', label: 'Hot', color: '#E11D48' },
+  { key: 'cold', label: 'Cold', color: '#64748B' },
   { key: 'bookings', label: 'Bookings', color: '#3B82F6' },
 ];
 
@@ -31,12 +31,12 @@ export default function AdminSalesFunnel({ data = [] }) {
     return Number(fromData ?? byName ?? 0);
   });
 
-  const [leads, connected, qualified, quotations, bookings] = counts;
+  const [leads, warm, hot, cold, bookings] = counts;
   const conversions = [
     { label: 'Overall Conversion', value: pct(bookings, leads) },
-    { label: 'Lead → Connected', value: pct(connected, leads) },
-    { label: 'Connected → Qualified', value: pct(qualified, connected) },
-    { label: 'Qualified → Booking', value: pct(bookings, qualified) },
+    { label: 'Lead → Warm', value: pct(warm, leads) },
+    { label: 'Lead → Hot', value: pct(hot, leads) },
+    { label: 'Lead → Cold', value: pct(cold, leads) },
   ];
 
   // Trapezoid geometry in viewBox 0..100 x 0..100
@@ -59,7 +59,7 @@ export default function AdminSalesFunnel({ data = [] }) {
   });
 
   return (
-    <DashboardPanel title="Sales Funnel (This Month)" className="h-full">
+    <DashboardPanel title="Sales Funnel" className="h-full">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
         <div className="relative mx-auto w-full max-w-[280px] shrink-0 sm:mx-0">
           <svg viewBox="0 0 100 100" className="h-auto w-full drop-shadow-sm" aria-hidden>

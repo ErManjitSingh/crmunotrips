@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Users,
-  Phone,
-  Loader,
-  FileText,
+  Sun,
+  Flame,
+  Snowflake,
   Briefcase,
   IndianRupee,
   Percent,
@@ -42,45 +42,43 @@ const KPI_ITEMS = [
     flatCls: 'text-violet-100/80',
   },
   {
-    key: 'connected',
-    label: 'Connected',
-    icon: Phone,
-    path: '/leads?status=contacted',
-    card: 'bg-gradient-to-br from-emerald-500 to-teal-600 border-emerald-400/30 shadow-emerald-500/20',
+    key: 'warm',
+    label: 'Warm',
+    icon: Sun,
+    path: '/leads?listStatus=warm',
+    card: 'bg-gradient-to-br from-amber-500 to-orange-600 border-amber-400/30 shadow-amber-500/20',
     iconWrap: 'bg-white/20 text-white',
-    labelCls: 'text-emerald-50',
+    labelCls: 'text-amber-50',
     valueCls: 'text-white',
     upCls: 'text-emerald-100',
     downCls: 'text-rose-100',
-    flatCls: 'text-emerald-50/85',
+    flatCls: 'text-amber-50/85',
   },
   {
-    key: 'workingProgress',
-    label: 'Work in Progress',
-    short: 'WIP',
-    icon: Loader,
-    path: '/leads?status=working_progress',
-    card: 'bg-gradient-to-br from-orange-500 to-amber-600 border-orange-400/30 shadow-orange-500/20',
+    key: 'hot',
+    label: 'Hot',
+    icon: Flame,
+    path: '/leads?listStatus=hot',
+    card: 'bg-gradient-to-br from-rose-500 to-red-600 border-rose-400/30 shadow-rose-500/20',
     iconWrap: 'bg-white/20 text-white',
-    labelCls: 'text-orange-50',
+    labelCls: 'text-rose-50',
     valueCls: 'text-white',
     upCls: 'text-emerald-100',
     downCls: 'text-rose-100',
-    flatCls: 'text-orange-50/85',
+    flatCls: 'text-rose-50/85',
   },
   {
-    key: 'quotations',
-    label: 'Quotations',
-    short: 'Quotes',
-    icon: FileText,
-    path: '/quotations',
-    card: 'bg-gradient-to-br from-fuchsia-500 to-pink-600 border-fuchsia-400/30 shadow-fuchsia-500/20',
+    key: 'cold',
+    label: 'Cold',
+    icon: Snowflake,
+    path: '/leads?listStatus=cold',
+    card: 'bg-gradient-to-br from-slate-500 to-slate-700 border-slate-400/30 shadow-slate-500/20',
     iconWrap: 'bg-white/20 text-white',
-    labelCls: 'text-fuchsia-50',
+    labelCls: 'text-slate-50',
     valueCls: 'text-white',
     upCls: 'text-emerald-100',
     downCls: 'text-rose-100',
-    flatCls: 'text-fuchsia-50/85',
+    flatCls: 'text-slate-50/85',
   },
   {
     key: 'bookings',
@@ -88,6 +86,8 @@ const KPI_ITEMS = [
     icon: Briefcase,
     path: '/leads/converted',
     fallbackKey: 'conversions',
+    /** All-time — do not append period query params */
+    ignorePeriod: true,
     card: 'bg-gradient-to-br from-sky-500 to-blue-600 border-sky-400/30 shadow-sky-500/20',
     iconWrap: 'bg-white/20 text-white',
     labelCls: 'text-sky-50',
@@ -95,6 +95,7 @@ const KPI_ITEMS = [
     upCls: 'text-emerald-100',
     downCls: 'text-rose-100',
     flatCls: 'text-sky-50/85',
+    changeLabel: 'all time',
   },
   {
     key: 'revenue',
@@ -102,6 +103,7 @@ const KPI_ITEMS = [
     icon: IndianRupee,
     path: '/payments',
     currency: true,
+    ignorePeriod: true,
     card: 'bg-gradient-to-br from-teal-500 to-cyan-700 border-teal-400/30 shadow-teal-500/20',
     iconWrap: 'bg-white/20 text-white',
     labelCls: 'text-teal-50',
@@ -109,6 +111,7 @@ const KPI_ITEMS = [
     upCls: 'text-emerald-100',
     downCls: 'text-rose-100',
     flatCls: 'text-teal-50/85',
+    changeLabel: 'all time',
   },
   {
     key: 'conversionRate',
@@ -117,13 +120,15 @@ const KPI_ITEMS = [
     icon: Percent,
     path: '/reports',
     suffix: '%',
-    card: 'bg-gradient-to-br from-rose-500 to-red-600 border-rose-400/30 shadow-rose-500/20',
+    ignorePeriod: true,
+    card: 'bg-gradient-to-br from-fuchsia-500 to-pink-600 border-fuchsia-400/30 shadow-fuchsia-500/20',
     iconWrap: 'bg-white/20 text-white',
-    labelCls: 'text-rose-50',
+    labelCls: 'text-fuchsia-50',
     valueCls: 'text-white',
     upCls: 'text-emerald-100',
     downCls: 'text-rose-100',
-    flatCls: 'text-rose-50/85',
+    flatCls: 'text-fuchsia-50/85',
+    changeLabel: 'all time',
   },
 ];
 
@@ -146,6 +151,7 @@ export default function DashboardHero({ stats, filters }) {
         const Icon = cfg.icon;
         const TrendIcon = isUp ? TrendingUp : isDown ? TrendingDown : Minus;
         const changeAbs = Math.abs(Number(meta.change || 0));
+        const href = cfg.ignorePeriod ? cfg.path : withPeriodParams(cfg.path, filters);
 
         return (
           <motion.div
@@ -157,7 +163,7 @@ export default function DashboardHero({ stats, filters }) {
             title={cfg.label}
           >
             <Link
-              to={withPeriodParams(cfg.path, filters)}
+              to={href}
               className={cn(
                 'flex h-full min-h-[88px] cursor-pointer flex-col justify-between gap-2 rounded-2xl border px-2.5 py-2.5 shadow-md transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:min-h-[92px]',
                 cfg.card
@@ -196,7 +202,11 @@ export default function DashboardHero({ stats, filters }) {
                   )}
                 >
                   <TrendIcon className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{changeAbs}% vs yday</span>
+                  <span className="truncate">
+                    {cfg.changeLabel
+                      ? cfg.changeLabel
+                      : `${changeAbs}% vs yday`}
+                  </span>
                 </p>
               </div>
             </Link>

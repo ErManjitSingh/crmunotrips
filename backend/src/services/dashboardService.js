@@ -264,6 +264,43 @@ function mapStatusBucket(statusCounts) {
   };
 }
 
+/** Current Warm / Hot / Cold options — matches lead list statusReason keys */
+const WARM_STATUS_KEYS = [
+  'discussed_package',
+  'requested_callback',
+  'cnp_same_day',
+  'price_negotiation',
+];
+const HOT_STATUS_KEYS = ['ready_to_book'];
+const COLD_STATUS_KEYS = [
+  'booked_elsewhere',
+  'language_barrier',
+  'not_interested',
+  'invalid_number',
+  'budget_issues',
+  'budget_issue',
+];
+
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function statusReasonMatch(keys) {
+  const alts = [...keys].map(escapeRegex).sort((a, b) => b.length - a.length).join('|');
+  return {
+    statusReason: {
+      $regex: `(^|not_connected:)(${alts})($|[\\s:.—–-])`,
+      $options: 'i',
+    },
+  };
+}
+
+async function countLeadsByStatusOption(branchId, keys, extraMatch = {}) {
+  return Lead.countDocuments(
+    activeLeadScope({ ...extraMatch, ...statusReasonMatch(keys) }, branchId)
+  );
+}
+
 /**
  * Mutually exclusive status slices — every lead counted once.
  * Sum of values === total leads in the selected period.
@@ -946,6 +983,31 @@ async function buildAdminDashboard(options = {}) {
   const prevPeriodLabel = sameDayPrev
     ? prevStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
     : `${prevStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – ${prevEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+
+  // Warm / Hot / Cold — current statusReason options (period-scoped for strip; filters apply)
+  const periodCreated = { createdAt: { $gte: periodStart, $lte: periodEnd }, ...sourceFilter };
+  const prevCreated = { createdAt: { $gte: prevStart, $lte: prevEnd }, ...sourceFilter };
+  const [
+    warmCount,
+    hotCount,
+    coldCount,
+    prevWarmCount,
+    prevHotCount,
+    prevColdCount,
+  ] = await Promise.all([
+    countLeadsByStatusOption(branchId, WARM_STATUS_KEYS, isAllTime ? sourceFilter : periodCreated),
+    countLeadsByStatusOption(branchId, HOT_STATUS_KEYS, isAllTime ? sourceFilter : periodCreated),
+    countLeadsByStatusOption(branchId, COLD_STATUS_KEYS, isAllTime ? sourceFilter : periodCreated),
+    countLeadsByStatusOption(branchId, WARM_STATUS_KEYS, prevCreated),
+    countLeadsByStatusOption(branchId, HOT_STATUS_KEYS, prevCreated),
+    countLeadsByStatusOption(branchId, COLD_STATUS_KEYS, prevCreated),
+  ]);
+
+  // Bookings / Revenue / Conv. Rate — always all-time (filters do not affect these three)
+  const allTimeBookings = convertedLeads;
+  const allTimeRevenue = revenue;
+  const allTimeConversionRate = conversionRate;
+
   const reportKpis = {
     totalLeads: withValue(changeMeta(changeTotal, prevTotalLeads), periodTotalLeads),
     // Fresh = leads created today (vs yesterday)
@@ -955,18 +1017,19 @@ async function buildAdminDashboard(options = {}) {
       valueBuckets.followUpPending
     ),
     interested: withValue(changeMeta(changeBuckets.interested, prevBuckets.interested), valueBuckets.interested),
-    connected: withValue(changeMeta(changeBuckets.connected, prevBuckets.connected), valueBuckets.connected),
+    // Legacy keys kept for older clients
+    connected: withValue(changeMeta(warmCount, prevWarmCount), warmCount),
     qualified: withValue(changeMeta(changeBuckets.qualified, prevBuckets.qualified), valueBuckets.qualified),
-    workingProgress: withValue(
-      changeMeta(changeBuckets.workingProgress, prevBuckets.workingProgress),
-      valueBuckets.workingProgress
-    ),
+    workingProgress: withValue(changeMeta(hotCount, prevHotCount), hotCount),
+    warm: withValue(changeMeta(warmCount, prevWarmCount), warmCount),
+    hot: withValue(changeMeta(hotCount, prevHotCount), hotCount),
+    cold: withValue(changeMeta(coldCount, prevColdCount), coldCount),
     quotations: withValue(changeMeta(changeBuckets.quotations, prevBuckets.quotations), valueBuckets.quotations),
-    bookings: withValue(changeMeta(changeBuckets.conversions, prevBuckets.conversions), valueBuckets.conversions),
+    bookings: withValue(changeMeta(allTimeBookings, momBuckets.conversions), allTimeBookings),
     lostLeads: withValue(changeMeta(changeBuckets.lost, prevBuckets.lost), valueBuckets.lost),
-    conversions: withValue(changeMeta(changeBuckets.conversions, prevBuckets.conversions), valueBuckets.conversions),
-    revenue: withValue(changeMeta(changeRevenue, prevRevenue), periodRevenue),
-    conversionRate: withValue(changeMeta(changeConvRate, prevConversionRate), periodConversionRate),
+    conversions: withValue(changeMeta(allTimeBookings, momBuckets.conversions), allTimeBookings),
+    revenue: withValue(changeMeta(allTimeRevenue, momRevenue), allTimeRevenue),
+    conversionRate: withValue(changeMeta(allTimeConversionRate, momConversionRate), allTimeConversionRate),
   };
 
   const topSource = leadsBySourcePeriod[0] || null;
@@ -981,18 +1044,16 @@ async function buildAdminDashboard(options = {}) {
     bestPerformingExecutive: topExecutive
       ? { name: topExecutive.name, conversionRate: topExecutive.conversionRate }
       : { name: '—', conversionRate: 0 },
-    conversionRate: periodConversionRate,
-    revenueGenerated: periodRevenue,
+    conversionRate: allTimeConversionRate,
+    revenueGenerated: allTimeRevenue,
   };
 
-  const funnelCounts = isAllTime ? statusCounts : periodStatusCounts;
-  const funnelBuckets = mapStatusBucket(funnelCounts);
   const salesFunnel = [
     { stage: 'Leads', count: isAllTime ? totalLeads : periodTotalLeads },
-    { stage: 'Connected', count: funnelBuckets.connected },
-    { stage: 'Qualified', count: funnelBuckets.qualified },
-    { stage: 'Quotations', count: funnelBuckets.quotations },
-    { stage: 'Bookings', count: funnelBuckets.conversions },
+    { stage: 'Warm', count: warmCount },
+    { stage: 'Hot', count: hotCount },
+    { stage: 'Cold', count: coldCount },
+    { stage: 'Bookings', count: allTimeBookings },
   ];
 
   const followUpsDueToday = await FollowUp.countDocuments(
@@ -1085,10 +1146,11 @@ async function buildAdminDashboard(options = {}) {
 
   const usePeriodAsPrimary = Boolean(dateFrom || dateTo);
   const primaryTotalLeads = usePeriodAsPrimary ? periodTotalLeads : totalLeads;
-  const primaryConverted = usePeriodAsPrimary ? periodBuckets.conversions : convertedLeads;
+  // Bookings / Revenue / Conv. Rate stay all-time even when a period filter is applied
+  const primaryConverted = convertedLeads;
   const primaryLost = usePeriodAsPrimary ? periodBuckets.lost : lostLeads;
-  const primaryConversionRate = usePeriodAsPrimary ? periodConversionRate : conversionRate;
-  const primaryRevenue = usePeriodAsPrimary ? periodRevenue : revenue;
+  const primaryConversionRate = conversionRate;
+  const primaryRevenue = revenue;
 
   return {
     totalLeads: primaryTotalLeads,
@@ -1101,7 +1163,10 @@ async function buildAdminDashboard(options = {}) {
     lostLeads: primaryLost,
     pendingFollowups,
     overdueFollowups,
-    workingProgress: usePeriodAsPrimary ? periodBuckets.workingProgress : (statusCounts.working_progress || 0),
+    workingProgress: usePeriodAsPrimary ? hotCount : hotCount,
+    warm: warmCount,
+    hot: hotCount,
+    cold: coldCount,
     conversionRate: primaryConversionRate,
     totalBudget,
     revenue: primaryRevenue,

@@ -26,7 +26,9 @@ import {
   Upload,
   UserRoundCheck,
   Users,
-  Loader,
+  Sun,
+  Flame,
+  Snowflake,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useSidebar } from "../../context/SidebarContext";
@@ -45,60 +47,63 @@ const KPI_CONFIG = [
     path: "/leads",
   },
   {
-    key: "workingProgress",
-    reportKey: "workingProgress",
-    label: "Work in Progress",
-    icon: Loader,
-    tone: "from-orange-400 to-amber-600",
-    color: "#f97316",
-    path: "/leads?status=working_progress",
+    key: "warm",
+    reportKey: "warm",
+    label: "Warm",
+    icon: Sun,
+    tone: "from-amber-400 to-orange-600",
+    color: "#f59e0b",
+    path: "/leads?listStatus=warm",
   },
   {
-    key: "totalBudget",
-    label: "Total Value",
-    icon: IndianRupee,
-    tone: "from-emerald-400 to-teal-600",
-    color: "#10b981",
-    currency: true,
-    path: "/reports",
+    key: "hot",
+    reportKey: "hot",
+    label: "Hot",
+    icon: Flame,
+    tone: "from-rose-400 to-red-600",
+    color: "#e11d48",
+    path: "/leads?listStatus=hot",
+  },
+  {
+    key: "cold",
+    reportKey: "cold",
+    label: "Cold",
+    icon: Snowflake,
+    tone: "from-slate-400 to-slate-700",
+    color: "#64748b",
+    path: "/leads?listStatus=cold",
   },
   {
     key: "convertedLeads",
     reportKey: "conversions",
-    label: "Converted Leads",
+    label: "Bookings",
     icon: UserRoundCheck,
-    tone: "from-orange-400 to-orange-600",
-    color: "#f97316",
+    tone: "from-sky-400 to-blue-600",
+    color: "#0ea5e9",
     path: "/leads/converted",
-  },
-  {
-    key: "conversionRate",
-    reportKey: "conversionRate",
-    label: "Conversion Rate",
-    icon: TrendingUp,
-    tone: "from-violet-400 to-purple-600",
-    color: "#8b5cf6",
-    suffix: "%",
-    path: "/reports",
-  },
-  {
-    key: "pendingFollowups",
-    reportKey: "followUpPending",
-    label: "Follow-ups",
-    icon: Bell,
-    tone: "from-blue-400 to-blue-600",
-    color: "#3b82f6",
-    path: "/followups",
+    ignorePeriod: true,
   },
   {
     key: "revenue",
     reportKey: "revenue",
     label: "Revenue",
     icon: IndianRupee,
-    tone: "from-pink-500 to-rose-600",
-    color: "#ec4899",
+    tone: "from-teal-400 to-cyan-700",
+    color: "#14b8a6",
     currency: true,
     path: "/payments",
+    ignorePeriod: true,
+  },
+  {
+    key: "conversionRate",
+    reportKey: "conversionRate",
+    label: "Conversion Rate",
+    icon: TrendingUp,
+    tone: "from-fuchsia-400 to-pink-600",
+    color: "#d946ef",
+    suffix: "%",
+    path: "/reports",
+    ignorePeriod: true,
   },
 ];
 
@@ -459,9 +464,15 @@ export default function MobileAdminDashboard({
                   ? "followUps"
                   : card.key;
             const Wrapper = card.path ? Link : "div";
+            const rawValue =
+              meta.value != null
+                ? meta.value
+                : stats?.[card.key] ?? stats?.[card.reportKey] ?? 0;
             const wrapperProps = card.path
               ? {
-                  to: withPeriodParams(card.path, filters),
+                  to: card.ignorePeriod
+                    ? card.path
+                    : withPeriodParams(card.path, filters),
                   className:
                     "min-w-0 cursor-pointer rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm transition active:scale-[0.98]",
                 }
@@ -483,15 +494,25 @@ export default function MobileAdminDashboard({
                     </p>
                     <p className="truncate text-[15px] font-bold leading-tight text-slate-900">
                       {card.currency
-                        ? formatCurrency(stats?.[card.key])
-                        : `${stats?.[card.key] || 0}${card.suffix || ""}`}
+                        ? formatCurrency(rawValue)
+                        : `${Number(rawValue || 0).toLocaleString("en-IN")}${card.suffix || ""}`}
                     </p>
                     <p
-                      className={`text-[8px] font-semibold ${change < 0 ? "text-rose-500" : "text-emerald-600"}`}
+                      className={`text-[8px] font-semibold ${
+                        card.ignorePeriod
+                          ? "text-slate-400"
+                          : change < 0
+                            ? "text-rose-500"
+                            : "text-emerald-600"
+                      }`}
                     >
-                      {change < 0 ? "↓" : "↑"} {Math.abs(change).toFixed(1)}%
+                      {card.ignorePeriod
+                        ? "all time"
+                        : `${change < 0 ? "↓" : "↑"} ${Math.abs(change).toFixed(1)}%`}
                     </p>
-                    <p className="text-[7px] text-slate-400">vs last period</p>
+                    <p className="text-[7px] text-slate-400">
+                      {card.ignorePeriod ? "filters ignored" : "vs last period"}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-1">
