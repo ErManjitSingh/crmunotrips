@@ -410,41 +410,85 @@ export default function UnoCabSelector({
   );
 }
 
-export function buildSelectedCabSnapshot(cab, { vehicleCount = 1, travelers } = {}) {
-  if (!cab) return [];
-  const count = Math.max(1, Number(vehicleCount) || 1);
-  const unit = Number(cab.absoluteFare ?? cab.totalAmount ?? cab.cost ?? 0) || 0;
-  const upgrade = Number(cab.upgradePrice ?? cab.priceDelta ?? 0) || 0;
-  const total = Math.round(unit * count * 100) / 100;
-  return [{
-    _id: cab.id || cab.slug || cab.packageCabId,
-    id: cab.id || cab.packageCabId,
-    slug: cab.slug,
-    packageCabId: cab.packageCabId || (cab.isPackageCab ? cab.id : null),
-    cabTypeId: cab.cabTypeId || null,
-    name: cab.name,
-    vehicleType: cab.vehicleType || cab.cabCategory || cab.name,
-    cabCategory: cab.cabCategory || cab.vehicleType || '',
-    pickupLocation: cab.pickupCity || cab.pickupLocation || '',
-    dropLocation: cab.dropCity || cab.dropLocation || '',
-    pickupCity: cab.pickupCity || '',
-    dropCity: cab.dropCity || '',
-    dropState: cab.dropState || '',
-    tripType: cab.tripType || 'full_day',
-    travelDate: cab.travelDate || '',
-    seatingCapacity: cab.seatingCapacity,
-    vehicleCount: count,
-    travelers: travelers != null ? Number(travelers) : undefined,
-    isAc: cab.isAc,
-    isPackageCab: Boolean(cab.isPackageCab),
-    isDefault: Boolean(cab.isDefault),
-    absoluteFare: unit,
-    unitCost: unit,
-    cost: total,
-    totalAmount: total,
-    priceDelta: upgrade,
-    upgradePrice: upgrade,
-    fare: cab.fare || {},
-    externalSource: cab.externalSource || (cab.isPackageCab ? 'uno_package' : 'uno_cabs'),
-  }];
+export function buildSelectedCabSnapshot(cab, { vehicleCount = 1, travelers, extraCabs = [] } = {}) {
+  if (!cab && !(Array.isArray(extraCabs) && extraCabs.length)) return [];
+
+  const rows = [];
+  if (cab) {
+    const count = Math.max(1, Number(vehicleCount) || 1);
+    const unit = Number(cab.absoluteFare ?? cab.totalAmount ?? cab.cost ?? 0) || 0;
+    const upgrade = Number(cab.upgradePrice ?? cab.priceDelta ?? 0) || 0;
+    const total = Math.round(unit * count * 100) / 100;
+    rows.push({
+      _id: cab.id || cab.slug || cab.packageCabId,
+      id: cab.id || cab.packageCabId,
+      slug: cab.slug,
+      packageCabId: cab.packageCabId || (cab.isPackageCab ? cab.id : null),
+      cabTypeId: cab.cabTypeId || null,
+      name: cab.name,
+      vehicleType: cab.vehicleType || cab.cabCategory || cab.name,
+      cabCategory: cab.cabCategory || cab.vehicleType || '',
+      pickupLocation: cab.pickupCity || cab.pickupLocation || '',
+      dropLocation: cab.dropCity || cab.dropLocation || '',
+      pickupCity: cab.pickupCity || '',
+      dropCity: cab.dropCity || '',
+      dropState: cab.dropState || '',
+      tripType: cab.tripType || 'full_day',
+      travelDate: cab.travelDate || '',
+      seatingCapacity: cab.seatingCapacity,
+      vehicleCount: count,
+      travelers: travelers != null ? Number(travelers) : undefined,
+      isAc: cab.isAc,
+      isPackageCab: Boolean(cab.isPackageCab),
+      isDefault: Boolean(cab.isDefault),
+      absoluteFare: unit,
+      unitCost: unit,
+      cost: total,
+      totalAmount: total,
+      priceDelta: upgrade,
+      upgradePrice: upgrade,
+      fare: cab.fare || {},
+      externalSource: cab.externalSource || (cab.isPackageCab ? 'uno_package' : 'uno_cabs'),
+      role: 'primary',
+    });
+  }
+
+  for (const extra of Array.isArray(extraCabs) ? extraCabs : []) {
+    if (!extra) continue;
+    const unit = Number(extra.absoluteFare ?? extra.totalAmount ?? extra.cost ?? 0) || 0;
+    const upgrade = Number(extra.upgradePrice ?? extra.priceDelta ?? 0) || 0;
+    rows.push({
+      _id: extra.id || extra.slug || extra.packageCabId,
+      id: extra.id || extra.packageCabId,
+      slug: extra.slug,
+      packageCabId: extra.packageCabId || (extra.isPackageCab ? extra.id : null),
+      cabTypeId: extra.cabTypeId || null,
+      name: extra.name,
+      vehicleType: extra.vehicleType || extra.cabCategory || extra.name,
+      cabCategory: extra.cabCategory || extra.vehicleType || '',
+      pickupLocation: extra.pickupCity || extra.pickupLocation || '',
+      dropLocation: extra.dropCity || extra.dropLocation || '',
+      pickupCity: extra.pickupCity || '',
+      dropCity: extra.dropCity || '',
+      dropState: extra.dropState || '',
+      tripType: extra.tripType || 'full_day',
+      travelDate: extra.travelDate || '',
+      seatingCapacity: extra.seatingCapacity,
+      vehicleCount: 1,
+      isAc: extra.isAc,
+      isPackageCab: Boolean(extra.isPackageCab),
+      isDefault: Boolean(extra.isDefault),
+      absoluteFare: unit,
+      unitCost: unit,
+      cost: unit,
+      totalAmount: unit,
+      priceDelta: upgrade,
+      upgradePrice: upgrade,
+      fare: extra.fare || {},
+      externalSource: extra.externalSource || (extra.isPackageCab ? 'uno_package' : 'uno_cabs'),
+      role: 'companion',
+    });
+  }
+
+  return rows;
 }

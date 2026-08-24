@@ -1033,6 +1033,9 @@ async function attachItineraryFromDayOptions(mapped, slug, itineraryDaysFromPack
       .map((cab) => mapPackageCab(cab, { defaultAbsolute }))
       .sort((a, b) => {
         if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+        const aBus = /volvo|\bbus\b/i.test(String(a.name || '')) ? 0 : 1;
+        const bBus = /volvo|\bbus\b/i.test(String(b.name || '')) ? 0 : 1;
+        if (aBus !== bBus) return aBus - bBus;
         return (a.absoluteFare || 0) - (b.absoluteFare || 0);
       });
 

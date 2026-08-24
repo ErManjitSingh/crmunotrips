@@ -1,21 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, Trash2, Bell } from 'lucide-react';
 import AppModal from '../ui/AppModal';
 import { Button } from '../ui/button';
 import API from '../../api/axios';
 import PaymentScreenshotField from './PaymentScreenshotField';
 import { toast } from '../../context/ToastContext';
 
-function formatDate(value) {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
 function formatINR(n) {
   return `₹${Number(n || 0).toLocaleString('en-IN')}`;
+}
+
+function toDateInput(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function rowsFromDraft(draft) {
+  return (draft?.scheduledInstallments || []).map((row, index) => ({
+    key: `${index}-${row.label || 'row'}`,
+    label: row.label || `Installment ${index + 1}`,
+    amount: String(row.amount ?? ''),
+    dueDate: toDateInput(row.dueDate),
+    status: row.status || 'pending',
+  }));
 }
 
 export default function PostConvertCommercialModal({ open, leadId, onClose, onSaved }) {
@@ -31,6 +41,8 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
   const [proofName, setProofName] = useState('');
   const [proofBase64, setProofBase64] = useState('');
   const [shotFiles, setShotFiles] = useState([]);
+  const [installments, setInstallments] = useState([]);
+  const [createReminders, setCreateReminders] = useState(true);
 
   useEffect(() => {
     if (!open || !leadId) return undefined;
@@ -50,6 +62,8 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
         setProofName(data.addressProofName || '');
         setProofBase64('');
         setShotFiles([]);
+        setInstallments(rowsFromDraft(data));
+        setCreateReminders(true);
       })
       .catch((err) => {
         if (!cancelled) setError(err.response?.data?.message || err.message || 'Failed to load form');
@@ -62,6 +76,15 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
     };
   }, [open, leadId]);
 
+  const totalAmount = Number(draft?.totalAmount || 0);
+  const token = Number(amountReceived || 0);
+  const remaining = Math.max(0, totalAmount - token);
+  const installmentSum = useMemo(
+    () => installments.reduce((sum, row) => sum + (Number(row.amount) || 0), 0),
+    [installments]
+  );
+  const sumMismatch = installments.length > 0 && Math.abs(installmentSum - remaining) > 5;
+
   const onFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -73,8 +96,66 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
     reader.readAsDataURL(file);
   };
 
+  const updateRow = (index, patch) => {
+    setInstallments((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  };
+
+  const addRow = () => {
+    setInstallments((rows) => [
+      ...rows,
+      {
+        key: `new-${Date.now()}`,
+        label: `Installment ${rows.length + 1}`,
+        amount: '',
+        dueDate: '',
+        status: 'pending',
+      },
+    ]);
+  };
+
+  const removeRow = (index) => {
+    setInstallments((rows) => rows.filter((_, i) => i !== index));
+  };
+
+  const applySuggestedSplit = () => {
+    if (!draft) return;
+    const paid = Math.max(0, Math.min(totalAmount, token));
+    const bal = Math.max(0, totalAmount - paid);
+    const a50 = Math.round(bal * 0.5);
+    const a30 = Math.round(bal * 0.3);
+    const aRest = Math.max(0, bal - a50 - a30);
+    const start = draft.lead?.travelDate ? new Date(draft.lead.travelDate) : null;
+    const end = draft.lead?.returnDate ? new Date(draft.lead.returnDate) : start;
+    const mid =
+      start && end
+        ? new Date(Math.round((start.getTime() + end.getTime()) / 2))
+        : start;
+    const due50 = start ? new Date(start.getTime() - 2 * 86400000) : null;
+    setInstallments(
+      [
+        { label: 'Installment 1 — 50% after token', amount: a50, dueDate: due50 },
+        { label: 'Installment 2 — 30% mid-tour', amount: a30, dueDate: mid },
+        { label: 'Installment 3 — balance on last tour day', amount: aRest, dueDate: end || start },
+      ]
+        .filter((r) => r.amount > 0)
+        .map((r, index) => ({
+          key: `sug-${index}`,
+          label: r.label,
+          amount: String(r.amount),
+          dueDate: toDateInput(r.dueDate),
+          status: 'pending',
+        }))
+    );
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
+    if (sumMismatch) {
+      setError(
+        `Installments total ${formatINR(installmentSum)} must equal remaining ${formatINR(remaining)}`
+      );
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -92,8 +173,20 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
           : undefined,
         paymentScreenshotBase64: shotFiles[0]?.base64 || undefined,
         paymentScreenshotName: shotFiles[0]?.name || undefined,
+        scheduledInstallments: installments.map((row) => ({
+          label: row.label,
+          amount: Number(row.amount) || 0,
+          dueDate: row.dueDate || null,
+          status: row.status || 'pending',
+        })),
+        createPaymentReminders: createReminders,
       });
       setDraft(data);
+      toast.success(
+        createReminders
+          ? 'Commercial form saved · payment reminders set'
+          : 'Commercial form saved'
+      );
       onSaved?.(data);
       onClose?.();
     } catch (err) {
@@ -109,7 +202,7 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
         <div>
           <h3 className="text-lg font-bold text-content-primary">Post-conversion commercial form</h3>
           <p className="text-sm text-content-muted">
-            {draft?.lead?.name || 'Customer'} — fill margin, costs, advance & installments
+            {draft?.lead?.name || 'Customer'} — margin, costs, advance, installments & reminders
           </p>
         </div>
 
@@ -132,7 +225,7 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
                 />
               </label>
               <label className="text-sm">
-                <span className="text-[11px] font-bold uppercase text-slate-500">Total cost (auto)</span>
+                <span className="text-[11px] font-bold uppercase text-slate-500">Total cost</span>
                 <input
                   type="number"
                   value={totalCost}
@@ -141,7 +234,7 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
                 />
               </label>
               <label className="text-sm">
-                <span className="text-[11px] font-bold uppercase text-slate-500">GST amount (auto)</span>
+                <span className="text-[11px] font-bold uppercase text-slate-500">GST amount</span>
                 <input
                   type="number"
                   value={gstAmount}
@@ -180,8 +273,8 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
               existing={draft.paymentScreenshots || (draft.paymentScreenshotUrl
                 ? [{ url: draft.paymentScreenshotUrl, name: draft.paymentScreenshotName }]
                 : [])}
-              onChange={({ files, error }) => {
-                if (error) toast.error(error);
+              onChange={({ files, error: shotErr }) => {
+                if (shotErr) toast.error(shotErr);
                 setShotFiles(files || []);
               }}
             />
@@ -200,24 +293,87 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
             </div>
 
             <div className="rounded-xl border border-subtle overflow-hidden">
-              <div className="bg-slate-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">
-                Auto installments after token · Package {formatINR(draft.totalAmount)}
+              <div className="bg-slate-50 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
+                    Installments after token
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Package {formatINR(totalAmount)} · Remaining {formatINR(remaining)} · Planned{' '}
+                    <span className={sumMismatch ? 'text-red-600 font-semibold' : ''}>
+                      {formatINR(installmentSum)}
+                    </span>
+                  </p>
+                </div>
+                <div className="flex gap-1.5">
+                  <Button type="button" size="sm" variant="ghost" onClick={applySuggestedSplit}>
+                    Suggest 50/30/20
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={addRow}>
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Add
+                  </Button>
+                </div>
               </div>
+
               <div className="divide-y divide-subtle">
-                {(draft.scheduledInstallments || []).map((row, idx) => (
-                  <div key={idx} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
-                    <div>
-                      <p className="font-semibold text-slate-800">{row.label}</p>
-                      <p className="text-xs text-slate-500">Due {formatDate(row.dueDate)}</p>
-                    </div>
-                    <p className="font-bold tabular-nums">{formatINR(row.amount)}</p>
+                {installments.map((row, index) => (
+                  <div key={row.key} className="grid gap-2 px-3 py-2.5 sm:grid-cols-[1.4fr_0.8fr_0.9fr_auto]">
+                    <input
+                      value={row.label}
+                      onChange={(e) => updateRow(index, { label: e.target.value })}
+                      className="rounded-lg border border-subtle px-2.5 py-2 text-sm"
+                      placeholder="Label"
+                    />
+                    <input
+                      type="number"
+                      value={row.amount}
+                      onChange={(e) => updateRow(index, { amount: e.target.value })}
+                      className="rounded-lg border border-subtle px-2.5 py-2 text-sm tabular-nums"
+                      placeholder="Amount"
+                      min="0"
+                    />
+                    <input
+                      type="date"
+                      value={row.dueDate}
+                      onChange={(e) => updateRow(index, { dueDate: e.target.value })}
+                      className="rounded-lg border border-subtle px-2.5 py-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeRow(index)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50"
+                      title="Remove"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 ))}
-                {!draft.scheduledInstallments?.length && (
-                  <p className="px-3 py-3 text-xs text-slate-500">No balance left after token.</p>
+                {!installments.length && (
+                  <p className="px-3 py-3 text-xs text-slate-500">
+                    No installments — click Add, or Suggest 50/30/20. Leave empty if token covers full package.
+                  </p>
                 )}
               </div>
             </div>
+
+            <label className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2.5 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={createReminders}
+                onChange={(e) => setCreateReminders(e.target.checked)}
+              />
+              <span>
+                <span className="inline-flex items-center gap-1.5 font-semibold text-amber-900">
+                  <Bell className="w-3.5 h-3.5" />
+                  Set payment reminders
+                </span>
+                <span className="block text-xs text-amber-800/90 mt-0.5">
+                  Creates a reminder on each installment due date (shows in Reminders for the assigned executive).
+                </span>
+              </span>
+            </label>
           </>
         )}
 
@@ -225,7 +381,7 @@ export default function PostConvertCommercialModal({ open, leadId, onClose, onSa
           <Button type="button" variant="ghost" disabled={saving} onClick={onClose}>
             Later
           </Button>
-          <Button type="submit" variant="emerald" disabled={saving || loading || !draft}>
+          <Button type="submit" variant="emerald" disabled={saving || loading || !draft || sumMismatch}>
             {saving ? 'Saving…' : 'Save commercial details'}
           </Button>
         </div>

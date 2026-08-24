@@ -14,6 +14,7 @@ import { logSelectedPackageDebug } from '../../lib/logPackageDebug';
 import { resolvePackageItinerary, seedDayWiseHotelsFromItinerary } from '../../lib/packageItineraryMapper';
 import { shortLeadMealPlan } from '../lead-wizard/leadWizardUtils';
 import { resolvePackageCabs } from '../../lib/packageCabMapper';
+import { suggestCompanionCabs } from '../../lib/packageCabCompanions';
 import InclusionExclusionEditor, { cleanInclusionExclusionLines } from './InclusionExclusionEditor';
 import { buildSelectedCabSnapshot } from './UnoCabSelector';
 import { parsePackageNights } from './UnoHotelSelector';
@@ -272,7 +273,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         setCustomExclusions(hydrated.customExclusions);
         setDayWiseHotels(hydrated.dayWiseHotels);
         setSelectedUnoCab(hydrated.selectedUnoCab);
-        setExtraCabs([]);
+        setExtraCabs(Array.isArray(hydrated.extraCabs) ? hydrated.extraCabs : []);
         setStayWithMattress(Boolean(hydrated.pricing?.party?.stayWithMattress));
         setOpeningPackageMeta({
           name: hydrated.packageDetail?.name || 'Package',
@@ -534,11 +535,13 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
       normalized._apiRaw?.dayOptions?.stays || normalized.stays || []
     );
     setDayWiseHotels(seededHotels);
-    setExtraCabs([]);
+    // Volvo packages: keep Alto (default) as primary + auto-attach Volvo bus as extra cab(s)
+    const defaultCab = packageCabs.find((c) => c.isDefault) || packageCabs[0] || null;
+    const companions = suggestCompanionCabs(packageCabs, defaultCab);
+    setExtraCabs(companions);
     setStayWithMattress(false);
 
     // Auto-select default package cab from day-options
-    const defaultCab = packageCabs.find((c) => c.isDefault) || packageCabs[0] || null;
     setSelectedUnoCab(defaultCab);
 
     setState((s) => {
@@ -551,7 +554,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         dayWiseHotels: seededHotels,
         itinerary,
         selectedCab: defaultCab,
-        extraCabs: [],
+        extraCabs: companions,
         cabSeats: defaultCab?.seatingCapacity || 4,
         stayWithMattress: false,
       });
@@ -567,7 +570,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
           baseStartingPrice: packageStart,
         },
         cabSeats: defaultCab?.seatingCapacity || 4,
-        extraCabs: [],
+        extraCabs: companions,
         capacityReady: capacity.ready,
         roomsReady: capacity.roomsReady,
         cabReady: capacity.cabReady,
@@ -866,6 +869,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
         selectedCabs: buildSelectedCabSnapshot(selectedUnoCab, {
           vehicleCount: state.pricing?.party?.cabCount || selectedUnoCab?._vehicleCount || 1,
           travelers: state.pricing?.party?.travelers,
+          extraCabs,
         }),
         selectedFlights: flights.filter((f) => state.selectedFlightIds.includes(f._id)),
         selectedActivities: activities.filter((a) => state.selectedActivityIds.includes(a._id)),
@@ -961,6 +965,7 @@ export default function QuotationBuilderWizard({ mode = 'executive' }) {
     selectedCabs: buildSelectedCabSnapshot(selectedUnoCab, {
       vehicleCount: state.pricing?.party?.cabCount || 1,
       travelers: state.pricing?.party?.travelers,
+      extraCabs,
     }),
   } : null;
 

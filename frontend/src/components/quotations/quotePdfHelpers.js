@@ -350,31 +350,40 @@ export function resolveQuoteVehicles(quote) {
   const pkg = resolveQuotePackage(quote);
   if (pkg.vehicles?.length) return pkg.vehicles;
 
-  const cab = quote.selectedCabs?.[0];
-  const cabName = cab?.name || cab?.vehicleType || cab?.cabCategory || pkg.cabCategory || 'Private Cab';
+  const cabs = Array.isArray(quote.selectedCabs) ? quote.selectedCabs.filter(Boolean) : [];
   const lead = resolveQuoteLead(quote);
-  const start = cab?.travelDate || lead.travelDate;
   const end = getDayDate(lead.travelDate, (pkg.duration || 1) - 1);
 
-  if (cab) {
-    const routeLabel = [cab.pickupCity || cab.pickupLocation, cab.dropCity || cab.dropLocation]
-      .filter(Boolean)
-      .join(' → ');
-    const cabLabel = cab.isPackageCab
-      ? `${cabName} (Package cab)`
-      : routeLabel
-        ? `${cabName} (${routeLabel})`
-        : cabName;
-    return [{
-      name: cabLabel,
-      vehicleType: cab.vehicleType || cab.cabCategory || cabName,
-      startDate: start,
-      endDate: end || start,
-      seatingCapacity: cab.seatingCapacity,
-      tripType: cab.tripType,
-    }];
+  if (cabs.length) {
+    return cabs.map((cab, index) => {
+      const cabName = cab?.name || cab?.vehicleType || cab?.cabCategory || 'Private Cab';
+      const start = cab?.travelDate || lead.travelDate;
+      const routeLabel = [cab.pickupCity || cab.pickupLocation, cab.dropCity || cab.dropLocation]
+        .filter(Boolean)
+        .join(' → ');
+      const roleTag =
+        cab.role === 'companion' || index > 0
+          ? 'Companion transport'
+          : cab.isPackageCab
+            ? 'Package cab'
+            : '';
+      const cabLabel = roleTag
+        ? `${cabName} (${roleTag})`
+        : routeLabel
+          ? `${cabName} (${routeLabel})`
+          : cabName;
+      return {
+        name: cabLabel,
+        vehicleType: cab.vehicleType || cab.cabCategory || cabName,
+        startDate: start,
+        endDate: end || start,
+        seatingCapacity: cab.seatingCapacity,
+        tripType: cab.tripType,
+      };
+    });
   }
 
+  const start = lead.travelDate;
   if (pkg.cabCategory) {
     return [{ name: pkg.cabCategory, startDate: start, endDate: end || start }];
   }

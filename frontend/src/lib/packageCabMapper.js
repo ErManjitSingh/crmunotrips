@@ -1,19 +1,12 @@
+import { mergeRawCabSources, sortPackageCabs } from './packageCabCompanions';
+
 function toNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
 }
 
 function rawCabList(source = {}) {
-  const mapped = Array.isArray(source.packageCabs)
-    ? source.packageCabs
-    : Array.isArray(source.package_cabs)
-      ? source.package_cabs
-      : [];
-
-  const rawFromApi = source._apiRaw?.dayOptions?.cabs;
-  if (mapped.length) return mapped;
-  if (Array.isArray(rawFromApi)) return rawFromApi;
-  return [];
+  return mergeRawCabSources(source);
 }
 
 /**
@@ -76,13 +69,9 @@ export function resolvePackageCabs(source = {}) {
     ? toNumber(defaultRaw.absoluteFare ?? defaultRaw.price_delta ?? defaultRaw.totalAmount, 0)
     : 0;
 
-  return rawCabs
-    .map((cab) => mapPackageCabFromRaw(cab, { defaultAbsolute }))
-    .sort((a, b) => {
-      if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
-      if ((a.sortOrder || 0) !== (b.sortOrder || 0)) return (a.sortOrder || 0) - (b.sortOrder || 0);
-      return (a.absoluteFare || 0) - (b.absoluteFare || 0);
-    });
+  return sortPackageCabs(
+    rawCabs.map((cab) => mapPackageCabFromRaw(cab, { defaultAbsolute }))
+  );
 }
 
 /** Absolute trip fare for a package cab (UNO price_delta). */

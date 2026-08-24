@@ -233,6 +233,90 @@ async function getCommercialFormDraft({ leadId, executiveId, branchId }) {
   };
 }
 
+function normalizeCustomInstallments(rows, { total, token }) {
+  const packageTotal = Math.max(0, Number(total) || 0);
+  const paid = Math.max(0, Math.min(packageTotal, Number(token) || 0));
+  const remaining = Math.max(0, packageTotal - paid);
+  if (!Array.isArray(rows) || !rows.length) return null;
+
+  const cleaned = rows
+    .map((row, index) => {
+      const amount = Math.max(0, Math.round(Number(row.amount) || 0));
+      if (amount <= 0) return null;
+      const due = row.dueDate ? new Date(row.dueDate) : null;
+      return {
+        label: String(row.label || `Installment ${index + 1}`).trim() || `Installment ${index + 1}`,
+        percent: remaining > 0 ? Math.round((amount / remaining) * 100) : 0,
+        amount,
+        dueDate: due && Number.isFinite(due.getTime()) ? due : null,
+        status: ['pending', 'paid', 'waived'].includes(row.status) ? row.status : 'pending',
+      };
+    })
+    .filter(Boolean);
+
+  if (!cleaned.length) return null;
+
+  const sum = cleaned.reduce((s, r) => s + r.amount, 0);
+  if (Math.abs(sum - remaining) > 5) {
+    const err = new ApiError(
+      400,
+      `Installment amounts (₹${sum.toLocaleString('en-IN')}) must equal remaining balance (₹${remaining.toLocaleString('en-IN')})`
+    );
+    throw err;
+  }
+  return cleaned;
+}
+
+async function syncPaymentReminders({ lead, payment, user, schedule }) {
+  const FollowUp = require('../models/FollowUp');
+  const assignee = lead.assignedTo || user?._id;
+  if (!assignee || !Array.isArray(schedule) || !schedule.length) return;
+
+  // Clear prior auto payment reminders for this lead
+  await FollowUp.updateMany(
+    {
+      lead: lead._id,
+      status: 'pending',
+      type: 'other',
+      notes: { $regex: /^Payment reminder:/i },
+    },
+    {
+      $set: {
+        status: 'completed',
+        completedAt: new Date(),
+        outcome: 'auto_replaced_payment_plan',
+      },
+    }
+  );
+
+  const createRows = schedule.filter(
+    (row) => row.amount > 0 && row.status !== 'paid' && row.status !== 'waived' && row.dueDate
+  );
+
+  for (const row of createRows) {
+    const due = new Date(row.dueDate);
+    if (!Number.isFinite(due.getTime())) continue;
+    // Reminder at 10:00 AM on due date (local server time)
+    due.setHours(10, 0, 0, 0);
+    await FollowUp.create({
+      lead: lead._id,
+      branchId: lead.branchId || null,
+      type: 'other',
+      category: 'warm',
+      scheduledAt: due,
+      status: 'pending',
+      priority: 'high',
+      notes: `Payment reminder: ${row.label} — ₹${Number(row.amount || 0).toLocaleString('en-IN')} due`,
+      outcome: 'payment_due',
+      assignedTo: assignee,
+      createdBy: user?._id || assignee,
+    });
+  }
+
+  const { syncLeadFollowUpDates } = require('../utils/followUpHelpers');
+  await syncLeadFollowUpDates(lead._id);
+}
+
 async function saveCommercialForm({ leadId, executiveId, branchId, body }) {
   const draft = await getCommercialFormDraft({ leadId, executiveId, branchId });
   const payment = draft.paymentId
@@ -242,6 +326,9 @@ async function saveCommercialForm({ leadId, executiveId, branchId, body }) {
   if (!payment) {
     throw new ApiError(404, 'Payment record not found — convert lead with advance first');
   }
+
+  const lead = await Lead.findById(leadId);
+  if (!lead) throw new ApiError(404, 'Lead not found');
 
   const totalAmount = Number(body.totalAmount ?? draft.totalAmount) || 0;
   const amountReceived = Number(body.amountReceived ?? draft.amountReceived) || 0;
@@ -258,15 +345,31 @@ async function saveCommercialForm({ leadId, executiveId, branchId, body }) {
   payment.packageMarginPercent = packageMarginPercent;
   payment.totalCost = totalCost;
   payment.gstAmount = gstAmount;
-  payment.scheduledInstallments = buildInstallmentSchedule({
+
+  const customSchedule = normalizeCustomInstallments(body.scheduledInstallments, {
     total: totalAmount,
     token: amountReceived,
-    travelDate: draft.lead.travelDate,
-    returnDate: draft.lead.returnDate,
   });
+  payment.scheduledInstallments =
+    customSchedule ||
+    buildInstallmentSchedule({
+      total: totalAmount,
+      token: amountReceived,
+      travelDate: draft.lead.travelDate,
+      returnDate: draft.lead.returnDate,
+    });
+
   payment.status =
     amountReceived <= 0 ? 'pending' : amountReceived >= totalAmount && totalAmount > 0 ? 'paid' : 'partial';
   payment.commercialCompletedAt = new Date();
+
+  // Earliest pending installment becomes payment.dueDate
+  const nextDue = (payment.scheduledInstallments || [])
+    .filter((r) => r.status === 'pending' && r.dueDate)
+    .map((r) => new Date(r.dueDate))
+    .filter((d) => Number.isFinite(d.getTime()))
+    .sort((a, b) => a - b)[0];
+  if (nextDue) payment.dueDate = nextDue;
 
   if (body.addressProofBase64) {
     const saved = saveAddressProofBase64({
@@ -289,13 +392,27 @@ async function saveCommercialForm({ leadId, executiveId, branchId, body }) {
   }
 
   await payment.save();
+
+  if (body.createPaymentReminders !== false) {
+    await syncPaymentReminders({
+      lead,
+      payment,
+      user: { _id: executiveId },
+      schedule: payment.scheduledInstallments,
+    }).catch((err) => {
+      console.error('[saveCommercialForm] payment reminders failed:', err.message);
+    });
+  }
+
   return getCommercialFormDraft({ leadId, executiveId, branchId });
 }
 
 module.exports = {
   buildInstallmentSchedule,
+  normalizeCustomInstallments,
   getCommercialFormDraft,
   saveCommercialForm,
+  syncPaymentReminders,
   savePaymentScreenshotBase64,
   saveAddressProofBase64,
   collectPaymentScreenshotUploads,

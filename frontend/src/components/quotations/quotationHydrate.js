@@ -60,43 +60,62 @@ export function hydrateDayWiseHotelsFromQuote(quote = {}) {
 
 /**
  * Rebuild cab selection from saved quotation.
+ * @returns {{ primary: object|null, extraCabs: object[] }}
  */
-export function hydrateCabFromQuote(quote = {}, packageDetail = null) {
-  const snap = Array.isArray(quote.selectedCabs) ? quote.selectedCabs[0] : null;
-  if (!snap) {
-    const packageCabs = resolvePackageCabs(packageDetail || {});
-    return packageCabs.find((c) => c.isDefault) || packageCabs[0] || null;
+export function hydrateCabsFromQuote(quote = {}, packageDetail = null) {
+  const rows = Array.isArray(quote.selectedCabs) ? quote.selectedCabs : [];
+  const packageCabs = resolvePackageCabs(packageDetail || {});
+
+  const mapRow = (snap) => {
+    if (!snap) return null;
+    const unit = Number(snap.absoluteFare ?? snap.unitCost ?? snap.totalAmount ?? snap.cost ?? 0) || 0;
+    const upgrade = Number(snap.upgradePrice ?? snap.priceDelta ?? 0) || 0;
+    const count = Math.max(1, Number(snap.vehicleCount) || 1);
+    return {
+      id: snap.packageCabId || snap.id || snap._id || snap.slug,
+      slug: snap.slug,
+      packageCabId: snap.packageCabId || null,
+      cabTypeId: snap.cabTypeId || null,
+      name: snap.name,
+      vehicleType: snap.vehicleType || snap.cabCategory || snap.name,
+      cabCategory: snap.cabCategory || snap.vehicleType || '',
+      pickupCity: snap.pickupCity || snap.pickupLocation || '',
+      dropCity: snap.dropCity || snap.dropLocation || '',
+      dropState: snap.dropState || '',
+      tripType: snap.tripType || 'full_day',
+      travelDate: snap.travelDate || '',
+      seatingCapacity: snap.seatingCapacity || 4,
+      isAc: snap.isAc,
+      isPackageCab: Boolean(snap.isPackageCab || snap.packageCabId),
+      isDefault: Boolean(snap.isDefault),
+      absoluteFare: unit,
+      cost: upgrade,
+      totalAmount: unit,
+      priceDelta: upgrade,
+      upgradePrice: upgrade,
+      fare: snap.fare || {},
+      externalSource: snap.externalSource || 'uno_package',
+      _vehicleCount: count,
+      role: snap.role || 'primary',
+    };
+  };
+
+  if (!rows.length) {
+    const primary = packageCabs.find((c) => c.isDefault) || packageCabs[0] || null;
+    return { primary, extraCabs: [] };
   }
 
-  const unit = Number(snap.absoluteFare ?? snap.unitCost ?? snap.totalAmount ?? snap.cost ?? 0) || 0;
-  const upgrade = Number(snap.upgradePrice ?? snap.priceDelta ?? 0) || 0;
-  const count = Math.max(1, Number(snap.vehicleCount) || 1);
+  const primarySnap = rows.find((r) => r.role !== 'companion') || rows[0];
+  const companionSnaps = rows.filter((r) => r !== primarySnap && (r.role === 'companion' || rows.indexOf(r) > 0));
   return {
-    id: snap.packageCabId || snap.id || snap._id || snap.slug,
-    slug: snap.slug,
-    packageCabId: snap.packageCabId || null,
-    cabTypeId: snap.cabTypeId || null,
-    name: snap.name,
-    vehicleType: snap.vehicleType || snap.cabCategory || snap.name,
-    cabCategory: snap.cabCategory || snap.vehicleType || '',
-    pickupCity: snap.pickupCity || snap.pickupLocation || '',
-    dropCity: snap.dropCity || snap.dropLocation || '',
-    dropState: snap.dropState || '',
-    tripType: snap.tripType || 'full_day',
-    travelDate: snap.travelDate || '',
-    seatingCapacity: snap.seatingCapacity || 4,
-    isAc: snap.isAc,
-    isPackageCab: Boolean(snap.isPackageCab || snap.packageCabId),
-    isDefault: Boolean(snap.isDefault),
-    absoluteFare: unit,
-    cost: upgrade,
-    totalAmount: unit,
-    priceDelta: upgrade,
-    upgradePrice: upgrade,
-    fare: snap.fare || {},
-    externalSource: snap.externalSource || 'uno_package',
-    _vehicleCount: count,
+    primary: mapRow(primarySnap),
+    extraCabs: companionSnaps.map(mapRow).filter(Boolean),
   };
+}
+
+/** @deprecated use hydrateCabsFromQuote */
+export function hydrateCabFromQuote(quote = {}, packageDetail = null) {
+  return hydrateCabsFromQuote(quote, packageDetail).primary;
 }
 
 /**
@@ -125,7 +144,9 @@ export function hydrateWizardFromQuote(quote) {
   };
 
   const dayWiseHotels = hydrateDayWiseHotelsFromQuote(quote);
-  const selectedUnoCab = hydrateCabFromQuote(quote, packageDetail);
+  const hydratedCabs = hydrateCabsFromQuote(quote, packageDetail);
+  const selectedUnoCab = hydratedCabs.primary;
+  const extraCabs = hydratedCabs.extraCabs;
 
   const selectedFlightIds = (quote.selectedFlights || [])
     .map((f) => String(f._id || f.id || f))
@@ -175,6 +196,7 @@ export function hydrateWizardFromQuote(quote) {
     customExclusions: Array.isArray(pkg.exclusions) && pkg.exclusions.length ? [...pkg.exclusions] : [''],
     dayWiseHotels,
     selectedUnoCab,
+    extraCabs,
     selectedFlightIds,
     selectedActivityIds,
     customizations: quote.customizations || '',
