@@ -65,12 +65,12 @@ export function buildLeadStatusPayload(category, option, comment = '') {
   return null;
 }
 
-/** Map raw pipeline status → temperature bucket label (when no lead object). */
+/** Map raw pipeline status → display when no lead/statusReason is available. */
 export function pipelineStatusToTemperatureLabel(status) {
   const s = String(status || '').toLowerCase();
   if (s === 'converted') return 'Booking';
-  if (['negotiation', 'quotation_sent'].includes(s)) return 'Hot';
-  if (['lost', 'booked_from_another_company'].includes(s)) return 'Cold';
-  if (s === 'new' || !s) return 'No status';
-  return 'Warm';
+  if (s === 'warm') return 'Warm';
+  if (s === 'hot') return 'Hot';
+  if (s === 'cold') return 'Cold';
+  return 'No status';
 }

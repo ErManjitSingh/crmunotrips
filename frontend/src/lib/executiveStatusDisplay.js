@@ -1,45 +1,35 @@
 import { getLeadStatusLabel } from './leadStatusLabel';
 import { LEAD_FOLLOW_UP_OUTCOMES } from '../constants/leadFollowUpOutcomes';
-import { LOST_REASONS, formatLostReasonDisplay } from '../constants/salesSop';
 import {
   WARM_OUTCOMES,
   HOT_OUTCOMES,
   COLD_OUTCOMES,
-  CALL_PICKED_OUTCOMES,
-  CALL_NOT_PICKED_REASONS,
-  FOLLOWUP_COLD_REASONS,
 } from '../components/followups/constants';
 
-const OPTION_LABELS = [
+/** Only the current Warm / Hot / Cold options count as a selected status */
+const CURRENT_OPTIONS = [
   ...WARM_OUTCOMES,
   ...HOT_OUTCOMES,
   ...COLD_OUTCOMES,
-  ...CALL_PICKED_OUTCOMES,
-  ...CALL_NOT_PICKED_REASONS,
-  ...FOLLOWUP_COLD_REASONS,
-  ...LOST_REASONS,
-  ...LEAD_FOLLOW_UP_OUTCOMES,
-  // legacy aliases (older leads still display correctly)
-  { value: 'discussed_package', label: 'Package discussed' },
-  { value: 'requested_callback', label: 'Request call back' },
-  { value: 'cnp_same_day', label: 'CNP for same day' },
-  { value: 'price_negotiation', label: 'Price negotiation going on' },
-  { value: 'ready_to_book', label: 'Ready to Book' },
-  { value: 'booked_elsewhere', label: 'Booked from another company' },
-  { value: 'budget_issues', label: 'Budget issues' },
-  { value: 'budget_issue', label: 'Budget issues' },
-  { value: 'interested_quotation', label: 'Interested — needs quotation' },
-  { value: 'switch_off', label: 'Switch off' },
-  { value: 'switched_off', label: 'Switch off' },
-  { value: 'no_answer', label: 'Not answer' },
-  { value: 'not_answering', label: 'Not answer' },
+  { value: 'budget_issue', label: 'Budget issues' }, // legacy alias → Cold
 ];
 
-/** Longest keys first so interested_quotation wins over interested */
+const OPTION_LABELS = [
+  ...CURRENT_OPTIONS,
+  ...LEAD_FOLLOW_UP_OUTCOMES,
+];
+
 const OPTION_KEYS_BY_LENGTH = [...OPTION_LABELS]
   .map((o) => o.value)
   .filter(Boolean)
   .sort((a, b) => b.length - a.length);
+
+const WARM_REASON_KEYS = new Set(WARM_OUTCOMES.map((o) => o.value));
+const HOT_REASON_KEYS = new Set(HOT_OUTCOMES.map((o) => o.value));
+const COLD_REASON_KEYS = new Set([
+  ...COLD_OUTCOMES.map((o) => o.value),
+  'budget_issue',
+]);
 
 function extractReasonKey(statusReason) {
   const raw = String(statusReason || '').trim();
@@ -58,7 +48,7 @@ function extractReasonKey(statusReason) {
       cleaned.includes(` ${key} `) ||
       cleaned.endsWith(` ${key}`)
   );
-  return found || head;
+  return found || '';
 }
 
 function findOptionLabel(key) {
@@ -67,59 +57,59 @@ function findOptionLabel(key) {
   return hit?.label || '';
 }
 
+function resolveListReasonKey(lead) {
+  const reason = String(lead?.statusReason || '').trim();
+  const followUpOutcome = String(lead?.lastFollowUpOutcome || lead?.followUpOutcome || '').trim();
+  return extractReasonKey(reason) || extractReasonKey(followUpOutcome);
+}
+
+function bucketFromReasonKey(reasonKey) {
+  if (HOT_REASON_KEYS.has(reasonKey)) return 'hot';
+  if (WARM_REASON_KEYS.has(reasonKey)) return 'warm';
+  if (COLD_REASON_KEYS.has(reasonKey)) return 'cold';
+  return '';
+}
+
 /**
- * Exact executive option / pipeline label — used on lead detail, not the list.
+ * Exact selected option label — or "No status" when none of the current options is set.
  */
 export function getExecutiveSetStatusDisplay(lead) {
   const status = lead?.status || 'new';
   const pipelineLabel = getLeadStatusLabel(status);
-  const reason = String(lead?.statusReason || '').trim();
-  const followUpOutcome = String(lead?.lastFollowUpOutcome || lead?.followUpOutcome || '').trim();
-  const reasonKey = extractReasonKey(reason) || extractReasonKey(followUpOutcome);
-  const optionLabel = findOptionLabel(reasonKey) || findOptionLabel(followUpOutcome);
-  const lostComment = ['lost', 'booked_from_another_company'].includes(status)
-    ? formatLostReasonDisplay(reason)
-    : '';
+  const reasonKey = resolveListReasonKey(lead);
+  const optionLabel = findOptionLabel(reasonKey);
+  const bucket = bucketFromReasonKey(reasonKey);
 
-  if (
-    lead?.reactivation?.isReactivated &&
-    ['follow_up', 'working_progress', 'contacted', 'negotiation', 'quotation_sent'].includes(status)
-  ) {
+  if (status === 'converted') {
     return {
-      label: optionLabel || 'Active',
-      detail: optionLabel ? 'Active' : '',
+      label: 'Booking',
+      detail: '',
       pipelineLabel,
-      title: optionLabel ? `${optionLabel} · Active` : 'Active',
+      title: 'Booking',
+      bucket: 'converted',
     };
   }
 
-  if (optionLabel) {
+  if (optionLabel && bucket) {
     return {
       label: optionLabel,
       detail: '',
       pipelineLabel,
-      title: `${optionLabel} · ${pipelineLabel}`,
-    };
-  }
-
-  if (lostComment) {
-    return {
-      label: lostComment,
-      detail: pipelineLabel,
-      pipelineLabel,
-      title: `${lostComment} · ${pipelineLabel}`,
+      title: `${optionLabel} · ${bucket.charAt(0).toUpperCase()}${bucket.slice(1)}`,
+      bucket,
     };
   }
 
   return {
-    label: pipelineLabel,
+    label: 'No status',
     detail: '',
     pipelineLabel,
-    title: pipelineLabel,
+    title: 'No status',
+    bucket: 'new',
   };
 }
 
-/** Lead-list buckets only. Detail view still uses getExecutiveSetStatusDisplay. */
+/** Lead-list buckets only. */
 export const LIST_STATUS_STYLES = {
   cold: 'bg-slate-500/10 text-slate-700 dark:text-slate-300 ring-slate-500/25',
   warm: 'bg-amber-500/10 text-amber-800 dark:text-amber-300 ring-amber-500/25',
@@ -136,101 +126,22 @@ const LIST_STATUS_DOT = {
   converted: 'bg-emerald-600',
 };
 
-const COLD_REASON_KEYS = new Set([
-  'booked_elsewhere',
-  'booked_from_another_company',
-  'language_barrier',
-  'not_interested',
-  'invalid_number',
-  'budget_issues',
-  'budget_issue',
-  // legacy → show as Cold
-  'just_inquiring',
-  'just_inquiry',
-  'no_plan',
-  'wants_group_tour',
-  'unknown_destination',
-  'switch_off',
-  'switched_off',
-  'not_reachable',
-  'not_answer',
-  'no_answer',
-  'not_answering',
-  'speaking_to_someone_else',
-  'call_not_picked',
-  'not_pick_call',
-  'not_picked',
-  'lost',
-  'lost_contacted',
-  'does_not_exist',
-  'quotation_booked_elsewhere',
-]);
-
-const WARM_REASON_KEYS = new Set([
-  'discussed_package',
-  'requested_callback',
-  'cnp_same_day',
-  'price_negotiation',
-  // legacy warm-ish
-  'qualified',
-  'working_progress',
-  'rescheduled',
-]);
-
-const HOT_REASON_KEYS = new Set([
-  'ready_to_book',
-  'interested',
-  'interested_quotation',
-]);
-
-function resolveListReasonKey(lead) {
-  const reason = String(lead?.statusReason || '').trim();
-  const followUpOutcome = String(lead?.lastFollowUpOutcome || lead?.followUpOutcome || '').trim();
-  return extractReasonKey(reason) || extractReasonKey(followUpOutcome);
-}
-
 /**
- * Lead list shows only Cold / Warm / Hot.
+ * Lead list: Warm / Hot / Cold only when a current option is selected.
+ * Otherwise → No status.
  */
 export function getLeadListStatusDisplay(lead) {
-  const exact = getExecutiveSetStatusDisplay(lead);
   const status = lead?.status || 'new';
   const reasonKey = resolveListReasonKey(lead);
-  const temp = String(lead?.temperature || '').toLowerCase();
+  const optionLabel = findOptionLabel(reasonKey);
 
-  let bucket;
+  let bucket = 'new';
   if (status === 'converted') {
     bucket = 'converted';
-  } else if (HOT_REASON_KEYS.has(reasonKey) || temp === 'hot' || lead?.isHot || status === 'negotiation') {
-    bucket = 'hot';
-  } else if (
-    WARM_REASON_KEYS.has(reasonKey) ||
-    temp === 'warm' ||
-    ['qualified', 'working_progress'].includes(status)
-  ) {
-    bucket = 'warm';
-  } else if (
-    COLD_REASON_KEYS.has(reasonKey) ||
-    temp === 'cold' ||
-    ['lost', 'booked_from_another_company'].includes(status)
-  ) {
-    bucket = 'cold';
-  } else if (status === 'new' && !reasonKey) {
-    bucket = 'new';
-  } else if (['quotation_sent'].includes(status)) {
-    bucket = 'hot';
-  } else if (['follow_up', 'contacted', 'reactivated'].includes(status) && !reasonKey) {
-    bucket = 'warm';
   } else {
-    bucket = 'cold';
+    const fromReason = bucketFromReasonKey(reasonKey);
+    bucket = fromReason || 'new';
   }
-
-  // Prefer explicit reason buckets over temperature when both set
-  if (HOT_REASON_KEYS.has(reasonKey)) bucket = 'hot';
-  else if (WARM_REASON_KEYS.has(reasonKey)) bucket = 'warm';
-  else if (COLD_REASON_KEYS.has(reasonKey)) bucket = 'cold';
-
-  if (status === 'converted') bucket = 'converted';
 
   const labels = {
     cold: 'Cold',
@@ -240,15 +151,25 @@ export function getLeadListStatusDisplay(lead) {
     converted: 'Booking',
   };
 
+  const exactLabel =
+    bucket === 'converted'
+      ? 'Booking'
+      : optionLabel && bucket !== 'new'
+        ? optionLabel
+        : 'No status';
+
   return {
     bucket,
     label: labels[bucket],
-    exactLabel: exact.label,
-    pipelineLabel: exact.pipelineLabel,
+    exactLabel,
+    pipelineLabel: labels[bucket],
     detail: '',
-    title: `${labels[bucket]} · ${exact.label}`,
-    className: LIST_STATUS_STYLES[bucket] || LIST_STATUS_STYLES.cold,
-    dotClass: LIST_STATUS_DOT[bucket] || LIST_STATUS_DOT.cold,
+    title:
+      bucket === 'new' || bucket === 'converted'
+        ? labels[bucket]
+        : `${labels[bucket]} · ${exactLabel}`,
+    className: LIST_STATUS_STYLES[bucket] || LIST_STATUS_STYLES.new,
+    dotClass: LIST_STATUS_DOT[bucket] || LIST_STATUS_DOT.new,
     animateLabel: bucket === 'hot',
   };
 }
