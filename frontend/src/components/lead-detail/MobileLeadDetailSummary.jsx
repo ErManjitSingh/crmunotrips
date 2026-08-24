@@ -2,7 +2,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Phone, MapPin, Flame, Pencil, ChevronRight } from 'lucide-react';
 import { formatLeadId } from '../leads/constants';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
-import { LeadListStatusIcon } from '../sales-manager/LeadListBadges';
 import Avatar from '../ui/Avatar';
 import { normalizeLeadStatus } from '../../utils/leadUtils';
 import {
@@ -142,9 +141,6 @@ export default function MobileLeadDetailSummary({
               <p className="text-sm text-slate-500">
                 {formatLeadId(lead._id || lead.leadId)} · Lead 360 · {lead.destination || '—'}
               </p>
-              <div className="mt-1.5">
-                <LeadListStatusIcon lead={lead} />
-              </div>
             </div>
           </div>
 

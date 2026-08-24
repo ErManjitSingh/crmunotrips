@@ -25,7 +25,6 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from '../../context/ToastContext';
 import { openCrmWhatsApp } from '../../lib/openCrmWhatsApp';
 import LeadStatusBadge from './LeadStatusBadge';
-import { LeadListStatusIcon } from '../sales-manager/LeadListBadges';
 import Avatar from '../ui/Avatar';
 import AppDrawer from '../ui/AppDrawer';
 import { formatLeadId } from './constants';
@@ -169,9 +168,6 @@ export default function LeadPreviewDrawer({
                 </div>
                 <div className="min-w-0 pt-0.5">
                   <p className="text-xs font-semibold text-blue-600">{formatLeadId(lead._id)}</p>
-                  <div className="mt-1.5">
-                    <LeadListStatusIcon lead={lead} />
-                  </div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <LeadStatusBadge
                       status={lead.status}
