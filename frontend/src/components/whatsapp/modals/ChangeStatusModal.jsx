@@ -1,15 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AppModal from '../../ui/AppModal';
 import { Button } from '../../ui/button';
-import LeadStatusBadge from '../../leads/LeadStatusBadge';
-import { LEAD_STATUSES } from '../constants';
+import {
+  FOLLOWUP_CATEGORY_OPTIONS,
+  getOutcomesForCategory,
+  buildLeadStatusPayload,
+} from '../../../lib/leadTemperatureStatus';
 
 export default function ChangeStatusModal({ open, onClose, onSubmit, currentStatus }) {
-  const [status, setStatus] = useState(currentStatus || 'new');
+  const [category, setCategory] = useState('warm');
+  const [option, setOption] = useState('');
+  const [comment, setComment] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    setCategory('warm');
+    setOption('');
+    setComment('');
+  }, [open, currentStatus]);
+
+  const options = getOutcomesForCategory(category);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(status);
+    if (!option) return;
+    const payload = buildLeadStatusPayload(category, option, comment);
+    if (!payload) return;
+    onSubmit(payload);
     onClose();
   };
 
@@ -18,28 +35,61 @@ export default function ChangeStatusModal({ open, onClose, onSubmit, currentStat
       <form onSubmit={handleSubmit} className="p-6 space-y-4">
         <div>
           <h3 className="text-lg font-semibold text-content-primary">Lead status</h3>
-          <p className="text-sm text-content-secondary mt-1">Update the pipeline stage for this lead</p>
+          <p className="text-sm text-content-secondary mt-1">Set Warm, Hot, or Cold</p>
         </div>
+
+        <div>
+          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
+            Status *
+          </label>
+          <select
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setOption('');
+            }}
+            className="w-full rounded-xl border border-subtle bg-white p-3 text-sm font-medium"
+          >
+            {FOLLOWUP_CATEGORY_OPTIONS.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
-          {LEAD_STATUSES.map((s) => (
+          {options.map((item) => (
             <button
-              key={s.value}
+              key={item.value}
               type="button"
-              onClick={() => setStatus(s.value)}
-              className={`flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
-                status === s.value
+              onClick={() => setOption(item.value)}
+              className={`flex items-center justify-between p-3 rounded-xl border transition-all text-left text-sm font-semibold ${
+                option === item.value
                   ? 'border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500/30'
                   : 'border-strong hover:bg-surface-secondary'
               }`}
             >
-              <LeadStatusBadge status={s.value} />
-              {status === s.value && <span className="text-emerald-500 text-xs font-medium">Selected</span>}
+              {item.label}
+              {option === item.value && <span className="text-emerald-500 text-xs font-medium">Selected</span>}
             </button>
           ))}
         </div>
+
+        <div>
+          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
+            Comment
+          </label>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={2}
+            placeholder="Optional note…"
+            className="w-full rounded-xl border border-subtle bg-white p-3 text-sm"
+          />
+        </div>
+
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="emerald">Update Status</Button>
+          <Button type="submit" variant="emerald" disabled={!option}>Update Status</Button>
         </div>
       </form>
     </AppModal>

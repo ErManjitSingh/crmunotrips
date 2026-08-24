@@ -533,7 +533,7 @@ function WhatsAppLeadsPage() {
         open={modals.status}
         onClose={() => setModals((m) => ({ ...m, status: false }))}
         currentStatus={selected?.lead?.status}
-        onSubmit={(status) => handleUpdateLead({ status })}
+        onSubmit={(payload) => handleUpdateLead(payload)}
       />
       <AssignLeadModal
         open={modals.assign}

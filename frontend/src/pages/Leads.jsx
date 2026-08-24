@@ -43,7 +43,7 @@ function filtersFromLocation(location, config) {
     ...emptyFilters,
     status: config.status || params.get('status') || '',
     filter: config.listFilter || params.get('filter') || '',
-    listStatus: params.get('listStatus') || '',
+    listStatus: config.listStatus || params.get('listStatus') || '',
     dateFrom,
     dateTo,
     source: params.get('source') || '',
@@ -119,6 +119,7 @@ export default function Leads() {
   const apiFilters = useMemo(() => {
     const base = { ...appliedFilters };
     if (config.status && !base.status) base.status = config.status;
+    if (config.listStatus && !base.listStatus) base.listStatus = config.listStatus;
     if (config.assignee === 'unassigned') base.filter = 'unassigned';
     else if (config.assignee === 'assigned') base.filter = 'assigned';
     else if (config.listFilter && !base.filter) base.filter = config.listFilter;
@@ -126,7 +127,7 @@ export default function Leads() {
       base.todayOnly = true;
     }
     return base;
-  }, [appliedFilters, config.status, config.assignee, config.todayOnly, config.listFilter]);
+  }, [appliedFilters, config.status, config.listStatus, config.assignee, config.todayOnly, config.listFilter]);
 
   const activeCursor = pagination.pageIndex > DEEP_PAGE_INDEX ? pageCursors[pagination.pageIndex] : null;
 
@@ -315,9 +316,9 @@ export default function Leads() {
     }
   };
 
-  const handleBulkStatus = async (status, statusReason) => {
+  const handleBulkStatus = async (payload) => {
     const ids = Object.keys(rowSelection).filter((k) => rowSelection[k]);
-    await bulkUpdateLeadStatus(ids, status, statusReason);
+    await bulkUpdateLeadStatus(ids, payload);
     setRowSelection({});
     setBulkStatusOpen(false);
     invalidateLeads();

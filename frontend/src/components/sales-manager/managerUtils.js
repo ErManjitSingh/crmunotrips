@@ -10,15 +10,18 @@ export function formatBudget(n) {
 }
 
 export const STATUS_STYLES = {
+  warm: 'bg-amber-50 text-amber-800 ring-amber-200',
+  hot: 'bg-rose-50 text-rose-700 ring-rose-200',
+  cold: 'bg-slate-50 text-slate-700 ring-slate-200',
   new: 'bg-sky-50 text-sky-700 ring-sky-200',
-  contacted: 'bg-violet-50 text-violet-700 ring-violet-200',
-  working_progress: 'bg-orange-50 text-orange-700 ring-orange-200',
-  follow_up: 'bg-amber-50 text-amber-700 ring-amber-200',
-  quotation_sent: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
-  negotiation: 'bg-orange-50 text-orange-700 ring-orange-200',
-  reactivated: 'bg-teal-50 text-teal-700 ring-teal-200',
+  contacted: 'bg-amber-50 text-amber-800 ring-amber-200',
+  working_progress: 'bg-amber-50 text-amber-800 ring-amber-200',
+  follow_up: 'bg-amber-50 text-amber-800 ring-amber-200',
+  quotation_sent: 'bg-rose-50 text-rose-700 ring-rose-200',
+  negotiation: 'bg-rose-50 text-rose-700 ring-rose-200',
+  reactivated: 'bg-amber-50 text-amber-800 ring-amber-200',
   active: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   converted: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  lost: 'bg-rose-50 text-rose-600 ring-rose-200',
-  booked_from_another_company: 'bg-rose-50 text-rose-600 ring-rose-200',
+  lost: 'bg-slate-50 text-slate-700 ring-slate-200',
+  booked_from_another_company: 'bg-slate-50 text-slate-700 ring-slate-200',
 };

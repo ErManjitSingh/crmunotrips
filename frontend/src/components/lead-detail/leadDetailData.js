@@ -12,12 +12,9 @@ import {
 import { getLeadStatusLabel } from '../../lib/leadStatusLabel';
 
 export const PIPELINE_STAGES = [
-  { value: 'new', label: 'New', shortLabel: 'New' },
-  { value: 'contacted', label: 'Contacted', shortLabel: 'Contacted' },
-  { value: 'working_progress', label: 'Working', shortLabel: 'Working' },
-  { value: 'qualified', label: 'Qualified', shortLabel: 'Qualified' },
-  { value: 'quotation_sent', label: 'Quotation', shortLabel: 'Quotation' },
-  { value: 'follow_up', label: 'Follow-up', shortLabel: 'Follow-up' },
+  { value: 'warm', label: 'Warm', shortLabel: 'Warm' },
+  { value: 'hot', label: 'Hot', shortLabel: 'Hot' },
+  { value: 'cold', label: 'Cold', shortLabel: 'Cold' },
   { value: 'converted', label: 'Booking', shortLabel: 'Booking' },
 ];
 

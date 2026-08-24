@@ -1,24 +1,16 @@
+/** WhatsApp list filters — Warm / Hot / Cold only */
 export const STATUS_FILTERS = [
   { key: '', label: 'All' },
-  { key: 'new', label: 'New' },
-  { key: 'contacted', label: 'Contacted' },
-  { key: 'working_progress', label: 'Working' },
-  { key: 'qualified', label: 'Qualified' },
-  { key: 'follow_up', label: 'Follow-up' },
+  { key: 'warm', label: 'Warm' },
+  { key: 'hot', label: 'Hot' },
+  { key: 'cold', label: 'Cold' },
 ];
 
+/** @deprecated Use Warm/Hot/Cold outcomes via leadTemperatureStatus */
 export const LEAD_STATUSES = [
-  { value: 'new', label: 'New' },
-  { value: 'contacted', label: 'Contacted' },
-  { value: 'working_progress', label: 'Working' },
-  { value: 'qualified', label: 'Qualified' },
-  { value: 'quotation_sent', label: 'Quotation' },
-  { value: 'follow_up', label: 'Follow-up' },
-  { value: 'converted', label: 'Booking' },
-  { value: 'lost', label: 'Lost' },
-  { value: 'negotiation', label: 'Negotiation' },
-  { value: 'reactivated', label: 'Reactivated' },
-  { value: 'booked_from_another_company', label: 'Booked Elsewhere' },
+  { value: 'warm', label: 'Warm' },
+  { value: 'hot', label: 'Hot' },
+  { value: 'cold', label: 'Cold' },
 ];
 
 export const MESSAGE_STATUS_ICON = {

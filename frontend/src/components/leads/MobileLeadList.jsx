@@ -237,9 +237,22 @@ export default function MobileLeadList({
 
               {showMoreFilters && (
                 <div className="grid grid-cols-2 gap-2 rounded-xl border border-violet-100 bg-violet-50/40 p-2">
-                  <select value={filters.status} onChange={(event) => onFiltersChange({ ...filters, status: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">
+                  <select
+                    value={filters.listStatus || ''}
+                    onChange={(event) =>
+                      onFiltersChange({
+                        ...filters,
+                        listStatus: event.target.value,
+                        status: '',
+                        filter: '',
+                      })
+                    }
+                    className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none"
+                  >
                     <option value="">Lead Status</option>
-                    {LEAD_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
+                    {LEAD_STATUSES.map((status) => (
+                      <option key={status.value} value={status.value}>{status.label}</option>
+                    ))}
                   </select>
                   {canFilterBranch && (
                     <select value={filters.branchId || ''} onChange={(event) => onFiltersChange({ ...filters, branchId: event.target.value })} className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[9px] text-slate-600 outline-none">

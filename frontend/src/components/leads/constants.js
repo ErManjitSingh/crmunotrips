@@ -1,15 +1,22 @@
 export const LEAD_STATUSES = [
-  { value: 'new', label: 'New', meaning: 'Lead just received' },
-  { value: 'contacted', label: 'Contacted', meaning: 'Executive has spoken / message exchanged' },
-  { value: 'working_progress', label: 'Working', meaning: 'Customer interested; requirements not confirmed' },
-  { value: 'qualified', label: 'Qualified', meaning: 'Genuine buyer + requirements confirmed' },
-  { value: 'quotation_sent', label: 'Quotation', meaning: 'Price / package sent' },
-  { value: 'follow_up', label: 'Follow-up', meaning: 'Waiting for customer decision' },
-  { value: 'converted', label: 'Booking', meaning: 'Customer has confirmed / paid' },
-  { value: 'lost', label: 'Lost', meaning: 'Not converting / rejected' },
-  { value: 'negotiation', label: 'Negotiation', meaning: 'Price discussion in progress' },
-  { value: 'reactivated', label: 'Reactivated', meaning: 'Previously lost lead revived' },
-  { value: 'booked_from_another_company', label: 'Booked Elsewhere', meaning: 'Lost to another company' },
+  { value: 'warm', label: 'Warm', meaning: 'Package discussed / callback / CNP / negotiation' },
+  { value: 'hot', label: 'Hot', meaning: 'Ready to Book' },
+  { value: 'cold', label: 'Cold', meaning: 'Not converting / language / budget / invalid' },
+];
+
+/** Internal pipeline values still stored on Lead.status (do not show in UI pickers) */
+export const PIPELINE_LEAD_STATUSES = [
+  { value: 'new', label: 'New' },
+  { value: 'contacted', label: 'Contacted' },
+  { value: 'working_progress', label: 'Working' },
+  { value: 'qualified', label: 'Qualified' },
+  { value: 'quotation_sent', label: 'Quotation' },
+  { value: 'follow_up', label: 'Follow-up' },
+  { value: 'converted', label: 'Booking' },
+  { value: 'lost', label: 'Lost' },
+  { value: 'negotiation', label: 'Negotiation' },
+  { value: 'reactivated', label: 'Reactivated' },
+  { value: 'booked_from_another_company', label: 'Booked Elsewhere' },
 ];
 
 /** Stored source keys — display uses short labels via getLeadSourceShortLabel */
@@ -87,7 +94,7 @@ export const pageConfig = {
     assignee: '',
     listFilter: 'arrivals',
   },
-  '/leads/lost': { title: 'Lost Leads', subtitle: 'Did not convert', status: 'lost', assignee: '' },
+  '/leads/lost': { title: 'Cold Leads', subtitle: 'Not converting', status: '', assignee: '', listFilter: '', listStatus: 'cold' },
   '/leads/duplicates': {
     title: 'Repeated Leads',
     subtitle: 'Leads sharing the same phone number',

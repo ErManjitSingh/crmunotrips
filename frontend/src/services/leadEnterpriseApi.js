@@ -56,12 +56,16 @@ export async function fetchCallNotes(leadId, params = {}) {
   return data;
 }
 
-export async function bulkUpdateLeadStatus(leadIds, status, statusReason) {
-  const { data } = await API.post('/leads/bulk-status', {
-    leadIds,
-    status,
-    ...(statusReason ? { statusReason } : {}),
-  });
+export async function bulkUpdateLeadStatus(leadIds, statusOrPayload, statusReason) {
+  const body =
+    statusOrPayload && typeof statusOrPayload === 'object'
+      ? { leadIds, ...statusOrPayload }
+      : {
+          leadIds,
+          status: statusOrPayload,
+          ...(statusReason ? { statusReason } : {}),
+        };
+  const { data } = await API.post('/leads/bulk-status', body);
   return data;
 }
 

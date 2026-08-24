@@ -365,7 +365,18 @@ export default function LeadFilterBar({
               </div>
               <div>
                 <FieldLabel>Lead Status</FieldLabel>
-                <select value={filters.status} onChange={(e) => set('status', e.target.value)} className={fieldClass}>
+                <select
+                  value={filters.listStatus || ''}
+                  onChange={(e) =>
+                    onChange({
+                      ...filters,
+                      listStatus: e.target.value,
+                      status: '',
+                      filter: '',
+                    })
+                  }
+                  className={fieldClass}
+                >
                   <option value="">All Statuses</option>
                   {LEAD_STATUSES.map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>

@@ -265,9 +265,10 @@ const updateLead = asyncHandler(async (req, res) => {
     'paymentScreenshotBase64',
     'paymentScreenshotName',
     'paymentScreenshots',
-    // Allowed alongside status from follow-up outcome modal (cold lead)
+    // Allowed alongside status from follow-up outcome modal
     'temperature',
     'coldReason',
+    'isHot',
   ]);
   const otherFields = Object.keys(req.body).filter((k) => !statusOnlyKeys.has(k));
   const isStatusOnlyUpdate = Boolean(status) && otherFields.length === 0;
@@ -334,12 +335,19 @@ const updateLead = asyncHandler(async (req, res) => {
     }
     lead.statusReasonUpdatedAt = new Date();
 
-    // Cold outcome from follow-up modal — stamp temperature without creating a 2nd reminder
-    // (scheduled follow-up is created separately via POST /followups).
+    // Stamp Warm / Hot / Cold from follow-up / status modal
     if (req.body.temperature === 'cold' || req.body.coldReason) {
       lead.temperature = 'cold';
       lead.isHot = false;
       if (req.body.coldReason) lead.coldReason = String(req.body.coldReason).trim();
+    } else if (req.body.temperature === 'hot' || req.body.isHot === true) {
+      lead.temperature = 'hot';
+      lead.isHot = true;
+    } else if (req.body.temperature === 'warm') {
+      lead.temperature = 'warm';
+      lead.isHot = false;
+    } else if (typeof req.body.isHot === 'boolean') {
+      lead.isHot = req.body.isHot;
     }
 
     await lead.save();

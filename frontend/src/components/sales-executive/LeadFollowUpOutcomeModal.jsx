@@ -4,7 +4,8 @@ import { ActionModal } from '../sales-executive/LeadActionsMenu';
 import {
   FOLLOWUP_CATEGORY_OPTIONS,
   getOutcomesForCategory,
-} from '../followups/constants';
+  buildLeadStatusPayload,
+} from '../../lib/leadTemperatureStatus';
 import { toast } from '../../context/ToastContext';
 
 /**
@@ -35,47 +36,13 @@ export default function LeadFollowUpOutcomeModal({
     setOption('');
   };
 
-  const buildPayload = () => {
-    const note = comment.trim();
-    const statusReason = note ? `${option} — ${note}` : option;
-
-    if (category === 'warm') {
-      return {
-        status: option === 'cnp_same_day' ? 'follow_up' : 'contacted',
-        statusReason,
-        temperature: 'warm',
-      };
-    }
-
-    if (category === 'hot') {
-      return {
-        status: 'negotiation',
-        statusReason,
-        temperature: 'hot',
-        isHot: true,
-      };
-    }
-
-    if (category === 'cold') {
-      return {
-        status: 'follow_up',
-        statusReason,
-        temperature: 'cold',
-        coldReason: option,
-        isHot: false,
-      };
-    }
-
-    return null;
-  };
-
   const handleSave = async () => {
     if (!option) {
       toast.error('Select an option');
       return;
     }
 
-    const payload = buildPayload();
+    const payload = buildLeadStatusPayload(category, option, comment);
     if (!payload) {
       toast.error('Invalid selection');
       return;

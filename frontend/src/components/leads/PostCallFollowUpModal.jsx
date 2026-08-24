@@ -4,23 +4,17 @@ import AppModal from '../ui/AppModal';
 import { Button } from '../ui/button';
 import { addCallNote } from '../../services/leadEnterpriseApi';
 import { formatCallDurationExact } from '../../lib/callSession';
+import {
+  FOLLOWUP_CATEGORY_OPTIONS,
+  getOutcomesForCategory,
+} from '../../lib/leadTemperatureStatus';
 
-/** Outcomes when the call was picked / connected */
-export const CALL_PICKED_OUTCOMES = [
-  { value: 'interested', label: 'Interested' },
-  { value: 'discussed_package', label: 'Discussed package' },
-  { value: 'need_better_hotel', label: 'Need better hotel' },
-  { value: 'budget_issue', label: 'Budget issue' },
-  { value: 'call_back_later', label: 'Call back later' },
-  { value: 'call_back_tomorrow', label: 'Call back tomorrow' },
-  { value: 'busy', label: 'Busy / asked to call later' },
-  { value: 'not_interested', label: 'Declined / Not interested' },
-  { value: 'other', label: 'Other' },
-];
-
-/** Kept for CallNoteModal / older imports */
+/** @deprecated older imports */
+export const CALL_PICKED_OUTCOMES = getOutcomesForCategory('warm');
 export const CALL_OUTCOMES = [
-  ...CALL_PICKED_OUTCOMES,
+  ...getOutcomesForCategory('warm'),
+  ...getOutcomesForCategory('hot'),
+  ...getOutcomesForCategory('cold'),
   { value: 'no_answer', label: 'No answer / Not picked' },
 ];
 
@@ -30,16 +24,16 @@ export default function PostCallFollowUpModal({
   onClose,
   onSaved,
 }) {
-  const [callResult, setCallResult] = useState('picked'); // picked | not_picked
-  const [outcome, setOutcome] = useState('interested');
+  const [category, setCategory] = useState('warm');
+  const [outcome, setOutcome] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!open || !session) return;
-    setCallResult('picked');
-    setOutcome('interested');
+    setCategory('warm');
+    setOutcome('');
     setNotes('');
     setError('');
   }, [open, session]);
@@ -47,24 +41,26 @@ export default function PostCallFollowUpModal({
   if (!session) return null;
 
   const durationSeconds = Math.max(0, Math.round(Number(session.durationSeconds) || 0));
+  const options = getOutcomesForCategory(category);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const finalOutcome = callResult === 'not_picked' ? 'no_answer' : outcome;
-    if (callResult === 'picked' && !outcome) {
-      setError('Select what happened on the call');
+    if (!outcome) {
+      setError('Select a status option');
       return;
     }
     setSaving(true);
     setError('');
     try {
       const saved = await addCallNote(session.leadId, {
-        outcome: finalOutcome,
+        outcome,
         notes: notes.trim(),
         durationSeconds,
         startedAt: session.startedAt ? new Date(session.startedAt).toISOString() : undefined,
         endedAt: session.endedAt ? new Date(session.endedAt).toISOString() : new Date().toISOString(),
         scheduleNextCall: true,
+        category,
+        statusReason: notes.trim() ? `${outcome} — ${notes.trim()}` : outcome,
       });
       onSaved?.(saved);
       onClose?.();
@@ -89,7 +85,7 @@ export default function PostCallFollowUpModal({
               Duration: {formatCallDurationExact(durationSeconds)}
             </p>
             <p className="mt-1 text-[11px] font-medium text-violet-600">
-              Call picked → lead moves to Connected. Next reminder in 2 hours.
+              Set Warm / Hot / Cold from this call. Next reminder in 2 hours.
             </p>
           </div>
         </div>
@@ -99,73 +95,47 @@ export default function PostCallFollowUpModal({
         )}
 
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-content-muted">
-            Was the call picked? *
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setCallResult('picked');
-                if (outcome === 'no_answer') setOutcome('interested');
-              }}
-              className={`rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors ${
-                callResult === 'picked'
-                  ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
-                  : 'border-subtle bg-white text-content-secondary hover:border-emerald-300'
-              }`}
-            >
-              Call picked
-            </button>
-            <button
-              type="button"
-              onClick={() => setCallResult('not_picked')}
-              className={`rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors ${
-                callResult === 'not_picked'
-                  ? 'border-amber-500 bg-amber-50 text-amber-900'
-                  : 'border-subtle bg-white text-content-secondary hover:border-amber-300'
-              }`}
-            >
-              Not picked
-            </button>
-          </div>
+          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-muted">
+            Status *
+          </label>
+          <select
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setOutcome('');
+            }}
+            className="w-full rounded-xl border border-subtle bg-white p-3 text-sm font-medium"
+          >
+            {FOLLOWUP_CATEGORY_OPTIONS.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
         </div>
 
-        {callResult === 'picked' ? (
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-content-muted">
-              What happened on the call? *
-            </p>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {CALL_PICKED_OUTCOMES.map((item) => {
-                const isDecline = item.value === 'not_interested';
-                const selected = outcome === item.value;
-                return (
-                  <button
-                    key={item.value}
-                    type="button"
-                    onClick={() => setOutcome(item.value)}
-                    className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors ${
-                      selected && isDecline
-                        ? 'border-red-600 bg-red-600 text-white'
-                        : selected
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : isDecline
-                            ? 'border-red-200 bg-red-50 text-red-700 hover:border-red-400'
-                            : 'border-subtle bg-white text-content-secondary hover:border-blue-300'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
-            Lead stays in New. It will not move to Connected until the call is picked.
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-content-muted">
+            Option *
           </p>
-        )}
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {options.map((item) => {
+              const selected = outcome === item.value;
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setOutcome(item.value)}
+                  className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                    selected
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-subtle bg-white text-content-secondary hover:border-blue-300'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <div>
           <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-muted">
@@ -184,8 +154,8 @@ export default function PostCallFollowUpModal({
           <Button type="button" variant="outline" disabled={saving} onClick={() => onClose?.()}>
             Skip
           </Button>
-          <Button type="submit" disabled={saving} className="bg-blue-600 text-white hover:bg-blue-500">
-            {saving ? 'Saving…' : callResult === 'picked' ? 'Save → Connected' : 'Save'}
+          <Button type="submit" disabled={saving || !outcome} className="bg-blue-600 text-white hover:bg-blue-500">
+            {saving ? 'Saving…' : 'Save status'}
           </Button>
         </div>
       </form>

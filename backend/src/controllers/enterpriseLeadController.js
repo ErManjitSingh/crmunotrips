@@ -192,6 +192,8 @@ const addCallNote = asyncHandler(async (req, res) => {
     startedAt,
     endedAt,
     scheduleNextCall = true,
+    category: bodyCategory,
+    statusReason: bodyStatusReason,
   } = req.body;
   if (!outcome) throw new ApiError(400, 'Call outcome / reason is required');
 
@@ -251,14 +253,53 @@ const addCallNote = asyncHandler(async (req, res) => {
     recent: prevRecent.slice(-12),
   };
 
-  // Call picked / answered → move New leads into Connected (status: contacted)
+  // Apply Warm / Hot / Cold from call outcome
   const outcomeKey = String(outcome || '');
-  const notConnectedOutcomes = new Set(['no_answer']);
-  const callConnected = !notConnectedOutcomes.has(outcomeKey);
+  const WARM_KEYS = new Set(['discussed_package', 'requested_callback', 'cnp_same_day', 'price_negotiation']);
+  const HOT_KEYS = new Set(['ready_to_book']);
+  const COLD_KEYS = new Set([
+    'booked_elsewhere',
+    'language_barrier',
+    'not_interested',
+    'invalid_number',
+    'budget_issues',
+    'budget_issue',
+  ]);
+  let category = ['warm', 'hot', 'cold'].includes(String(bodyCategory || ''))
+    ? String(bodyCategory)
+    : WARM_KEYS.has(outcomeKey)
+      ? 'warm'
+      : HOT_KEYS.has(outcomeKey)
+        ? 'hot'
+        : COLD_KEYS.has(outcomeKey)
+          ? 'cold'
+          : 'warm';
+
   const prevStatus = lead.status;
-  if (callConnected && lead.status === 'new') {
-    lead.status = 'contacted';
+  const reasonStamp = String(bodyStatusReason || '').trim() || outcomeKey;
+  if (category === 'hot') {
+    if (!['converted', 'lost', 'booked_from_another_company'].includes(lead.status)) {
+      lead.status = 'negotiation';
+    }
+    lead.temperature = 'hot';
+    lead.isHot = true;
+  } else if (category === 'cold') {
+    if (!['converted', 'lost', 'booked_from_another_company'].includes(lead.status)) {
+      lead.status = 'follow_up';
+    }
+    lead.temperature = 'cold';
+    lead.isHot = false;
+    lead.coldReason = outcomeKey;
+  } else {
+    if (!['converted', 'lost', 'booked_from_another_company'].includes(lead.status)) {
+      lead.status = outcomeKey === 'cnp_same_day' ? 'follow_up' : 'contacted';
+    }
+    lead.temperature = 'warm';
+    lead.isHot = false;
   }
+  lead.statusReason = reasonStamp;
+  lead.statusReasonUpdatedAt = new Date();
+  const callConnected = category !== 'cold' || !['invalid_number'].includes(outcomeKey);
 
   await applyLeadMetrics(lead);
   await lead.save();
@@ -288,17 +329,17 @@ const addCallNote = asyncHandler(async (req, res) => {
       );
 
       const scheduledAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-      const followCategory = !callConnected
-        ? 'call_not_picked'
-        : outcomeKey === 'interested' || outcomeKey === 'discussed_package'
-          ? 'warm'
-          : 'call_picked';
       nextFollowUp = await createFollowUpForLead({
         body: {
           lead: lead._id,
           type: 'call',
-          category: followCategory,
-          notPickedReason: !callConnected ? 'not_answering' : undefined,
+          category,
+          pickedOutcome: category === 'warm' || category === 'hot' ? outcomeKey : undefined,
+          warmOutcome: category === 'warm' ? outcomeKey : undefined,
+          hotOutcome: category === 'hot' ? outcomeKey : undefined,
+          coldReason: category === 'cold' ? outcomeKey : undefined,
+          outcome: outcomeKey,
+          statusReason: reasonStamp,
           scheduledAt: scheduledAt.toISOString(),
           notes: `Auto next call (2 hrs) after call — ${outcomeKey.replace(/_/g, ' ')}${noteText ? `: ${noteText.slice(0, 80)}` : ''}`,
           priority: lead.priority || 'medium',
@@ -323,6 +364,7 @@ const addCallNote = asyncHandler(async (req, res) => {
       durationSeconds: seconds,
       statusFrom: prevStatus,
       statusTo: lead.status,
+      category,
       callConnected,
     },
   });
@@ -347,7 +389,14 @@ const addCallNote = asyncHandler(async (req, res) => {
 });
 
 const bulkUpdateStatus = asyncHandler(async (req, res) => {
-  const { leadIds, status, statusReason } = req.body;
+  const {
+    leadIds,
+    status,
+    statusReason,
+    temperature,
+    isHot,
+    coldReason,
+  } = req.body;
   if (!Array.isArray(leadIds) || !leadIds.length) throw new ApiError(400, 'leadIds required');
   if (!status) throw new ApiError(400, 'status required');
 
@@ -381,7 +430,13 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
     if (normalizedLostReason) {
       lead.statusReason = normalizedLostReason;
       lead.statusReasonUpdatedAt = new Date();
+    } else if (statusReason) {
+      lead.statusReason = String(statusReason).trim();
+      lead.statusReasonUpdatedAt = new Date();
     }
+    if (temperature) lead.temperature = temperature;
+    if (typeof isHot === 'boolean') lead.isHot = isHot;
+    if (coldReason) lead.coldReason = String(coldReason).trim();
     await applyLeadMetrics(lead);
     await lead.save();
     await logLeadActivity({
@@ -390,7 +445,12 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
       type: 'status_changed',
       description: `Status changed from ${prev} to ${status} (bulk)`,
       actor: req.user,
-      meta: { from: prev, to: status, statusReason: normalizedLostReason || undefined },
+      meta: {
+        from: prev,
+        to: status,
+        statusReason: lead.statusReason || undefined,
+        temperature: lead.temperature || undefined,
+      },
     });
     results.push({ _id: lead._id, status: lead.status });
   }

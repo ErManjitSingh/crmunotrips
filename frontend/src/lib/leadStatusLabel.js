@@ -1,40 +1,47 @@
 /**
- * Canonical lead status labels — Contacted ≠ Qualified (answering ≠ genuine buyer).
- * Pipeline: New → Contacted → Working → Qualified → Quotation → Follow-up → Booking | Lost
+ * Canonical lead status labels — Warm / Hot / Cold across the CRM.
+ * Pipeline keys still exist in DB; UI maps them to temperature buckets.
  */
+import { pipelineStatusToTemperatureLabel } from './leadTemperatureStatus';
+
 const STATUS_LABELS = {
-  new: 'New',
-  contacted: 'Connected',
-  working_progress: 'Working',
-  qualified: 'Qualified',
-  quotation_sent: 'Quotation',
-  follow_up: 'Follow-up',
-  negotiation: 'Negotiation',
-  reactivated: 'Reactivated',
+  new: 'No status',
+  contacted: 'Warm',
+  working_progress: 'Warm',
+  qualified: 'Warm',
+  quotation_sent: 'Hot',
+  follow_up: 'Warm',
+  negotiation: 'Hot',
+  reactivated: 'Warm',
   converted: 'Booking',
-  lost: 'Lost',
-  booked_from_another_company: 'Booked Elsewhere',
+  lost: 'Cold',
+  booked_from_another_company: 'Cold',
+  warm: 'Warm',
+  hot: 'Hot',
+  cold: 'Cold',
 };
 
 const STATUS_MEANINGS = {
-  new: 'Lead just received',
-  contacted: 'Call connected / spoken with customer',
-  working_progress: 'Customer is interested but requirements aren’t confirmed',
-  qualified: 'Genuine buyer + requirements confirmed',
-  quotation_sent: 'Price / package sent',
-  follow_up: 'Waiting for customer / next follow-up set',
+  warm: 'Package discussed / callback / CNP / price negotiation',
+  hot: 'Ready to Book',
+  cold: 'Booked elsewhere / language / not interested / invalid / budget',
+  new: 'Lead just received — no Warm/Hot/Cold set yet',
   converted: 'Customer has confirmed / paid',
-  lost: 'Not converting / rejected',
 };
 
 export function getLeadStatusLabel(status) {
   if (!status) return '—';
-  return STATUS_LABELS[status] || String(status).replace(/_/g, ' ');
+  if (STATUS_LABELS[status]) return STATUS_LABELS[status];
+  return pipelineStatusToTemperatureLabel(status);
 }
 
 export function getLeadStatusMeaning(status) {
   if (!status) return '';
-  return STATUS_MEANINGS[status] || '';
+  const bucket = STATUS_LABELS[status] || pipelineStatusToTemperatureLabel(status);
+  const key = String(bucket).toLowerCase().replace(/\s+/g, '_');
+  if (key === 'booking') return STATUS_MEANINGS.converted;
+  if (key === 'no_status') return STATUS_MEANINGS.new;
+  return STATUS_MEANINGS[key] || STATUS_MEANINGS[status] || '';
 }
 
 export { STATUS_LABELS, STATUS_MEANINGS };

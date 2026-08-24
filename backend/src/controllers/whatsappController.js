@@ -24,7 +24,7 @@ const {
 
 /** Slim fields for inbox list — avoid shipping full Lead docs */
 const INBOX_LEAD_SELECT =
-  'name phone whatsapp email city destination status budget travelDate travelers adults preferredCallTime source sourceLabel assignedTo leadId updatedAt channel';
+  'name phone whatsapp email city destination status statusReason temperature isHot coldReason budget travelDate travelers adults preferredCallTime source sourceLabel assignedTo leadId updatedAt channel';
 
 const MESSAGE_SELECT = 'direction type text attachment status errorCode errorMessage timestamp waMessageId conversation lead';
 const MESSAGE_LIMIT = 150;
@@ -89,6 +89,8 @@ async function loadRecentMessages(filter) {
   return hydrateMessageAttachments(rows);
 }
 
+const { applyListStatusBucket } = require('../utils/listStatusBucketFilter');
+
 const listConversations = asyncHandler(async (req, res) => {
   const { status, search, onlyUnlinked, includeOrphans } = req.query;
   const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 40, maxLimit: 100 });
@@ -116,7 +118,13 @@ const listConversations = asyncHandler(async (req, res) => {
   let scopedLeadIds = null;
   if (executiveOnly || status) {
     const leadFilter = leadScopeFilter(req);
-    if (status) leadFilter.status = status;
+    if (status) {
+      if (['warm', 'hot', 'cold'].includes(String(status).toLowerCase())) {
+        applyListStatusBucket(leadFilter, status);
+      } else {
+        leadFilter.status = status;
+      }
+    }
     // Cap IDs so inbox never loads unbounded lead id sets under load
     scopedLeadIds = await Lead.find(leadFilter)
       .select('_id')
@@ -168,7 +176,13 @@ const listConversations = asyncHandler(async (req, res) => {
   // Legacy orphan leads — off by default (slow); enable with ?includeOrphans=1
   if (wantOrphans && !onlyUnlinked && page === 1) {
     const leadFilter = leadScopeFilter(req, { channel: 'whatsapp' });
-    if (status) leadFilter.status = status;
+    if (status) {
+      if (['warm', 'hot', 'cold'].includes(String(status).toLowerCase())) {
+        applyListStatusBucket(leadFilter, status);
+      } else {
+        leadFilter.status = status;
+      }
+    }
     const linkedPhones = new Set(rows.filter((r) => r.leadId).map((r) => normalizePhone(r.phone)));
     const orphanLeads = await Lead.find(leadFilter)
       .select(INBOX_LEAD_SELECT)

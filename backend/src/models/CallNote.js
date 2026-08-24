@@ -1,15 +1,25 @@
 const mongoose = require('mongoose');
 
 const CALL_OUTCOMES = [
+  // Warm / Hot / Cold (current)
+  'discussed_package',
+  'requested_callback',
+  'cnp_same_day',
+  'price_negotiation',
+  'ready_to_book',
+  'booked_elsewhere',
+  'language_barrier',
+  'not_interested',
+  'invalid_number',
+  'budget_issues',
+  // legacy
   'interested',
   'need_better_hotel',
   'budget_issue',
   'call_back_later',
   'call_back_tomorrow',
-  'not_interested',
   'no_answer',
   'busy',
-  'discussed_package',
   'other',
 ];
 

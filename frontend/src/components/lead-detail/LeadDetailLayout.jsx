@@ -78,7 +78,7 @@ export default function LeadDetailLayout({
           {flashMessage}
         </div>
       )}
-      <LeadStatusPipeline status={lead.status} />
+      <LeadStatusPipeline status={lead.status} lead={lead} />
       <LeadConvertedBanner
         status={lead.status}
         bookingNumber={lead.paymentSummary?.bookingNumber}
