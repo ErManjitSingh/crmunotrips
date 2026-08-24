@@ -4,6 +4,7 @@ import { formatLeadId } from '../leads/constants';
 import LeadStatusBadge from '../leads/LeadStatusBadge';
 import Avatar from '../ui/Avatar';
 import { normalizeLeadStatus } from '../../utils/leadUtils';
+import { getLeadListStatusDisplay } from '../../lib/executiveStatusDisplay';
 import {
   getInitials,
   formatSource,
@@ -89,10 +90,20 @@ export default function MobileLeadDetailSummary({
   const navigate = useNavigate();
   const status = normalizeLeadStatus(lead.status);
   const scores = computeLeadScores(lead);
-  const temperature = lead.isHot || lead.temperature === 'hot'
-    ? 'Hot'
-    : (lead.temperature || 'Warm');
-  const tempCapitalized = temperature.charAt(0).toUpperCase() + temperature.slice(1);
+  const listDisplay = getLeadListStatusDisplay(lead);
+  const temperature =
+    listDisplay.bucket === 'working'
+      ? 'Working Progress'
+      : listDisplay.bucket === 'hot'
+        ? 'Hot'
+        : listDisplay.bucket === 'cold'
+          ? 'Cold'
+          : listDisplay.bucket === 'warm'
+            ? 'Warm'
+            : listDisplay.bucket === 'converted'
+              ? 'Booking'
+              : 'No status';
+  const tempCapitalized = temperature;
   const scorePct = Math.max(0, Math.min(100, Number(scores.overall) || 0));
   const location =
     [lead.city, lead.state].filter(Boolean).join(', ') || lead.destination || 'India';
@@ -205,7 +216,7 @@ export default function MobileLeadDetailSummary({
             </div>
 
             <OverviewRow
-              label="Lead Temperature"
+              label="Lead Status"
               value={(
                 <span className="inline-flex items-center gap-1 text-orange-600">
                   <Flame className="h-3.5 w-3.5" /> {tempCapitalized}

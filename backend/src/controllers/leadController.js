@@ -566,7 +566,42 @@ const updateLead = asyncHandler(async (req, res) => {
   }
 
   const prevTemperature = lead.temperature;
+  const wasColdBeforeAssign =
+    String(lead.temperature || '').toLowerCase() === 'cold' ||
+    [
+      'booked_elsewhere',
+      'language_barrier',
+      'not_interested',
+      'invalid_number',
+      'budget_issues',
+      'budget_issue',
+    ].includes(
+      String(lead.statusReason || '')
+        .trim()
+        .split(/\s*[—–]\s*|\s+-\s+/)[0]
+        ?.replace(/:$/, '')
+        .trim()
+    ) ||
+    Boolean(lead.coldReason);
+
+  // Cold → Warm: force Working Progress (client may send contacted/follow_up)
+  if (
+    (data.temperature === 'warm' || req.body.fromColdToWarm === true) &&
+    wasColdBeforeAssign &&
+    data.status &&
+    !['converted', 'lost', 'booked_from_another_company'].includes(data.status)
+  ) {
+    data.status = 'working_progress';
+    if (!String(data.statusReason || '').startsWith('working_progress')) {
+      data.statusReason = 'working_progress';
+    }
+    data.coldReason = undefined;
+  }
+
   Object.assign(lead, data);
+  if (data.temperature === 'warm' || data.status === 'working_progress') {
+    lead.coldReason = undefined;
+  }
   if (data.status === 'converted' && prevStatus !== 'converted' && !lead.convertedAt) {
     lead.convertedAt = new Date();
   }

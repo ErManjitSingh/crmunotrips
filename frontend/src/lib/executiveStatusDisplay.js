@@ -1,35 +1,20 @@
 import { getLeadStatusLabel } from './leadStatusLabel';
 import { LEAD_FOLLOW_UP_OUTCOMES } from '../constants/leadFollowUpOutcomes';
 import {
-  WARM_OUTCOMES,
-  HOT_OUTCOMES,
-  COLD_OUTCOMES,
-} from '../components/followups/constants';
+  getAllOptionEntries,
+  bucketFromOptionKey,
+} from './leadStatusOptionsStore';
 
-/** Only the current Warm / Hot / Cold options count as a selected status */
-const CURRENT_OPTIONS = [
-  ...WARM_OUTCOMES,
-  ...HOT_OUTCOMES,
-  ...COLD_OUTCOMES,
-  { value: 'budget_issue', label: 'Budget issues' }, // legacy alias → Cold
-];
+function currentOptionLabels() {
+  return [...getAllOptionEntries(), ...LEAD_FOLLOW_UP_OUTCOMES];
+}
 
-const OPTION_LABELS = [
-  ...CURRENT_OPTIONS,
-  ...LEAD_FOLLOW_UP_OUTCOMES,
-];
-
-const OPTION_KEYS_BY_LENGTH = [...OPTION_LABELS]
-  .map((o) => o.value)
-  .filter(Boolean)
-  .sort((a, b) => b.length - a.length);
-
-const WARM_REASON_KEYS = new Set(WARM_OUTCOMES.map((o) => o.value));
-const HOT_REASON_KEYS = new Set(HOT_OUTCOMES.map((o) => o.value));
-const COLD_REASON_KEYS = new Set([
-  ...COLD_OUTCOMES.map((o) => o.value),
-  'budget_issue',
-]);
+function optionKeysByLength() {
+  return currentOptionLabels()
+    .map((o) => o.value)
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+}
 
 function extractReasonKey(statusReason) {
   const raw = String(statusReason || '').trim();
@@ -37,8 +22,9 @@ function extractReasonKey(statusReason) {
   const cleaned = raw.replace(/^not_connected:/i, '').trim();
   const parts = cleaned.split(/\s*[—–]\s*|\s+-\s+/).map((p) => p.trim()).filter(Boolean);
   const head = (parts[0] || '').replace(/:$/, '').trim();
-  if (OPTION_KEYS_BY_LENGTH.includes(head)) return head;
-  const found = OPTION_KEYS_BY_LENGTH.find(
+  const keys = optionKeysByLength();
+  if (keys.includes(head)) return head;
+  const found = keys.find(
     (key) =>
       cleaned === key ||
       cleaned.startsWith(`${key} `) ||
@@ -53,7 +39,7 @@ function extractReasonKey(statusReason) {
 
 function findOptionLabel(key) {
   if (!key) return '';
-  const hit = OPTION_LABELS.find((o) => o.value === key || o.lostReason === key);
+  const hit = currentOptionLabels().find((o) => o.value === key || o.lostReason === key);
   return hit?.label || '';
 }
 
@@ -64,10 +50,7 @@ function resolveListReasonKey(lead) {
 }
 
 function bucketFromReasonKey(reasonKey) {
-  if (HOT_REASON_KEYS.has(reasonKey)) return 'hot';
-  if (WARM_REASON_KEYS.has(reasonKey)) return 'warm';
-  if (COLD_REASON_KEYS.has(reasonKey)) return 'cold';
-  return '';
+  return bucketFromOptionKey(reasonKey);
 }
 
 /**
@@ -87,6 +70,16 @@ export function getExecutiveSetStatusDisplay(lead) {
       pipelineLabel,
       title: 'Booking',
       bucket: 'converted',
+    };
+  }
+
+  if (status === 'working_progress' || reasonKey === 'working_progress') {
+    return {
+      label: 'Working Progress',
+      detail: '',
+      pipelineLabel,
+      title: 'Working Progress',
+      bucket: 'working',
     };
   }
 
@@ -116,6 +109,7 @@ export const LIST_STATUS_STYLES = {
   hot: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-rose-500/25',
   new: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-sky-500/25',
   converted: 'bg-emerald-600/10 text-emerald-800 dark:text-emerald-300 ring-emerald-600/25',
+  working: 'bg-orange-500/10 text-orange-800 dark:text-orange-300 ring-orange-500/25',
 };
 
 const LIST_STATUS_DOT = {
@@ -124,10 +118,12 @@ const LIST_STATUS_DOT = {
   hot: 'bg-rose-500',
   new: 'bg-sky-500',
   converted: 'bg-emerald-600',
+  working: 'bg-orange-500',
 };
 
 /**
- * Lead list: Warm / Hot / Cold only when a current option is selected.
+ * Lead list: Warm / Hot / Cold when option selected.
+ * Cold → Warm moves to Working Progress (no Cold/Warm badge on that lead).
  * Otherwise → No status.
  */
 export function getLeadListStatusDisplay(lead) {
@@ -138,6 +134,12 @@ export function getLeadListStatusDisplay(lead) {
   let bucket = 'new';
   if (status === 'converted') {
     bucket = 'converted';
+  } else if (
+    status === 'working_progress' ||
+    reasonKey === 'working_progress'
+  ) {
+    // Cold→Warm shift lands here — show Working Progress, not Warm/Cold
+    bucket = 'working';
   } else {
     const fromReason = bucketFromReasonKey(reasonKey);
     bucket = fromReason || 'new';
@@ -149,14 +151,17 @@ export function getLeadListStatusDisplay(lead) {
     hot: 'Hot',
     new: 'No status',
     converted: 'Booking',
+    working: 'Working Progress',
   };
 
   const exactLabel =
     bucket === 'converted'
       ? 'Booking'
-      : optionLabel && bucket !== 'new'
-        ? optionLabel
-        : 'No status';
+      : bucket === 'working'
+        ? 'Working Progress'
+        : optionLabel && bucket !== 'new'
+          ? optionLabel
+          : 'No status';
 
   return {
     bucket,
@@ -165,7 +170,7 @@ export function getLeadListStatusDisplay(lead) {
     pipelineLabel: labels[bucket],
     detail: '',
     title:
-      bucket === 'new' || bucket === 'converted'
+      bucket === 'new' || bucket === 'converted' || bucket === 'working'
         ? labels[bucket]
         : `${labels[bucket]} · ${exactLabel}`,
     className: LIST_STATUS_STYLES[bucket] || LIST_STATUS_STYLES.new,

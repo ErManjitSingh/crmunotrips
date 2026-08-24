@@ -21,6 +21,7 @@ import API from '../../api/axios';
 import { Button } from '../ui/button';
 import PaymentVoucherModal from './PaymentVoucherModal';
 import { normalizeLeadStatus } from '../../utils/leadUtils';
+import { getLeadListStatusDisplay } from '../../lib/executiveStatusDisplay';
 import {
   getInitials,
   formatSource,
@@ -154,9 +155,22 @@ export default function LeadDetailHeader({
 }) {
   const status = normalizeLeadStatus(lead.status);
   const scores = computeLeadScores(lead);
-  const temperature = lead.isHot || lead.temperature === 'hot' ? 'Hot' : (lead.temperature || 'Warm');
-  const tempCapitalized = temperature.charAt(0).toUpperCase() + temperature.slice(1);
-  const isHot = temperature.toLowerCase() === 'hot';
+  const listDisplay = getLeadListStatusDisplay(lead);
+  const temperature =
+    listDisplay.bucket === 'working'
+      ? 'Working Progress'
+      : listDisplay.bucket === 'hot'
+        ? 'Hot'
+        : listDisplay.bucket === 'cold'
+          ? 'Cold'
+          : listDisplay.bucket === 'warm'
+            ? 'Warm'
+            : listDisplay.bucket === 'converted'
+              ? 'Booking'
+              : 'No status';
+  const tempCapitalized = temperature;
+  const isHot = listDisplay.bucket === 'hot';
+  const isWorking = listDisplay.bucket === 'working';
   const scorePct = Math.max(0, Math.min(100, Number(scores.overall) || 0));
   const summary = summaryProp || lead?.paymentSummary;
   const showPayment = Boolean(summary);
@@ -293,7 +307,7 @@ export default function LeadDetailHeader({
                 <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{scores.overall}/100</p>
                 <p className={cn(
                   'mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-bold',
-                  isHot ? 'text-orange-600' : 'text-sky-600'
+                  isHot ? 'text-orange-600' : isWorking ? 'text-orange-600' : 'text-sky-600'
                 )}
                 >
                   <Flame className="h-3 w-3" /> {tempCapitalized}

@@ -7,8 +7,10 @@ import {
   buildLeadStatusPayload,
 } from '../../lib/leadTemperatureStatus';
 import { toast } from '../../context/ToastContext';
+import { useLeadStatusOptions } from '../../context/LeadStatusOptionsContext';
 
 export default function BulkStatusModal({ open, onClose, count, onSubmit }) {
+  const { loaded } = useLeadStatusOptions();
   const [category, setCategory] = useState('warm');
   const [option, setOption] = useState('');
   const [comment, setComment] = useState('');
@@ -22,6 +24,7 @@ export default function BulkStatusModal({ open, onClose, count, onSubmit }) {
   }, [open]);
 
   const options = getOutcomesForCategory(category);
+  void loaded;
 
   const handleSubmit = async (e) => {
     e.preventDefault();

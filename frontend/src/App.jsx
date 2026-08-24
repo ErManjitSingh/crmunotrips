@@ -3,6 +3,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { ToastProvider } from "./context/ToastContext";
+import { LeadStatusOptionsProvider } from "./context/LeadStatusOptionsContext";
 import PostCallSessionHost from "./components/leads/PostCallSessionHost";
 import ProtectedRoute from "./components/ProtectedRoute";
 import HrProtectedRoute from "./components/hr/HrProtectedRoute";
@@ -40,6 +41,7 @@ import {
   WhatsAppTemplatesPage,
   EmailTemplatesPage,
   AnnouncementsPage,
+  LeadStatusesPage,
   MarginControlPage,
   EmailActivityPage,
   ReactivatedLeadsPage,
@@ -135,6 +137,7 @@ function App() {
       <ToastProvider>
         <BrowserRouter>
           <AuthProvider>
+            <LeadStatusOptionsProvider>
             <NotificationProvider>
               <PostCallSessionHost />
               <Routes>
@@ -1029,6 +1032,14 @@ function App() {
                     }
                   />
                   <Route
+                    path="settings/lead-statuses"
+                    element={
+                      <RoleRoute roles={["admin"]}>
+                        <LeadStatusesPage />
+                      </RoleRoute>
+                    }
+                  />
+                  <Route
                     path="profile"
                     element={
                       <ComingSoon
@@ -1041,6 +1052,7 @@ function App() {
                 <Route path="*" element={<Navigate to="/login" replace />} />
               </Routes>
             </NotificationProvider>
+            </LeadStatusOptionsProvider>
           </AuthProvider>
         </BrowserRouter>
       </ToastProvider>

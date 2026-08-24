@@ -9,6 +9,7 @@ import {
   FOLLOWUP_CATEGORY_OPTIONS,
   getOutcomesForCategory,
 } from '../components/followups/constants';
+import { getColdOutcomes, bucketFromOptionKey } from './leadStatusOptionsStore';
 
 export { WARM_OUTCOMES, HOT_OUTCOMES, COLD_OUTCOMES, FOLLOWUP_CATEGORY_OPTIONS, getOutcomesForCategory };
 
@@ -26,15 +27,51 @@ export const ALL_LEAD_STATUS_OUTCOMES = [
   ...COLD_OUTCOMES.map((o) => ({ ...o, category: 'cold', temperature: 'cold' })),
 ];
 
+const COLD_OPTION_KEYS = new Set([
+  ...COLD_OUTCOMES.map((o) => o.value),
+  'budget_issue',
+]);
+
+function extractHeadReason(statusReason) {
+  const raw = String(statusReason || '').trim();
+  if (!raw) return '';
+  return raw.split(/\s*[—–]\s*|\s+-\s+/)[0]?.replace(/:$/, '').trim() || '';
+}
+
+/** True when lead is currently Cold (temperature or cold option). */
+export function isLeadCurrentlyCold(lead) {
+  if (!lead) return false;
+  if (String(lead.temperature || '').toLowerCase() === 'cold') return true;
+  const reason = extractHeadReason(lead.statusReason);
+  if (bucketFromOptionKey(reason) === 'cold') return true;
+  if (lead.coldReason && bucketFromOptionKey(String(lead.coldReason)) === 'cold') return true;
+  const coldKeys = new Set([...getColdOutcomes().map((o) => o.value), ...COLD_OPTION_KEYS]);
+  if (coldKeys.has(reason)) return true;
+  if (lead.coldReason && coldKeys.has(String(lead.coldReason))) return true;
+  return false;
+}
+
 /**
  * Map Warm/Hot/Cold + option → API lead update payload.
- * Keeps pipeline `status` compatible with existing backend enum.
+ * Cold → Warm moves straight to Working Progress (no Cold/Warm badge on that move).
  */
-export function buildLeadStatusPayload(category, option, comment = '') {
+export function buildLeadStatusPayload(category, option, comment = '', lead = null) {
   const note = String(comment || '').trim();
   const statusReason = note ? `${option} — ${note}` : option;
 
   if (category === 'warm') {
+    const fromCold = isLeadCurrentlyCold(lead);
+    if (fromCold) {
+      return {
+        status: 'working_progress',
+        statusReason: note ? `working_progress — ${note}` : 'working_progress',
+        temperature: 'warm',
+        isHot: false,
+        coldReason: '',
+        fromColdToWarm: true,
+        warmOption: option,
+      };
+    }
     return {
       status: option === 'cnp_same_day' ? 'follow_up' : 'contacted',
       statusReason,
@@ -69,6 +106,7 @@ export function buildLeadStatusPayload(category, option, comment = '') {
 export function pipelineStatusToTemperatureLabel(status) {
   const s = String(status || '').toLowerCase();
   if (s === 'converted') return 'Booking';
+  if (s === 'working_progress') return 'Working Progress';
   if (s === 'warm') return 'Warm';
   if (s === 'hot') return 'Hot';
   if (s === 'cold') return 'Cold';

@@ -265,14 +265,14 @@ function mapStatusBucket(statusCounts) {
 }
 
 /** Current Warm / Hot / Cold options — matches lead list statusReason keys */
-const WARM_STATUS_KEYS = [
+const FALLBACK_WARM_STATUS_KEYS = [
   'discussed_package',
   'requested_callback',
   'cnp_same_day',
   'price_negotiation',
 ];
-const HOT_STATUS_KEYS = ['ready_to_book'];
-const COLD_STATUS_KEYS = [
+const FALLBACK_HOT_STATUS_KEYS = ['ready_to_book'];
+const FALLBACK_COLD_STATUS_KEYS = [
   'booked_elsewhere',
   'language_barrier',
   'not_interested',
@@ -280,6 +280,24 @@ const COLD_STATUS_KEYS = [
   'budget_issues',
   'budget_issue',
 ];
+
+async function resolveStatusOptionKeys() {
+  try {
+    const { getOptionKeysByCategory } = require('./leadStatusConfigService');
+    const keys = await getOptionKeysByCategory({ enabledOnly: true });
+    return {
+      warm: keys.warm.length ? keys.warm : FALLBACK_WARM_STATUS_KEYS,
+      hot: keys.hot.length ? keys.hot : FALLBACK_HOT_STATUS_KEYS,
+      cold: keys.cold.length ? keys.cold : FALLBACK_COLD_STATUS_KEYS,
+    };
+  } catch {
+    return {
+      warm: FALLBACK_WARM_STATUS_KEYS,
+      hot: FALLBACK_HOT_STATUS_KEYS,
+      cold: FALLBACK_COLD_STATUS_KEYS,
+    };
+  }
+}
 
 function escapeRegex(value) {
   return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -987,6 +1005,7 @@ async function buildAdminDashboard(options = {}) {
   // Warm / Hot / Cold — current statusReason options (period-scoped for strip; filters apply)
   const periodCreated = { createdAt: { $gte: periodStart, $lte: periodEnd }, ...sourceFilter };
   const prevCreated = { createdAt: { $gte: prevStart, $lte: prevEnd }, ...sourceFilter };
+  const statusOptionKeys = await resolveStatusOptionKeys();
   const [
     warmCount,
     hotCount,
@@ -995,12 +1014,12 @@ async function buildAdminDashboard(options = {}) {
     prevHotCount,
     prevColdCount,
   ] = await Promise.all([
-    countLeadsByStatusOption(branchId, WARM_STATUS_KEYS, isAllTime ? sourceFilter : periodCreated),
-    countLeadsByStatusOption(branchId, HOT_STATUS_KEYS, isAllTime ? sourceFilter : periodCreated),
-    countLeadsByStatusOption(branchId, COLD_STATUS_KEYS, isAllTime ? sourceFilter : periodCreated),
-    countLeadsByStatusOption(branchId, WARM_STATUS_KEYS, prevCreated),
-    countLeadsByStatusOption(branchId, HOT_STATUS_KEYS, prevCreated),
-    countLeadsByStatusOption(branchId, COLD_STATUS_KEYS, prevCreated),
+    countLeadsByStatusOption(branchId, statusOptionKeys.warm, isAllTime ? sourceFilter : periodCreated),
+    countLeadsByStatusOption(branchId, statusOptionKeys.hot, isAllTime ? sourceFilter : periodCreated),
+    countLeadsByStatusOption(branchId, statusOptionKeys.cold, isAllTime ? sourceFilter : periodCreated),
+    countLeadsByStatusOption(branchId, statusOptionKeys.warm, prevCreated),
+    countLeadsByStatusOption(branchId, statusOptionKeys.hot, prevCreated),
+    countLeadsByStatusOption(branchId, statusOptionKeys.cold, prevCreated),
   ]);
 
   // Bookings / Revenue / Conv. Rate — always all-time (filters do not affect these three)

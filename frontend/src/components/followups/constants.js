@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   TrendingUp,
 } from 'lucide-react';
+import { getOutcomesForCategoryDynamic } from '../../lib/leadStatusOptionsStore';
 
 export const FOLLOWUP_STATUSES = [
   { value: 'pending', label: 'Pending', color: 'text-amber-800 bg-gradient-to-r from-amber-400/25 to-orange-400/15 border-amber-400/50 shadow-sm shadow-amber-500/10' },
@@ -84,9 +85,7 @@ export const FOLLOWUP_CATEGORY_OPTIONS = FOLLOWUP_CATEGORIES.filter((c) =>
 );
 
 export function getOutcomesForCategory(category) {
-  if (category === 'hot') return HOT_OUTCOMES;
-  if (category === 'cold') return COLD_OUTCOMES;
-  return WARM_OUTCOMES;
+  return getOutcomesForCategoryDynamic(category);
 }
 
 export const KPI_CONFIG = [

@@ -7,6 +7,7 @@ import {
   buildLeadStatusPayload,
 } from '../../lib/leadTemperatureStatus';
 import { toast } from '../../context/ToastContext';
+import { useLeadStatusOptions } from '../../context/LeadStatusOptionsContext';
 
 /**
  * Lead follow-up outcome: Warm / Hot / Cold only.
@@ -17,6 +18,7 @@ export default function LeadFollowUpOutcomeModal({
   onClose,
   onSubmit,
 }) {
+  const { loaded } = useLeadStatusOptions();
   const [category, setCategory] = useState('warm');
   const [option, setOption] = useState('');
   const [comment, setComment] = useState('');
@@ -30,6 +32,7 @@ export default function LeadFollowUpOutcomeModal({
   }, [open, lead]);
 
   const optionList = getOutcomesForCategory(category);
+  void loaded;
 
   const handleCategoryChange = (next) => {
     setCategory(next);
@@ -42,7 +45,7 @@ export default function LeadFollowUpOutcomeModal({
       return;
     }
 
-    const payload = buildLeadStatusPayload(category, option, comment);
+    const payload = buildLeadStatusPayload(category, option, comment, lead);
     if (!payload) {
       toast.error('Invalid selection');
       return;

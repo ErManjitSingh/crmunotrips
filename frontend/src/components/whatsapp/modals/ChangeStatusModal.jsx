@@ -6,8 +6,10 @@ import {
   getOutcomesForCategory,
   buildLeadStatusPayload,
 } from '../../../lib/leadTemperatureStatus';
+import { useLeadStatusOptions } from '../../../context/LeadStatusOptionsContext';
 
-export default function ChangeStatusModal({ open, onClose, onSubmit, currentStatus }) {
+export default function ChangeStatusModal({ open, onClose, onSubmit, currentStatus, lead = null }) {
+  const { loaded } = useLeadStatusOptions();
   const [category, setCategory] = useState('warm');
   const [option, setOption] = useState('');
   const [comment, setComment] = useState('');
@@ -20,11 +22,12 @@ export default function ChangeStatusModal({ open, onClose, onSubmit, currentStat
   }, [open, currentStatus]);
 
   const options = getOutcomesForCategory(category);
+  void loaded;
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!option) return;
-    const payload = buildLeadStatusPayload(category, option, comment);
+    const payload = buildLeadStatusPayload(category, option, comment, lead);
     if (!payload) return;
     onSubmit(payload);
     onClose();

@@ -5,8 +5,7 @@ import {
 } from '../../lib/executiveStatusDisplay';
 
 /**
- * Always shows Warm / Hot / Cold (or Booking / No status).
- * Exact option (e.g. Package discussed) appears as subtitle when available.
+ * Shows Warm / Hot / Cold, Working Progress (Cold→Warm), Booking, or No status.
  */
 export default function LeadStatusBadge({
   status,
@@ -22,7 +21,7 @@ export default function LeadStatusBadge({
     listMode !== false &&
     display.exactLabel &&
     display.exactLabel !== display.label &&
-    !['No status', 'Booking'].includes(display.label);
+    !['No status', 'Booking', 'Working Progress'].includes(display.label);
 
   const showPulse = pulse && display.bucket === 'new';
 

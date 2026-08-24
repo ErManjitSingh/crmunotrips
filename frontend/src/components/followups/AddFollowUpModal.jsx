@@ -8,6 +8,8 @@ import {
   FOLLOWUP_TYPES,
   getOutcomesForCategory,
 } from './constants';
+import { buildLeadStatusPayload } from '../../lib/leadTemperatureStatus';
+import { useLeadStatusOptions } from '../../context/LeadStatusOptionsContext';
 
 const emptyForm = {
   lead: '',
@@ -20,41 +22,10 @@ const emptyForm = {
   outcome: '',
 };
 
-function buildStatusFromCategory(form) {
-  const note = String(form.remarks || '').trim();
+function buildStatusFromCategory(form, lead = null) {
   const { category, outcome } = form;
   if (!outcome) return null;
-  const statusReason = note ? `${outcome} — ${note}` : outcome;
-
-  if (category === 'warm') {
-    return {
-      status: outcome === 'cnp_same_day' ? 'follow_up' : 'contacted',
-      statusReason,
-      temperature: 'warm',
-      isHot: false,
-    };
-  }
-
-  if (category === 'hot') {
-    return {
-      status: 'negotiation',
-      statusReason,
-      temperature: 'hot',
-      isHot: true,
-    };
-  }
-
-  if (category === 'cold') {
-    return {
-      status: 'follow_up',
-      statusReason,
-      temperature: 'cold',
-      coldReason: outcome,
-      isHot: false,
-    };
-  }
-
-  return null;
+  return buildLeadStatusPayload(category, outcome, form.remarks, lead);
 }
 
 export default function AddFollowUpModal({
@@ -69,6 +40,8 @@ export default function AddFollowUpModal({
   showLeadOutcome = false,
   lead = null,
 }) {
+  const { loaded } = useLeadStatusOptions();
+  void loaded;
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -155,7 +128,7 @@ export default function AddFollowUpModal({
             : `Cold — ${outcomeLabel}`;
       remarks = remarks ? `${prefix}. ${remarks}` : prefix;
 
-      const statusUpdate = showLeadOutcome ? buildStatusFromCategory(form) : null;
+      const statusUpdate = showLeadOutcome ? buildStatusFromCategory(form, lead) : null;
 
       await onSubmit({
         ...form,

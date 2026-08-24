@@ -1,14 +1,24 @@
 import { Link } from 'react-router-dom';
-import { MessageCircle, Mail, ChevronRight } from 'lucide-react';
+import { MessageCircle, Mail, ChevronRight, Thermometer } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useAuth } from '../../context/AuthContext';
 
 export default function SettingsPage() {
   const { can } = usePermissions();
+  const { user } = useAuth();
   const canManageWhatsApp = can('whatsapp', 'manage');
   const canManageEmail = can('email', 'manage');
+  const isAdmin = user?.role === 'admin';
 
   const items = [
+    isAdmin && {
+      to: '/settings/lead-statuses',
+      icon: Thermometer,
+      title: 'Lead Status Control',
+      description: 'Add or edit Warm / Hot / Cold options your way',
+      color: 'text-orange-600 bg-orange-500/10',
+    },
     canManageWhatsApp && {
       to: '/settings/whatsapp-templates',
       icon: MessageCircle,

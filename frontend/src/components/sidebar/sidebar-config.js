@@ -22,6 +22,7 @@ import {
   RotateCcw,
   Target,
   Percent,
+  Thermometer,
 } from "lucide-react";
 import { operationsAdminMenuChildren } from "../operations-manager/operations-nav-config";
 import { leadManagementSections } from "./lead-management-config";
@@ -66,6 +67,12 @@ export const settingsMenuItems = [
     path: "/settings/announcements",
     label: "Announcements",
     icon: Megaphone,
+    roles: ["admin"],
+  },
+  {
+    path: "/settings/lead-statuses",
+    label: "Lead Status Control",
+    icon: Thermometer,
     roles: ["admin"],
   },
   {

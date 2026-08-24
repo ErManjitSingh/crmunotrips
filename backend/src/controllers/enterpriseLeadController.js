@@ -255,34 +255,71 @@ const addCallNote = asyncHandler(async (req, res) => {
 
   // Apply Warm / Hot / Cold from call outcome
   const outcomeKey = String(outcome || '');
-  const WARM_KEYS = new Set(['discussed_package', 'requested_callback', 'cnp_same_day', 'price_negotiation']);
-  const HOT_KEYS = new Set(['ready_to_book']);
-  const COLD_KEYS = new Set([
-    'booked_elsewhere',
-    'language_barrier',
-    'not_interested',
-    'invalid_number',
-    'budget_issues',
-    'budget_issue',
-  ]);
   let category = ['warm', 'hot', 'cold'].includes(String(bodyCategory || ''))
     ? String(bodyCategory)
-    : WARM_KEYS.has(outcomeKey)
+    : null;
+  if (!category) {
+    try {
+      const { getCachedKeysByCategory } = require('../services/leadStatusConfigService');
+      const keys = getCachedKeysByCategory();
+      if (keys.hot.includes(outcomeKey)) category = 'hot';
+      else if (keys.cold.includes(outcomeKey)) category = 'cold';
+      else if (keys.warm.includes(outcomeKey)) category = 'warm';
+    } catch {
+      /* fallback below */
+    }
+  }
+  if (!category) {
+    const WARM_KEYS = new Set(['discussed_package', 'requested_callback', 'cnp_same_day', 'price_negotiation']);
+    const HOT_KEYS = new Set(['ready_to_book']);
+    const COLD_KEYS = new Set([
+      'booked_elsewhere',
+      'language_barrier',
+      'not_interested',
+      'invalid_number',
+      'budget_issues',
+      'budget_issue',
+    ]);
+    category = WARM_KEYS.has(outcomeKey)
       ? 'warm'
       : HOT_KEYS.has(outcomeKey)
         ? 'hot'
         : COLD_KEYS.has(outcomeKey)
           ? 'cold'
           : 'warm';
+  }
+
+  const COLD_KEYS = new Set([
+    ...(function coldFallback() {
+      try {
+        return require('../services/leadStatusConfigService').getCachedKeysByCategory().cold;
+      } catch {
+        return ['booked_elsewhere', 'language_barrier', 'not_interested', 'invalid_number', 'budget_issues', 'budget_issue'];
+      }
+    })(),
+  ]);
 
   const prevStatus = lead.status;
   const reasonStamp = String(bodyStatusReason || '').trim() || outcomeKey;
+  const wasCold =
+    String(lead.temperature || '').toLowerCase() === 'cold' ||
+    COLD_KEYS.has(
+      String(lead.statusReason || '')
+        .trim()
+        .split(/\s*[—–]\s*|\s+-\s+/)[0]
+        ?.replace(/:$/, '')
+        .trim()
+    ) ||
+    Boolean(lead.coldReason && COLD_KEYS.has(String(lead.coldReason)));
+
   if (category === 'hot') {
     if (!['converted', 'lost', 'booked_from_another_company'].includes(lead.status)) {
       lead.status = 'negotiation';
     }
     lead.temperature = 'hot';
     lead.isHot = true;
+    lead.coldReason = undefined;
+    lead.statusReason = reasonStamp;
   } else if (category === 'cold') {
     if (!['converted', 'lost', 'booked_from_another_company'].includes(lead.status)) {
       lead.status = 'follow_up';
@@ -290,14 +327,27 @@ const addCallNote = asyncHandler(async (req, res) => {
     lead.temperature = 'cold';
     lead.isHot = false;
     lead.coldReason = outcomeKey;
+    lead.statusReason = reasonStamp;
+  } else if (wasCold) {
+    // Cold → Warm (from call): straight to Working Progress
+    if (!['converted', 'lost', 'booked_from_another_company'].includes(lead.status)) {
+      lead.status = 'working_progress';
+    }
+    lead.temperature = 'warm';
+    lead.isHot = false;
+    lead.coldReason = undefined;
+    lead.statusReason = noteText
+      ? `working_progress — ${noteText.slice(0, 120)}`
+      : 'working_progress';
   } else {
     if (!['converted', 'lost', 'booked_from_another_company'].includes(lead.status)) {
       lead.status = outcomeKey === 'cnp_same_day' ? 'follow_up' : 'contacted';
     }
     lead.temperature = 'warm';
     lead.isHot = false;
+    lead.coldReason = undefined;
+    lead.statusReason = reasonStamp;
   }
-  lead.statusReason = reasonStamp;
   lead.statusReasonUpdatedAt = new Date();
   const callConnected = category !== 'cold' || !['invalid_number'].includes(outcomeKey);
 
@@ -424,32 +474,85 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
   if (!leads.length) throw new ApiError(404, 'No matching leads found');
 
   const results = [];
+  const COLD_REASON_KEYS = new Set([
+    'booked_elsewhere',
+    'language_barrier',
+    'not_interested',
+    'invalid_number',
+    'budget_issues',
+    'budget_issue',
+  ]);
+  const isLeadCold = (lead) => {
+    if (String(lead.temperature || '').toLowerCase() === 'cold') return true;
+    const reason = String(lead.statusReason || '')
+      .trim()
+      .split(/\s*[—–]\s*|\s+-\s+/)[0]
+      ?.replace(/:$/, '')
+      .trim();
+    if (COLD_REASON_KEYS.has(reason)) return true;
+    if (lead.coldReason && COLD_REASON_KEYS.has(String(lead.coldReason))) return true;
+    return false;
+  };
+
   for (const lead of leads) {
     const prev = lead.status;
-    lead.status = status;
+    const wasCold = isLeadCold(lead);
+    let nextStatus = status;
+    let nextReason = statusReason ? String(statusReason).trim() : lead.statusReason;
+
+    // Cold → Warm: each lead goes straight to Working Progress
+    if (
+      (temperature === 'warm' || req.body.fromColdToWarm === true) &&
+      wasCold &&
+      !LOST_STATUSES.includes(status) &&
+      status !== 'converted'
+    ) {
+      nextStatus = 'working_progress';
+      nextReason =
+        nextReason && String(nextReason).startsWith('working_progress')
+          ? nextReason
+          : 'working_progress';
+    }
+
+    lead.status = nextStatus;
     if (normalizedLostReason) {
       lead.statusReason = normalizedLostReason;
       lead.statusReasonUpdatedAt = new Date();
-    } else if (statusReason) {
-      lead.statusReason = String(statusReason).trim();
+    } else if (nextReason) {
+      lead.statusReason = String(nextReason).trim();
       lead.statusReasonUpdatedAt = new Date();
     }
-    if (temperature) lead.temperature = temperature;
-    if (typeof isHot === 'boolean') lead.isHot = isHot;
-    if (coldReason) lead.coldReason = String(coldReason).trim();
+    if (temperature === 'cold' || coldReason) {
+      lead.temperature = 'cold';
+      lead.isHot = false;
+      if (coldReason) lead.coldReason = String(coldReason).trim();
+    } else if (temperature === 'hot' || isHot === true) {
+      lead.temperature = 'hot';
+      lead.isHot = true;
+      lead.coldReason = undefined;
+    } else if (temperature === 'warm' || nextStatus === 'working_progress') {
+      lead.temperature = 'warm';
+      lead.isHot = false;
+      lead.coldReason = undefined;
+    } else {
+      if (temperature) lead.temperature = temperature;
+      if (typeof isHot === 'boolean') lead.isHot = isHot;
+      if (coldReason) lead.coldReason = String(coldReason).trim();
+    }
     await applyLeadMetrics(lead);
     await lead.save();
     await logLeadActivity({
       leadId: lead._id,
       branchId: lead.branchId,
       type: 'status_changed',
-      description: `Status changed from ${prev} to ${status} (bulk)`,
+      description: `Status changed from ${prev} to ${nextStatus} (bulk)`,
       actor: req.user,
       meta: {
         from: prev,
-        to: status,
+        to: nextStatus,
         statusReason: lead.statusReason || undefined,
         temperature: lead.temperature || undefined,
+        fromColdToWarm: wasCold && nextStatus === 'working_progress',
       },
     });
     results.push({ _id: lead._id, status: lead.status });

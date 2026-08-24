@@ -317,21 +317,46 @@ const updateLead = asyncHandler(async (req, res) => {
     }
 
     const prevStatus = lead.status;
-    lead.status = status;
-    if (status === 'converted' && prevStatus !== 'converted' && !lead.convertedAt) {
+    const wasCold =
+      String(lead.temperature || '').toLowerCase() === 'cold' ||
+      ['booked_elsewhere', 'language_barrier', 'not_interested', 'invalid_number', 'budget_issues', 'budget_issue'].includes(
+        String(lead.statusReason || '')
+          .trim()
+          .split(/\s*[—–]\s*|\s+-\s+/)[0]
+          ?.replace(/:$/, '')
+          .trim()
+      ) ||
+      Boolean(lead.coldReason);
+
+    // Cold → Warm: force Working Progress (ignore contacted/follow_up from client)
+    let nextStatus = status;
+    let nextReason = trimmedReason;
+    if (
+      (req.body.temperature === 'warm' || req.body.fromColdToWarm === true) &&
+      wasCold &&
+      !['converted', 'lost', 'booked_from_another_company'].includes(status)
+    ) {
+      nextStatus = 'working_progress';
+      nextReason = trimmedReason?.startsWith('working_progress')
+        ? trimmedReason
+        : 'working_progress';
+    }
+
+    lead.status = nextStatus;
+    if (nextStatus === 'converted' && prevStatus !== 'converted' && !lead.convertedAt) {
       lead.convertedAt = new Date();
     }
 
-    if (['lost', 'booked_from_another_company'].includes(status)) {
+    if (['lost', 'booked_from_another_company'].includes(nextStatus)) {
       const { assertValidLostReason, lostReasonLabel } = require('../services/salesSopService');
       const reasonValue = assertValidLostReason(
-        trimmedReason || (status === 'booked_from_another_company' ? 'booked_elsewhere' : ''),
+        nextReason || (nextStatus === 'booked_from_another_company' ? 'booked_elsewhere' : ''),
         { requireComment: true }
       );
       lead.statusReason = reasonValue;
       req._lostReasonLabel = lostReasonLabel(reasonValue);
     } else {
-      lead.statusReason = trimmedReason;
+      lead.statusReason = nextReason;
     }
     lead.statusReasonUpdatedAt = new Date();
 
@@ -343,41 +368,45 @@ const updateLead = asyncHandler(async (req, res) => {
     } else if (req.body.temperature === 'hot' || req.body.isHot === true) {
       lead.temperature = 'hot';
       lead.isHot = true;
-    } else if (req.body.temperature === 'warm') {
+      lead.coldReason = undefined;
+    } else if (req.body.temperature === 'warm' || nextStatus === 'working_progress') {
       lead.temperature = 'warm';
       lead.isHot = false;
+      lead.coldReason = undefined;
     } else if (typeof req.body.isHot === 'boolean') {
       lead.isHot = req.body.isHot;
     }
 
     await lead.save();
 
-    if (status !== prevStatus) {
+    if (nextStatus !== prevStatus) {
       const typeMap = {
         lost: 'lead_lost',
         booked_from_another_company: 'lead_lost',
         converted: 'lead_converted',
         quotation_sent: 'quotation_sent',
         reactivated: 'lead_reactivated',
+        working_progress: 'status_changed',
       };
-      const statusLabel = status.replace(/_/g, ' ');
-      const reasonText = req._lostReasonLabel || trimmedReason;
+      const statusLabel = nextStatus.replace(/_/g, ' ');
+      const reasonText = req._lostReasonLabel || nextReason;
       await logLeadActivity({
         leadId: lead._id,
         branchId: lead.branchId,
-        type: typeMap[status] || 'status_changed',
+        type: typeMap[nextStatus] || 'status_changed',
         description: `Status changed from ${prevStatus.replace(/_/g, ' ')} to ${statusLabel}${reasonText ? ` — ${reasonText}` : ''}`,
         actor: req.user,
         meta: {
           from: prevStatus,
-          to: status,
-          reason: lead.statusReason || undefined,
-          advanceAmount: status === 'converted' ? Number(advanceAmount ?? tokenAmount) : undefined,
+          to: nextStatus,
+          statusReason: lead.statusReason || undefined,
+          fromColdToWarm: wasCold && nextStatus === 'working_progress',
+          advanceAmount: nextStatus === 'converted' ? Number(advanceAmount ?? tokenAmount) : undefined,
         },
       });
     }
 
-    if (status === 'converted' && prevStatus !== 'converted') {
+    if (nextStatus === 'converted' && prevStatus !== 'converted') {
       await onLeadConverted(lead, req.user, {
         advanceAmount: Number(advanceAmount ?? tokenAmount),
         paymentMethod,
@@ -388,7 +417,7 @@ const updateLead = asyncHandler(async (req, res) => {
       }).catch((err) => {
         console.error('[LeadConversion]', err.message);
       });
-    } else if (status !== prevStatus) {
+    } else if (nextStatus !== prevStatus) {
       invalidateDashboardCache('sales_executive');
       invalidateDashboardCache('sales_manager');
       invalidateDashboardCache('team_leader');
