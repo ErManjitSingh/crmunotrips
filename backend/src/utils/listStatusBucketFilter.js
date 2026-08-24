@@ -1,53 +1,52 @@
 /**
- * Lead-list temperature buckets (Cold / Warm / Hot / Lost lead).
+ * Lead-list temperature buckets (Cold / Warm / Hot).
  * Mirrors frontend/src/lib/executiveStatusDisplay.js — list display only.
  */
 
 const COLD_KEYS = [
+  'booked_elsewhere',
+  'booked_from_another_company',
+  'language_barrier',
   'not_interested',
   'invalid_number',
+  'budget_issues',
+  'budget_issue',
+  // legacy → Cold
+  'just_inquiring',
+  'just_inquiry',
+  'no_plan',
+  'wants_group_tour',
+  'unknown_destination',
   'switch_off',
   'switched_off',
   'not_reachable',
   'not_answer',
   'no_answer',
   'not_answering',
-  'no_plan',
-  'just_inquiring',
-  'just_inquiry',
-  'language_barrier',
-  'wants_group_tour',
-  'unknown_destination',
   'speaking_to_someone_else',
   'call_not_picked',
   'not_pick_call',
   'not_picked',
+  'lost',
+  'lost_contacted',
+  'does_not_exist',
+  'quotation_booked_elsewhere',
 ];
 
 const WARM_KEYS = [
   'discussed_package',
-  'budget_issues',
-  'budget_issue',
+  'requested_callback',
+  'cnp_same_day',
+  'price_negotiation',
   'qualified',
   'working_progress',
-  'requested_callback',
   'rescheduled',
 ];
 
 const HOT_KEYS = [
-  'interested_quotation',
-  'price_negotiation',
   'ready_to_book',
+  'interested_quotation',
   'interested',
-];
-
-const LOST_KEYS = [
-  'lost_contacted',
-  'booked_elsewhere',
-  'does_not_exist',
-  'quotation_booked_elsewhere',
-  'booked_from_another_company',
-  'lost',
 ];
 
 function escapeRegex(value) {
@@ -65,23 +64,15 @@ function reasonClause(keys) {
   };
 }
 
-function lostClause() {
-  return {
-    $or: [
-      { status: { $in: ['lost', 'booked_from_another_company'] } },
-      reasonClause(LOST_KEYS),
-    ],
-  };
-}
-
 function hotClause() {
   return {
     $and: [
-      { $nor: [lostClause()] },
       { status: { $ne: 'converted' } },
       {
         $or: [
           reasonClause(HOT_KEYS),
+          { temperature: 'hot' },
+          { isHot: true },
           { status: 'negotiation' },
           {
             status: 'quotation_sent',
@@ -96,15 +87,16 @@ function hotClause() {
 function warmClause() {
   return {
     $and: [
-      { $nor: [lostClause(), hotClause()] },
+      { $nor: [hotClause()] },
       { status: { $nin: ['converted', 'new'] } },
       {
         $or: [
           reasonClause(WARM_KEYS),
+          { temperature: 'warm' },
           { status: { $in: ['qualified', 'working_progress'] } },
           {
             status: { $in: ['follow_up', 'contacted', 'reactivated'] },
-            $nor: [reasonClause(COLD_KEYS), reasonClause(HOT_KEYS), reasonClause(LOST_KEYS)],
+            $nor: [reasonClause(COLD_KEYS), reasonClause(HOT_KEYS)],
           },
         ],
       },
@@ -115,14 +107,16 @@ function warmClause() {
 function coldClause() {
   return {
     $and: [
-      { $nor: [lostClause(), hotClause(), warmClause()] },
+      { $nor: [hotClause(), warmClause()] },
       { status: { $nin: ['converted'] } },
       {
         $or: [
           reasonClause(COLD_KEYS),
+          { temperature: 'cold' },
+          { status: { $in: ['lost', 'booked_from_another_company'] } },
           {
             status: { $nin: ['new'] },
-            $nor: [reasonClause(HOT_KEYS), reasonClause(WARM_KEYS), reasonClause(LOST_KEYS)],
+            $nor: [reasonClause(HOT_KEYS), reasonClause(WARM_KEYS)],
           },
         ],
       },
@@ -134,7 +128,6 @@ const CLAUSES = {
   cold: coldClause,
   warm: warmClause,
   hot: hotClause,
-  lost: lostClause,
 };
 
 function applyListStatusBucket(mongoFilter, listStatus) {

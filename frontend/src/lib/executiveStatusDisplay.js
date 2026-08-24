@@ -2,18 +2,33 @@ import { getLeadStatusLabel } from './leadStatusLabel';
 import { LEAD_FOLLOW_UP_OUTCOMES } from '../constants/leadFollowUpOutcomes';
 import { LOST_REASONS, formatLostReasonDisplay } from '../constants/salesSop';
 import {
+  WARM_OUTCOMES,
+  HOT_OUTCOMES,
+  COLD_OUTCOMES,
   CALL_PICKED_OUTCOMES,
   CALL_NOT_PICKED_REASONS,
   FOLLOWUP_COLD_REASONS,
 } from '../components/followups/constants';
 
 const OPTION_LABELS = [
+  ...WARM_OUTCOMES,
+  ...HOT_OUTCOMES,
+  ...COLD_OUTCOMES,
   ...CALL_PICKED_OUTCOMES,
   ...CALL_NOT_PICKED_REASONS,
   ...FOLLOWUP_COLD_REASONS,
   ...LOST_REASONS,
   ...LEAD_FOLLOW_UP_OUTCOMES,
-  // legacy aliases
+  // legacy aliases (older leads still display correctly)
+  { value: 'discussed_package', label: 'Package discussed' },
+  { value: 'requested_callback', label: 'Request call back' },
+  { value: 'cnp_same_day', label: 'CNP for same day' },
+  { value: 'price_negotiation', label: 'Price negotiation going on' },
+  { value: 'ready_to_book', label: 'Ready to Book' },
+  { value: 'booked_elsewhere', label: 'Booked from another company' },
+  { value: 'budget_issues', label: 'Budget issues' },
+  { value: 'budget_issue', label: 'Budget issues' },
+  { value: 'interested_quotation', label: 'Interested — needs quotation' },
   { value: 'switch_off', label: 'Switch off' },
   { value: 'switched_off', label: 'Switch off' },
   { value: 'no_answer', label: 'Not answer' },
@@ -33,7 +48,6 @@ function extractReasonKey(statusReason) {
   const parts = cleaned.split(/\s*[—–]\s*|\s+-\s+/).map((p) => p.trim()).filter(Boolean);
   const head = (parts[0] || '').replace(/:$/, '').trim();
   if (OPTION_KEYS_BY_LENGTH.includes(head)) return head;
-  // statusReason may be free text that still contains the option key
   const found = OPTION_KEYS_BY_LENGTH.find(
     (key) =>
       cleaned === key ||
@@ -79,7 +93,6 @@ export function getExecutiveSetStatusDisplay(lead) {
     };
   }
 
-  // Prefer the exact executive option over pipeline bucket labels
   if (optionLabel) {
     return {
       label: optionLabel,
@@ -111,7 +124,6 @@ export const LIST_STATUS_STYLES = {
   cold: 'bg-slate-500/10 text-slate-700 dark:text-slate-300 ring-slate-500/25',
   warm: 'bg-amber-500/10 text-amber-800 dark:text-amber-300 ring-amber-500/25',
   hot: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-rose-500/25',
-  lost: 'bg-red-500/10 text-red-700 dark:text-red-300 ring-red-500/25',
   new: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-sky-500/25',
   converted: 'bg-emerald-600/10 text-emerald-800 dark:text-emerald-300 ring-emerald-600/25',
 };
@@ -120,56 +132,55 @@ const LIST_STATUS_DOT = {
   cold: 'bg-slate-500',
   warm: 'bg-amber-500',
   hot: 'bg-rose-500',
-  lost: 'bg-red-500',
   new: 'bg-sky-500',
   converted: 'bg-emerald-600',
 };
 
 const COLD_REASON_KEYS = new Set([
+  'booked_elsewhere',
+  'booked_from_another_company',
+  'language_barrier',
   'not_interested',
   'invalid_number',
+  'budget_issues',
+  'budget_issue',
+  // legacy → show as Cold
+  'just_inquiring',
+  'just_inquiry',
+  'no_plan',
+  'wants_group_tour',
+  'unknown_destination',
   'switch_off',
   'switched_off',
   'not_reachable',
   'not_answer',
   'no_answer',
   'not_answering',
-  'no_plan',
-  'just_inquiring',
-  'just_inquiry',
-  'language_barrier',
-  'wants_group_tour',
-  'unknown_destination',
   'speaking_to_someone_else',
   'call_not_picked',
   'not_pick_call',
   'not_picked',
+  'lost',
+  'lost_contacted',
+  'does_not_exist',
+  'quotation_booked_elsewhere',
 ]);
 
 const WARM_REASON_KEYS = new Set([
   'discussed_package',
-  'budget_issues',
-  'budget_issue',
+  'requested_callback',
+  'cnp_same_day',
+  'price_negotiation',
+  // legacy warm-ish
   'qualified',
   'working_progress',
-  'requested_callback',
   'rescheduled',
 ]);
 
 const HOT_REASON_KEYS = new Set([
+  'ready_to_book',
   'interested',
   'interested_quotation',
-  'ready_to_book',
-  'price_negotiation',
-]);
-
-const LOST_REASON_KEYS = new Set([
-  'lost',
-  'lost_contacted',
-  'booked_elsewhere',
-  'does_not_exist',
-  'quotation_booked_elsewhere',
-  'booked_from_another_company',
 ]);
 
 function resolveListReasonKey(lead) {
@@ -179,28 +190,31 @@ function resolveListReasonKey(lead) {
 }
 
 /**
- * Lead list shows only Cold / Warm / Hot / Lost lead.
- * Exact executive option remains available via exactLabel (and on lead detail).
+ * Lead list shows only Cold / Warm / Hot.
  */
 export function getLeadListStatusDisplay(lead) {
   const exact = getExecutiveSetStatusDisplay(lead);
   const status = lead?.status || 'new';
   const reasonKey = resolveListReasonKey(lead);
+  const temp = String(lead?.temperature || '').toLowerCase();
 
   let bucket;
-  if (
-    ['lost', 'booked_from_another_company'].includes(status) ||
-    LOST_REASON_KEYS.has(reasonKey)
-  ) {
-    bucket = 'lost';
-  } else if (HOT_REASON_KEYS.has(reasonKey) || status === 'negotiation') {
-    bucket = 'hot';
-  } else if (WARM_REASON_KEYS.has(reasonKey) || ['qualified', 'working_progress'].includes(status)) {
-    bucket = 'warm';
-  } else if (COLD_REASON_KEYS.has(reasonKey)) {
-    bucket = 'cold';
-  } else if (status === 'converted') {
+  if (status === 'converted') {
     bucket = 'converted';
+  } else if (HOT_REASON_KEYS.has(reasonKey) || temp === 'hot' || lead?.isHot || status === 'negotiation') {
+    bucket = 'hot';
+  } else if (
+    WARM_REASON_KEYS.has(reasonKey) ||
+    temp === 'warm' ||
+    ['qualified', 'working_progress'].includes(status)
+  ) {
+    bucket = 'warm';
+  } else if (
+    COLD_REASON_KEYS.has(reasonKey) ||
+    temp === 'cold' ||
+    ['lost', 'booked_from_another_company'].includes(status)
+  ) {
+    bucket = 'cold';
   } else if (status === 'new' && !reasonKey) {
     bucket = 'new';
   } else if (['quotation_sent'].includes(status)) {
@@ -211,11 +225,17 @@ export function getLeadListStatusDisplay(lead) {
     bucket = 'cold';
   }
 
+  // Prefer explicit reason buckets over temperature when both set
+  if (HOT_REASON_KEYS.has(reasonKey)) bucket = 'hot';
+  else if (WARM_REASON_KEYS.has(reasonKey)) bucket = 'warm';
+  else if (COLD_REASON_KEYS.has(reasonKey)) bucket = 'cold';
+
+  if (status === 'converted') bucket = 'converted';
+
   const labels = {
     cold: 'Cold',
     warm: 'Warm',
     hot: 'Hot',
-    lost: 'Lost lead',
     new: 'No status',
     converted: 'Booking',
   };
@@ -255,11 +275,5 @@ export const LIST_STATUS_FILTERS = [
     label: 'Hot',
     activeClass: 'bg-rose-600 text-white shadow-sm shadow-rose-500/30 ring-rose-700/20',
     idleClass: 'bg-rose-50 text-rose-700 ring-rose-200 hover:bg-rose-100',
-  },
-  {
-    value: 'lost',
-    label: 'Lost lead',
-    activeClass: 'bg-red-600 text-white shadow-sm shadow-red-500/30 ring-red-700/20',
-    idleClass: 'bg-red-50 text-red-700 ring-red-200 hover:bg-red-100',
   },
 ];

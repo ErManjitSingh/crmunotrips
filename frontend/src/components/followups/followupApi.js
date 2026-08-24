@@ -15,7 +15,7 @@ export function buildFollowUpPayload(form) {
   return {
     lead: form.lead,
     type: form.type || 'call',
-    category: form.category || 'call_picked',
+    category: form.category || 'warm',
     scheduledAt: new Date(form.scheduledAt).toISOString(),
     notes: form.notes || form.remarks || '',
     priority: form.priority || 'medium',
@@ -23,6 +23,8 @@ export function buildFollowUpPayload(form) {
     coldReason: form.coldReason || undefined,
     notPickedReason: form.notPickedReason || undefined,
     pickedOutcome: form.pickedOutcome || undefined,
+    warmOutcome: form.warmOutcome || undefined,
+    hotOutcome: form.hotOutcome || undefined,
     lostReason: form.lostReason || undefined,
     // Exact option key / "key — note" so list shows what executive selected
     statusReason: form.statusReason || undefined,

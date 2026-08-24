@@ -2,111 +2,55 @@ import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import AppModal from '../ui/AppModal';
-import PaymentScreenshotField from '../leads/PaymentScreenshotField';
 import {
   FOLLOWUP_PRIORITIES,
   FOLLOWUP_CATEGORY_OPTIONS,
   FOLLOWUP_TYPES,
-  CALL_NOT_PICKED_REASONS,
-  CALL_PICKED_OUTCOMES,
-  FOLLOWUP_COLD_REASONS,
+  getOutcomesForCategory,
 } from './constants';
-import { LOST_REASONS, buildLostStatusReason, getDirectLostOutcome } from '../../constants/salesSop';
-import { toast } from '../../context/ToastContext';
 
 const emptyForm = {
   lead: '',
   type: 'call',
-  category: 'call_picked',
+  category: 'warm',
   date: '',
   time: '10:00',
   priority: 'medium',
   remarks: '',
-  coldReason: '',
-  notPickedReason: '',
-  pickedOutcome: '',
-  lostReason: '',
+  outcome: '',
 };
 
-function buildStatusFromCategory(form, convertFields = {}) {
+function buildStatusFromCategory(form) {
   const note = String(form.remarks || '').trim();
-  const { category, pickedOutcome, notPickedReason, coldReason, lostReason } = form;
+  const { category, outcome } = form;
+  if (!outcome) return null;
+  const statusReason = note ? `${outcome} — ${note}` : outcome;
 
-  const directKey =
-    category === 'call_picked'
-      ? pickedOutcome
-      : category === 'call_not_picked'
-        ? notPickedReason
-        : category === 'cold'
-          ? coldReason
-          : category === 'lost'
-            ? lostReason
-            : '';
-  const direct = getDirectLostOutcome(directKey);
-  if (direct) {
-    if (!note) return null;
+  if (category === 'warm') {
     return {
-      status: direct.status,
-      statusReason: buildLostStatusReason(direct.lostReason, note),
+      status: outcome === 'cnp_same_day' ? 'follow_up' : 'contacted',
+      statusReason,
+      temperature: 'warm',
+      isHot: false,
     };
   }
 
-  if (category === 'call_picked') {
-    if (pickedOutcome === 'converted') {
-      return {
-        status: 'converted',
-        statusReason: note || 'converted',
-        advanceAmount: Number(convertFields.advanceAmount),
-        paymentMethod: convertFields.paymentMethod || 'upi',
-        sendReceipt: true,
-        paymentScreenshots: (convertFields.paymentShots || []).map((f) => ({
-          base64: f.base64,
-          name: f.name,
-        })),
-        paymentScreenshotBase64: convertFields.paymentShots?.[0]?.base64,
-        paymentScreenshotName: convertFields.paymentShots?.[0]?.name,
-      };
-    }
-    if (pickedOutcome === 'working_progress') {
-      return { status: 'working_progress', statusReason: note ? `working_progress — ${note}` : 'working_progress' };
-    }
-    if (pickedOutcome === 'qualified') {
-      return { status: 'qualified', statusReason: note ? `qualified — ${note}` : 'qualified' };
-    }
-    // Any other Connected option → Connected (contacted); 24h job moves to WIP
+  if (category === 'hot') {
     return {
-      status: 'contacted',
-      statusReason: note ? `${pickedOutcome} — ${note}` : pickedOutcome,
-    };
-  }
-
-  if (category === 'call_not_picked') {
-    return {
-      status: 'follow_up',
-      statusReason: note ? `${notPickedReason} — ${note}` : notPickedReason,
+      status: 'negotiation',
+      statusReason,
+      temperature: 'hot',
+      isHot: true,
     };
   }
 
   if (category === 'cold') {
     return {
       status: 'follow_up',
-      statusReason: note ? `${coldReason} — ${note}` : coldReason,
+      statusReason,
       temperature: 'cold',
-      coldReason,
-    };
-  }
-
-  if (category === 'lost') {
-    if (!lostReason || !note) return null;
-    if (lostReason === 'booked_elsewhere') {
-      return {
-        status: 'booked_from_another_company',
-        statusReason: buildLostStatusReason('booked_elsewhere', note),
-      };
-    }
-    return {
-      status: 'lost',
-      statusReason: buildLostStatusReason(lostReason, note),
+      coldReason: outcome,
+      isHot: false,
     };
   }
 
@@ -128,38 +72,39 @@ export default function AddFollowUpModal({
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [advanceAmount, setAdvanceAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('upi');
-  const [paymentShots, setPaymentShots] = useState([]);
 
   useEffect(() => {
     if (!open) return;
     setError('');
-    setAdvanceAmount('');
-    setPaymentMethod('upi');
-    setPaymentShots([]);
     if (editData) {
       const d = new Date(editData.scheduledAt);
-      const pad = (n) => String(n).padStart(2, '0');
+      const pad2 = (n) => String(n).padStart(2, '0');
       const localDate = Number.isNaN(d.getTime())
         ? ''
-        : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        : `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
       const localTime = Number.isNaN(d.getTime())
         ? '10:00'
-        : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-      const cat = editData.category === 'dead_lead' ? 'lost' : (editData.category || 'call_picked');
+        : `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+      let cat = editData.category === 'dead_lead' ? 'cold' : (editData.category || 'warm');
+      if (cat === 'call_picked' || cat === 'call_not_picked') cat = 'warm';
+      if (cat === 'lost') cat = 'cold';
+      if (!['warm', 'hot', 'cold'].includes(cat)) cat = 'warm';
       setForm({
         lead: editData.lead?._id || fixedLeadId || '',
         type: editData.type || 'call',
-        category: ['call_picked', 'call_not_picked', 'cold', 'lost'].includes(cat) ? cat : 'call_picked',
+        category: cat,
         date: localDate,
         time: localTime,
         priority: editData.priority || 'medium',
         remarks: editData.notes || '',
-        coldReason: editData.coldReason || '',
-        notPickedReason: editData.notPickedReason || (editData.category === 'call_not_picked' ? editData.outcome : '') || '',
-        pickedOutcome: editData.pickedOutcome || (editData.category === 'call_picked' ? editData.outcome : '') || '',
-        lostReason: editData.lostReason || '',
+        outcome:
+          editData.outcome ||
+          editData.pickedOutcome ||
+          editData.warmOutcome ||
+          editData.hotOutcome ||
+          editData.coldReason ||
+          editData.notPickedReason ||
+          '',
       });
     } else {
       const today = new Date().toISOString().split('T')[0];
@@ -171,34 +116,13 @@ export default function AddFollowUpModal({
     }
   }, [editData, open, fixedLeadId, lead]);
 
-  const isConvertedPick = form.category === 'call_picked' && form.pickedOutcome === 'converted';
-  const directLostKey =
-    form.category === 'call_picked'
-      ? form.pickedOutcome
-      : form.category === 'call_not_picked'
-        ? form.notPickedReason
-        : form.category === 'cold'
-          ? form.coldReason
-          : form.category === 'lost'
-            ? form.lostReason
-            : '';
-  const isDirectLost = Boolean(getDirectLostOutcome(directLostKey));
-  const isLostCategory = form.category === 'lost' || isDirectLost;
-  const convertInvalid =
-    isConvertedPick &&
-    (!advanceAmount ||
-      Number(advanceAmount) < 0 ||
-      Number.isNaN(Number(advanceAmount)) ||
-      !paymentShots.length);
+  const outcomeOptions = getOutcomesForCategory(form.category);
 
   const applyCategoryDefaults = (nextCategory) => {
     setForm((prev) => ({
       ...prev,
       category: nextCategory,
-      coldReason: nextCategory === 'cold' ? prev.coldReason : '',
-      notPickedReason: nextCategory === 'call_not_picked' ? prev.notPickedReason : '',
-      pickedOutcome: nextCategory === 'call_picked' ? prev.pickedOutcome : '',
-      lostReason: nextCategory === 'lost' ? prev.lostReason : '',
+      outcome: '',
     }));
   };
 
@@ -214,83 +138,36 @@ export default function AddFollowUpModal({
       setError('Please select a lead');
       return;
     }
-    if (form.category === 'call_picked' && !form.pickedOutcome) {
-      setError('Please select a Connected lead option');
-      return;
-    }
-    if (form.category === 'call_not_picked' && !form.notPickedReason) {
-      setError('Please select a Not connected reason');
-      return;
-    }
-    if (form.category === 'cold' && !form.coldReason) {
-      setError('Please select why this is a cold lead');
-      return;
-    }
-    if (form.category === 'lost') {
-      if (!form.lostReason) {
-        setError('Please select a lost reason');
-        return;
-      }
-    }
-    if (isLostCategory && !form.remarks?.trim()) {
-      setError('Comment is required for Lost lead');
-      return;
-    }
-    if (convertInvalid) {
-      setError('Enter advance and upload payment screenshot to convert');
+    if (!form.outcome) {
+      setError(`Please select a ${form.category} option`);
       return;
     }
 
     setSaving(true);
     try {
-      const coldLabel = FOLLOWUP_COLD_REASONS.find((r) => r.value === form.coldReason)?.label;
-      const notPickedLabel = CALL_NOT_PICKED_REASONS.find((r) => r.value === form.notPickedReason)?.label;
-      const pickedLabel = CALL_PICKED_OUTCOMES.find((r) => r.value === form.pickedOutcome)?.label;
-      const lostLabel = LOST_REASONS.find((r) => r.value === form.lostReason)?.label;
-
+      const outcomeLabel = outcomeOptions.find((r) => r.value === form.outcome)?.label;
       let remarks = form.remarks?.trim() || '';
-      if (form.category === 'cold') {
-        remarks = [remarks, coldLabel ? `Cold reason: ${coldLabel}` : ''].filter(Boolean).join(' — ')
-          || `Cold lead — ${coldLabel}`;
-      } else if (form.category === 'call_not_picked') {
-        remarks = [remarks, notPickedLabel ? `Not connected: ${notPickedLabel}` : ''].filter(Boolean).join(' — ')
-          || `Not connected — ${notPickedLabel}`;
-      } else if (form.category === 'call_picked') {
-        remarks = [remarks, pickedLabel ? `Connected: ${pickedLabel}` : ''].filter(Boolean).join(' — ')
-          || `Connected — ${pickedLabel}`;
-      } else if (form.category === 'lost') {
-        remarks = [lostLabel ? `Lost: ${lostLabel}` : '', remarks].filter(Boolean).join(' — ');
-      }
+      const prefix =
+        form.category === 'warm'
+          ? `Warm — ${outcomeLabel}`
+          : form.category === 'hot'
+            ? `Hot — ${outcomeLabel}`
+            : `Cold — ${outcomeLabel}`;
+      remarks = remarks ? `${prefix}. ${remarks}` : prefix;
 
-      const statusUpdate = showLeadOutcome
-        ? buildStatusFromCategory(form, { advanceAmount, paymentMethod, paymentShots })
-        : null;
-
-      if (showLeadOutcome && isLostCategory && !statusUpdate) {
-        setError('Comment is required for Lost lead');
-        setSaving(false);
-        return;
-      }
+      const statusUpdate = showLeadOutcome ? buildStatusFromCategory(form) : null;
 
       await onSubmit({
         ...form,
         lead: fixedLeadId || form.lead,
         scheduledAt: `${form.date}T${form.time}:00`,
         notes: remarks,
-        coldReason: form.category === 'cold' ? form.coldReason : undefined,
-        notPickedReason: form.category === 'call_not_picked' ? form.notPickedReason : undefined,
-        pickedOutcome: form.category === 'call_picked' ? form.pickedOutcome : undefined,
-        lostReason: form.category === 'lost' ? form.lostReason : undefined,
-        outcome:
-          form.category === 'call_not_picked'
-            ? form.notPickedReason
-            : form.category === 'call_picked'
-              ? form.pickedOutcome
-              : form.category === 'cold'
-                ? form.coldReason
-                : form.category === 'lost'
-                  ? form.lostReason
-                  : undefined,
+        category: form.category,
+        coldReason: form.category === 'cold' ? form.outcome : undefined,
+        pickedOutcome: form.category === 'warm' || form.category === 'hot' ? form.outcome : undefined,
+        warmOutcome: form.category === 'warm' ? form.outcome : undefined,
+        hotOutcome: form.category === 'hot' ? form.outcome : undefined,
+        outcome: form.outcome,
         statusUpdate,
       });
       if (!editData) {
@@ -305,15 +182,13 @@ export default function AddFollowUpModal({
     }
   };
 
-  const remarksOptional = !isLostCategory && !isConvertedPick;
-
   return (
     <AppModal open={open} onClose={onClose} size="lg" className="p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h3 className="text-lg font-bold text-content-primary">{editData ? 'Update Follow-up' : 'Lead follow up'}</h3>
           <p className="text-xs text-content-muted">
-            {fixedLeadName || 'Select category, option & save'}
+            {fixedLeadName || 'Select Warm / Hot / Cold & option'}
           </p>
         </div>
         <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-surface-elevated"><X className="w-5 h-5" /></button>
@@ -342,7 +217,7 @@ export default function AddFollowUpModal({
         )}
 
         <div>
-          <label className="text-xs font-medium text-content-muted mb-1 block">Follow-up Category *</label>
+          <label className="text-xs font-medium text-content-muted mb-1 block">Status *</label>
           <select
             value={form.category}
             onChange={(e) => applyCategoryDefaults(e.target.value)}
@@ -355,142 +230,45 @@ export default function AddFollowUpModal({
           </select>
         </div>
 
-        {form.category === 'call_picked' && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 space-y-3">
-            <p className="text-xs font-semibold text-emerald-800">
-              Connected lead — select call picked option (auto → Working in Progress after 24 hrs)
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {CALL_PICKED_OUTCOMES.map((outcome) => (
-                <button
-                  key={outcome.value}
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, pickedOutcome: outcome.value }))}
-                  className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
-                    form.pickedOutcome === outcome.value
-                      ? 'border-emerald-500 bg-emerald-100 text-emerald-900'
-                      : 'border-subtle bg-white text-content-secondary hover:border-emerald-300'
-                  }`}
-                >
-                  {outcome.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {form.category === 'call_not_picked' && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 space-y-3">
-            <p className="text-xs font-semibold text-amber-800">Not connected — select the reason</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {CALL_NOT_PICKED_REASONS.map((reason) => (
-                <button
-                  key={reason.value}
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, notPickedReason: reason.value }))}
-                  className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
-                    form.notPickedReason === reason.value
-                      ? 'border-amber-500 bg-amber-100 text-amber-900'
-                      : 'border-subtle bg-white text-content-secondary hover:border-amber-300'
-                  }`}
-                >
-                  {reason.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {form.category === 'cold' && (
-          <div className="rounded-xl border border-sky-200 bg-sky-50/80 p-3 space-y-3">
-            <p className="text-xs font-semibold text-sky-800">
-              Cold Lead — choose why (follow-up time as you set below)
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {FOLLOWUP_COLD_REASONS.map((reason) => (
-                <button
-                  key={reason.value}
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, coldReason: reason.value }))}
-                  className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
-                    form.coldReason === reason.value
-                      ? 'border-sky-500 bg-sky-100 text-sky-800'
-                      : 'border-subtle bg-white text-content-secondary hover:border-sky-300'
-                  }`}
-                >
-                  {reason.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {form.category === 'lost' && (
-          <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3 space-y-3">
-            <p className="text-xs font-semibold text-rose-800">Lost lead — select reason (comment required)</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {LOST_REASONS.map((reason) => (
-                <button
-                  key={reason.value}
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, lostReason: reason.value }))}
-                  className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
-                    form.lostReason === reason.value
+        <div className={`rounded-xl border p-3 space-y-3 ${
+          form.category === 'hot'
+            ? 'border-rose-200 bg-rose-50/80'
+            : form.category === 'cold'
+              ? 'border-sky-200 bg-sky-50/80'
+              : 'border-amber-200 bg-amber-50/80'
+        }`}>
+          <p className={`text-xs font-semibold ${
+            form.category === 'hot'
+              ? 'text-rose-800'
+              : form.category === 'cold'
+                ? 'text-sky-800'
+                : 'text-amber-800'
+          }`}>
+            {form.category === 'warm' && 'Warm — select option'}
+            {form.category === 'hot' && 'Hot — select option'}
+            {form.category === 'cold' && 'Cold — select option'}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {outcomeOptions.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setForm((prev) => ({ ...prev, outcome: item.value }))}
+                className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+                  form.outcome === item.value
+                    ? form.category === 'hot'
                       ? 'border-rose-500 bg-rose-100 text-rose-900'
-                      : 'border-subtle bg-white text-content-secondary hover:border-rose-300'
-                  }`}
-                >
-                  {reason.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {isConvertedPick && (
-          <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/80 p-3">
-            <p className="text-xs font-semibold text-emerald-800">
-              Enter advance / token received. Customer will get a payment voucher by email.
-            </p>
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Advance / Token (₹)
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={advanceAmount}
-                onChange={(e) => setAdvanceAmount(e.target.value)}
-                placeholder="e.g. 15000"
-                className="mt-1 w-full rounded-xl border border-subtle bg-white p-3 text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Payment mode
-              </label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-subtle bg-white p-3 text-sm"
+                      : form.category === 'cold'
+                        ? 'border-sky-500 bg-sky-100 text-sky-800'
+                        : 'border-amber-500 bg-amber-100 text-amber-900'
+                    : 'border-subtle bg-white text-content-secondary hover:border-amber-300'
+                }`}
               >
-                <option value="upi">UPI</option>
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="cheque">Cheque</option>
-              </select>
-            </div>
-            <PaymentScreenshotField
-              required
-              value={paymentShots}
-              onChange={({ files, error: shotError }) => {
-                if (shotError) toast.error(shotError);
-                setPaymentShots(files || []);
-              }}
-            />
+                {item.label}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -524,25 +302,14 @@ export default function AddFollowUpModal({
 
         <div>
           <label className="text-xs font-medium text-content-muted mb-1 block">
-            Comments {isLostCategory ? '*' : remarksOptional ? '(optional)' : '*'}
+            Comments (optional)
           </label>
           <textarea
             value={form.remarks}
             onChange={(e) => setForm({ ...form, remarks: e.target.value })}
-            required={isLostCategory}
             rows={3}
             className="input-premium w-full rounded-xl resize-none"
-            placeholder={
-              isLostCategory
-                ? 'Required: why is this lead lost?'
-                : form.category === 'cold'
-                  ? 'Add notes about this cold lead…'
-                  : form.category === 'call_not_picked'
-                    ? 'Optional notes…'
-                    : form.category === 'call_picked'
-                      ? 'Optional notes about the call…'
-                      : 'What to discuss on this follow-up...'
-            }
+            placeholder="Optional notes…"
           />
         </div>
 
@@ -550,8 +317,8 @@ export default function AddFollowUpModal({
           <Button type="button" variant="secondary" className="flex-1 rounded-xl" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button type="submit" variant="violet" className="flex-1 rounded-xl" disabled={saving || convertInvalid}>
-            {saving ? 'Saving…' : isConvertedPick ? 'Convert & Save' : 'Save'}
+          <Button type="submit" variant="violet" className="flex-1 rounded-xl" disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
           </Button>
         </div>
       </form>

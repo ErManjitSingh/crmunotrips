@@ -45,21 +45,11 @@ export const PRIORITIES = [
 export const INTENT_LABEL = 'Intent';
 
 export const COLD_LEAD_REASONS = [
-  { value: 'not_interested', label: 'Not interested' },
-  { value: 'just_inquiring', label: 'Just inquiry' },
-  { value: 'no_plan', label: 'No plan' },
+  { value: 'booked_elsewhere', label: 'Booked from another company' },
   { value: 'language_barrier', label: 'Language barrier' },
-  { value: 'wants_group_tour', label: 'Wants to group tour' },
-  { value: 'unknown_destination', label: 'Unknown destination' },
-  // legacy (older records)
-  { value: 'not_answering', label: 'Not answering' },
-  { value: 'asked_callback_later', label: 'Asked to call later' },
-  { value: 'budget_not_ready', label: 'Budget not ready' },
-  { value: 'dates_not_final', label: 'Travel dates not final' },
-  { value: 'comparing_options', label: 'Comparing other options' },
-  { value: 'wrong_time', label: 'Called at wrong time' },
-  { value: 'destination_not_final', label: 'Travel destination not final' },
-  { value: 'other', label: 'Other' },
+  { value: 'not_interested', label: 'Not interested' },
+  { value: 'invalid_number', label: 'Invalid no' },
+  { value: 'budget_issues', label: 'Budget issues' },
 ];
 
 export const PICKUP_DROP_POINTS = [

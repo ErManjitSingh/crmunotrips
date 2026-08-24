@@ -4,16 +4,20 @@ const LeadNote = require('../models/LeadNote');
 const COLD_REMINDER_HOURS = 4;
 
 const COLD_REASON_LABELS = {
+  booked_elsewhere: 'Booked from another company',
+  language_barrier: 'Language barrier',
   not_interested: 'Not interested',
+  invalid_number: 'Invalid no',
+  budget_issues: 'Budget issues',
+  // legacy
   just_inquiring: 'Just inquiry',
   no_plan: 'No plan',
-  language_barrier: 'Language barrier',
   wants_group_tour: 'Wants to group tour',
   unknown_destination: 'Unknown destination',
-  // legacy
   not_answering: 'Not answering',
   asked_callback_later: 'Asked to call later',
   budget_not_ready: 'Budget not ready',
+  budget_issue: 'Budget issues',
   dates_not_final: 'Travel dates not final',
   comparing_options: 'Comparing other options',
   wrong_time: 'Called at wrong time',

@@ -3,18 +3,14 @@ import AppModal from '../../ui/AppModal';
 import { Button } from '../../ui/button';
 import {
   FOLLOWUP_CATEGORY_OPTIONS,
-  CALL_NOT_PICKED_REASONS,
-  CALL_PICKED_OUTCOMES,
+  getOutcomesForCategory,
 } from '../../followups/constants';
-import { COLD_LEAD_REASONS } from '../../lead-wizard/constants';
 
 export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName }) {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('10:00');
-  const [category, setCategory] = useState('call_picked');
-  const [coldReason, setColdReason] = useState('');
-  const [notPickedReason, setNotPickedReason] = useState('');
-  const [pickedOutcome, setPickedOutcome] = useState('');
+  const [category, setCategory] = useState('warm');
+  const [outcome, setOutcome] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -24,12 +20,12 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
       setDate(new Date().toISOString().split('T')[0]);
       setError('');
       setNotes('');
-      setCategory('call_picked');
-      setColdReason('');
-      setNotPickedReason('');
-      setPickedOutcome('');
+      setCategory('warm');
+      setOutcome('');
     }
   }, [open]);
+
+  const outcomeOptions = getOutcomesForCategory(category);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,16 +33,8 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
       setError('Please select date');
       return;
     }
-    if (category === 'cold' && !coldReason) {
-      setError('Please select why this is a cold lead');
-      return;
-    }
-    if (category === 'call_not_picked' && !notPickedReason) {
-      setError('Please select why the call was not picked');
-      return;
-    }
-    if (category === 'call_picked' && !pickedOutcome) {
-      setError('Please select a call picked outcome');
+    if (!outcome) {
+      setError(`Please select a ${category} option`);
       return;
     }
     setSaving(true);
@@ -58,14 +46,11 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
         notes,
         type: 'whatsapp',
         category,
-        coldReason: category === 'cold' ? coldReason : undefined,
-        notPickedReason: category === 'call_not_picked' ? notPickedReason : undefined,
-        pickedOutcome: category === 'call_picked' ? pickedOutcome : undefined,
-        outcome: category === 'call_not_picked'
-          ? notPickedReason
-          : category === 'call_picked'
-            ? pickedOutcome
-            : undefined,
+        coldReason: category === 'cold' ? outcome : undefined,
+        pickedOutcome: category === 'warm' || category === 'hot' ? outcome : undefined,
+        warmOutcome: category === 'warm' ? outcome : undefined,
+        hotOutcome: category === 'hot' ? outcome : undefined,
+        outcome,
       });
       onClose();
     } catch (err) {
@@ -86,14 +71,12 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
         {error && <p className="text-sm text-red-600 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
 
         <div>
-          <label className="text-xs font-medium text-content-secondary mb-1 block">Follow-up Category *</label>
+          <label className="text-xs font-medium text-content-secondary mb-1 block">Status *</label>
           <select
             value={category}
             onChange={(e) => {
               setCategory(e.target.value);
-              setColdReason('');
-              setNotPickedReason('');
-              setPickedOutcome('');
+              setOutcome('');
             }}
             className="w-full rounded-lg border border-strong bg-surface px-3 py-2.5 text-sm font-medium"
           >
@@ -103,71 +86,41 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
           </select>
         </div>
 
-        {category === 'call_picked' && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 space-y-2">
-            <p className="text-xs font-semibold text-emerald-800">Call picked — outcome *</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {CALL_PICKED_OUTCOMES.map((outcome) => (
-                <button
-                  key={outcome.value}
-                  type="button"
-                  onClick={() => setPickedOutcome(outcome.value)}
-                  className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold ${
-                    pickedOutcome === outcome.value
-                      ? 'border-emerald-500 bg-emerald-100 text-emerald-900'
-                      : 'border-subtle bg-white text-content-secondary'
-                  }`}
-                >
-                  {outcome.label}
-                </button>
-              ))}
-            </div>
+        <div className={`rounded-xl border p-3 space-y-2 ${
+          category === 'hot'
+            ? 'border-rose-200 bg-rose-50/80'
+            : category === 'cold'
+              ? 'border-sky-200 bg-sky-50/80'
+              : 'border-amber-200 bg-amber-50/80'
+        }`}>
+          <p className={`text-xs font-semibold ${
+            category === 'hot' ? 'text-rose-800' : category === 'cold' ? 'text-sky-800' : 'text-amber-800'
+          }`}>
+            {category === 'warm' && 'Warm — option *'}
+            {category === 'hot' && 'Hot — option *'}
+            {category === 'cold' && 'Cold — option *'}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {outcomeOptions.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setOutcome(item.value)}
+                className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold ${
+                  outcome === item.value
+                    ? category === 'hot'
+                      ? 'border-rose-500 bg-rose-100 text-rose-900'
+                      : category === 'cold'
+                        ? 'border-sky-500 bg-sky-100 text-sky-800'
+                        : 'border-amber-500 bg-amber-100 text-amber-900'
+                    : 'border-subtle bg-white text-content-secondary'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
-        )}
-
-        {category === 'call_not_picked' && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 space-y-2">
-            <p className="text-xs font-semibold text-amber-800">Call not picked — reason *</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {CALL_NOT_PICKED_REASONS.map((reason) => (
-                <button
-                  key={reason.value}
-                  type="button"
-                  onClick={() => setNotPickedReason(reason.value)}
-                  className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold ${
-                    notPickedReason === reason.value
-                      ? 'border-amber-500 bg-amber-100 text-amber-900'
-                      : 'border-subtle bg-white text-content-secondary'
-                  }`}
-                >
-                  {reason.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {category === 'cold' && (
-          <div className="rounded-xl border border-sky-200 bg-sky-50/80 p-3 space-y-2">
-            <p className="text-xs font-semibold text-sky-800">Cold lead — reason *</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {COLD_LEAD_REASONS.map((reason) => (
-                <button
-                  key={reason.value}
-                  type="button"
-                  onClick={() => setColdReason(reason.value)}
-                  className={`text-left px-3 py-2 rounded-xl border text-xs font-semibold ${
-                    coldReason === reason.value
-                      ? 'border-sky-500 bg-sky-100 text-sky-800'
-                      : 'border-subtle bg-white text-content-secondary'
-                  }`}
-                >
-                  {reason.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -193,14 +146,13 @@ export default function CreateFollowUpModal({ open, onClose, onSubmit, leadName 
 
         <div>
           <label className="text-xs font-medium text-content-secondary mb-1 block">
-            Remarks {category === 'call_picked' || category === 'cold' || category === 'call_not_picked' ? '(optional)' : '*'}
+            Remarks (optional)
           </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Follow-up agenda..."
             rows={3}
-            required={category !== 'cold' && category !== 'call_not_picked' && category !== 'call_picked'}
             className="w-full rounded-xl border border-strong bg-surface px-4 py-3 text-sm resize-none"
           />
         </div>
