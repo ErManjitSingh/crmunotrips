@@ -1,4 +1,4 @@
-import { MapPin, User, Users, MessageCircle, Calendar, Clock, Phone, ClipboardList, Snowflake, Sun, Flame, XCircle, CircleDashed, Trophy, Loader } from 'lucide-react';
+import { MapPin, User, Users, MessageCircle, Calendar, Clock, Phone, ClipboardList, Snowflake, Sun, Flame, XCircle, CircleDashed, Trophy } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
