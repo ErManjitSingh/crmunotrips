@@ -48,12 +48,20 @@ function normalizeMealPlan(raw, fallback = 'map') {
   return fallback;
 }
 
+function hasOwn(body, key) {
+  return Object.prototype.hasOwnProperty.call(body || {}, key);
+}
+
 /**
  * Sanitize lead create/update body from API / wizard payload.
+ * On update: only include fields that were actually sent (avoids wiping / fake diffs).
  */
 function normalizeLeadInput(body = {}, { isUpdate = false } = {}) {
-  const source = normalizeSource(body);
+  if (isUpdate) {
+    return normalizeLeadUpdateInput(body);
+  }
 
+  const source = normalizeSource(body);
   const budget = Number(body.budget) || 0;
   const mealPlan = normalizeMealPlan(body.mealPlan || body.mealPreference, 'map');
   const normalized = {
@@ -103,7 +111,7 @@ function normalizeLeadInput(body = {}, { isUpdate = false } = {}) {
 
   if (body.dateOfBirth !== undefined) {
     if (body.dateOfBirth === '' || body.dateOfBirth == null) {
-      if (isUpdate) normalized.dateOfBirth = null;
+      normalized.dateOfBirth = null;
     } else {
       const dob = new Date(body.dateOfBirth);
       if (!Number.isNaN(dob.getTime())) normalized.dateOfBirth = dob;
@@ -133,8 +141,131 @@ function normalizeLeadInput(body = {}, { isUpdate = false } = {}) {
   if (assignedManager) normalized.assignedManager = assignedManager;
   if (assignedTeamLeader) normalized.assignedTeamLeader = assignedTeamLeader;
 
-  if (!isUpdate && body.status) normalized.status = body.status;
-  if (isUpdate && body.status) normalized.status = body.status;
+  if (body.status) normalized.status = body.status;
+
+  return normalized;
+}
+
+function normalizeLeadUpdateInput(body = {}) {
+  const normalized = {};
+
+  const setTrim = (key, aliases = []) => {
+    if (!hasOwn(body, key) && !aliases.some((a) => hasOwn(body, a))) return;
+    const raw = hasOwn(body, key) ? body[key] : body[aliases.find((a) => hasOwn(body, a))];
+    normalized[key] = raw == null ? '' : String(raw).trim();
+  };
+
+  const setNumber = (key, { min } = {}) => {
+    if (!hasOwn(body, key)) return;
+    let n = Number(body[key]);
+    if (!Number.isFinite(n)) n = 0;
+    if (min != null) n = Math.max(min, n);
+    normalized[key] = n;
+  };
+
+  setTrim('name');
+  setTrim('email');
+  setTrim('alternateEmail');
+  setTrim('phone');
+  setTrim('alternatePhone');
+  setTrim('whatsapp');
+  setTrim('city');
+  setTrim('state');
+  setTrim('destination');
+  setTrim('pickupPoint');
+  setTrim('dropPoint');
+  setTrim('cabType', ['transportRequirement']);
+  setTrim('companyName');
+  setTrim('preferredCallTime');
+  setTrim('sourceLabel');
+  setTrim('hotelCategory');
+  setTrim('specialRequirements');
+  setTrim('followUpRemarks');
+  setTrim('requirements');
+  setTrim('hotelPreference');
+  setTrim('packageInterest');
+  setTrim('priority');
+  setTrim('channel');
+  setTrim('leadType');
+  setTrim('leadTypeSource');
+  setTrim('statusReason');
+  setTrim('coldReason');
+
+  if (hasOwn(body, 'notes') || hasOwn(body, 'specialRequirements')) {
+    normalized.notes = String(body.notes || body.specialRequirements || '');
+  }
+
+  if (hasOwn(body, 'travelDate')) normalized.travelDate = body.travelDate || null;
+  if (hasOwn(body, 'returnDate')) normalized.returnDate = body.returnDate || null;
+  if (hasOwn(body, 'nextFollowUp')) normalized.nextFollowUp = body.nextFollowUp || null;
+  if (hasOwn(body, 'dateOfBirth')) {
+    if (body.dateOfBirth === '' || body.dateOfBirth == null) normalized.dateOfBirth = null;
+    else {
+      const dob = new Date(body.dateOfBirth);
+      if (!Number.isNaN(dob.getTime())) normalized.dateOfBirth = dob;
+    }
+  }
+
+  setNumber('tourDays');
+  setNumber('numberOfRooms', { min: 1 });
+  setNumber('roomsWithMattress', { min: 0 });
+  setNumber('travelers', { min: 1 });
+  setNumber('adults', { min: 1 });
+  setNumber('children', { min: 0 });
+  setNumber('infants', { min: 0 });
+
+  if (hasOwn(body, 'budget')) {
+    const budget = Number(body.budget) || 0;
+    normalized.budget = budget;
+    if (hasOwn(body, 'budgetRange') || budget > 0) {
+      normalized.budgetRange = parseBudgetRange(body, budget);
+    }
+    if (!hasOwn(body, 'leadScore')) {
+      normalized.leadScore = computeLeadScoreByBudget(budget);
+    }
+  }
+  if (hasOwn(body, 'budgetRange')) normalized.budgetRange = body.budgetRange;
+  if (hasOwn(body, 'leadScore')) normalized.leadScore = body.leadScore;
+
+  if (hasOwn(body, 'mealPlan') || hasOwn(body, 'mealPreference')) {
+    const mealPlan = normalizeMealPlan(body.mealPlan || body.mealPreference, 'map');
+    normalized.mealPlan = mealPlan;
+    normalized.mealPreference = body.mealPreference || mealPlan.toUpperCase();
+  }
+
+  if (hasOwn(body, 'transportRequirement') || hasOwn(body, 'cabType')) {
+    normalized.transportRequirement = String(body.cabType || body.transportRequirement || '').trim();
+  }
+
+  if (hasOwn(body, 'source') || hasOwn(body, 'leadSource')) {
+    const source = normalizeSource(body);
+    normalized.source = source;
+    normalized.leadSource = body.leadSource || source;
+    if (!hasOwn(body, 'sourceLabel')) {
+      normalized.sourceLabel = leadSourceLabel(source);
+    }
+  }
+
+  if (hasOwn(body, 'isHot')) normalized.isHot = Boolean(body.isHot);
+
+  if (hasOwn(body, 'temperature') && ['hot', 'warm', 'cold', 'vip'].includes(body.temperature)) {
+    normalized.temperature = body.temperature;
+    normalized.isHot = body.temperature === 'hot';
+  }
+
+  if (body.coldCallDone === true || body.coldCallDone === 'true') {
+    normalized.coldCallPending = false;
+    normalized.coldCallReminderAt = undefined;
+  }
+
+  if (hasOwn(body, 'status')) normalized.status = body.status;
+
+  const assignedTo = toObjectId(body.assignedTo) || toObjectId(body.assignedExecutive);
+  const assignedManager = toObjectId(body.assignedManager);
+  const assignedTeamLeader = toObjectId(body.assignedTeamLeader);
+  if (assignedTo) normalized.assignedTo = assignedTo;
+  if (assignedManager) normalized.assignedManager = assignedManager;
+  if (assignedTeamLeader) normalized.assignedTeamLeader = assignedTeamLeader;
 
   return normalized;
 }

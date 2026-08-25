@@ -33,7 +33,49 @@ function resolveQuoteEditHref(quoteId, contactEndpoint = '') {
   return `/quotations/new?edit=${quoteId}`;
 }
 
-function QuoteMetaChips({ item, quote }) {
+function parseChangesFromNotes(notes) {
+  if (!notes || typeof notes !== 'string') return [];
+  return notes
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const arrow = line.match(/^(.+?):\s*(.*?)\s*→\s*(.*)$/);
+      if (!arrow) return null;
+      return {
+        label: arrow[1].trim(),
+        from: arrow[2].trim() || '—',
+        to: arrow[3].trim() || '—',
+      };
+    })
+    .filter(Boolean);
+}
+
+function ActivityChangeList({ changes }) {
+  if (!changes?.length) return null;
+  return (
+    <ul className="mt-2 space-y-1 rounded-xl border border-slate-100 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/40">
+      {changes.map((change, idx) => (
+        <li
+          key={`${change.field || change.label || 'f'}-${idx}`}
+          className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-[11px] leading-snug text-slate-600 dark:text-slate-300"
+        >
+          <span className="font-semibold text-slate-800 dark:text-slate-100">
+            {change.label || change.field || 'Field'}
+          </span>
+          <span className="text-slate-400">:</span>
+          <span className="line-through decoration-slate-300 text-slate-400">
+            {change.from ?? String(change.oldValue ?? '—')}
+          </span>
+          <span className="text-slate-400">→</span>
+          <span className="font-medium text-emerald-700 dark:text-emerald-400">
+            {change.to ?? String(change.newValue ?? '—')}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
   const amount = item.meta?.amount ?? quote?.pricing?.total ?? quote?.costing?.grandTotal;
   const quoteNumber = item.meta?.quoteNumber || quote?.quoteNumber;
   const status = item.meta?.status || quote?.status;
@@ -218,32 +260,30 @@ export default function LeadActivityTimeline({
                           )}
                         </div>
                         {isQuote && <QuoteMetaChips item={item} quote={quote} />}
-                        {Array.isArray(item.meta?.changes) && item.meta.changes.length > 0 ? (
-                          <ul className="mt-2 space-y-1 rounded-xl border border-slate-100 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/40">
-                            {item.meta.changes.map((change, idx) => (
-                              <li
-                                key={`${change.field || 'f'}-${idx}`}
-                                className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-[11px] leading-snug text-slate-600 dark:text-slate-300"
-                              >
-                                <span className="font-semibold text-slate-800 dark:text-slate-100">
-                                  {change.label || change.field || 'Field'}
-                                </span>
-                                <span className="text-slate-400">:</span>
-                                <span className="line-through decoration-slate-300 text-slate-400">
-                                  {change.from ?? String(change.oldValue ?? '—')}
-                                </span>
-                                <span className="text-slate-400">→</span>
-                                <span className="font-medium text-emerald-700 dark:text-emerald-400">
-                                  {change.to ?? String(change.newValue ?? '—')}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : item.notes ? (
-                          <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 whitespace-pre-line">
-                            {item.notes}
-                          </p>
-                        ) : null}
+                        {(() => {
+                          const metaChanges = Array.isArray(item.meta?.changes) ? item.meta.changes : [];
+                          const parsed = metaChanges.length ? metaChanges : parseChangesFromNotes(item.notes);
+                          if (parsed.length) return <ActivityChangeList changes={parsed} />;
+                          if (
+                            item.notes &&
+                            /lead details updated/i.test(item.notes) &&
+                            !item.notes.includes('→')
+                          ) {
+                            return (
+                              <p className="mt-2 text-[11px] text-slate-400">
+                                Field-level details were not stored for this older edit. New edits will show each changed field.
+                              </p>
+                            );
+                          }
+                          if (item.notes) {
+                            return (
+                              <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 whitespace-pre-line">
+                                {item.notes}
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </motion.div>
                   );

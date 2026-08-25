@@ -7,16 +7,20 @@ const LEAD_TRACKED_FIELDS = [
   'email',
   'alternatePhone',
   'alternateEmail',
+  'whatsapp',
   'status',
   'statusReason',
   'coldReason',
   'temperature',
   'isHot',
   'budget',
+  'budgetRange',
   'destination',
   'city',
+  'state',
   'travelDate',
   'returnDate',
+  'tourDays',
   'travelers',
   'adults',
   'children',
@@ -30,9 +34,20 @@ const LEAD_TRACKED_FIELDS = [
   'nextFollowUp',
   'lastFollowUp',
   'hotelPreference',
+  'hotelCategory',
   'packageInterest',
   'requirements',
+  'specialRequirements',
+  'pickupPoint',
+  'dropPoint',
+  'cabType',
+  'transportRequirement',
+  'numberOfRooms',
+  'roomsWithMattress',
   'priority',
+  'companyName',
+  'notes',
+  'leadScore',
 ];
 
 const FIELD_LABELS = {
@@ -41,16 +56,20 @@ const FIELD_LABELS = {
   email: 'Email',
   alternatePhone: 'Alt phone',
   alternateEmail: 'Alt email',
+  whatsapp: 'WhatsApp',
   status: 'Status',
   statusReason: 'Status option',
   coldReason: 'Cold reason',
   temperature: 'Temperature',
   isHot: 'Hot flag',
   budget: 'Budget',
+  budgetRange: 'Budget range',
   destination: 'Destination',
   city: 'City',
+  state: 'State',
   travelDate: 'Travel date',
   returnDate: 'Return date',
+  tourDays: 'Tour days',
   travelers: 'Travelers',
   adults: 'Adults',
   children: 'Children',
@@ -64,9 +83,20 @@ const FIELD_LABELS = {
   nextFollowUp: 'Next follow-up',
   lastFollowUp: 'Last follow-up',
   hotelPreference: 'Hotel preference',
+  hotelCategory: 'Hotel category',
   packageInterest: 'Package interest',
   requirements: 'Requirements',
+  specialRequirements: 'Special requirements',
+  pickupPoint: 'Pickup',
+  dropPoint: 'Drop',
+  cabType: 'Cab type',
+  transportRequirement: 'Transport',
+  numberOfRooms: 'Rooms',
+  roomsWithMattress: 'Rooms with mattress',
   priority: 'Priority',
+  companyName: 'Company',
+  notes: 'Notes',
+  leadScore: 'Lead score',
 };
 
 async function logAudit({
@@ -158,6 +188,23 @@ function formatLeadChangeDescription(changes = [], { maxLines = 12 } = {}) {
   return lines.join('\n');
 }
 
+/** Prefer tracked fields, then any keys present on the request body / payload. */
+function buildLeadEditChanges(before = {}, after = {}, bodyOrPayload = {}) {
+  const extraKeys = Object.keys(bodyOrPayload || {}).filter(
+    (k) =>
+      ![
+        'paymentScreenshotBase64',
+        'paymentScreenshotName',
+        'paymentScreenshots',
+        'password',
+        'token',
+        'mentions',
+      ].includes(k)
+  );
+  const fields = [...new Set([...LEAD_TRACKED_FIELDS, ...extraKeys])];
+  return diffLeadChanges(before, after, fields);
+}
+
 function formatStatusChangeDescription({
   fromStatus,
   toStatus,
@@ -214,6 +261,7 @@ async function listBranchAuditLogs(branchId, { page = 1, limit = 50, action, ent
 module.exports = {
   logAudit,
   diffLeadChanges,
+  buildLeadEditChanges,
   formatLeadChangeDescription,
   formatStatusChangeDescription,
   getEntityAuditLog,

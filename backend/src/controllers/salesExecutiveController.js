@@ -12,7 +12,7 @@ const { getTeamLeaderForExecutive } = require('../services/teamScopeService');
 const { logActivity, getClientIp } = require('../services/activityService');
 const { logLeadActivity } = require('../services/leadActivityService');
 const {
-  diffLeadChanges,
+  buildLeadEditChanges,
   formatLeadChangeDescription,
   formatStatusChangeDescription,
 } = require('../services/leadAuditService');
@@ -577,17 +577,20 @@ const updateLead = asyncHandler(async (req, res) => {
     await lead.save();
   }
 
-  const changes = diffLeadChanges(before, lead.toObject());
-  if (changes.length) {
-    await logLeadActivity({
-      leadId: lead._id,
-      branchId: lead.branchId,
-      type: 'lead_edited',
-      description: formatLeadChangeDescription(changes),
-      actor: req.user,
-      meta: { changes },
-    });
-  }
+  const changes = buildLeadEditChanges(before, lead.toObject(), { ...req.body, ...data });
+  await logLeadActivity({
+    leadId: lead._id,
+    branchId: lead.branchId,
+    type: 'lead_edited',
+    description: changes.length
+      ? formatLeadChangeDescription(changes)
+      : 'Lead details saved (no field values changed)',
+    actor: req.user,
+    meta: {
+      changes,
+      editedKeys: Object.keys(data || {}),
+    },
+  });
 
   const populated = await Lead.findById(lead._id).populate(LEAD_POPULATE).lean();
   const paymentSummary = await getLeadPaymentSummary(lead._id);

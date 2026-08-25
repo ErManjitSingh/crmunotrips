@@ -51,7 +51,7 @@ const { logLeadActivity } = require('../services/leadActivityService');
 const { logLeadTransfer } = require('../services/leadTransferService');
 const { stampPendingAcceptance } = require('../services/leadExecutiveStallService');
 const { invalidateExecutiveLeadIdsCache } = require('../services/executiveScopeService');
-const { logAudit, diffLeadChanges, formatLeadChangeDescription, formatStatusChangeDescription } = require('../services/leadAuditService');
+const { logAudit, diffLeadChanges, buildLeadEditChanges, formatLeadChangeDescription, formatStatusChangeDescription } = require('../services/leadAuditService');
 const { applyLeadMetrics } = require('../services/leadScoringService');
 const { findDuplicateLeads } = require('../services/duplicateDetectionService');
 const {
@@ -643,7 +643,7 @@ const updateLead = asyncHandler(async (req, res) => {
     });
   }
 
-  const changes = diffLeadChanges(before, lead.toObject());
+  const changes = buildLeadEditChanges(before, lead.toObject(), { ...req.body, ...data });
   if (changes.length) {
     await logAudit({
       entityType: 'lead',
