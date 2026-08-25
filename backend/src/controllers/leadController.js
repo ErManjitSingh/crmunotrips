@@ -51,7 +51,7 @@ const { logLeadActivity } = require('../services/leadActivityService');
 const { logLeadTransfer } = require('../services/leadTransferService');
 const { stampPendingAcceptance } = require('../services/leadExecutiveStallService');
 const { invalidateExecutiveLeadIdsCache } = require('../services/executiveScopeService');
-const { logAudit, diffLeadChanges } = require('../services/leadAuditService');
+const { logAudit, diffLeadChanges, formatLeadChangeDescription, formatStatusChangeDescription } = require('../services/leadAuditService');
 const { applyLeadMetrics } = require('../services/leadScoringService');
 const { findDuplicateLeads } = require('../services/duplicateDetectionService');
 const {
@@ -662,21 +662,41 @@ const updateLead = asyncHandler(async (req, res) => {
       converted: 'lead_converted',
       reactivated: 'lead_reactivated',
     };
+    const after = lead.toObject();
     await logLeadActivity({
       leadId: lead._id,
       branchId: lead.branchId,
       type: typeMap[data.status] || 'status_changed',
-      description: `Status changed from ${prevStatus} to ${data.status}`,
+      description: formatStatusChangeDescription({
+        fromStatus: prevStatus,
+        toStatus: data.status,
+        fromTemperature: prevTemperature,
+        toTemperature: after.temperature,
+        fromReason: before.statusReason,
+        toReason: after.statusReason,
+        fromColdToWarm: wasColdBeforeAssign && data.status === 'working_progress',
+      }),
       actor: req.user,
-      meta: { from: prevStatus, to: data.status },
+      meta: {
+        from: prevStatus,
+        to: data.status,
+        fromTemperature: prevTemperature || undefined,
+        toTemperature: after.temperature || undefined,
+        fromReason: before.statusReason || undefined,
+        toReason: after.statusReason || undefined,
+        changes: changes.filter((c) =>
+          ['status', 'statusReason', 'temperature', 'coldReason', 'isHot'].includes(c.field)
+        ),
+      },
     });
   } else if (changes.length) {
     await logLeadActivity({
       leadId: lead._id,
       branchId: lead.branchId,
       type: 'lead_edited',
-      description: 'Lead details updated',
+      description: formatLeadChangeDescription(changes),
       actor: req.user,
+      meta: { changes },
     });
   }
 

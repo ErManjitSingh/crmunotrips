@@ -11,6 +11,11 @@ const { buildExecutiveDashboard } = require('../services/dashboardService');
 const { getTeamLeaderForExecutive } = require('../services/teamScopeService');
 const { logActivity, getClientIp } = require('../services/activityService');
 const { logLeadActivity } = require('../services/leadActivityService');
+const {
+  diffLeadChanges,
+  formatLeadChangeDescription,
+  formatStatusChangeDescription,
+} = require('../services/leadAuditService');
 const { onLeadConverted, isLeadStatusLocked } = require('../services/leadConversionService');
 const {
   getLeadPaymentSummary,
@@ -396,21 +401,54 @@ const updateLead = asyncHandler(async (req, res) => {
         reactivated: 'lead_reactivated',
         working_progress: 'status_changed',
       };
-      const statusLabel = nextStatus.replace(/_/g, ' ');
       const reasonText = req._lostReasonLabel || nextReason;
       await logLeadActivity({
         leadId: lead._id,
         branchId: lead.branchId,
         type: typeMap[nextStatus] || 'status_changed',
-        description: `Status changed from ${prevStatus.replace(/_/g, ' ')} to ${statusLabel}${reasonText ? ` — ${reasonText}` : ''}`,
+        description: formatStatusChangeDescription({
+          fromStatus: prevStatus,
+          toStatus: nextStatus,
+          fromTemperature: prevTemperature,
+          toTemperature: lead.temperature,
+          fromReason: prevReason,
+          toReason: reasonText || lead.statusReason,
+          fromColdToWarm: wasCold && nextStatus === 'working_progress',
+        }),
         actor: req.user,
         meta: {
           from: prevStatus,
           to: nextStatus,
-          statusReason: lead.statusReason || undefined,
-          temperature: lead.temperature || undefined,
+          fromTemperature: prevTemperature || undefined,
+          toTemperature: lead.temperature || undefined,
+          fromReason: prevReason || undefined,
+          toReason: lead.statusReason || undefined,
           fromColdToWarm: wasCold && nextStatus === 'working_progress',
           advanceAmount: nextStatus === 'converted' ? Number(advanceAmount ?? tokenAmount) : undefined,
+          changes: [
+            {
+              field: 'status',
+              label: 'Status',
+              from: String(prevStatus || '—').replace(/_/g, ' '),
+              to: String(nextStatus || '—').replace(/_/g, ' '),
+            },
+            prevTemperature !== String(lead.temperature || '').toLowerCase()
+              ? {
+                  field: 'temperature',
+                  label: 'Temperature',
+                  from: prevTemperature || '—',
+                  to: lead.temperature || '—',
+                }
+              : null,
+            lead.statusReason
+              ? {
+                  field: 'statusReason',
+                  label: 'Status option',
+                  from: prevReason || '—',
+                  to: String(lead.statusReason).replace(/_/g, ' '),
+                }
+              : null,
+          ].filter(Boolean),
         },
       });
     } else {
@@ -426,19 +464,42 @@ const updateLead = asyncHandler(async (req, res) => {
           leadId: lead._id,
           branchId: lead.branchId,
           type: 'status_changed',
-          description: [
-            nextTemp && nextTemp !== prevTemperature ? `Temperature ${prevTemperature || 'none'} → ${nextTemp}` : null,
-            nextReasonSaved ? `Option: ${nextReasonSaved}` : null,
-            wasCold && nextTemp === 'warm' ? 'Cold to Warm' : null,
-          ]
-            .filter(Boolean)
-            .join(' · ') || 'Lead status option updated',
+          description: formatStatusChangeDescription({
+            fromStatus: prevStatus,
+            toStatus: nextStatus,
+            fromTemperature: prevTemperature,
+            toTemperature: nextTemp,
+            fromReason: prevReason,
+            toReason: nextReasonSaved,
+            fromColdToWarm: wasCold && nextTemp === 'warm',
+          }),
           actor: req.user,
           meta: {
+            from: prevStatus,
+            to: nextStatus,
             fromTemperature: prevTemperature || undefined,
             toTemperature: nextTemp || undefined,
-            statusReason: nextReasonSaved || undefined,
+            fromReason: prevReason || undefined,
+            toReason: nextReasonSaved || undefined,
             fromColdToWarm: wasCold && nextTemp === 'warm',
+            changes: [
+              nextTemp !== prevTemperature
+                ? {
+                    field: 'temperature',
+                    label: 'Temperature',
+                    from: prevTemperature || '—',
+                    to: nextTemp || '—',
+                  }
+                : null,
+              nextReasonSaved !== prevReason
+                ? {
+                    field: 'statusReason',
+                    label: 'Status option',
+                    from: prevReason || '—',
+                    to: nextReasonSaved || '—',
+                  }
+                : null,
+            ].filter(Boolean),
           },
         });
       }
@@ -471,6 +532,7 @@ const updateLead = asyncHandler(async (req, res) => {
   }
 
   const data = normalizeLeadInput(req.body, { isUpdate: true });
+  const before = lead.toObject();
 
   // Identity locks for sales executive
   delete data.name;
@@ -515,17 +577,17 @@ const updateLead = asyncHandler(async (req, res) => {
     await lead.save();
   }
 
-  await logLeadActivity({
-    leadId: lead._id,
-    branchId: lead.branchId,
-    type: 'lead_edited',
-    description: 'Lead details updated by sales executive',
-    actor: req.user,
-    meta: {
-      alternatePhone: lead.alternatePhone || undefined,
-      alternateEmail: lead.alternateEmail || undefined,
-    },
-  });
+  const changes = diffLeadChanges(before, lead.toObject());
+  if (changes.length) {
+    await logLeadActivity({
+      leadId: lead._id,
+      branchId: lead.branchId,
+      type: 'lead_edited',
+      description: formatLeadChangeDescription(changes),
+      actor: req.user,
+      meta: { changes },
+    });
+  }
 
   const populated = await Lead.findById(lead._id).populate(LEAD_POPULATE).lean();
   const paymentSummary = await getLeadPaymentSummary(lead._id);

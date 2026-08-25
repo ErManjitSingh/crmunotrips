@@ -8,6 +8,7 @@ const { findDuplicateLeads } = require('../services/duplicateDetectionService');
 const { getLeadTimeline } = require('../services/leadActivityService');
 const { getEntityAuditLog } = require('../services/leadAuditService');
 const { logLeadActivity } = require('../services/leadActivityService');
+const { formatStatusChangeDescription } = require('../services/leadAuditService');
 const { logAudit } = require('../services/leadAuditService');
 const { getClientIp } = require('../services/activityService');
 const { applyLeadMetrics } = require('../services/leadScoringService');
@@ -555,7 +556,13 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
       leadId: lead._id,
       branchId: lead.branchId,
       type: 'status_changed',
-      description: `Status changed from ${prev} to ${nextStatus} (bulk)`,
+      description: formatStatusChangeDescription({
+        fromStatus: prev,
+        toStatus: nextStatus,
+        toTemperature: lead.temperature,
+        toReason: lead.statusReason,
+        fromColdToWarm: wasCold && nextStatus === 'working_progress',
+      }),
       actor: req.user,
       meta: {
         from: prev,
@@ -563,6 +570,15 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
         statusReason: lead.statusReason || undefined,
         temperature: lead.temperature || undefined,
         fromColdToWarm: wasCold && nextStatus === 'working_progress',
+        bulk: true,
+        changes: [
+          {
+            field: 'status',
+            label: 'Status',
+            from: String(prev || '—').replace(/_/g, ' '),
+            to: String(nextStatus || '—').replace(/_/g, ' '),
+          },
+        ],
       },
     });
     results.push({ _id: lead._id, status: lead.status });

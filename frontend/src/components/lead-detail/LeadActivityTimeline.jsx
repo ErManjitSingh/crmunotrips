@@ -218,11 +218,32 @@ export default function LeadActivityTimeline({
                           )}
                         </div>
                         {isQuote && <QuoteMetaChips item={item} quote={quote} />}
-                        {item.notes && (
-                          <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                        {Array.isArray(item.meta?.changes) && item.meta.changes.length > 0 ? (
+                          <ul className="mt-2 space-y-1 rounded-xl border border-slate-100 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/40">
+                            {item.meta.changes.map((change, idx) => (
+                              <li
+                                key={`${change.field || 'f'}-${idx}`}
+                                className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-[11px] leading-snug text-slate-600 dark:text-slate-300"
+                              >
+                                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                                  {change.label || change.field || 'Field'}
+                                </span>
+                                <span className="text-slate-400">:</span>
+                                <span className="line-through decoration-slate-300 text-slate-400">
+                                  {change.from ?? String(change.oldValue ?? '—')}
+                                </span>
+                                <span className="text-slate-400">→</span>
+                                <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                                  {change.to ?? String(change.newValue ?? '—')}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : item.notes ? (
+                          <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 whitespace-pre-line">
                             {item.notes}
                           </p>
-                        )}
+                        ) : null}
                       </div>
                     </motion.div>
                   );
