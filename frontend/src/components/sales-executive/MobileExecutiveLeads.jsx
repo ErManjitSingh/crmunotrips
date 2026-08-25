@@ -535,11 +535,11 @@ export default function MobileExecutiveLeads({
                             <span
                               className={cn(
                                 'rounded-full px-2 py-0.5 text-[10px] font-bold max-w-[160px] truncate ring-1 ring-inset',
-                                statusDisplay.className
+                                statusDisplay.listClassName || statusDisplay.className
                               )}
-                              title={statusDisplay.title}
+                              title={statusDisplay.mainLabel || 'No status'}
                             >
-                              <span className={listStatusTextClass(statusDisplay)}>{statusDisplay.label}</span>
+                              <span className={listStatusTextClass(statusDisplay)}>{statusDisplay.mainLabel || 'No status'}</span>
                             </span>
                           </div>
                           {lead.nextFollowUp ? (

@@ -213,7 +213,7 @@ export default function WhatsAppLeadInfoPanel({
           </p>
           <div className="mt-3 flex justify-center">
             {lead ? (
-              <LeadStatusBadge status={lead.status} reason={lead.statusReason} lead={lead} size="sm" />
+              <LeadStatusBadge status={lead.status} reason={lead.statusReason} lead={lead} size="sm" listMode={false} />
             ) : (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-400/30 border border-white/20">
                 New chat

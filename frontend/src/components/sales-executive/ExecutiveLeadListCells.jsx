@@ -241,24 +241,25 @@ export function ExecMealPlanCell({ mealPlan, mealPreference }) {
 
 export function ExecStatusCell({ lead }) {
   const display = getLeadListStatusDisplay(lead);
+  const label = display.mainLabel || 'No status';
 
   return (
     <div className="flex min-w-0 flex-col items-start gap-0.5">
       <span
         className={cn(
           'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ring-1 ring-inset whitespace-nowrap max-w-[200px] truncate',
-          display.className
+          display.listClassName || display.className
         )}
-        title={display.title}
+        title={label}
       >
         <span
           className={cn(
             'w-1.5 h-1.5 rounded-full shrink-0',
-            display.dotClass,
+            display.listDotClass || display.dotClass,
             display.bucket === 'new' && 'animate-pulse'
           )}
         />
-        <span className={listStatusTextClass(display)}>{display.label}</span>
+        <span className={listStatusTextClass(display)}>{label}</span>
       </span>
     </div>
   );

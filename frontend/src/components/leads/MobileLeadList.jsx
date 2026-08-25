@@ -338,10 +338,10 @@ export default function MobileLeadList({
                             {lead.name}
                           </h3>
                           <span
-                            className={`max-w-[120px] truncate rounded-full px-2 py-0.5 text-[7px] font-semibold ring-1 ring-inset ${statusDisplay.className}`}
-                            title={statusDisplay.title}
+                            className={`max-w-[120px] truncate rounded-full px-2 py-0.5 text-[7px] font-semibold ring-1 ring-inset ${statusDisplay.listClassName || statusDisplay.className}`}
+                            title={statusDisplay.mainLabel || 'No status'}
                           >
-                            <span className={listStatusTextClass(statusDisplay)}>{statusDisplay.label}</span>
+                            <span className={listStatusTextClass(statusDisplay)}>{statusDisplay.mainLabel || 'No status'}</span>
                           </span>
                         </div>
                         <NextFollowUpLine lead={lead} className="!text-[9px] mt-0.5" />

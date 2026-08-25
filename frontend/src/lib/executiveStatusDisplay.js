@@ -157,8 +157,9 @@ function humanizeReasonKey(key) {
 }
 
 /**
- * Display the option the user actually selected (e.g. "Ready to Book" / "Not interested").
- * Never show Warm/Hot/Cold alone when no option was selected — that is "No status".
+ * Status display for leads.
+ * - mainLabel: list-only Warm / Hot / Cold / Converted / No status
+ * - label / exactLabel: selected option for lead open / modal
  */
 export function getLeadListStatusDisplay(lead) {
   const status = lead?.status || 'new';
@@ -178,8 +179,8 @@ export function getLeadListStatusDisplay(lead) {
     const fromReason = bucketFromReasonKey(reasonKey);
     if (fromReason) {
       bucket = fromReason;
-    } else if (reasonKey && ['warm', 'hot', 'cold'].includes(temperature)) {
-      // Unknown legacy option key — keep color from temperature, label from reason
+    } else if (['warm', 'hot', 'cold'].includes(temperature)) {
+      // Temperature set (even without option) — used for list main status color/label
       bucket = temperature;
     } else {
       bucket = 'new';
@@ -197,19 +198,35 @@ export function getLeadListStatusDisplay(lead) {
 
   const categoryLabel = categoryLabels[bucket] || 'No status';
 
+  // List column: only main statuses
+  const mainLabel =
+    bucket === 'converted'
+      ? 'Converted'
+      : bucket === 'hot'
+        ? 'Hot'
+        : bucket === 'cold'
+          ? 'Cold'
+          : bucket === 'warm' || bucket === 'working'
+            ? 'Warm'
+            : 'No status';
+
+  const listBucket = bucket === 'working' ? 'warm' : bucket;
+
+  // Detail / modal: exact selected option when present
   let label = 'No status';
   if (bucket === 'converted') {
     label = 'Converted';
   } else if (bucket === 'working') {
     label = 'Working Progress';
   } else if (optionLabel) {
-    // Exact selected option (or humanized legacy key) — not Warm/Hot/Cold
     label = optionLabel;
   }
 
   return {
     bucket,
+    listBucket,
     label,
+    mainLabel,
     categoryLabel,
     exactLabel: optionLabel || label,
     pipelineLabel: categoryLabel,
@@ -219,7 +236,9 @@ export function getLeadListStatusDisplay(lead) {
         ? `${categoryLabel} · ${optionLabel}`
         : label,
     className: LIST_STATUS_STYLES[bucket] || LIST_STATUS_STYLES.new,
+    listClassName: LIST_STATUS_STYLES[listBucket] || LIST_STATUS_STYLES.new,
     dotClass: LIST_STATUS_DOT[bucket] || LIST_STATUS_DOT.new,
+    listDotClass: LIST_STATUS_DOT[listBucket] || LIST_STATUS_DOT.new,
     animateLabel: bucket === 'hot',
   };
 }

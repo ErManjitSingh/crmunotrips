@@ -175,6 +175,7 @@ export default function LeadPreviewDrawer({
                       lead={lead}
                       pulse={lead.status === 'new'}
                       size="sm"
+                      listMode={false}
                     />
                   </div>
                   <h2 className="mt-2 text-xl font-bold text-slate-900 leading-tight break-words">{lead.name}</h2>

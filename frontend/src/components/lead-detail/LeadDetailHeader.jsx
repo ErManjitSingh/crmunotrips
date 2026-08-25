@@ -249,7 +249,7 @@ export default function LeadDetailHeader({
                   <h1 className="truncate text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
                     {lead.name}
                   </h1>
-                  <LeadStatusBadge status={status} reason={lead.statusReason} lead={lead} pulse={status === 'new'} size="sm" />
+                  <LeadStatusBadge status={status} reason={lead.statusReason} lead={lead} pulse={status === 'new'} size="sm" listMode={false} />
                 </div>
                 <p className="mt-0.5 truncate text-[11px] text-slate-500">
                   <span className="font-semibold text-violet-600">{formatLeadId(lead._id || lead.leadId)}</span>
