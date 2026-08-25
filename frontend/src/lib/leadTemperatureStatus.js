@@ -74,7 +74,7 @@ export function buildLeadStatusPayload(category, option, comment = '', lead = nu
     if (fromCold) {
       return {
         status: 'working_progress',
-        statusReason: note ? `working_progress — ${note}` : 'working_progress',
+        statusReason,
         temperature: 'warm',
         isHot: false,
         coldReason: '',
@@ -126,7 +126,7 @@ export function buildLeadStatusPayload(category, option, comment = '', lead = nu
 export function pipelineStatusToTemperatureLabel(status) {
   const s = String(status || '').toLowerCase();
   if (s === 'converted') return 'Converted';
-  if (s === 'working_progress') return 'Working Progress';
+  if (s === 'working_progress') return 'Warm';
   if (s === 'warm') return 'Warm';
   if (s === 'hot') return 'Hot';
   if (s === 'cold') return 'Cold';

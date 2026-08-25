@@ -191,7 +191,7 @@ async function applyCategoryToLead(lead, category, status, body = {}) {
     if (fromCold) {
       lead.statusReason = body.statusReason
         ? String(body.statusReason).trim()
-        : 'working_progress';
+        : (outcomeKey || '');
     } else if (body.statusReason) {
       lead.statusReason = String(body.statusReason).trim();
     } else if (outcomeKey) {

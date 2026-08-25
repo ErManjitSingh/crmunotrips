@@ -592,8 +592,8 @@ const updateLead = asyncHandler(async (req, res) => {
     !['converted', 'lost', 'booked_from_another_company'].includes(data.status)
   ) {
     data.status = 'working_progress';
-    if (!String(data.statusReason || '').startsWith('working_progress')) {
-      data.statusReason = 'working_progress';
+    if (!String(data.statusReason || '').trim() && req.body.warmOption) {
+      data.statusReason = String(req.body.warmOption).trim();
     }
     data.coldReason = undefined;
   }

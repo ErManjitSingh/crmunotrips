@@ -35,7 +35,7 @@ export default function LeadStatusBadge({
     display.exactLabel &&
     display.categoryLabel &&
     display.exactLabel !== display.categoryLabel &&
-    !['No status', 'Converted', 'Working Progress'].includes(display.categoryLabel) &&
+    !['No status', 'Converted'].includes(display.categoryLabel) &&
     display.label === display.exactLabel;
 
   return (

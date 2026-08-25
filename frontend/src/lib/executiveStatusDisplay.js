@@ -16,6 +16,12 @@ function optionKeysByLength() {
     .sort((a, b) => b.length - a.length);
 }
 
+const SYSTEM_REASON_KEYS = new Set(['working_progress', 'auto_connected_24h']);
+
+function isSystemReasonKey(key) {
+  return !key || SYSTEM_REASON_KEYS.has(String(key).trim());
+}
+
 function extractReasonKey(statusReason) {
   const raw = String(statusReason || '').trim();
   if (!raw) return '';
@@ -52,16 +58,20 @@ function resolveListReasonKey(lead) {
   const reason = String(lead?.statusReason || '').trim();
   const coldReason = String(lead?.coldReason || '').trim();
   const followUpOutcome = String(lead?.lastFollowUpOutcome || lead?.followUpOutcome || '').trim();
-  const fromReason =
-    extractReasonKey(reason) ||
-    extractReasonKey(coldReason) ||
-    extractReasonKey(followUpOutcome);
-  if (fromReason) return fromReason;
+  const candidates = [
+    extractReasonKey(reason),
+    extractReasonKey(coldReason),
+    extractReasonKey(followUpOutcome),
+  ].filter((key) => key && !isSystemReasonKey(key));
+  if (candidates.length) return candidates[0];
   // Match full reason / outcome against option labels (older free-text saves)
-  const raw = reason || coldReason || followUpOutcome;
+  const rawSources = [reason, coldReason, followUpOutcome].filter(
+    (raw) => raw && !isSystemReasonKey(raw.split(/\s*[—–]\s*|\s+-\s+/)[0]?.trim())
+  );
+  const raw = rawSources[0] || '';
   if (!raw) return '';
   const head = raw.split(/\s*[—–]\s*|\s+-\s+/)[0]?.replace(/:$/, '').trim() || '';
-  if (!head) return '';
+  if (!head || isSystemReasonKey(head)) return '';
   const byLabel = currentOptionLabels().find(
     (o) => String(o.label || '').toLowerCase() === head.toLowerCase()
   );
@@ -91,16 +101,6 @@ export function getExecutiveSetStatusDisplay(lead) {
       pipelineLabel,
       title: 'Converted',
       bucket: 'converted',
-    };
-  }
-
-  if (status === 'working_progress' || reasonKey === 'working_progress') {
-    return {
-      label: 'Working Progress',
-      detail: '',
-      pipelineLabel,
-      title: 'Working Progress',
-      bucket: 'working',
     };
   }
 
@@ -147,7 +147,7 @@ function humanizeReasonKey(key) {
   const known = findOptionLabel(key);
   if (known) return known;
   const raw = String(key).trim();
-  if (!raw || raw === 'working_progress') return '';
+  if (!raw || isSystemReasonKey(raw)) return '';
   if (/^cnp$/i.test(raw)) return 'CNP';
   return raw
     .replace(/_/g, ' ')
@@ -170,15 +170,12 @@ export function getLeadListStatusDisplay(lead) {
   let bucket = 'new';
   if (status === 'converted') {
     bucket = 'converted';
-  } else if (
-    status === 'working_progress' ||
-    reasonKey === 'working_progress'
-  ) {
-    bucket = 'working';
   } else {
     const fromReason = bucketFromReasonKey(reasonKey);
     if (fromReason) {
       bucket = fromReason;
+    } else if (status === 'working_progress' || String(lead?.temperature || '').toLowerCase() === 'warm') {
+      bucket = 'warm';
     } else if (['warm', 'hot', 'cold'].includes(temperature)) {
       // Temperature set (even without option) — used for list main status color/label
       bucket = temperature;
@@ -193,7 +190,6 @@ export function getLeadListStatusDisplay(lead) {
     hot: 'Hot',
     new: 'No status',
     converted: 'Converted',
-    working: 'Working Progress',
   };
 
   const categoryLabel = categoryLabels[bucket] || 'No status';
@@ -206,18 +202,16 @@ export function getLeadListStatusDisplay(lead) {
         ? 'Hot'
         : bucket === 'cold'
           ? 'Cold'
-          : bucket === 'warm' || bucket === 'working'
+          : bucket === 'warm'
             ? 'Warm'
             : 'No status';
 
-  const listBucket = bucket === 'working' ? 'warm' : bucket;
+  const listBucket = bucket;
 
   // Detail / modal: exact selected option when present
   let label = 'No status';
   if (bucket === 'converted') {
     label = 'Converted';
-  } else if (bucket === 'working') {
-    label = 'Working Progress';
   } else if (optionLabel) {
     label = optionLabel;
   }
@@ -232,7 +226,7 @@ export function getLeadListStatusDisplay(lead) {
     pipelineLabel: categoryLabel,
     detail: '',
     title:
-      optionLabel && categoryLabel !== optionLabel && bucket !== 'new' && bucket !== 'converted' && bucket !== 'working'
+      optionLabel && categoryLabel !== optionLabel && bucket !== 'new' && bucket !== 'converted'
         ? `${categoryLabel} · ${optionLabel}`
         : label,
     className: LIST_STATUS_STYLES[bucket] || LIST_STATUS_STYLES.new,

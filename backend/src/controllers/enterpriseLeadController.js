@@ -329,16 +329,14 @@ const addCallNote = asyncHandler(async (req, res) => {
     lead.coldReason = outcomeKey;
     lead.statusReason = reasonStamp;
   } else if (wasCold) {
-    // Cold → Warm (from call): straight to Working Progress
+    // Cold → Warm (from call): internal working_progress, user option in statusReason
     if (!['converted', 'lost', 'booked_from_another_company'].includes(lead.status)) {
       lead.status = 'working_progress';
     }
     lead.temperature = 'warm';
     lead.isHot = false;
     lead.coldReason = undefined;
-    lead.statusReason = noteText
-      ? `working_progress — ${noteText.slice(0, 120)}`
-      : 'working_progress';
+    lead.statusReason = reasonStamp;
   } else {
     if (!['converted', 'lost', 'booked_from_another_company'].includes(lead.status)) {
       lead.status = outcomeKey === 'cnp_same_day' ? 'follow_up' : 'contacted';
@@ -508,10 +506,9 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
       status !== 'converted'
     ) {
       nextStatus = 'working_progress';
-      nextReason =
-        nextReason && String(nextReason).startsWith('working_progress')
-          ? nextReason
-          : 'working_progress';
+      if (!nextReason && req.body.warmOption) {
+        nextReason = String(req.body.warmOption).trim();
+      }
     }
 
     lead.status = nextStatus;
