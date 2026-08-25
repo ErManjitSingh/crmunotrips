@@ -11,9 +11,10 @@ const STATUS_LABELS = {
   new: 'No status',
   // Old pipeline keys no longer map to Warm/Hot/Cold by themselves
   contacted: 'No status',
-  working_progress: 'Working in Progress',
-  cold_to_warm: 'Working in Progress',
-  auto_connected_24h: 'Working in Progress',
+  // WIP label only via Cold→Warm display logic — bare pipeline status is not enough
+  working_progress: 'No status',
+  cold_to_warm: 'Cold to Warm',
+  auto_connected_24h: 'No status',
   qualified: 'No status',
   quotation_sent: 'No status',
   follow_up: 'No status',
@@ -29,7 +30,7 @@ const STATUS_MEANINGS = {
   cold: 'Booked elsewhere / language / not interested / invalid / budget',
   working_progress: 'Cold lead moved back to Warm',
   cold_to_warm: 'Cold lead moved back to Warm',
-  auto_connected_24h: 'Cold lead moved back to Warm',
+  auto_connected_24h: 'Auto-moved after connected (not Cold to Warm)',
   new: 'No Warm / Hot / Cold option selected yet',
   converted: 'Customer has confirmed / paid',
 };
@@ -47,10 +48,11 @@ export function getLeadStatusLabel(status) {
 
 export function getLeadStatusMeaning(status) {
   if (!status) return STATUS_MEANINGS.new;
+  if (status === 'cold_to_warm') return STATUS_MEANINGS.cold_to_warm;
   if (status === 'working_progress') return STATUS_MEANINGS.working_progress;
   const label = getLeadStatusLabel(status);
   if (label === 'Converted' || label === 'Booking') return STATUS_MEANINGS.converted;
-  if (label === 'Working in Progress' || (label === 'Warm' && status === 'working_progress')) {
+  if (label === 'Cold to Warm' || label === 'Working in Progress') {
     return STATUS_MEANINGS.working_progress;
   }
   if (label === 'No status') return STATUS_MEANINGS.new;

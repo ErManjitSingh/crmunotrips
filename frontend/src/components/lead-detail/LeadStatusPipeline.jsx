@@ -7,10 +7,7 @@ import { cn } from '../../lib/utils';
 export default function LeadStatusPipeline({ status, lead }) {
   const resolved = lead || { status };
   const display = getLeadListStatusDisplay(resolved);
-  const coldToWarm =
-    String(resolved?.status || '').trim() === 'working_progress' ||
-    Boolean(display.subLabel) ||
-    display.label === 'Working in Progress';
+  const coldToWarm = display.subLabel === 'Cold to Warm' || display.mainLabel === 'Working in Progress';
   const current =
     display.bucket === 'converted'
       ? 'converted'

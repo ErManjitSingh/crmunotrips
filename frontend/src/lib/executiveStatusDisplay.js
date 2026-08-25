@@ -16,29 +16,51 @@ function optionKeysByLength() {
     .sort((a, b) => b.length - a.length);
 }
 
-/** Internal markers for Cold → Warm (not user-picked Warm options). */
-const COLD_TO_WARM_REASON_KEYS = new Set([
-  'working_progress',
-  'auto_connected_24h',
-  'cold_to_warm',
-]);
+/** Explicit / legacy markers that mean Cold → Warm (not Connected auto-promote). */
+const COLD_TO_WARM_REASON_KEYS = new Set(['cold_to_warm', 'working_progress']);
 
 const COLD_TO_WARM_LABEL = 'Cold to Warm';
 const WORKING_IN_PROGRESS_LABEL = 'Working in Progress';
 
 function isSystemReasonKey(key) {
-  return !key || COLD_TO_WARM_REASON_KEYS.has(String(key).trim());
+  return (
+    !key ||
+    COLD_TO_WARM_REASON_KEYS.has(String(key).trim()) ||
+    String(key).trim() === 'auto_connected_24h'
+  );
 }
 
+/**
+ * True only when this lead was Cold and moved to Warm.
+ * Do NOT treat every working_progress / Connected auto row as Cold→Warm.
+ */
 function isColdToWarmLead(lead, reasonKey = '') {
   const status = String(lead?.status || '').trim();
-  if (status === 'working_progress') return true;
   const raw = String(lead?.statusReason || '')
     .trim()
     .split(/\s*[—–]\s*|\s+-\s+/)[0]
     ?.replace(/:$/, '')
     .trim();
-  return COLD_TO_WARM_REASON_KEYS.has(raw) || COLD_TO_WARM_REASON_KEYS.has(String(reasonKey || '').trim());
+  const key = String(reasonKey || '').trim() || raw;
+
+  // Never treat old Connected→WIP auto as Cold→Warm
+  if (raw === 'auto_connected_24h' || key === 'auto_connected_24h') return false;
+
+  // Explicit stamp we save on Cold→Warm
+  if (raw === 'cold_to_warm' || key === 'cold_to_warm') return true;
+
+  // Cold→Warm path always sets pipeline status working_progress
+  if (status !== 'working_progress') return false;
+
+  // With a Warm option (CNP, package discussed, …) after Cold→Warm
+  const optionBucket = bucketFromOptionKey(key);
+  if (optionBucket === 'warm') return true;
+
+  // Legacy Cold→Warm with reason working_progress / empty + warm temperature
+  if (raw === 'working_progress' || key === 'working_progress') return true;
+  if (!raw && String(lead?.temperature || '').toLowerCase() === 'warm') return true;
+
+  return false;
 }
 
 function extractReasonKey(statusReason) {
