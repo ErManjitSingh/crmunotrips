@@ -24,6 +24,7 @@ const {
 } = require('../repositories/roleScopedRepository');
 const { persistQuotation } = require('../services/quotationCreateService');
 const { logActivity, getClientIp } = require('../services/activityService');
+const { logLeadActivity } = require('../services/leadActivityService');
 const {
   notifyLeadAssigned,
   notifyQuotationApproved,
@@ -359,11 +360,37 @@ const approveQuotation = asyncHandler(async (req, res) => {
   await quotation.save();
   const populated = await Quotation.findById(quotation._id).populate(QUOTATION_POPULATE).lean();
   const leadDoc = populated.lead;
+  const leadId = leadDoc?._id || leadDoc || quotation.lead;
 
   if (action === 'approve') {
     notifyQuotationApproved(populated, leadDoc, req.user).catch(() => {});
+    await logLeadActivity({
+      leadId,
+      branchId: quotation.branchId || leadDoc?.branchId,
+      type: 'quotation_approved',
+      description: notes || `Quotation ${quotation.quoteNumber || ''} approved by Team Leader`,
+      actor: req.user,
+      meta: { quotationId: quotation._id, quoteNumber: quotation.quoteNumber },
+    }).catch(() => {});
   } else if (action === 'reject') {
     notifyQuotationRejected(populated, leadDoc, req.user).catch(() => {});
+    await logLeadActivity({
+      leadId,
+      branchId: quotation.branchId || leadDoc?.branchId,
+      type: 'quotation_rejected',
+      description: notes || `Quotation ${quotation.quoteNumber || ''} rejected by Team Leader`,
+      actor: req.user,
+      meta: { quotationId: quotation._id, quoteNumber: quotation.quoteNumber },
+    }).catch(() => {});
+  } else if (action === 'changes') {
+    await logLeadActivity({
+      leadId,
+      branchId: quotation.branchId || leadDoc?.branchId,
+      type: 'quotation_submitted',
+      description: notes || `Changes requested on quotation ${quotation.quoteNumber || ''}`,
+      actor: req.user,
+      meta: { quotationId: quotation._id, quoteNumber: quotation.quoteNumber, action: 'changes_requested' },
+    }).catch(() => {});
   }
   res.json(populated);
 });

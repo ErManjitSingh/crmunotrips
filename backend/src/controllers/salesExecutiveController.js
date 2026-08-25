@@ -317,6 +317,8 @@ const updateLead = asyncHandler(async (req, res) => {
     }
 
     const prevStatus = lead.status;
+    const prevTemperature = String(lead.temperature || '').toLowerCase();
+    const prevReason = String(lead.statusReason || '').trim();
     const wasCold =
       String(lead.temperature || '').toLowerCase() === 'cold' ||
       ['booked_elsewhere', 'language_barrier', 'not_interested', 'invalid_number', 'budget_issues', 'budget_issue'].includes(
@@ -406,10 +408,40 @@ const updateLead = asyncHandler(async (req, res) => {
           from: prevStatus,
           to: nextStatus,
           statusReason: lead.statusReason || undefined,
+          temperature: lead.temperature || undefined,
           fromColdToWarm: wasCold && nextStatus === 'working_progress',
           advanceAmount: nextStatus === 'converted' ? Number(advanceAmount ?? tokenAmount) : undefined,
         },
       });
+    } else {
+      const nextTemp = String(lead.temperature || '').toLowerCase();
+      const nextReasonSaved = String(lead.statusReason || '').trim();
+      if (
+        (req.body.temperature && nextTemp !== prevTemperature) ||
+        (nextReasonSaved && nextReasonSaved !== prevReason) ||
+        req.body.coldReason ||
+        req.body.fromColdToWarm
+      ) {
+        await logLeadActivity({
+          leadId: lead._id,
+          branchId: lead.branchId,
+          type: 'status_changed',
+          description: [
+            nextTemp && nextTemp !== prevTemperature ? `Temperature ${prevTemperature || 'none'} → ${nextTemp}` : null,
+            nextReasonSaved ? `Option: ${nextReasonSaved}` : null,
+            wasCold && nextTemp === 'warm' ? 'Cold to Warm' : null,
+          ]
+            .filter(Boolean)
+            .join(' · ') || 'Lead status option updated',
+          actor: req.user,
+          meta: {
+            fromTemperature: prevTemperature || undefined,
+            toTemperature: nextTemp || undefined,
+            statusReason: nextReasonSaved || undefined,
+            fromColdToWarm: wasCold && nextTemp === 'warm',
+          },
+        });
+      }
     }
 
     if (nextStatus === 'converted' && prevStatus !== 'converted') {
@@ -520,6 +552,15 @@ const addLeadNote = asyncHandler(async (req, res) => {
   const stamp = new Date().toISOString();
   lead.notes = `${lead.notes || ''}\n[${stamp}] ${text.trim()}`.trim();
   await lead.save();
+
+  await logLeadActivity({
+    leadId: lead._id,
+    branchId: lead.branchId,
+    type: 'note_added',
+    description: text.trim().slice(0, 500),
+    actor: req.user,
+    meta: { noteId: note._id },
+  }).catch(() => {});
 
   res.status(201).json({
     date: stamp,

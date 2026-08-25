@@ -12,6 +12,7 @@ const {
   FOLLOWUP_CATEGORIES,
 } = require('../utils/followUpHelpers');
 const { onLeadConverted } = require('./leadConversionService');
+const { logLeadActivity } = require('./leadActivityService');
 
 async function resolveMissedAlertsForLead(leadId, followUpId) {
   const leadIdStr = leadId?.toString?.() || `${leadId}`;
@@ -30,6 +31,17 @@ async function resolveMissedAlertsForLead(leadId, followUpId) {
       },
     }
   );
+}
+
+function describeFollowUp(payloadOrDoc, body = {}) {
+  const category = payloadOrDoc.category || body.category || 'warm';
+  const type = (payloadOrDoc.type || body.type || 'call').replace(/_/g, ' ');
+  const when = payloadOrDoc.scheduledAt
+    ? new Date(payloadOrDoc.scheduledAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+    : '';
+  const outcome = body.outcome || body.warmOutcome || body.hotOutcome || body.coldReason || payloadOrDoc.outcome || '';
+  const notes = body.notes || body.remarks || payloadOrDoc.notes || '';
+  return [category, type, when && `at ${when}`, outcome, notes].filter(Boolean).join(' · ');
 }
 
 async function createFollowUpForLead({ body, user, leadFilter = null }) {
@@ -71,11 +83,27 @@ async function createFollowUpForLead({ body, user, leadFilter = null }) {
     }
   }
 
+  await logLeadActivity({
+    leadId: lead._id,
+    branchId: lead.branchId,
+    type: 'followup_created',
+    description: describeFollowUp(payload, body),
+    actor: user,
+    meta: {
+      followUpId: followup._id,
+      category: payload.category,
+      scheduledAt: payload.scheduledAt,
+      outcome: payload.outcome || body.outcome || undefined,
+    },
+  }).catch(() => {});
+
   return FollowUp.findById(followup._id).populate(FOLLOWUP_POPULATE).lean();
 }
 
 async function updateFollowUpRecord({ followup, body, user } = {}) {
   const { action, remarks, scheduledAt, category, ...rest } = body;
+  const prevStatus = followup.status;
+  const prevScheduled = followup.scheduledAt;
 
   if (category && FOLLOWUP_CATEGORIES.includes(category)) {
     followup.category = category;
@@ -127,6 +155,36 @@ async function updateFollowUpRecord({ followup, body, user } = {}) {
           console.error('[LeadConversion]', err.message);
         });
       }
+    }
+
+    let activityType = null;
+    let description = describeFollowUp(followup, body);
+    if (action === 'complete' || (followup.status === 'completed' && prevStatus !== 'completed')) {
+      activityType = 'followup_completed';
+      description = `Follow-up completed${remarks || followup.outcome ? ` — ${remarks || followup.outcome}` : ''}`;
+    } else if (action === 'reschedule' || (scheduledAt && String(prevScheduled) !== String(followup.scheduledAt))) {
+      activityType = 'followup_rescheduled';
+      description = `Follow-up rescheduled${followup.scheduledAt ? ` to ${new Date(followup.scheduledAt).toLocaleString('en-IN')}` : ''}${remarks ? ` — ${remarks}` : ''}`;
+    } else if (action || body.notes !== undefined || body.outcome !== undefined || body.status) {
+      activityType = 'followup_created';
+      description = `Follow-up updated · ${description}`;
+    }
+
+    if (activityType) {
+      await logLeadActivity({
+        leadId: lead._id,
+        branchId: lead.branchId,
+        type: activityType,
+        description,
+        actor: user,
+        meta: {
+          followUpId: followup._id,
+          action: action || 'update',
+          category: followup.category,
+          status: followup.status,
+          scheduledAt: followup.scheduledAt,
+        },
+      }).catch(() => {});
     }
   }
 

@@ -4,6 +4,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { notifyPaymentReceived } = require('../services/notificationService');
 const { createBookingFromPayment } = require('../services/operationsService');
 const { generateAndStoreReceipt } = require('../services/paymentReceiptService');
+const { logLeadActivity } = require('../services/leadActivityService');
 
 const PAYMENT_POPULATE = [
   { path: 'lead', select: 'name email phone destination' },
@@ -11,6 +12,19 @@ const PAYMENT_POPULATE = [
   { path: 'booking', select: 'bookingNumber customerName' },
   { path: 'createdBy', select: 'name email' },
 ];
+
+async function logPaymentActivity({ payment, actor, type, description, meta = {} }) {
+  const leadId = payment?.lead?._id || payment?.lead;
+  if (!leadId) return;
+  await logLeadActivity({
+    leadId,
+    branchId: payment.branchId || null,
+    type,
+    description,
+    actor,
+    meta: { paymentId: payment._id, ...meta },
+  }).catch(() => {});
+}
 
 const listPayments = asyncHandler(async (req, res) => {
   const { status, search } = req.query;
@@ -76,6 +90,13 @@ const createPayment = asyncHandler(async (req, res) => {
     }).catch(() => {});
   }
   const refreshed = await Payment.findById(payment._id).populate(PAYMENT_POPULATE).lean();
+  await logPaymentActivity({
+    payment: refreshed,
+    actor: req.user,
+    type: 'payment_recorded',
+    description: `Payment recorded · ₹${Number(refreshed.paidAmount || 0).toLocaleString('en-IN')} / ₹${Number(refreshed.amount || 0).toLocaleString('en-IN')} · ${refreshed.status}`,
+    meta: { amount: refreshed.amount, paidAmount: refreshed.paidAmount, status: refreshed.status },
+  });
   res.status(201).json(refreshed);
 });
 
@@ -126,6 +147,19 @@ const updatePayment = asyncHandler(async (req, res) => {
     }).catch(() => {});
   }
   const refreshed = await Payment.findById(payment._id).populate(PAYMENT_POPULATE).lean();
+  await logPaymentActivity({
+    payment: refreshed,
+    actor: req.user,
+    type: 'payment_updated',
+    description: `Payment updated · ₹${Number(refreshed.paidAmount || 0).toLocaleString('en-IN')} / ₹${Number(refreshed.amount || 0).toLocaleString('en-IN')} · ${refreshed.status}`,
+    meta: {
+      amount: refreshed.amount,
+      paidAmount: refreshed.paidAmount,
+      status: refreshed.status,
+      previousStatus,
+      previousPaid,
+    },
+  });
   res.json(refreshed);
 });
 
@@ -157,6 +191,13 @@ const addRefund = asyncHandler(async (req, res) => {
 
   await payment.save();
   const populated = await Payment.findById(payment._id).populate(PAYMENT_POPULATE).lean();
+  await logPaymentActivity({
+    payment: populated,
+    actor: req.user,
+    type: 'payment_refunded',
+    description: `Refund ₹${Number(amount).toLocaleString('en-IN')}${reason ? ` — ${reason}` : ''}`,
+    meta: { refundAmount: amount, reason: reason || undefined, status: populated.status },
+  });
   res.json(populated);
 });
 

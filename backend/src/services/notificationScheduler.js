@@ -72,7 +72,7 @@ async function processMissedFollowUps() {
     status: 'missed',
     scheduledAt: { $lt: todayStart, $gte: new Date(todayStart.getTime() - 14 * 24 * 60 * 60 * 1000) },
   })
-    .populate('lead', 'name assignedTo')
+    .populate('lead', 'name assignedTo branchId')
     .populate('assignedTo', 'name _id')
     .sort({ scheduledAt: 1 })
     .limit(BATCH_LIMIT)
@@ -83,11 +83,22 @@ async function processMissedFollowUps() {
     missed.map((fu) => fu._id)
   );
 
+  const { logLeadActivity } = require('./leadActivityService');
   for (const fu of missed) {
     const followUpIdStr = fu._id?.toString?.() || `${fu._id}`;
     if (notified.has(followUpIdStr)) continue;
     await notifyFollowUpMissed(fu, fu.lead);
     notified.add(followUpIdStr);
+    if (fu.lead?._id) {
+      await logLeadActivity({
+        leadId: fu.lead._id,
+        branchId: fu.lead.branchId || fu.branchId || null,
+        type: 'followup_missed',
+        description: `Follow-up missed${fu.scheduledAt ? ` (was ${new Date(fu.scheduledAt).toLocaleString('en-IN')})` : ''}`,
+        actor: null,
+        meta: { followUpId: fu._id },
+      }).catch(() => {});
+    }
   }
 }
 

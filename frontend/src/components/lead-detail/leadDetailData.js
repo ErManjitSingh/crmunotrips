@@ -29,7 +29,10 @@ export const ACTIVITY_CONFIG = {
   whatsapp_contact_initiated: { label: 'WhatsApp Contact Initiated', icon: MessageCircle, color: 'bg-green-500/10 text-green-600' },
   email_sent: { label: 'Email Sent', icon: Mail, color: 'bg-sky-500/10 text-sky-600' },
   followup_added: { label: 'Follow Up Added', icon: CalendarPlus, color: 'bg-amber-500/10 text-amber-600' },
+  followup_created: { label: 'Follow-up Created', icon: CalendarPlus, color: 'bg-amber-500/10 text-amber-600' },
   followup_completed: { label: 'Follow Up Completed', icon: CalendarPlus, color: 'bg-emerald-500/10 text-emerald-600' },
+  followup_rescheduled: { label: 'Follow-up Rescheduled', icon: CalendarPlus, color: 'bg-amber-500/10 text-amber-700' },
+  followup_missed: { label: 'Follow-up Missed', icon: CalendarPlus, color: 'bg-rose-500/10 text-rose-600' },
   quotation_sent: { label: 'Quotation Sent', icon: FileText, color: 'bg-orange-500/10 text-orange-600' },
   lead_reactivated: { label: 'Lead Reactivated', icon: RefreshCw, color: 'bg-teal-500/10 text-teal-700' },
   lead_reassigned: { label: 'Lead Reassigned', icon: UserCheck, color: 'bg-cyan-500/10 text-cyan-700' },
@@ -46,8 +49,11 @@ export const ACTIVITY_CONFIG = {
   quotation_submitted: { label: 'Quotation Submitted', icon: FileText, color: 'bg-violet-500/10 text-violet-600' },
   quotation_approved: { label: 'Quotation Approved', icon: FileText, color: 'bg-emerald-500/10 text-emerald-700' },
   quotation_rejected: { label: 'Quotation Rejected', icon: FileText, color: 'bg-rose-500/10 text-rose-600' },
-  followup_missed: { label: 'Follow-up Missed', icon: CalendarPlus, color: 'bg-rose-500/10 text-rose-600' },
+  note_added: { label: 'Note Added', icon: FileText, color: 'bg-slate-500/10 text-slate-700' },
   call_note_added: { label: 'Call Note Added', icon: Phone, color: 'bg-emerald-500/10 text-emerald-600' },
+  payment_recorded: { label: 'Payment Recorded', icon: Trophy, color: 'bg-emerald-500/10 text-emerald-700' },
+  payment_updated: { label: 'Payment Updated', icon: Trophy, color: 'bg-amber-500/10 text-amber-700' },
+  payment_refunded: { label: 'Payment Refunded', icon: Trophy, color: 'bg-rose-500/10 text-rose-600' },
   escalation_created: { label: 'Escalation Created', icon: RefreshCw, color: 'bg-orange-500/10 text-orange-700' },
   sla_breached: { label: 'SLA Breached', icon: RefreshCw, color: 'bg-rose-500/10 text-rose-700' },
 };
@@ -142,9 +148,12 @@ export function mergeLeadActivities(synthetic = [], timeline = []) {
   if (!timeline.length) return synthetic;
 
   const timelineHasQuotations = timeline.some((a) => a.type?.startsWith('quotation_'));
+  const timelineHasFollowups = timeline.some((a) =>
+    ['followup_created', 'followup_completed', 'followup_added', 'followup_missed', 'followup_rescheduled'].includes(a.type)
+  );
 
   const extras = synthetic.filter((a) => {
-    if (a.type === 'followup_added' || a.type === 'followup_completed') return true;
+    if (a.type === 'followup_added' || a.type === 'followup_completed') return !timelineHasFollowups;
     if (a.type?.startsWith('quotation_') && !timelineHasQuotations) return true;
     if (['lead_reactivated', 'lead_reassigned', 'reactivation_progress'].includes(a.type)) {
       return !timeline.some((t) => t.type === a.type);

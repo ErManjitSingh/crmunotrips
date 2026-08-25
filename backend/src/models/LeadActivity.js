@@ -14,6 +14,7 @@ const LEAD_ACTIVITY_TYPES = [
   'followup_created',
   'followup_completed',
   'followup_missed',
+  'followup_rescheduled',
   'quotation_created',
   'quotation_submitted',
   'quotation_sent',
@@ -29,6 +30,9 @@ const LEAD_ACTIVITY_TYPES = [
   'lead_restored',
   'note_added',
   'call_note_added',
+  'payment_recorded',
+  'payment_updated',
+  'payment_refunded',
   'sla_breached',
   'escalation_created',
 ];

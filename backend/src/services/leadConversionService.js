@@ -152,6 +152,20 @@ async function onLeadConverted(lead, actor, options = {}) {
   const payment = await ensurePaymentForConversion(lead, quotation, actor, options);
 
   if (payment) {
+    const { logLeadActivity } = require('./leadActivityService');
+    await logLeadActivity({
+      leadId: lead._id,
+      branchId: lead.branchId,
+      type: 'payment_recorded',
+      description: `Advance / conversion payment · ₹${Number(payment.paidAmount || 0).toLocaleString('en-IN')}`,
+      actor,
+      meta: {
+        paymentId: payment._id,
+        paidAmount: payment.paidAmount,
+        amount: payment.amount,
+        status: payment.status,
+      },
+    }).catch(() => {});
     const {
       collectPaymentScreenshotUploads,
       applyPaymentScreenshotsToPayment,

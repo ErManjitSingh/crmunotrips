@@ -21,6 +21,7 @@ const {
   isConfigured,
   normalizePhone,
 } = require('../services/whatsappCloudService');
+const { logLeadActivity } = require('../services/leadActivityService');
 
 /** Slim fields for inbox list — avoid shipping full Lead docs */
 const INBOX_LEAD_SELECT =
@@ -562,6 +563,22 @@ const postMessage = asyncHandler(async (req, res) => {
       : Promise.resolve(),
   ]);
 
+  const activityLeadId = lead?._id || conversation?.lead;
+  if (activityLeadId && status !== 'failed') {
+    await logLeadActivity({
+      leadId: activityLeadId,
+      branchId: lead?.branchId || conversation?.branchId || req.branchId || null,
+      type: 'whatsapp_sent',
+      description: (previewText || 'WhatsApp message sent').slice(0, 500),
+      actor: req.user,
+      meta: {
+        messageId: msg._id,
+        messageType,
+        template: wantsTemplate || undefined,
+      },
+    }).catch(() => {});
+  }
+
   res.status(201).json({
     ...msg.toObject(),
     sessionOpen: wantsTemplate ? sessionOpen : true,
@@ -579,6 +596,16 @@ const postNote = asyncHandler(async (req, res) => {
     text: text.trim(),
     user: req.user._id,
   });
+
+  const leadDoc = await Lead.findById(leadId).select('branchId').lean();
+  await logLeadActivity({
+    leadId,
+    branchId: leadDoc?.branchId || req.branchId || null,
+    type: 'note_added',
+    description: `WhatsApp note: ${text.trim().slice(0, 400)}`,
+    actor: req.user,
+    meta: { noteId: note._id, source: 'whatsapp' },
+  }).catch(() => {});
 
   const populated = await WhatsAppNote.findById(note._id)
     .select('text createdAt user')
@@ -602,6 +629,18 @@ const updateWhatsAppLead = asyncHandler(async (req, res) => {
     .populate([{ path: 'assignedTo', select: 'name email' }])
     .lean();
   if (!lead) throw new ApiError(404, 'Lead not found');
+
+  const changedKeys = Object.keys(body || {}).filter((k) => body[k] !== undefined);
+  if (changedKeys.length) {
+    await logLeadActivity({
+      leadId: lead._id,
+      branchId: lead.branchId || req.branchId || null,
+      type: 'lead_edited',
+      description: `Lead updated from WhatsApp: ${changedKeys.slice(0, 8).join(', ')}`,
+      actor: req.user,
+      meta: { fields: changedKeys },
+    }).catch(() => {});
+  }
 
   // Sync bot answers only when assigning (or if travel fields empty)
   const needsSync =

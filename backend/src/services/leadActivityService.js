@@ -15,6 +15,7 @@ const ACTIVITY_TITLES = {
   followup_created: 'Follow-up Created',
   followup_completed: 'Follow-up Completed',
   followup_missed: 'Follow-up Missed',
+  followup_rescheduled: 'Follow-up Rescheduled',
   quotation_created: 'Quotation Created',
   quotation_submitted: 'Quotation Submitted',
   quotation_sent: 'Quotation Sent',
@@ -29,6 +30,9 @@ const ACTIVITY_TITLES = {
   lead_restored: 'Lead Restored',
   note_added: 'Note Added',
   call_note_added: 'Call Note Added',
+  payment_recorded: 'Payment Recorded',
+  payment_updated: 'Payment Updated',
+  payment_refunded: 'Payment Refunded',
   sla_breached: 'SLA Breached',
   escalation_created: 'Escalation Created',
 };

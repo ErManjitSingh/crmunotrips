@@ -794,6 +794,14 @@ const reactivateLead = asyncHandler(async (req, res) => {
     branchId: lead.branchId || req.branchId || null,
     meta: { leadId: lead._id, reason, executiveId: executive._id },
   });
+  await logLeadActivity({
+    leadId: lead._id,
+    branchId: lead.branchId,
+    type: 'lead_reactivated',
+    description: `Reactivated and assigned to ${executive.name} — ${reason}`,
+    actor: req.user,
+    meta: { reason, executiveId: executive._id, previousStatus },
+  }).catch(() => {});
   notifyLeadReactivated({ lead, actor: req.user, assigneeId: executive._id }).catch(() => {});
   notifyLeadReassigned({
     lead,
@@ -829,6 +837,14 @@ const reassignReactivatedLead = asyncHandler(async (req, res) => {
     branchId: lead.branchId || req.branchId || null,
     meta: { leadId: lead._id, executiveId: executive._id },
   });
+  await logLeadActivity({
+    leadId: lead._id,
+    branchId: lead.branchId,
+    type: 'lead_reassigned',
+    description: `Reactivated lead reassigned to ${executive.name}`,
+    actor: req.user,
+    meta: { executiveId: executive._id },
+  }).catch(() => {});
   notifyLeadReassigned({
     lead,
     actor: req.user,
@@ -1040,6 +1056,15 @@ const addLeadNote = asyncHandler(async (req, res) => {
   const stamp = new Date().toISOString();
   lead.notes = `${lead.notes || ''}\n[${stamp}] ${text.trim()}`.trim();
   await lead.save();
+
+  await logLeadActivity({
+    leadId: lead._id,
+    branchId: lead.branchId,
+    type: 'note_added',
+    description: text.trim().slice(0, 500),
+    actor: req.user,
+    meta: { noteId: note._id },
+  }).catch(() => {});
 
   const populated = await LeadNote.findById(note._id).populate('user', 'name email').lean();
 
