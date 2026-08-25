@@ -1,7 +1,16 @@
 export { formatBudget, formatCurrency, STATUS_STYLES } from '../sales-manager/managerUtils';
 
 export const LEAD_FILTERS = {
-  all: { title: 'All Leads', desc: 'Active leads assigned to you (excludes converted & lost)', icon: 'Users' },
+  all: {
+    title: 'Total Leads',
+    desc: 'Active assigned leads (excludes repeated, converted & lost)',
+    icon: 'Users',
+  },
+  duplicates: {
+    title: 'Repeated Leads',
+    desc: 'Leads marked repeated — shown only in this list',
+    icon: 'Copy',
+  },
   returned: {
     title: 'Unassigned Leads',
     desc: 'Leads waiting to be reassigned',
@@ -26,6 +35,11 @@ export const EXEC_FILTER_THEMES = {
     gradient: 'from-brand-500/25 via-sky-500/15 to-cyan-500/20',
     border: 'border-sky-500/30',
     icon: 'text-sky-600',
+  },
+  duplicates: {
+    gradient: 'from-amber-500/25 via-orange-500/15 to-rose-500/15',
+    border: 'border-amber-500/30',
+    icon: 'text-amber-600',
   },
   returned: {
     gradient: 'from-amber-500/25 via-orange-500/15 to-rose-500/15',

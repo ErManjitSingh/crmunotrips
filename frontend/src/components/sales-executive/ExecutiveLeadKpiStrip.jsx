@@ -15,6 +15,7 @@ const CARDS = [
     labelClass: 'text-white/80',
     valueClass: 'text-white',
     blob: 'bg-white/15',
+    showSelfAdded: true,
   },
   {
     key: 'new',
@@ -69,10 +70,11 @@ function getCount(counts, key) {
 
 export default function ExecutiveLeadKpiStrip() {
   const counts = useSidebarCounts();
+  const selfAdded = getCount(counts, 'selfAdded');
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 w-full">
-      {CARDS.map(({ key, label, path, icon: Icon, card, iconWrap, labelClass, valueClass, blob }, i) => {
+      {CARDS.map(({ key, label, path, icon: Icon, card, iconWrap, labelClass, valueClass, blob, showSelfAdded }, i) => {
         const value = getCount(counts, key);
         return (
           <motion.div
@@ -99,6 +101,11 @@ export default function ExecutiveLeadKpiStrip() {
                 <p className={cn('text-2xl font-bold tabular-nums mt-0.5 leading-none tracking-tight', valueClass)}>
                   {value}
                 </p>
+                {showSelfAdded ? (
+                  <p className={cn('mt-1.5 text-[10px] font-semibold tabular-nums leading-tight', labelClass)}>
+                    Self added: <span className={valueClass}>{selfAdded}</span>
+                  </p>
+                ) : null}
               </div>
             </Link>
           </motion.div>

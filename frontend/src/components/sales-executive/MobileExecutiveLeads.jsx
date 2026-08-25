@@ -40,13 +40,14 @@ const KPI_CARDS = [
   {
     key: 'all',
     title: 'Total Leads',
-    hint: 'All your active leads',
+    hint: 'Active assigned (excl. repeated)',
     path: '/sales-executive/leads/all',
     icon: List,
     wrap: 'from-slate-50 to-violet-50 border-slate-100',
     iconBg: 'bg-slate-700 text-white',
     valueClass: 'text-slate-800',
     arrow: 'bg-slate-700 text-white',
+    showSelfAdded: true,
   },
   {
     key: 'new',
@@ -225,6 +226,7 @@ export default function MobileExecutiveLeads({
   const kpiValues = useMemo(
     () => ({
       all: counts?.leads?.all ?? 0,
+      selfAdded: counts?.leads?.selfAdded ?? 0,
       new: counts?.leads?.new ?? 0,
       contacted: counts?.leads?.contacted ?? 0,
       workingProgress: counts?.leads?.workingProgress ?? 0,
@@ -355,6 +357,11 @@ export default function MobileExecutiveLeads({
                 </p>
                 <p className="mt-1.5 text-[12px] font-bold text-slate-800">{card.title}</p>
                 <p className="mt-0.5 text-[11px] text-slate-500">{card.hint}</p>
+                {card.showSelfAdded ? (
+                  <p className="mt-1 text-[11px] font-semibold text-slate-600">
+                    Self added: <span className="tabular-nums">{pad2(kpiValues.selfAdded)}</span>
+                  </p>
+                ) : null}
               </Link>
             );
           })}

@@ -57,7 +57,7 @@ const {
   findScopedQuotationsPaginated,
 } = require('../repositories/roleScopedRepository');
 
-const LEAD_FILTER_KEYS = ['new', 'contacted', 'working-progress', 'follow-up', 'hot', 'converted', 'lost', 'reactivated', 'all', 'package-shared'];
+const LEAD_FILTER_KEYS = ['new', 'contacted', 'working-progress', 'follow-up', 'hot', 'converted', 'lost', 'reactivated', 'all', 'package-shared', 'duplicates', 'repeated'];
 
 const {
   hasExtraDiscountRequest,

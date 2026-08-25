@@ -7,6 +7,7 @@ const Notification = require('../models/Notification');
 const Booking = require('../models/Booking');
 const SupportTicket = require('../models/SupportTicket');
 const TripTask = require('../models/TripTask');
+const mongoose = require('mongoose');
 const { getExecutiveIdsForLeader } = require('./teamScopeService');
 const { buildExecutiveStallQuery } = require('./leadExecutiveStallService');
 const { withBranch } = require('../utils/branchScope');
@@ -264,22 +265,35 @@ async function buildSalesManagerNavCounts(userId, { branchId } = {}) {
 async function aggregateExecutiveLeadCounts(userId, branchId) {
   const match = withBranch({ assignedTo: userId, isDeleted: { $ne: true } }, branchId);
   const { startOfToday, endOfToday } = todayRange();
+  const createdById =
+    userId && mongoose.Types.ObjectId.isValid(userId)
+      ? new mongoose.Types.ObjectId(String(userId))
+      : userId;
+  // Repeated leads live only under Repeated menu — exclude from Total / pipeline KPIs
+  const notRepeated = { isRepeatCustomer: { $ne: true } };
+  const activeOpen = {
+    ...notRepeated,
+    status: { $nin: ['lost', 'booked_from_another_company', 'converted'] },
+  };
   const [row] = await Lead.aggregate([
     { $match: match },
     {
       $facet: {
-        all: [
+        all: [{ $match: activeOpen }, { $count: 'n' }],
+        selfAdded: [
           {
             $match: {
-              status: { $nin: ['lost', 'booked_from_another_company', 'converted'] },
+              ...activeOpen,
+              createdBy: createdById,
             },
           },
           { $count: 'n' },
         ],
+        repeated: [{ $match: { isRepeatCustomer: true } }, { $count: 'n' }],
         new: [
           {
             $match: {
-              status: { $nin: ['lost', 'booked_from_another_company', 'converted'] },
+              ...activeOpen,
               $or: [
                 { createdAt: { $gte: startOfToday, $lte: endOfToday } },
                 { assignedAt: { $gte: startOfToday, $lte: endOfToday } },
@@ -288,23 +302,47 @@ async function aggregateExecutiveLeadCounts(userId, branchId) {
           },
           { $count: 'n' },
         ],
-        contacted: [{ $match: { status: 'contacted' } }, { $count: 'n' }],
-        workingProgress: [{ $match: { status: 'working_progress' } }, { $count: 'n' }],
-        followUp: [{ $match: { status: { $in: ['follow_up', 'negotiation'] } } }, { $count: 'n' }],
+        contacted: [{ $match: { ...notRepeated, status: 'contacted' } }, { $count: 'n' }],
+        workingProgress: [
+          { $match: { ...notRepeated, status: 'working_progress' } },
+          { $count: 'n' },
+        ],
+        followUp: [
+          {
+            $match: {
+              ...notRepeated,
+              status: { $in: ['follow_up', 'negotiation'] },
+            },
+          },
+          { $count: 'n' },
+        ],
         hot: [
           {
             $match: {
+              ...notRepeated,
               isHot: true,
               status: { $nin: ['converted', 'lost', 'booked_from_another_company'] },
             },
           },
           { $count: 'n' },
         ],
-        converted: [{ $match: { status: 'converted' } }, { $count: 'n' }],
-        lost: [{ $match: { status: { $in: ['lost', 'booked_from_another_company'] } } }, { $count: 'n' }],
+        converted: [
+          { $match: { ...notRepeated, status: 'converted' } },
+          { $count: 'n' },
+        ],
+        lost: [
+          {
+            $match: {
+              ...notRepeated,
+              status: { $in: ['lost', 'booked_from_another_company'] },
+            },
+          },
+          { $count: 'n' },
+        ],
         reactivated: [
           {
             $match: {
+              ...notRepeated,
               'reactivation.isReactivated': true,
               status: { $nin: ['lost', 'booked_from_another_company', 'converted'] },
             },
@@ -314,6 +352,7 @@ async function aggregateExecutiveLeadCounts(userId, branchId) {
         urgent: [
           {
             $match: {
+              ...notRepeated,
               priority: 'urgent',
               status: { $nin: ['converted', 'lost', 'booked_from_another_company'] },
             },
@@ -331,6 +370,8 @@ async function aggregateExecutiveLeadCounts(userId, branchId) {
   return {
     leads: {
       all: facetCount(row, 'all'),
+      selfAdded: facetCount(row, 'selfAdded'),
+      repeated: facetCount(row, 'repeated'),
       new: facetCount(row, 'new'),
       contacted: facetCount(row, 'contacted'),
       workingProgress: facetCount(row, 'workingProgress'),

@@ -177,6 +177,9 @@ function buildExecutiveLeadFilter(filterKey, query = {}) {
     };
   }
   if (filterKey === 'hot') return { isHot: true };
+  if (filterKey === 'duplicates' || filterKey === 'repeated') {
+    return { isRepeatCustomer: true };
+  }
   if (filterKey === 'returned') {
     return {
       assignmentAcceptance: 'expired',
@@ -298,6 +301,12 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
   Object.assign(owned, withBranch({}, options.branchId));
   if (filterKey !== 'new') applyPeriodTouch(owned, query);
 
+  const isRepeatedView = filterKey === 'duplicates' || filterKey === 'repeated';
+  // Repeated leads only appear under Repeated menu
+  if (!isRepeatedView) {
+    owned.isRepeatCustomer = { $ne: true };
+  }
+
   if (filterKey === 'hot') {
     owned.isHot = true;
     owned.status = { $nin: ['converted', 'lost', 'booked_from_another_company'] };
@@ -313,6 +322,12 @@ async function findExecutiveLeadsPaginated(userId, query = {}, options = {}) {
     }
     if (query.priority === 'hot') owned.isHot = true;
     else if (query.priority) owned.priority = query.priority;
+  }
+
+  if (isRepeatedView) {
+    owned.isRepeatCustomer = true;
+    // Show all assigned repeated (any status) so none hide in Total
+    delete owned.status;
   }
 
   if (wantsPackageSharedLeads(query)) {

@@ -15,6 +15,7 @@ import {
   Mail,
   MessageCircle,
   Loader,
+  Copy,
 } from 'lucide-react';
 
 export const salesExecutiveNavItems = [
@@ -26,6 +27,7 @@ export const salesExecutiveNavItems = [
     children: [
       { path: '/sales-executive/leads/new', label: 'Fresh / Today', icon: Sparkles, badgeKey: 'leads.new' },
       { path: '/sales-executive/leads/all', label: 'Total Leads', icon: List, countKey: 'leads.all' },
+      { path: '/sales-executive/leads/duplicates', label: 'Repeated Leads', icon: Copy, countKey: 'leads.repeated' },
       { path: '/sales-executive/whatsapp', label: 'WhatsApp Leads', icon: MessageCircle },
       { path: '/sales-executive/leads/contacted', label: 'Connected Leads', icon: Phone, countKey: 'leads.contacted' },
       { path: '/sales-executive/leads/working-progress', label: 'Work in Progress', icon: Loader, countKey: 'leads.workingProgress' },
