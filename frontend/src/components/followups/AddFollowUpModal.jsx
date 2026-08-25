@@ -196,17 +196,28 @@ export default function AddFollowUpModal({
         )}
 
         <div>
-          <label className="text-xs font-medium text-content-muted mb-1 block">Status *</label>
-          <select
-            value={form.category}
-            onChange={(e) => applyCategoryDefaults(e.target.value)}
-            required
-            className="input-premium w-full h-11 rounded-xl font-medium"
-          >
-            {FOLLOWUP_CATEGORY_OPTIONS.map((c) => (
-              <option key={c.value} value={c.value}>{c.label}</option>
-            ))}
-          </select>
+          <label className="text-xs font-medium text-content-muted mb-1 block">Status * (Warm / Hot / Cold / Converted)</label>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {FOLLOWUP_CATEGORY_OPTIONS.map((c) => {
+              const active = form.category === c.value;
+              const tones = {
+                warm: active ? 'border-amber-500 bg-amber-500 text-white' : 'border-amber-200 bg-amber-50 text-amber-900',
+                hot: active ? 'border-rose-600 bg-rose-600 text-white' : 'border-rose-200 bg-rose-50 text-rose-900',
+                cold: active ? 'border-slate-600 bg-slate-600 text-white' : 'border-slate-200 bg-slate-50 text-slate-800',
+                converted: active ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-emerald-200 bg-emerald-50 text-emerald-900',
+              };
+              return (
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => applyCategoryDefaults(c.value)}
+                  className={`rounded-xl border px-2 py-2.5 text-xs font-bold transition-colors ${tones[c.value] || tones.warm}`}
+                >
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className={`rounded-xl border p-3 space-y-3 ${
@@ -214,18 +225,23 @@ export default function AddFollowUpModal({
             ? 'border-rose-200 bg-rose-50/80'
             : form.category === 'cold'
               ? 'border-sky-200 bg-sky-50/80'
-              : 'border-amber-200 bg-amber-50/80'
+              : form.category === 'converted'
+                ? 'border-emerald-200 bg-emerald-50/80'
+                : 'border-amber-200 bg-amber-50/80'
         }`}>
           <p className={`text-xs font-semibold ${
             form.category === 'hot'
               ? 'text-rose-800'
               : form.category === 'cold'
                 ? 'text-sky-800'
-                : 'text-amber-800'
+                : form.category === 'converted'
+                  ? 'text-emerald-800'
+                  : 'text-amber-800'
           }`}>
             {form.category === 'warm' && 'Warm — select option'}
             {form.category === 'hot' && 'Hot — select option'}
             {form.category === 'cold' && 'Cold — select option'}
+            {form.category === 'converted' && 'Converted — booking / payment (use Lead follow up to convert with proof)'}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {outcomeOptions.map((item) => (

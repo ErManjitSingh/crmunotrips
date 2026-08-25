@@ -40,13 +40,27 @@ function extractReasonKey(statusReason) {
 function findOptionLabel(key) {
   if (!key) return '';
   const hit = currentOptionLabels().find((o) => o.value === key || o.lostReason === key);
-  return hit?.label || '';
+  if (hit?.label) return hit.label;
+  // Also match when statusReason stored the human label instead of key
+  const byLabel = currentOptionLabels().find(
+    (o) => String(o.label || '').toLowerCase() === String(key).toLowerCase()
+  );
+  return byLabel?.label || '';
 }
 
 function resolveListReasonKey(lead) {
   const reason = String(lead?.statusReason || '').trim();
   const followUpOutcome = String(lead?.lastFollowUpOutcome || lead?.followUpOutcome || '').trim();
-  return extractReasonKey(reason) || extractReasonKey(followUpOutcome);
+  const fromReason = extractReasonKey(reason) || extractReasonKey(followUpOutcome);
+  if (fromReason) return fromReason;
+  // Match full reason / outcome against option labels (older free-text saves)
+  const raw = reason || followUpOutcome;
+  if (!raw) return '';
+  const head = raw.split(/\s*[—–]\s*|\s+-\s+/)[0]?.replace(/:$/, '').trim() || '';
+  const byLabel = currentOptionLabels().find(
+    (o) => String(o.label || '').toLowerCase() === head.toLowerCase()
+  );
+  return byLabel?.value || '';
 }
 
 function bucketFromReasonKey(reasonKey) {
@@ -129,6 +143,7 @@ export function getLeadListStatusDisplay(lead) {
   const status = lead?.status || 'new';
   const reasonKey = resolveListReasonKey(lead);
   const optionLabel = findOptionLabel(reasonKey);
+  const temperature = String(lead?.temperature || '').toLowerCase();
 
   let bucket = 'new';
   if (status === 'converted') {
@@ -141,7 +156,14 @@ export function getLeadListStatusDisplay(lead) {
     bucket = 'working';
   } else {
     const fromReason = bucketFromReasonKey(reasonKey);
-    bucket = fromReason || 'new';
+    if (fromReason) {
+      bucket = fromReason;
+    } else if (['warm', 'hot', 'cold'].includes(temperature)) {
+      // Fallback so leads with temperature still show a status
+      bucket = temperature;
+    } else {
+      bucket = 'new';
+    }
   }
 
   const categoryLabels = {
@@ -155,27 +177,29 @@ export function getLeadListStatusDisplay(lead) {
 
   const categoryLabel = categoryLabels[bucket] || 'No status';
 
-  // Primary label = exact option the user picked (not just Warm/Hot/Cold)
-  let label = 'No status';
+  // Primary label = exact option the user picked; else category (Warm/Hot/Cold/Converted)
+  let label = categoryLabel;
   if (bucket === 'converted') {
     label = optionLabel || 'Converted';
   } else if (bucket === 'working') {
     label = 'Working Progress';
-  } else if (optionLabel && bucket !== 'new') {
+  } else if (optionLabel) {
     label = optionLabel;
+  } else if (bucket === 'new') {
+    label = 'No status';
   }
 
   return {
     bucket,
     label,
     categoryLabel,
-    exactLabel: label,
+    exactLabel: optionLabel || label,
     pipelineLabel: categoryLabel,
     detail: '',
     title:
-      bucket === 'new' || bucket === 'converted' || bucket === 'working'
-        ? label
-        : `${categoryLabel} · ${label}`,
+      optionLabel && categoryLabel !== optionLabel && bucket !== 'new'
+        ? `${categoryLabel} · ${optionLabel}`
+        : label,
     className: LIST_STATUS_STYLES[bucket] || LIST_STATUS_STYLES.new,
     dotClass: LIST_STATUS_DOT[bucket] || LIST_STATUS_DOT.new,
     animateLabel: bucket === 'hot',

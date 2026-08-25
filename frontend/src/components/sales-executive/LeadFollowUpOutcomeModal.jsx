@@ -9,6 +9,26 @@ import {
 import { toast } from '../../context/ToastContext';
 import { useLeadStatusOptions } from '../../context/LeadStatusOptionsContext';
 import PaymentScreenshotField from '../leads/PaymentScreenshotField';
+import { cn } from '../../lib/utils';
+
+const CATEGORY_CHIP = {
+  warm: {
+    active: 'border-amber-500 bg-amber-500 text-white shadow-sm',
+    idle: 'border-amber-200 bg-amber-50 text-amber-900 hover:border-amber-400',
+  },
+  hot: {
+    active: 'border-rose-600 bg-rose-600 text-white shadow-sm',
+    idle: 'border-rose-200 bg-rose-50 text-rose-900 hover:border-rose-400',
+  },
+  cold: {
+    active: 'border-slate-600 bg-slate-600 text-white shadow-sm',
+    idle: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-400',
+  },
+  converted: {
+    active: 'border-emerald-600 bg-emerald-600 text-white shadow-sm',
+    idle: 'border-emerald-200 bg-emerald-50 text-emerald-900 hover:border-emerald-400',
+  },
+};
 
 /**
  * Lead follow-up outcome: Warm / Hot / Cold / Converted.
@@ -105,19 +125,27 @@ export default function LeadFollowUpOutcomeModal({
       <div className="space-y-4">
         <div>
           <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">
-            Status *
+            Status * (Warm / Hot / Cold / Converted)
           </label>
-          <select
-            value={category}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-            className="w-full rounded-xl border border-subtle bg-white p-3 text-sm font-medium"
-          >
-            {FOLLOWUP_CATEGORY_OPTIONS.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {FOLLOWUP_CATEGORY_OPTIONS.map((c) => {
+              const tone = CATEGORY_CHIP[c.value] || CATEGORY_CHIP.warm;
+              const active = category === c.value;
+              return (
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => handleCategoryChange(c.value)}
+                  className={cn(
+                    'rounded-xl border px-2 py-2.5 text-xs font-bold transition-colors',
+                    active ? tone.active : tone.idle
+                  )}
+                >
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div>
