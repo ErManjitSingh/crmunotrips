@@ -76,6 +76,8 @@ function ActivityChangeList({ changes }) {
     </ul>
   );
 }
+
+function QuoteMetaChips({ item, quote }) {
   const amount = item.meta?.amount ?? quote?.pricing?.total ?? quote?.costing?.grandTotal;
   const quoteNumber = item.meta?.quoteNumber || quote?.quoteNumber;
   const status = item.meta?.status || quote?.status;
