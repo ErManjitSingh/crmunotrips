@@ -269,12 +269,17 @@ async function aggregateExecutiveLeadCounts(userId, branchId) {
     {
       $facet: {
         all: [
-          { $match: { status: { $nin: ['lost', 'booked_from_another_company'] } } },
+          {
+            $match: {
+              status: { $nin: ['lost', 'booked_from_another_company', 'converted'] },
+            },
+          },
           { $count: 'n' },
         ],
         new: [
           {
             $match: {
+              status: { $nin: ['lost', 'booked_from_another_company', 'converted'] },
               $or: [
                 { createdAt: { $gte: startOfToday, $lte: endOfToday } },
                 { assignedAt: { $gte: startOfToday, $lte: endOfToday } },

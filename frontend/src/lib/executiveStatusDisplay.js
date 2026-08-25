@@ -50,17 +50,24 @@ function findOptionLabel(key) {
 
 function resolveListReasonKey(lead) {
   const reason = String(lead?.statusReason || '').trim();
+  const coldReason = String(lead?.coldReason || '').trim();
   const followUpOutcome = String(lead?.lastFollowUpOutcome || lead?.followUpOutcome || '').trim();
-  const fromReason = extractReasonKey(reason) || extractReasonKey(followUpOutcome);
+  const fromReason =
+    extractReasonKey(reason) ||
+    extractReasonKey(coldReason) ||
+    extractReasonKey(followUpOutcome);
   if (fromReason) return fromReason;
   // Match full reason / outcome against option labels (older free-text saves)
-  const raw = reason || followUpOutcome;
+  const raw = reason || coldReason || followUpOutcome;
   if (!raw) return '';
   const head = raw.split(/\s*[—–]\s*|\s+-\s+/)[0]?.replace(/:$/, '').trim() || '';
+  if (!head) return '';
   const byLabel = currentOptionLabels().find(
     (o) => String(o.label || '').toLowerCase() === head.toLowerCase()
   );
-  return byLabel?.value || '';
+  if (byLabel?.value) return byLabel.value;
+  // Legacy keys (e.g. cnp) still count as the selected status
+  return head;
 }
 
 function bucketFromReasonKey(reasonKey) {
@@ -135,14 +142,28 @@ const LIST_STATUS_DOT = {
   working: 'bg-orange-500',
 };
 
+function humanizeReasonKey(key) {
+  if (!key) return '';
+  const known = findOptionLabel(key);
+  if (known) return known;
+  const raw = String(key).trim();
+  if (!raw || raw === 'working_progress') return '';
+  if (/^cnp$/i.test(raw)) return 'CNP';
+  return raw
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /**
- * Display the option the user actually selected (e.g. "Ready to Book"),
- * with Warm / Hot / Cold / Converted used only for color bucket + title.
+ * Display the option the user actually selected (e.g. "Ready to Book" / "Not interested").
+ * Never show Warm/Hot/Cold alone when no option was selected — that is "No status".
  */
 export function getLeadListStatusDisplay(lead) {
   const status = lead?.status || 'new';
   const reasonKey = resolveListReasonKey(lead);
-  const optionLabel = findOptionLabel(reasonKey);
+  const optionLabel = findOptionLabel(reasonKey) || humanizeReasonKey(reasonKey);
   const temperature = String(lead?.temperature || '').toLowerCase();
 
   let bucket = 'new';
@@ -152,14 +173,13 @@ export function getLeadListStatusDisplay(lead) {
     status === 'working_progress' ||
     reasonKey === 'working_progress'
   ) {
-    // Cold→Warm shift lands here — show Working Progress, not Warm/Cold
     bucket = 'working';
   } else {
     const fromReason = bucketFromReasonKey(reasonKey);
     if (fromReason) {
       bucket = fromReason;
-    } else if (['warm', 'hot', 'cold'].includes(temperature)) {
-      // Fallback so leads with temperature still show a status
+    } else if (reasonKey && ['warm', 'hot', 'cold'].includes(temperature)) {
+      // Unknown legacy option key — keep color from temperature, label from reason
       bucket = temperature;
     } else {
       bucket = 'new';
@@ -177,16 +197,14 @@ export function getLeadListStatusDisplay(lead) {
 
   const categoryLabel = categoryLabels[bucket] || 'No status';
 
-  // Primary label = exact option the user picked; else category (Warm/Hot/Cold/Converted)
-  let label = categoryLabel;
+  let label = 'No status';
   if (bucket === 'converted') {
-    label = optionLabel || 'Converted';
+    label = 'Converted';
   } else if (bucket === 'working') {
     label = 'Working Progress';
   } else if (optionLabel) {
+    // Exact selected option (or humanized legacy key) — not Warm/Hot/Cold
     label = optionLabel;
-  } else if (bucket === 'new') {
-    label = 'No status';
   }
 
   return {
@@ -197,7 +215,7 @@ export function getLeadListStatusDisplay(lead) {
     pipelineLabel: categoryLabel,
     detail: '',
     title:
-      optionLabel && categoryLabel !== optionLabel && bucket !== 'new'
+      optionLabel && categoryLabel !== optionLabel && bucket !== 'new' && bucket !== 'converted' && bucket !== 'working'
         ? `${categoryLabel} · ${optionLabel}`
         : label,
     className: LIST_STATUS_STYLES[bucket] || LIST_STATUS_STYLES.new,

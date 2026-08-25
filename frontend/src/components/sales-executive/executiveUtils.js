@@ -1,7 +1,7 @@
 export { formatBudget, formatCurrency, STATUS_STYLES } from '../sales-manager/managerUtils';
 
 export const LEAD_FILTERS = {
-  all: { title: 'All Leads', desc: 'Complete pipeline — every lead assigned to you', icon: 'Users' },
+  all: { title: 'All Leads', desc: 'Active leads assigned to you (excludes converted & lost)', icon: 'Users' },
   returned: {
     title: 'Unassigned Leads',
     desc: 'Leads waiting to be reassigned',

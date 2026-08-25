@@ -1318,11 +1318,17 @@ async function buildExecutiveDashboard(userId, options = {}) {
   };
 
   // All-time keeps live pipeline counts; date filters scope activity to the range.
+  // Total / myLeads = active assigned only (exclude lost + converted). Converted is its own KPI.
   const activeLeadScope = isAllTime
-    ? { ...leadScope, status: { $nin: ['lost', 'booked_from_another_company'] } }
+    ? {
+        ...leadScope,
+        isDeleted: { $ne: true },
+        status: { $nin: ['lost', 'booked_from_another_company', 'converted'] },
+      }
     : {
         ...leadScope,
-        status: { $nin: ['lost', 'booked_from_another_company'] },
+        isDeleted: { $ne: true },
+        status: { $nin: ['lost', 'booked_from_another_company', 'converted'] },
         ...periodTouch,
       };
   const freshLeadScope = isAllTime

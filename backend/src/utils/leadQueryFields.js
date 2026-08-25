@@ -34,6 +34,7 @@ const LEAD_LIST_SELECT = [
   'isHot',
   'isRepeatCustomer',
   'temperature',
+  'coldReason',
   'leadScore',
   'agingBucket',
   'callStats.count',
