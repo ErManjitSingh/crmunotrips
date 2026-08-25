@@ -132,11 +132,12 @@ export function LeadListStatusIcon({ lead, className }) {
   const display = getLeadListStatusDisplay(lead);
   const listBucket = display.listBucket || display.bucket;
   const label = display.mainLabel || 'No status';
+  const subLabel = display.subLabel || '';
   const cfg = {
     cold: { Icon: Snowflake, wrap: 'bg-slate-100 text-slate-600 ring-slate-200' },
     warm: { Icon: Sun, wrap: 'bg-amber-100 text-amber-700 ring-amber-200' },
     hot: { Icon: Flame, wrap: 'bg-rose-100 text-rose-600 ring-rose-200' },
-    working: { Icon: Sun, wrap: 'bg-amber-100 text-amber-700 ring-amber-200' },
+    working: { Icon: Sun, wrap: 'bg-orange-100 text-orange-700 ring-orange-200' },
     lost: { Icon: XCircle, wrap: 'bg-red-100 text-red-600 ring-red-200' },
     new: { Icon: CircleDashed, wrap: 'bg-sky-100 text-sky-600 ring-sky-200' },
     converted: { Icon: Trophy, wrap: 'bg-emerald-100 text-emerald-700 ring-emerald-200' },
@@ -144,18 +145,25 @@ export function LeadListStatusIcon({ lead, className }) {
   const Icon = cfg.Icon;
 
   return (
-    <span
-      className={cn('inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 ring-1 ring-inset', cfg.wrap, className)}
-      title={label}
-    >
-      <Icon
-        className={cn('h-3 w-3 shrink-0', display.animateLabel && 'animate-hot-text')}
-        strokeWidth={2.4}
-      />
-      <span className={cn('text-[10px] font-bold leading-none whitespace-nowrap', listStatusTextClass(display))}>
-        {label}
+    <div className={cn('inline-flex min-w-0 flex-col items-start gap-0.5', className)}>
+      <span
+        className={cn('inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 ring-1 ring-inset', cfg.wrap)}
+        title={[label, subLabel].filter(Boolean).join(' · ')}
+      >
+        <Icon
+          className={cn('h-3 w-3 shrink-0', display.animateLabel && 'animate-hot-text')}
+          strokeWidth={2.4}
+        />
+        <span className={cn('text-[10px] font-bold leading-none whitespace-nowrap', listStatusTextClass(display))}>
+          {label}
+        </span>
       </span>
-    </span>
+      {subLabel ? (
+        <span className="max-w-[140px] truncate text-[9px] font-medium leading-tight text-slate-500" title={subLabel}>
+          {subLabel}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -262,6 +270,7 @@ export function ExecutiveBadge({ name, unassigned }) {
 export function ManagerStatusBadge({ status, lead }) {
   const display = getLeadListStatusDisplay(lead || { status });
   const label = display.mainLabel || 'No status';
+  const subLabel = display.subLabel || '';
   return (
     <div className="flex min-w-0 flex-col items-start gap-0.5">
       <span
@@ -269,7 +278,7 @@ export function ManagerStatusBadge({ status, lead }) {
           'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium tracking-wide ring-1 ring-inset whitespace-nowrap max-w-[160px] truncate',
           display.listClassName || display.className
         )}
-        title={label}
+        title={[label, subLabel].filter(Boolean).join(' · ')}
       >
         <span
           className={cn(
@@ -280,6 +289,11 @@ export function ManagerStatusBadge({ status, lead }) {
         />
         <span className={listStatusTextClass(display)}>{label}</span>
       </span>
+      {subLabel ? (
+        <span className="max-w-[140px] truncate text-[9px] font-medium leading-tight text-slate-500" title={subLabel}>
+          {subLabel}
+        </span>
+      ) : null}
     </div>
   );
 }

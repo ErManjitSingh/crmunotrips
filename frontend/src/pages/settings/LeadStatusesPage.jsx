@@ -236,7 +236,7 @@ export default function LeadStatusesPage() {
         </p>
         <ul className="mt-1.5 list-disc pl-5 space-y-0.5 text-orange-800/90">
           <li>Executives only see <strong>enabled</strong> options when setting lead status.</li>
-          <li>Cold → Warm keeps the lead warm and saves the option you pick (e.g. CNP, Package discussed).</li>
+          <li>Cold → Warm shows as <strong>Working in Progress</strong> with <strong>Cold to Warm</strong> under it.</li>
           <li>Renaming keeps the same key so past leads stay counted correctly. Prefer edit label over delete.</li>
         </ul>
       </div>

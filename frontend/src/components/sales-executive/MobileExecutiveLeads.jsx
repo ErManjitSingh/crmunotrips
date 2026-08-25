@@ -532,15 +532,22 @@ export default function MobileExecutiveLeads({
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <p className="truncate text-[15px] font-bold text-slate-900">{lead.name}</p>
-                            <span
-                              className={cn(
-                                'rounded-full px-2 py-0.5 text-[10px] font-bold max-w-[160px] truncate ring-1 ring-inset',
-                                statusDisplay.listClassName || statusDisplay.className
-                              )}
-                              title={statusDisplay.mainLabel || 'No status'}
-                            >
-                              <span className={listStatusTextClass(statusDisplay)}>{statusDisplay.mainLabel || 'No status'}</span>
-                            </span>
+                            <div className="flex max-w-[160px] flex-col items-start gap-0.5">
+                              <span
+                                className={cn(
+                                  'rounded-full px-2 py-0.5 text-[10px] font-bold max-w-[160px] truncate ring-1 ring-inset',
+                                  statusDisplay.listClassName || statusDisplay.className
+                                )}
+                                title={[statusDisplay.mainLabel, statusDisplay.subLabel].filter(Boolean).join(' · ') || 'No status'}
+                              >
+                                <span className={listStatusTextClass(statusDisplay)}>{statusDisplay.mainLabel || 'No status'}</span>
+                              </span>
+                              {statusDisplay.subLabel ? (
+                                <span className="max-w-[160px] truncate text-[9px] font-medium text-slate-500">
+                                  {statusDisplay.subLabel}
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
                           {lead.nextFollowUp ? (
                             <p className={cn(

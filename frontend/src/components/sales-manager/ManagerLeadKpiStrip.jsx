@@ -7,7 +7,7 @@ const CARDS = [
   { key: 'all', label: 'Total Leads', hint: 'All team leads', icon: Users, iconBg: 'bg-[#5D5FEF]', path: '/sales-manager/leads/all' },
   { key: 'statusNew', label: 'New Leads', hint: 'Awaiting first contact', icon: Sparkles, iconBg: 'bg-sky-500', path: '/sales-manager/leads/all?status=new' },
   { key: 'hot', label: 'Hot Leads', hint: 'High priority', icon: Flame, iconBg: 'bg-orange-500', path: '/sales-manager/leads/hot' },
-  { key: 'workingProgress', label: 'Work in Progress', hint: 'Requirements in motion', icon: Loader, iconBg: 'bg-violet-500', path: '/sales-manager/leads/working-progress' },
+  { key: 'workingProgress', label: 'Work in Progress', hint: 'Cold leads moved back to Warm', icon: Loader, iconBg: 'bg-violet-500', path: '/sales-manager/leads/working-progress' },
   { key: 'needsAttention', label: 'Urgent Leads', hint: 'Need attention', icon: AlertTriangle, iconBg: 'bg-rose-500', urgent: true, path: '/sales-manager/follow-ups' },
 ];
 

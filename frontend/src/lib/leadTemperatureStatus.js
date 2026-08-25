@@ -62,7 +62,8 @@ export function isLeadCurrentlyCold(lead) {
 
 /**
  * Map Warm/Hot/Cold/Converted + option → API lead update payload.
- * Cold → Warm moves straight to Working Progress (no Cold/Warm badge on that move).
+ * Cold → Warm keeps pipeline status working_progress and shows "Cold to Warm"
+ * (or the Warm option the user picked).
  * Converted requires payment screenshot + advanceAmount on the request (added by UI).
  */
 export function buildLeadStatusPayload(category, option, comment = '', lead = null) {
@@ -126,7 +127,7 @@ export function buildLeadStatusPayload(category, option, comment = '', lead = nu
 export function pipelineStatusToTemperatureLabel(status) {
   const s = String(status || '').toLowerCase();
   if (s === 'converted') return 'Converted';
-  if (s === 'working_progress') return 'Warm';
+  if (s === 'working_progress' || s === 'cold_to_warm') return 'Working in Progress';
   if (s === 'warm') return 'Warm';
   if (s === 'hot') return 'Hot';
   if (s === 'cold') return 'Cold';

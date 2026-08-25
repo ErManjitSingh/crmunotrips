@@ -12,7 +12,7 @@ import {
 import { getLeadStatusLabel } from '../../lib/leadStatusLabel';
 
 export const PIPELINE_STAGES = [
-  { value: 'working', label: 'Working Progress', shortLabel: 'WIP' },
+  { value: 'working', label: 'Working in Progress', shortLabel: 'WIP' },
   { value: 'warm', label: 'Warm', shortLabel: 'Warm' },
   { value: 'hot', label: 'Hot', shortLabel: 'Hot' },
   { value: 'cold', label: 'Cold', shortLabel: 'Cold' },

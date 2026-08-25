@@ -55,7 +55,9 @@ const CALL_PICKED_OUTCOME_LABELS = {
   converted: 'Converted to customer',
   rescheduled: 'Rescheduled per customer request',
   qualified: 'Qualified (requirements confirmed)',
-  working_progress: 'Working in progress',
+  working_progress: 'Working in Progress',
+  cold_to_warm: 'Cold to Warm',
+  auto_connected_24h: 'Cold to Warm',
 };
 
 const TERMINAL_STATUSES = ['converted', 'lost', 'booked_from_another_company'];
@@ -191,7 +193,14 @@ async function applyCategoryToLead(lead, category, status, body = {}) {
     if (fromCold) {
       lead.statusReason = body.statusReason
         ? String(body.statusReason).trim()
-        : (outcomeKey || '');
+        : (outcomeKey || 'cold_to_warm');
+      const reasonHead = String(lead.statusReason || '')
+        .split(/\s*[—–]\s*|\s+-\s+/)[0]
+        ?.replace(/:$/, '')
+        .trim();
+      if (['working_progress', 'auto_connected_24h'].includes(reasonHead)) {
+        lead.statusReason = outcomeKey || 'cold_to_warm';
+      }
     } else if (body.statusReason) {
       lead.statusReason = String(body.statusReason).trim();
     } else if (outcomeKey) {

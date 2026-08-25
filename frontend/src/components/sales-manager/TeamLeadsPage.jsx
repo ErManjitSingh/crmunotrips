@@ -44,7 +44,7 @@ const TITLES = {
   },
   unassigned: { title: 'Unassigned Leads', desc: 'Leads waiting for executive assignment', icon: Inbox },
   assigned: { title: 'Assigned Leads', desc: 'Leads currently owned by executives', icon: UserCheck },
-  'working-progress': { title: 'Work in Progress', desc: 'Leads being worked — requirements not yet confirmed', icon: TrendingUp },
+  'working-progress': { title: 'Work in Progress', desc: 'Cold leads moved back to Warm', icon: TrendingUp },
   hot: { title: 'Hot Leads', desc: 'High budget, urgent travel, and repeat customers', icon: Flame },
   lost: { title: 'Lost Leads', desc: 'Closed-lost opportunities for review', icon: XCircle },
 };

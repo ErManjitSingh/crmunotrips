@@ -18,7 +18,7 @@ export const LEAD_FILTERS = {
   },
   new: { title: 'Fresh / Today Leads', desc: 'Leads created or assigned to you today', icon: 'Sparkles' },
   contacted: { title: 'Connected Leads', desc: 'Leads where the call was picked / connected', icon: 'Phone' },
-  'working-progress': { title: 'Work in Progress', desc: 'Leads being worked — requirements not yet confirmed', icon: 'Loader' },
+  'working-progress': { title: 'Work in Progress', desc: 'Cold leads moved back to Warm', icon: 'Loader' },
   'follow-up': { title: 'Follow-up Leads', desc: 'Active pipeline requiring nurturing', icon: 'CalendarClock' },
   hot: { title: 'Hot Leads', desc: 'High budget, urgent travel, or repeat customers', icon: 'Flame' },
   converted: { title: 'Converted Leads', desc: 'Successfully closed bookings', icon: 'Trophy' },

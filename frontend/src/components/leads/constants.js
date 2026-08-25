@@ -9,7 +9,7 @@ export const LEAD_STATUSES = [
 export const PIPELINE_LEAD_STATUSES = [
   { value: 'new', label: 'New' },
   { value: 'contacted', label: 'Contacted' },
-  { value: 'working_progress', label: 'Working' },
+  { value: 'working_progress', label: 'Working in Progress' },
   { value: 'qualified', label: 'Qualified' },
   { value: 'quotation_sent', label: 'Quotation' },
   { value: 'follow_up', label: 'Follow-up' },

@@ -328,7 +328,7 @@ const updateLead = asyncHandler(async (req, res) => {
       ) ||
       Boolean(lead.coldReason);
 
-    // Cold → Warm: force Working Progress (ignore contacted/follow_up from client)
+    // Cold → Warm: keep pipeline status working_progress; stamp user option or "cold_to_warm"
     let nextStatus = status;
     let nextReason = trimmedReason;
     if (
@@ -337,8 +337,14 @@ const updateLead = asyncHandler(async (req, res) => {
       !['converted', 'lost', 'booked_from_another_company'].includes(status)
     ) {
       nextStatus = 'working_progress';
-      if (!nextReason && req.body.warmOption) {
-        nextReason = String(req.body.warmOption).trim();
+      const reasonHead = String(nextReason || '')
+        .split(/\s*[—–]\s*|\s+-\s+/)[0]
+        ?.replace(/:$/, '')
+        .trim();
+      if (!nextReason || ['working_progress', 'auto_connected_24h', 'cold_to_warm'].includes(reasonHead)) {
+        nextReason = req.body.warmOption
+          ? String(req.body.warmOption).trim()
+          : 'cold_to_warm';
       }
     }
 

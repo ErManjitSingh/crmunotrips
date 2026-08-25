@@ -16,10 +16,29 @@ function optionKeysByLength() {
     .sort((a, b) => b.length - a.length);
 }
 
-const SYSTEM_REASON_KEYS = new Set(['working_progress', 'auto_connected_24h']);
+/** Internal markers for Cold → Warm (not user-picked Warm options). */
+const COLD_TO_WARM_REASON_KEYS = new Set([
+  'working_progress',
+  'auto_connected_24h',
+  'cold_to_warm',
+]);
+
+const COLD_TO_WARM_LABEL = 'Cold to Warm';
+const WORKING_IN_PROGRESS_LABEL = 'Working in Progress';
 
 function isSystemReasonKey(key) {
-  return !key || SYSTEM_REASON_KEYS.has(String(key).trim());
+  return !key || COLD_TO_WARM_REASON_KEYS.has(String(key).trim());
+}
+
+function isColdToWarmLead(lead, reasonKey = '') {
+  const status = String(lead?.status || '').trim();
+  if (status === 'working_progress') return true;
+  const raw = String(lead?.statusReason || '')
+    .trim()
+    .split(/\s*[—–]\s*|\s+-\s+/)[0]
+    ?.replace(/:$/, '')
+    .trim();
+  return COLD_TO_WARM_REASON_KEYS.has(raw) || COLD_TO_WARM_REASON_KEYS.has(String(reasonKey || '').trim());
 }
 
 function extractReasonKey(statusReason) {
@@ -109,8 +128,22 @@ export function getExecutiveSetStatusDisplay(lead) {
       label: optionLabel,
       detail: '',
       pipelineLabel,
-      title: `${optionLabel} · ${bucket.charAt(0).toUpperCase()}${bucket.slice(1)}`,
+      title: isColdToWarmLead(lead, reasonKey)
+        ? `${WORKING_IN_PROGRESS_LABEL} · ${COLD_TO_WARM_LABEL} · ${optionLabel}`
+        : `${optionLabel} · ${bucket.charAt(0).toUpperCase()}${bucket.slice(1)}`,
       bucket,
+      subLabel: isColdToWarmLead(lead, reasonKey) ? COLD_TO_WARM_LABEL : '',
+    };
+  }
+
+  if (isColdToWarmLead(lead, reasonKey)) {
+    return {
+      label: WORKING_IN_PROGRESS_LABEL,
+      detail: '',
+      pipelineLabel,
+      title: `${WORKING_IN_PROGRESS_LABEL} · ${COLD_TO_WARM_LABEL}`,
+      bucket: 'warm',
+      subLabel: COLD_TO_WARM_LABEL,
     };
   }
 
@@ -120,6 +153,7 @@ export function getExecutiveSetStatusDisplay(lead) {
     pipelineLabel,
     title: 'No status',
     bucket: 'new',
+    subLabel: '',
   };
 }
 
@@ -194,26 +228,33 @@ export function getLeadListStatusDisplay(lead) {
 
   const categoryLabel = categoryLabels[bucket] || 'No status';
 
-  // List column: only main statuses
+  const coldToWarm = isColdToWarmLead(lead, reasonKey);
+
+  // List: Working in Progress on top; Cold to Warm as subtitle when Cold→Warm
   const mainLabel =
     bucket === 'converted'
       ? 'Converted'
-      : bucket === 'hot'
-        ? 'Hot'
-        : bucket === 'cold'
-          ? 'Cold'
-          : bucket === 'warm'
-            ? 'Warm'
-            : 'No status';
+      : coldToWarm
+        ? WORKING_IN_PROGRESS_LABEL
+        : bucket === 'hot'
+          ? 'Hot'
+          : bucket === 'cold'
+            ? 'Cold'
+            : bucket === 'warm'
+              ? 'Warm'
+              : 'No status';
 
-  const listBucket = bucket;
+  const listBucket = coldToWarm ? 'working' : bucket;
+  const subLabel = coldToWarm ? COLD_TO_WARM_LABEL : '';
 
-  // Detail / modal: exact selected option when present
+  // Detail / modal: exact option, or Working in Progress for Cold→Warm
   let label = 'No status';
   if (bucket === 'converted') {
     label = 'Converted';
   } else if (optionLabel) {
     label = optionLabel;
+  } else if (coldToWarm) {
+    label = WORKING_IN_PROGRESS_LABEL;
   }
 
   return {
@@ -221,12 +262,16 @@ export function getLeadListStatusDisplay(lead) {
     listBucket,
     label,
     mainLabel,
+    subLabel,
     categoryLabel,
     exactLabel: optionLabel || label,
     pipelineLabel: categoryLabel,
     detail: '',
-    title:
-      optionLabel && categoryLabel !== optionLabel && bucket !== 'new' && bucket !== 'converted'
+    title: coldToWarm
+      ? optionLabel
+        ? `${WORKING_IN_PROGRESS_LABEL} · ${COLD_TO_WARM_LABEL} · ${optionLabel}`
+        : `${WORKING_IN_PROGRESS_LABEL} · ${COLD_TO_WARM_LABEL}`
+      : optionLabel && categoryLabel !== optionLabel && bucket !== 'new' && bucket !== 'converted'
         ? `${categoryLabel} · ${optionLabel}`
         : label,
     className: LIST_STATUS_STYLES[bucket] || LIST_STATUS_STYLES.new,

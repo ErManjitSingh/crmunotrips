@@ -5,11 +5,16 @@ import { DETAIL_CARD } from './leadDetailUtils';
 import { cn } from '../../lib/utils';
 
 export default function LeadStatusPipeline({ status, lead }) {
-  const display = getLeadListStatusDisplay(lead || { status });
+  const resolved = lead || { status };
+  const display = getLeadListStatusDisplay(resolved);
+  const coldToWarm =
+    String(resolved?.status || '').trim() === 'working_progress' ||
+    Boolean(display.subLabel) ||
+    display.label === 'Working in Progress';
   const current =
     display.bucket === 'converted'
       ? 'converted'
-      : display.bucket === 'working'
+      : coldToWarm
         ? 'working'
         : display.bucket === 'hot'
           ? 'hot'

@@ -242,6 +242,7 @@ export function ExecMealPlanCell({ mealPlan, mealPreference }) {
 export function ExecStatusCell({ lead }) {
   const display = getLeadListStatusDisplay(lead);
   const label = display.mainLabel || 'No status';
+  const subLabel = display.subLabel || '';
 
   return (
     <div className="flex min-w-0 flex-col items-start gap-0.5">
@@ -250,7 +251,7 @@ export function ExecStatusCell({ lead }) {
           'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ring-1 ring-inset whitespace-nowrap max-w-[200px] truncate',
           display.listClassName || display.className
         )}
-        title={label}
+        title={[label, subLabel].filter(Boolean).join(' · ')}
       >
         <span
           className={cn(
@@ -261,6 +262,11 @@ export function ExecStatusCell({ lead }) {
         />
         <span className={listStatusTextClass(display)}>{label}</span>
       </span>
+      {subLabel ? (
+        <span className="max-w-[160px] truncate text-[10px] font-medium leading-tight text-slate-500" title={subLabel}>
+          {subLabel}
+        </span>
+      ) : null}
     </div>
   );
 }

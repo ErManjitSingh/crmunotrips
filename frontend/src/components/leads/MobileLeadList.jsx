@@ -337,12 +337,19 @@ export default function MobileLeadList({
                           >
                             {lead.name}
                           </h3>
-                          <span
-                            className={`max-w-[120px] truncate rounded-full px-2 py-0.5 text-[7px] font-semibold ring-1 ring-inset ${statusDisplay.listClassName || statusDisplay.className}`}
-                            title={statusDisplay.mainLabel || 'No status'}
-                          >
-                            <span className={listStatusTextClass(statusDisplay)}>{statusDisplay.mainLabel || 'No status'}</span>
-                          </span>
+                          <div className="flex max-w-[120px] flex-col items-end gap-0.5">
+                            <span
+                              className={`max-w-[120px] truncate rounded-full px-2 py-0.5 text-[7px] font-semibold ring-1 ring-inset ${statusDisplay.listClassName || statusDisplay.className}`}
+                              title={[statusDisplay.mainLabel, statusDisplay.subLabel].filter(Boolean).join(' · ') || 'No status'}
+                            >
+                              <span className={listStatusTextClass(statusDisplay)}>{statusDisplay.mainLabel || 'No status'}</span>
+                            </span>
+                            {statusDisplay.subLabel ? (
+                              <span className="max-w-[120px] truncate text-[7px] font-medium text-slate-500">
+                                {statusDisplay.subLabel}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                         <NextFollowUpLine lead={lead} className="!text-[9px] mt-0.5" />
                         <p className="mt-0.5 text-[8px] font-medium text-violet-600">{lead.leadId || formatLeadId(lead._id)}</p>

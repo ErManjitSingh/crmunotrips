@@ -329,14 +329,21 @@ const addCallNote = asyncHandler(async (req, res) => {
     lead.coldReason = outcomeKey;
     lead.statusReason = reasonStamp;
   } else if (wasCold) {
-    // Cold → Warm (from call): internal working_progress, user option in statusReason
+    // Cold → Warm (from call): stamp user option or cold_to_warm
     if (!['converted', 'lost', 'booked_from_another_company'].includes(lead.status)) {
       lead.status = 'working_progress';
     }
     lead.temperature = 'warm';
     lead.isHot = false;
     lead.coldReason = undefined;
-    lead.statusReason = reasonStamp;
+    const reasonHead = String(reasonStamp || '')
+      .split(/\s*[—–]\s*|\s+-\s+/)[0]
+      ?.replace(/:$/, '')
+      .trim();
+    lead.statusReason =
+      reasonHead && !['working_progress', 'auto_connected_24h', 'cold_to_warm'].includes(reasonHead)
+        ? reasonStamp
+        : outcomeKey || 'cold_to_warm';
   } else {
     if (!['converted', 'lost', 'booked_from_another_company'].includes(lead.status)) {
       lead.status = outcomeKey === 'cnp_same_day' ? 'follow_up' : 'contacted';
@@ -498,7 +505,7 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
     let nextStatus = status;
     let nextReason = statusReason ? String(statusReason).trim() : lead.statusReason;
 
-    // Cold → Warm: each lead goes straight to Working Progress
+    // Cold → Warm: keep pipeline status; stamp user option or cold_to_warm
     if (
       (temperature === 'warm' || req.body.fromColdToWarm === true) &&
       wasCold &&
@@ -506,8 +513,14 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
       status !== 'converted'
     ) {
       nextStatus = 'working_progress';
-      if (!nextReason && req.body.warmOption) {
-        nextReason = String(req.body.warmOption).trim();
+      const reasonHead = String(nextReason || '')
+        .split(/\s*[—–]\s*|\s+-\s+/)[0]
+        ?.replace(/:$/, '')
+        .trim();
+      if (!reasonHead || ['working_progress', 'auto_connected_24h', 'cold_to_warm'].includes(reasonHead)) {
+        nextReason = req.body.warmOption
+          ? String(req.body.warmOption).trim()
+          : 'cold_to_warm';
       }
     }
 

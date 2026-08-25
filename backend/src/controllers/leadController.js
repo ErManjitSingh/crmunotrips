@@ -584,7 +584,7 @@ const updateLead = asyncHandler(async (req, res) => {
     ) ||
     Boolean(lead.coldReason);
 
-  // Cold → Warm: force Working Progress (client may send contacted/follow_up)
+  // Cold → Warm: keep pipeline status working_progress; stamp user option or cold_to_warm
   if (
     (data.temperature === 'warm' || req.body.fromColdToWarm === true) &&
     wasColdBeforeAssign &&
@@ -592,8 +592,14 @@ const updateLead = asyncHandler(async (req, res) => {
     !['converted', 'lost', 'booked_from_another_company'].includes(data.status)
   ) {
     data.status = 'working_progress';
-    if (!String(data.statusReason || '').trim() && req.body.warmOption) {
-      data.statusReason = String(req.body.warmOption).trim();
+    const reasonHead = String(data.statusReason || '')
+      .split(/\s*[—–]\s*|\s+-\s+/)[0]
+      ?.replace(/:$/, '')
+      .trim();
+    if (!reasonHead || ['working_progress', 'auto_connected_24h', 'cold_to_warm'].includes(reasonHead)) {
+      data.statusReason = req.body.warmOption
+        ? String(req.body.warmOption).trim()
+        : 'cold_to_warm';
     }
     data.coldReason = undefined;
   }

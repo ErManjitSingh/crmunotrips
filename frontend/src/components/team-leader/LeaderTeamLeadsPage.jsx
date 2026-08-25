@@ -57,7 +57,7 @@ const FILTER_META = {
     desc: 'Leads waiting to be reassigned',
     icon: Undo2,
   },
-  'working-progress': { title: 'Work in Progress', desc: 'Leads being worked — requirements not yet confirmed', icon: Users },
+  'working-progress': { title: 'Work in Progress', desc: 'Cold leads moved back to Warm', icon: Users },
   lost: { title: 'Lost Leads', desc: 'Closed-lost opportunities from your team', icon: XCircle },
   reactivated: { title: 'Reactivated Leads', desc: 'Leads brought back into the pipeline', icon: RefreshCw },
   hot: { title: 'Hot Leads', desc: 'High-value or urgent squad leads', icon: Flame },
