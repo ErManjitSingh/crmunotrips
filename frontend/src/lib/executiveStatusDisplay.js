@@ -65,10 +65,10 @@ export function getExecutiveSetStatusDisplay(lead) {
 
   if (status === 'converted') {
     return {
-      label: 'Booking',
+      label: 'Converted',
       detail: '',
       pipelineLabel,
-      title: 'Booking',
+      title: 'Converted',
       bucket: 'converted',
     };
   }
@@ -122,9 +122,8 @@ const LIST_STATUS_DOT = {
 };
 
 /**
- * Lead list: Warm / Hot / Cold when option selected.
- * Cold → Warm moves to Working Progress (no Cold/Warm badge on that lead).
- * Otherwise → No status.
+ * Display the option the user actually selected (e.g. "Ready to Book"),
+ * with Warm / Hot / Cold / Converted used only for color bucket + title.
  */
 export function getLeadListStatusDisplay(lead) {
   const status = lead?.status || 'new';
@@ -145,34 +144,38 @@ export function getLeadListStatusDisplay(lead) {
     bucket = fromReason || 'new';
   }
 
-  const labels = {
+  const categoryLabels = {
     cold: 'Cold',
     warm: 'Warm',
     hot: 'Hot',
     new: 'No status',
-    converted: 'Booking',
+    converted: 'Converted',
     working: 'Working Progress',
   };
 
-  const exactLabel =
-    bucket === 'converted'
-      ? 'Booking'
-      : bucket === 'working'
-        ? 'Working Progress'
-        : optionLabel && bucket !== 'new'
-          ? optionLabel
-          : 'No status';
+  const categoryLabel = categoryLabels[bucket] || 'No status';
+
+  // Primary label = exact option the user picked (not just Warm/Hot/Cold)
+  let label = 'No status';
+  if (bucket === 'converted') {
+    label = optionLabel || 'Converted';
+  } else if (bucket === 'working') {
+    label = 'Working Progress';
+  } else if (optionLabel && bucket !== 'new') {
+    label = optionLabel;
+  }
 
   return {
     bucket,
-    label: labels[bucket],
-    exactLabel,
-    pipelineLabel: labels[bucket],
+    label,
+    categoryLabel,
+    exactLabel: label,
+    pipelineLabel: categoryLabel,
     detail: '',
     title:
       bucket === 'new' || bucket === 'converted' || bucket === 'working'
-        ? labels[bucket]
-        : `${labels[bucket]} · ${exactLabel}`,
+        ? label
+        : `${categoryLabel} · ${label}`,
     className: LIST_STATUS_STYLES[bucket] || LIST_STATUS_STYLES.new,
     dotClass: LIST_STATUS_DOT[bucket] || LIST_STATUS_DOT.new,
     animateLabel: bucket === 'hot',

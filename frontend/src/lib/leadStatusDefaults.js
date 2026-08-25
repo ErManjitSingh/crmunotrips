@@ -1,4 +1,4 @@
-/** Static fallback Warm / Hot / Cold options (also seeded in DB). */
+/** Static fallback Warm / Hot / Cold / Converted options (also seeded in DB). */
 
 export const DEFAULT_WARM_OUTCOMES = [
   { value: 'discussed_package', label: 'Package discussed' },
@@ -17,4 +17,8 @@ export const DEFAULT_COLD_OUTCOMES = [
   { value: 'not_interested', label: 'Not interested' },
   { value: 'invalid_number', label: 'Invalid no' },
   { value: 'budget_issues', label: 'Budget issues' },
+];
+
+export const DEFAULT_CONVERTED_OUTCOMES = [
+  { value: 'converted', label: 'Converted' },
 ];

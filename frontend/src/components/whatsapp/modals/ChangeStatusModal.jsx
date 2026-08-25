@@ -7,18 +7,24 @@ import {
   buildLeadStatusPayload,
 } from '../../../lib/leadTemperatureStatus';
 import { useLeadStatusOptions } from '../../../context/LeadStatusOptionsContext';
+import PaymentScreenshotField from '../../leads/PaymentScreenshotField';
+import { toast } from '../../../context/ToastContext';
 
 export default function ChangeStatusModal({ open, onClose, onSubmit, currentStatus, lead = null }) {
   const { loaded } = useLeadStatusOptions();
   const [category, setCategory] = useState('warm');
   const [option, setOption] = useState('');
   const [comment, setComment] = useState('');
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [shotFiles, setShotFiles] = useState([]);
 
   useEffect(() => {
     if (!open) return;
     setCategory('warm');
     setOption('');
     setComment('');
+    setAdvanceAmount('');
+    setShotFiles([]);
   }, [open, currentStatus]);
 
   const options = getOutcomesForCategory(category);
@@ -27,18 +33,44 @@ export default function ChangeStatusModal({ open, onClose, onSubmit, currentStat
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!option) return;
+
+    if (category === 'converted') {
+      const advance = Number(advanceAmount);
+      if (!Number.isFinite(advance) || advance < 0) {
+        toast.error('Enter advance / token amount received (₹)');
+        return;
+      }
+      if (!shotFiles.length) {
+        toast.error('Upload payment screenshot (UPI / bank transfer proof)');
+        return;
+      }
+    }
+
     const payload = buildLeadStatusPayload(category, option, comment, lead);
     if (!payload) return;
+
+    if (category === 'converted') {
+      payload.advanceAmount = Number(advanceAmount);
+      payload.paymentScreenshots = shotFiles.map((f) => ({ base64: f.base64, name: f.name }));
+      payload.paymentScreenshotBase64 = shotFiles[0]?.base64;
+      payload.paymentScreenshotName = shotFiles[0]?.name;
+    }
+
     onSubmit(payload);
     onClose();
   };
+
+  const canSubmit =
+    Boolean(option) &&
+    (category !== 'converted' ||
+      (Number.isFinite(Number(advanceAmount)) && Number(advanceAmount) >= 0 && shotFiles.length > 0));
 
   return (
     <AppModal open={open} onClose={onClose} size="md">
       <form onSubmit={handleSubmit} className="p-6 space-y-4">
         <div>
           <h3 className="text-lg font-semibold text-content-primary">Lead status</h3>
-          <p className="text-sm text-content-secondary mt-1">Set Warm, Hot, or Cold</p>
+          <p className="text-sm text-content-secondary mt-1">Set Warm, Hot, Cold, or Converted</p>
         </div>
 
         <div>
@@ -48,8 +80,11 @@ export default function ChangeStatusModal({ open, onClose, onSubmit, currentStat
           <select
             value={category}
             onChange={(e) => {
-              setCategory(e.target.value);
-              setOption('');
+              const next = e.target.value;
+              setCategory(next);
+              setOption(next === 'converted' ? 'converted' : '');
+              setAdvanceAmount('');
+              setShotFiles([]);
             }}
             className="w-full rounded-xl border border-subtle bg-white p-3 text-sm font-medium"
           >
@@ -77,6 +112,33 @@ export default function ChangeStatusModal({ open, onClose, onSubmit, currentStat
           ))}
         </div>
 
+        {category === 'converted' ? (
+          <div className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                Advance / token amount (₹) *
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={advanceAmount}
+                onChange={(e) => setAdvanceAmount(e.target.value)}
+                placeholder="e.g. 10000"
+                className="w-full rounded-xl border border-subtle bg-white p-3 text-sm"
+              />
+            </div>
+            <PaymentScreenshotField
+              required
+              value={shotFiles}
+              onChange={({ files, error }) => {
+                setShotFiles(files || []);
+                if (error) toast.error(error);
+              }}
+            />
+          </div>
+        ) : null}
+
         <div>
           <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
             Comment
@@ -92,7 +154,9 @@ export default function ChangeStatusModal({ open, onClose, onSubmit, currentStat
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="emerald" disabled={!option}>Update Status</Button>
+          <Button type="submit" variant="emerald" disabled={!canSubmit}>
+            {category === 'converted' ? 'Convert lead' : 'Update Status'}
+          </Button>
         </div>
       </form>
     </AppModal>

@@ -1,19 +1,27 @@
 /**
- * Canonical CRM lead status = Warm / Hot / Cold (+ Booking for converted).
+ * Canonical CRM lead status = Warm / Hot / Cold / Converted.
  * Sub-options are the only selectable outcomes across the CRM.
  */
 import {
   WARM_OUTCOMES,
   HOT_OUTCOMES,
   COLD_OUTCOMES,
+  CONVERTED_OUTCOMES,
   FOLLOWUP_CATEGORY_OPTIONS,
   getOutcomesForCategory,
 } from '../components/followups/constants';
 import { getColdOutcomes, bucketFromOptionKey } from './leadStatusOptionsStore';
 
-export { WARM_OUTCOMES, HOT_OUTCOMES, COLD_OUTCOMES, FOLLOWUP_CATEGORY_OPTIONS, getOutcomesForCategory };
+export {
+  WARM_OUTCOMES,
+  HOT_OUTCOMES,
+  COLD_OUTCOMES,
+  CONVERTED_OUTCOMES,
+  FOLLOWUP_CATEGORY_OPTIONS,
+  getOutcomesForCategory,
+};
 
-/** Lead list / filter chips — Warm, Hot, Cold only */
+/** Lead list / filter chips — Warm, Hot, Cold only (Converted has its own Bookings filter) */
 export const LEAD_TEMPERATURE_FILTERS = [
   { value: 'cold', label: 'Cold' },
   { value: 'warm', label: 'Warm' },
@@ -25,6 +33,7 @@ export const ALL_LEAD_STATUS_OUTCOMES = [
   ...WARM_OUTCOMES.map((o) => ({ ...o, category: 'warm', temperature: 'warm' })),
   ...HOT_OUTCOMES.map((o) => ({ ...o, category: 'hot', temperature: 'hot' })),
   ...COLD_OUTCOMES.map((o) => ({ ...o, category: 'cold', temperature: 'cold' })),
+  ...CONVERTED_OUTCOMES.map((o) => ({ ...o, category: 'converted', temperature: 'hot' })),
 ];
 
 const COLD_OPTION_KEYS = new Set([
@@ -52,8 +61,9 @@ export function isLeadCurrentlyCold(lead) {
 }
 
 /**
- * Map Warm/Hot/Cold + option → API lead update payload.
+ * Map Warm/Hot/Cold/Converted + option → API lead update payload.
  * Cold → Warm moves straight to Working Progress (no Cold/Warm badge on that move).
+ * Converted requires payment screenshot + advanceAmount on the request (added by UI).
  */
 export function buildLeadStatusPayload(category, option, comment = '', lead = null) {
   const note = String(comment || '').trim();
@@ -99,13 +109,23 @@ export function buildLeadStatusPayload(category, option, comment = '', lead = nu
     };
   }
 
+  if (category === 'converted') {
+    return {
+      status: 'converted',
+      statusReason: note ? `converted — ${note}` : 'converted',
+      temperature: 'hot',
+      isHot: true,
+      coldReason: '',
+    };
+  }
+
   return null;
 }
 
 /** Map raw pipeline status → display when no lead/statusReason is available. */
 export function pipelineStatusToTemperatureLabel(status) {
   const s = String(status || '').toLowerCase();
-  if (s === 'converted') return 'Booking';
+  if (s === 'converted') return 'Converted';
   if (s === 'working_progress') return 'Working Progress';
   if (s === 'warm') return 'Warm';
   if (s === 'hot') return 'Hot';

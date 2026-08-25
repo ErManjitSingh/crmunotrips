@@ -16,7 +16,7 @@ export const PIPELINE_STAGES = [
   { value: 'warm', label: 'Warm', shortLabel: 'Warm' },
   { value: 'hot', label: 'Hot', shortLabel: 'Hot' },
   { value: 'cold', label: 'Cold', shortLabel: 'Cold' },
-  { value: 'converted', label: 'Booking', shortLabel: 'Booking' },
+  { value: 'converted', label: 'Converted', shortLabel: 'Converted' },
 ];
 
 export const ACTIVITY_CONFIG = {

@@ -156,21 +156,11 @@ export default function LeadDetailHeader({
   const status = normalizeLeadStatus(lead.status);
   const scores = computeLeadScores(lead);
   const listDisplay = getLeadListStatusDisplay(lead);
-  const temperature =
-    listDisplay.bucket === 'working'
-      ? 'Working Progress'
-      : listDisplay.bucket === 'hot'
-        ? 'Hot'
-        : listDisplay.bucket === 'cold'
-          ? 'Cold'
-          : listDisplay.bucket === 'warm'
-            ? 'Warm'
-            : listDisplay.bucket === 'converted'
-              ? 'Booking'
-              : 'No status';
-  const tempCapitalized = temperature;
+  // Show the option the user selected (e.g. Ready to Book), not just Warm/Hot/Cold
+  const tempCapitalized = listDisplay.label || 'No status';
   const isHot = listDisplay.bucket === 'hot';
   const isWorking = listDisplay.bucket === 'working';
+  const isConverted = listDisplay.bucket === 'converted';
   const scorePct = Math.max(0, Math.min(100, Number(scores.overall) || 0));
   const summary = summaryProp || lead?.paymentSummary;
   const showPayment = Boolean(summary);
@@ -306,11 +296,22 @@ export default function LeadDetailHeader({
                 <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Lead Score</p>
                 <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{scores.overall}/100</p>
                 <p className={cn(
-                  'mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-bold',
-                  isHot ? 'text-orange-600' : isWorking ? 'text-orange-600' : 'text-sky-600'
+                  'mt-0.5 inline-flex max-w-[140px] items-center gap-0.5 truncate text-[10px] font-bold',
+                  isConverted
+                    ? 'text-emerald-600'
+                    : isHot
+                      ? 'text-orange-600'
+                      : isWorking
+                        ? 'text-orange-600'
+                        : listDisplay.bucket === 'warm'
+                          ? 'text-amber-600'
+                          : listDisplay.bucket === 'cold'
+                            ? 'text-slate-600'
+                            : 'text-sky-600'
                 )}
+                title={tempCapitalized}
                 >
-                  <Flame className="h-3 w-3" /> {tempCapitalized}
+                  <Flame className="h-3 w-3 shrink-0" /> {tempCapitalized}
                 </p>
               </div>
             </div>

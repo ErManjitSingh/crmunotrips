@@ -1,11 +1,13 @@
 /**
  * Runtime Warm / Hot / Cold options (admin-configurable).
+ * Converted is a fixed main status (not admin-edited).
  * Falls back to static defaults until API loads.
  */
 import {
   DEFAULT_WARM_OUTCOMES,
   DEFAULT_HOT_OUTCOMES,
   DEFAULT_COLD_OUTCOMES,
+  DEFAULT_CONVERTED_OUTCOMES,
 } from './leadStatusDefaults';
 
 let listeners = new Set();
@@ -55,9 +57,14 @@ export function getColdOutcomes() {
   return state.cold.length ? state.cold : DEFAULT_COLD_OUTCOMES;
 }
 
+export function getConvertedOutcomes() {
+  return DEFAULT_CONVERTED_OUTCOMES.map((o) => ({ ...o }));
+}
+
 export function getOutcomesForCategoryDynamic(category) {
   if (category === 'hot') return getHotOutcomes();
   if (category === 'cold') return getColdOutcomes();
+  if (category === 'converted') return getConvertedOutcomes();
   return getWarmOutcomes();
 }
 
@@ -85,12 +92,14 @@ export function getAllOptionEntries() {
     ...getWarmOutcomes().map((o) => ({ ...o, category: 'warm' })),
     ...getHotOutcomes().map((o) => ({ ...o, category: 'hot' })),
     ...getColdOutcomes().map((o) => ({ ...o, category: 'cold' })),
+    ...getConvertedOutcomes().map((o) => ({ ...o, category: 'converted' })),
     { value: 'budget_issue', label: 'Budget issues', category: 'cold' },
   ];
 }
 
 export function bucketFromOptionKey(key) {
   if (!key) return '';
+  if (key === 'converted' || getConvertedOutcomes().some((o) => o.value === key)) return 'converted';
   if (getHotOutcomes().some((o) => o.value === key)) return 'hot';
   if (getWarmOutcomes().some((o) => o.value === key)) return 'warm';
   if (getColdOutcomes().some((o) => o.value === key) || key === 'budget_issue') return 'cold';

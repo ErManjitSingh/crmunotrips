@@ -91,19 +91,7 @@ export default function MobileLeadDetailSummary({
   const status = normalizeLeadStatus(lead.status);
   const scores = computeLeadScores(lead);
   const listDisplay = getLeadListStatusDisplay(lead);
-  const temperature =
-    listDisplay.bucket === 'working'
-      ? 'Working Progress'
-      : listDisplay.bucket === 'hot'
-        ? 'Hot'
-        : listDisplay.bucket === 'cold'
-          ? 'Cold'
-          : listDisplay.bucket === 'warm'
-            ? 'Warm'
-            : listDisplay.bucket === 'converted'
-              ? 'Booking'
-              : 'No status';
-  const tempCapitalized = temperature;
+  const tempCapitalized = listDisplay.label || 'No status';
   const scorePct = Math.max(0, Math.min(100, Number(scores.overall) || 0));
   const location =
     [lead.city, lead.state].filter(Boolean).join(', ') || lead.destination || 'India';

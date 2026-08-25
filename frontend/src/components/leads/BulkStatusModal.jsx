@@ -9,6 +9,9 @@ import {
 import { toast } from '../../context/ToastContext';
 import { useLeadStatusOptions } from '../../context/LeadStatusOptionsContext';
 
+/** Bulk update — Warm / Hot / Cold only (Converted needs payment proof per lead). */
+const BULK_STATUS_OPTIONS = FOLLOWUP_CATEGORY_OPTIONS.filter((c) => c.value !== 'converted');
+
 export default function BulkStatusModal({ open, onClose, count, onSubmit }) {
   const { loaded } = useLeadStatusOptions();
   const [category, setCategory] = useState('warm');
@@ -53,7 +56,7 @@ export default function BulkStatusModal({ open, onClose, count, onSubmit }) {
         <div>
           <h3 className="text-lg font-semibold text-content-primary">Bulk Update Status</h3>
           <p className="text-sm text-content-secondary mt-1">
-            Update status for {count} selected lead{count !== 1 ? 's' : ''}
+            Update status for {count} selected lead{count !== 1 ? 's' : ''}. Converted needs payment proof — convert one lead at a time.
           </p>
         </div>
 
@@ -69,7 +72,7 @@ export default function BulkStatusModal({ open, onClose, count, onSubmit }) {
             }}
             className="w-full rounded-xl border border-subtle bg-white p-3 text-sm font-medium"
           >
-            {FOLLOWUP_CATEGORY_OPTIONS.map((c) => (
+            {BULK_STATUS_OPTIONS.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>

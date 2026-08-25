@@ -43,6 +43,11 @@ export const COLD_OUTCOMES = [
   { value: 'budget_issues', label: 'Budget issues' },
 ];
 
+/** Converted lead outcomes */
+export const CONVERTED_OUTCOMES = [
+  { value: 'converted', label: 'Converted' },
+];
+
 /** @deprecated Use WARM_OUTCOMES — kept for older imports */
 export const CALL_PICKED_OUTCOMES = WARM_OUTCOMES;
 
@@ -65,23 +70,23 @@ export const FOLLOWUP_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-/** Pipeline follow-up categories — UI only shows Warm / Hot / Cold */
+/** Pipeline follow-up categories — UI shows Warm / Hot / Cold / Converted */
 export const FOLLOWUP_CATEGORIES = [
   { value: 'warm', label: 'Warm', color: 'text-amber-800 bg-gradient-to-r from-amber-400/25 to-orange-400/15 border-amber-400/50' },
   { value: 'hot', label: 'Hot', color: 'text-rose-800 bg-gradient-to-r from-rose-400/25 to-orange-400/15 border-rose-400/50' },
   { value: 'cold', label: 'Cold', color: 'text-sky-800 bg-gradient-to-r from-sky-400/25 to-cyan-400/15 border-sky-400/50' },
+  { value: 'converted', label: 'Converted', color: 'text-emerald-800 bg-gradient-to-r from-emerald-400/25 to-teal-400/15 border-emerald-400/50' },
   // legacy (older records / filters)
   { value: 'call_picked', label: 'Connected lead', color: 'text-emerald-800 bg-gradient-to-r from-emerald-400/25 to-teal-400/15 border-emerald-400/50' },
   { value: 'call_not_picked', label: 'Not connected', color: 'text-amber-800 bg-gradient-to-r from-amber-400/25 to-orange-400/15 border-amber-400/50' },
   { value: 'lost', label: 'Lost lead', color: 'text-red-800 bg-gradient-to-r from-red-400/25 to-rose-400/15 border-red-400/50' },
   { value: 'dead_lead', label: 'Dead lead', color: 'text-red-800 bg-gradient-to-r from-red-400/25 to-rose-400/15 border-red-400/50' },
-  { value: 'converted', label: 'Converted', color: 'text-emerald-800 bg-gradient-to-r from-emerald-400/25 to-teal-400/15 border-emerald-400/50' },
   { value: 'expected_conv', label: 'Expected Conversion', color: 'text-violet-800 bg-gradient-to-r from-violet-400/25 to-purple-400/15 border-violet-400/50' },
 ];
 
-/** Categories shown when creating/editing a follow-up */
+/** Categories shown when creating/editing a follow-up or changing lead status */
 export const FOLLOWUP_CATEGORY_OPTIONS = FOLLOWUP_CATEGORIES.filter((c) =>
-  ['warm', 'hot', 'cold'].includes(c.value)
+  ['warm', 'hot', 'cold', 'converted'].includes(c.value)
 );
 
 export function getOutcomesForCategory(category) {

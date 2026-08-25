@@ -7,7 +7,7 @@ const STATUS_LABELS = {
   warm: 'Warm',
   hot: 'Hot',
   cold: 'Cold',
-  converted: 'Booking',
+  converted: 'Converted',
   new: 'No status',
   // Old pipeline keys no longer map to Warm/Hot/Cold by themselves
   contacted: 'No status',
@@ -45,7 +45,7 @@ export function getLeadStatusMeaning(status) {
   if (!status) return STATUS_MEANINGS.new;
   if (status === 'working_progress') return STATUS_MEANINGS.working_progress;
   const label = getLeadStatusLabel(status);
-  if (label === 'Booking') return STATUS_MEANINGS.converted;
+  if (label === 'Converted' || label === 'Booking') return STATUS_MEANINGS.converted;
   if (label === 'Working Progress') return STATUS_MEANINGS.working_progress;
   if (label === 'No status') return STATUS_MEANINGS.new;
   const key = String(label).toLowerCase();

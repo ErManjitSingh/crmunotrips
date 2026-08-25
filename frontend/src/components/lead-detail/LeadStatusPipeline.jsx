@@ -73,9 +73,12 @@ export default function LeadStatusPipeline({ status, lead }) {
           );
         })}
       </div>
-      {display.exactLabel && display.exactLabel !== display.label ? (
+      {display.label && display.bucket !== 'new' ? (
         <p className="mt-3 text-xs font-medium text-slate-600">
-          Option: <span className="text-content-primary">{display.exactLabel}</span>
+          Status: <span className="text-content-primary">{display.label}</span>
+          {display.categoryLabel && display.categoryLabel !== display.label ? (
+            <span className="text-slate-400"> · {display.categoryLabel}</span>
+          ) : null}
         </p>
       ) : null}
     </div>

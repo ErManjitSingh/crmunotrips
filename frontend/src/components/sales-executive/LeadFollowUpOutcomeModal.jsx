@@ -8,9 +8,11 @@ import {
 } from '../../lib/leadTemperatureStatus';
 import { toast } from '../../context/ToastContext';
 import { useLeadStatusOptions } from '../../context/LeadStatusOptionsContext';
+import PaymentScreenshotField from '../leads/PaymentScreenshotField';
 
 /**
- * Lead follow-up outcome: Warm / Hot / Cold only.
+ * Lead follow-up outcome: Warm / Hot / Cold / Converted.
+ * Converted requires advance amount + payment screenshot (full convert flow).
  */
 export default function LeadFollowUpOutcomeModal({
   open,
@@ -22,6 +24,8 @@ export default function LeadFollowUpOutcomeModal({
   const [category, setCategory] = useState('warm');
   const [option, setOption] = useState('');
   const [comment, setComment] = useState('');
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [shotFiles, setShotFiles] = useState([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -29,6 +33,8 @@ export default function LeadFollowUpOutcomeModal({
     setCategory('warm');
     setOption('');
     setComment('');
+    setAdvanceAmount('');
+    setShotFiles([]);
   }, [open, lead]);
 
   const optionList = getOutcomesForCategory(category);
@@ -36,7 +42,13 @@ export default function LeadFollowUpOutcomeModal({
 
   const handleCategoryChange = (next) => {
     setCategory(next);
-    setOption('');
+    if (next === 'converted') {
+      setOption('converted');
+    } else {
+      setOption('');
+    }
+    setAdvanceAmount('');
+    setShotFiles([]);
   };
 
   const handleSave = async () => {
@@ -45,10 +57,29 @@ export default function LeadFollowUpOutcomeModal({
       return;
     }
 
+    if (category === 'converted') {
+      const advance = Number(advanceAmount);
+      if (!Number.isFinite(advance) || advance < 0) {
+        toast.error('Enter advance / token amount received (₹)');
+        return;
+      }
+      if (!shotFiles.length) {
+        toast.error('Upload payment screenshot (UPI / bank transfer proof)');
+        return;
+      }
+    }
+
     const payload = buildLeadStatusPayload(category, option, comment, lead);
     if (!payload) {
       toast.error('Invalid selection');
       return;
+    }
+
+    if (category === 'converted') {
+      payload.advanceAmount = Number(advanceAmount);
+      payload.paymentScreenshots = shotFiles.map((f) => ({ base64: f.base64, name: f.name }));
+      payload.paymentScreenshotBase64 = shotFiles[0]?.base64;
+      payload.paymentScreenshotName = shotFiles[0]?.name;
     }
 
     setSaving(true);
@@ -62,6 +93,12 @@ export default function LeadFollowUpOutcomeModal({
       setSaving(false);
     }
   };
+
+  const canSave =
+    Boolean(option) &&
+    !saving &&
+    (category !== 'converted' ||
+      (Number.isFinite(Number(advanceAmount)) && Number(advanceAmount) >= 0 && shotFiles.length > 0));
 
   return (
     <ActionModal open={open} title="Lead follow up" onClose={onClose}>
@@ -105,6 +142,36 @@ export default function LeadFollowUpOutcomeModal({
           </div>
         </div>
 
+        {category === 'converted' ? (
+          <div className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
+            <p className="text-xs font-medium text-emerald-900">
+              Converted starts the booking — enter token amount and upload payment proof.
+            </p>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">
+                Advance / token amount (₹) *
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={advanceAmount}
+                onChange={(e) => setAdvanceAmount(e.target.value)}
+                placeholder="e.g. 10000"
+                className="w-full rounded-xl border border-subtle bg-white p-3 text-sm"
+              />
+            </div>
+            <PaymentScreenshotField
+              required
+              value={shotFiles}
+              onChange={({ files, error }) => {
+                setShotFiles(files || []);
+                if (error) toast.error(error);
+              }}
+            />
+          </div>
+        ) : null}
+
         <div>
           <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">
             Comment
@@ -122,8 +189,8 @@ export default function LeadFollowUpOutcomeModal({
           <Button variant="secondary" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!option || saving}>
-            {saving ? 'Saving…' : 'Save follow up'}
+          <Button onClick={handleSave} disabled={!canSave}>
+            {saving ? 'Saving…' : category === 'converted' ? 'Convert lead' : 'Save follow up'}
           </Button>
         </div>
       </div>

@@ -177,7 +177,7 @@ export default function MobileLeadList({
               <ChevronDown className={`h-3 w-3 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
             </button>
             <button type="button" onClick={() => updateAndApply({ status: '', filter: '', listStatus: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${!filters.status && filters.filter !== 'arrivals' && !filters.listStatus ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>All</button>
-            <button type="button" onClick={() => updateAndApply({ status: 'converted', filter: '', listStatus: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'converted' && filters.filter !== 'arrivals' && !filters.listStatus ? 'bg-emerald-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Booking</button>
+            <button type="button" onClick={() => updateAndApply({ status: 'converted', filter: '', listStatus: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.status === 'converted' && filters.filter !== 'arrivals' && !filters.listStatus ? 'bg-emerald-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Converted</button>
             <button type="button" onClick={() => updateAndApply({ status: 'converted', filter: 'arrivals', listStatus: '' })} className={`h-9 shrink-0 rounded-xl px-3 text-[9px] font-semibold ${filters.filter === 'arrivals' ? 'bg-violet-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Arrivals</button>
             {LIST_STATUS_FILTERS.map((chip) => (
               <button

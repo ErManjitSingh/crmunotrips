@@ -194,7 +194,7 @@ export default function LeadFilterBar({
               )
             }
           >
-            Booking
+            Converted
           </ChipButton>
           <ChipButton
             active={filters.filter === 'arrivals'}

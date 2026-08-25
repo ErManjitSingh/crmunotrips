@@ -61,7 +61,7 @@ export default function AddFollowUpModal({
       let cat = editData.category === 'dead_lead' ? 'cold' : (editData.category || 'warm');
       if (cat === 'call_picked' || cat === 'call_not_picked') cat = 'warm';
       if (cat === 'lost') cat = 'cold';
-      if (!['warm', 'hot', 'cold'].includes(cat)) cat = 'warm';
+      if (!['warm', 'hot', 'cold', 'converted'].includes(cat)) cat = 'warm';
       setForm({
         lead: editData.lead?._id || fixedLeadId || '',
         type: editData.type || 'call',
@@ -95,7 +95,7 @@ export default function AddFollowUpModal({
     setForm((prev) => ({
       ...prev,
       category: nextCategory,
-      outcome: '',
+      outcome: nextCategory === 'converted' ? 'converted' : '',
     }));
   };
 
@@ -125,10 +125,16 @@ export default function AddFollowUpModal({
           ? `Warm — ${outcomeLabel}`
           : form.category === 'hot'
             ? `Hot — ${outcomeLabel}`
-            : `Cold — ${outcomeLabel}`;
+            : form.category === 'converted'
+              ? `Converted — ${outcomeLabel}`
+              : `Cold — ${outcomeLabel}`;
       remarks = remarks ? `${prefix}. ${remarks}` : prefix;
 
-      const statusUpdate = showLeadOutcome ? buildStatusFromCategory(form, lead) : null;
+      // Converted needs payment proof — use Lead follow up / Change status modal instead
+      const statusUpdate =
+        showLeadOutcome && form.category !== 'converted'
+          ? buildStatusFromCategory(form, lead)
+          : null;
 
       await onSubmit({
         ...form,
@@ -161,7 +167,7 @@ export default function AddFollowUpModal({
         <div>
           <h3 className="text-lg font-bold text-content-primary">{editData ? 'Update Follow-up' : 'Lead follow up'}</h3>
           <p className="text-xs text-content-muted">
-            {fixedLeadName || 'Select Warm / Hot / Cold & option'}
+            {fixedLeadName || 'Select Warm / Hot / Cold / Converted & option'}
           </p>
         </div>
         <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-surface-elevated"><X className="w-5 h-5" /></button>

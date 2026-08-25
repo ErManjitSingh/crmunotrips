@@ -2,6 +2,7 @@ export const LEAD_STATUSES = [
   { value: 'warm', label: 'Warm', meaning: 'Package discussed / callback / CNP / negotiation' },
   { value: 'hot', label: 'Hot', meaning: 'Ready to Book' },
   { value: 'cold', label: 'Cold', meaning: 'Not converting / language / budget / invalid' },
+  { value: 'converted', label: 'Converted', meaning: 'Customer confirmed / paid — booking started' },
 ];
 
 /** Internal pipeline values still stored on Lead.status (do not show in UI pickers) */
@@ -12,7 +13,7 @@ export const PIPELINE_LEAD_STATUSES = [
   { value: 'qualified', label: 'Qualified' },
   { value: 'quotation_sent', label: 'Quotation' },
   { value: 'follow_up', label: 'Follow-up' },
-  { value: 'converted', label: 'Booking' },
+  { value: 'converted', label: 'Converted' },
   { value: 'lost', label: 'Lost' },
   { value: 'negotiation', label: 'Negotiation' },
   { value: 'reactivated', label: 'Reactivated' },

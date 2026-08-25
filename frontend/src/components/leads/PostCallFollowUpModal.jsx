@@ -106,7 +106,7 @@ export default function PostCallFollowUpModal({
             }}
             className="w-full rounded-xl border border-subtle bg-white p-3 text-sm font-medium"
           >
-            {FOLLOWUP_CATEGORY_OPTIONS.map((c) => (
+            {FOLLOWUP_CATEGORY_OPTIONS.filter((c) => c.value !== 'converted').map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>
