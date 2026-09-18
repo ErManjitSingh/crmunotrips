@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   getDashboard,
   listLeads,
+  getListKpis,
   getLeadDetail,
   getLeadQuotationsList,
   getLeadNotesList,
@@ -62,6 +63,7 @@ const managerOrExecutiveSelf = authorize('sales_manager', 'admin', 'sales_execut
 
 router.get('/dashboard', managerOnly, getDashboard);
 router.get('/leads', managerOnly, listLeads);
+router.get('/leads/list-kpis', managerOnly, getListKpis);
 router.get('/leads/:id/quotations', managerOnly, getLeadQuotationsList);
 router.get('/leads/:id/notes-list', managerOnly, getLeadNotesList);
 router.get('/leads/:id', managerOnly, getLeadDetail);

@@ -7,6 +7,8 @@ import {
   TRAVEL_MONTHS,
   BUDGET_FILTER_OPTIONS,
   PRIORITY_FILTER_OPTIONS,
+  STATUS_MOVEMENT_OPTIONS,
+  ENGAGEMENT_STATUS_OPTIONS,
 } from './constants';
 import { INDIAN_STATES } from '../lead-wizard/constants';
 import { LEAD_SOURCE_FILTER_OPTIONS } from '../../lib/leadSourceLabels';
@@ -16,6 +18,16 @@ import PeriodPresetChips from '../ui/PeriodPresetChips';
 import { LIST_STATUS_FILTERS } from '../../lib/executiveStatusDisplay';
 import { applyPeriodPreset } from '../../lib/periodFilters';
 import API from '../../api/axios';
+import {
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from '../ui/dropdown-menu';
+import { useLeadStatusOptions } from '../../context/LeadStatusOptionsContext';
 
 const fieldClass =
   'h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-violet-500/25 focus:border-violet-400';
@@ -66,6 +78,12 @@ export default function LeadFilterBar({
   onQuickFilter,
 }) {
   const { user } = useAuth();
+  const { warm: warmSubStatuses, hot: hotSubStatuses, cold: coldSubStatuses } = useLeadStatusOptions();
+  const SUB_STATUSES_BY_MAIN_STATUS = {
+    warm: warmSubStatuses,
+    hot: hotSubStatuses,
+    cold: coldSubStatuses,
+  };
   const [executives, setExecutives] = useState([]);
   const [teams, setTeams] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -106,6 +124,23 @@ export default function LeadFilterBar({
       budgetMaxExclusive: opt?.maxExclusive ? 'true' : '',
     });
   };
+
+  const selectMainLeadStatus = (value) => {
+    onChange({ ...filters, listStatus: value, statusReason: '', status: '', filter: '' });
+  };
+  const selectSubLeadStatus = (mainStatus, subValue) => {
+    onChange({ ...filters, listStatus: mainStatus, statusReason: subValue, status: '', filter: '' });
+  };
+  const clearLeadStatus = () => {
+    onChange({ ...filters, listStatus: '', statusReason: '', status: '', filter: '' });
+  };
+  const selectedMainLeadStatus = LEAD_STATUSES.find((s) => s.value === filters.listStatus);
+  const selectedSubLeadStatus = filters.statusReason
+    ? (SUB_STATUSES_BY_MAIN_STATUS[filters.listStatus] || []).find((o) => o.value === filters.statusReason)
+    : null;
+  const leadStatusTriggerLabel = selectedSubLeadStatus
+    ? `${selectedMainLeadStatus?.label || ''}: ${selectedSubLeadStatus.label}`
+    : selectedMainLeadStatus?.label || 'All Statuses';
 
   const openMoreFilters = () => {
     setShowMore((v) => {
@@ -200,8 +235,8 @@ export default function LeadFilterBar({
             onClick={() =>
               applyQuick(
                 filters.status === 'converted' && filters.filter !== 'arrivals' && !filters.listStatus
-                  ? { status: '', filter: '', listStatus: '' }
-                  : { status: 'converted', filter: '', listStatus: '' }
+                  ? { status: '', filter: '', listStatus: '', statusReason: '' }
+                  : { status: 'converted', filter: '', listStatus: '', statusReason: '' }
               )
             }
           >
@@ -214,8 +249,8 @@ export default function LeadFilterBar({
             onClick={() =>
               applyQuick(
                 filters.filter === 'arrivals'
-                  ? { status: '', filter: '', listStatus: '' }
-                  : { status: 'converted', filter: 'arrivals', listStatus: '' }
+                  ? { status: '', filter: '', listStatus: '', statusReason: '' }
+                  : { status: 'converted', filter: 'arrivals', listStatus: '', statusReason: '' }
               )
             }
           >
@@ -224,14 +259,14 @@ export default function LeadFilterBar({
           {LIST_STATUS_FILTERS.map((chip) => (
             <ChipButton
               key={chip.value}
-              active={filters.listStatus === chip.value}
+              active={filters.listStatus === chip.value && !filters.statusReason}
               activeClass={chip.activeClass}
               idleClass={chip.idleClass}
               onClick={() =>
                 applyQuick(
                   filters.listStatus === chip.value
-                    ? { listStatus: '' }
-                    : { listStatus: chip.value, status: '', filter: '' }
+                    ? { listStatus: '', statusReason: '' }
+                    : { listStatus: chip.value, status: '', filter: '', statusReason: '' }
                 )
               }
             >
@@ -388,21 +423,68 @@ export default function LeadFilterBar({
               </div>
               <div>
                 <FieldLabel>Lead Status</FieldLabel>
+                <DropdownMenuRoot>
+                  <DropdownMenuTrigger
+                    className={cn(fieldClass, 'flex items-center justify-between gap-2 text-left')}
+                  >
+                    <span className="truncate">{leadStatusTriggerLabel}</span>
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-[220px]">
+                    <DropdownMenuItem onSelect={clearLeadStatus}>All Statuses</DropdownMenuItem>
+                    {LEAD_STATUSES.map((s) => {
+                      const subStatuses = SUB_STATUSES_BY_MAIN_STATUS[s.value];
+                      if (subStatuses && subStatuses.length) {
+                        return (
+                          <DropdownMenuSub key={s.value}>
+                            <DropdownMenuSubTrigger onClick={() => selectMainLeadStatus(s.value)}>
+                              {s.label}
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                              {subStatuses.map((o) => (
+                                <DropdownMenuItem
+                                  key={o.value}
+                                  onSelect={() => selectSubLeadStatus(s.value, o.value)}
+                                >
+                                  {o.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        );
+                      }
+                      return (
+                        <DropdownMenuItem key={s.value} onSelect={() => selectMainLeadStatus(s.value)}>
+                          {s.label}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenuRoot>
+              </div>
+              <div>
+                <FieldLabel>Status Movement</FieldLabel>
                 <select
-                  value={filters.listStatus || ''}
-                  onChange={(e) =>
-                    onChange({
-                      ...filters,
-                      listStatus: e.target.value,
-                      status: '',
-                      filter: '',
-                    })
-                  }
+                  value={filters.statusMovement || ''}
+                  onChange={(e) => set('statusMovement', e.target.value)}
                   className={fieldClass}
                 >
-                  <option value="">All Statuses</option>
-                  {LEAD_STATUSES.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
+                  <option value="">All Movements</option>
+                  {STATUS_MOVEMENT_OPTIONS.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Engagement Status</FieldLabel>
+                <select
+                  value={filters.engagementStatus || ''}
+                  onChange={(e) => set('engagementStatus', e.target.value)}
+                  className={fieldClass}
+                >
+                  <option value="">All</option>
+                  {ENGAGEMENT_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
               </div>

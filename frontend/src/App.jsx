@@ -21,6 +21,7 @@ import {
   Leads,
   LeadDetail,
   DestinationDetail,
+  AllDestinations,
   MarketingSpendReport,
   LeadForm,
   Followups,
@@ -829,6 +830,17 @@ function App() {
                         denyRoles={["sales_executive", "team_leader"]}
                       >
                         <DestinationDetail />
+                      </PermissionRoute>
+                    }
+                  />
+                  <Route
+                    path="destinations"
+                    element={
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
+                        <AllDestinations />
                       </PermissionRoute>
                     }
                   />

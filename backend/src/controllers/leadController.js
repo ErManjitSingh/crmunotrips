@@ -54,6 +54,7 @@ const {
 } = require('../services/leadAssignmentService');
 const { setReactivationStage } = require('../services/reactivationService');
 const { logLeadActivity } = require('../services/leadActivityService');
+const { trackLeadStatusMovement } = require('../services/leadStatusMovementService');
 const { logLeadTransfer } = require('../services/leadTransferService');
 const { stampPendingAcceptance } = require('../services/leadExecutiveStallService');
 const { invalidateExecutiveLeadIdsCache } = require('../services/executiveScopeService');
@@ -329,7 +330,7 @@ const getListKpis = asyncHandler(async (req, res) => {
       duplicateLeads: 0,
     });
   }
-  const data = await getLeadListKpis(req.branchId);
+  const data = await getLeadListKpis(req.query, req.branchId);
   res.json(data);
 });
 
@@ -620,6 +621,14 @@ const updateLead = asyncHandler(async (req, res) => {
   await applyLeadMetrics(lead);
   await lead.save();
 
+  await trackLeadStatusMovement({
+    lead,
+    previousStatus: prevStatus,
+    previousStatusReason: before.statusReason,
+    actor: req.user,
+    source: 'admin_lead_edit',
+  });
+
   const markedCold =
     data.temperature === 'cold' ||
     (req.body.temperature === 'cold') ||
@@ -771,6 +780,7 @@ const reactivateLead = asyncHandler(async (req, res) => {
   const executive = await resolveReactivationExecutive(req, req.body.executiveId);
 
   const previousStatus = lead.status;
+  const previousStatusReason = lead.statusReason;
   lead.status = 'reactivated';
   lead.statusReason = reason;
   lead.statusReasonUpdatedAt = new Date();
@@ -789,6 +799,13 @@ const reactivateLead = asyncHandler(async (req, res) => {
   );
 
   await lead.save();
+  await trackLeadStatusMovement({
+    lead,
+    previousStatus,
+    previousStatusReason,
+    actor: req.user,
+    source: 'reactivation',
+  });
   invalidateDashboardCache('admin');
   invalidateDashboardCache('sales_manager');
   invalidateDashboardCache('team_leader');
@@ -873,6 +890,9 @@ const updateReactivationStage = asyncHandler(async (req, res) => {
   const stage = req.body.stage;
   if (!REACTIVATION_STAGES.includes(stage)) throw new ApiError(400, 'Invalid reactivation stage');
 
+  const previousStatus = lead.status;
+  const previousStatusReason = lead.statusReason;
+
   setReactivationStage(lead, stage, req.user._id, (req.body.note || '').trim());
   if (stage === 'contacted') lead.status = 'contacted';
   if (stage === 'follow_up_scheduled') lead.status = 'follow_up';
@@ -882,6 +902,14 @@ const updateReactivationStage = asyncHandler(async (req, res) => {
     if (!lead.convertedAt) lead.convertedAt = new Date();
   }
   await lead.save();
+
+  await trackLeadStatusMovement({
+    lead,
+    previousStatus,
+    previousStatusReason,
+    actor: req.user,
+    source: 'reactivation_stage_update',
+  });
 
   await logActivity({
     type: 'lead_reactivation_progress',

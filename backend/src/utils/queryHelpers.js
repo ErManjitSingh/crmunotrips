@@ -164,6 +164,19 @@ function buildLeadSearchFilter(search) {
   return { $text: { $search: textQuery } };
 }
 
+/**
+ * "Due today" = status:'pending' AND scheduledAt inside today's calendar-day window.
+ * The one shared definition for this specific population — used by the Admin Dashboard's
+ * "Follow-ups Due Today" Action Required KPI (dashboardService.js) and the Admin Follow-up
+ * Management "Today's Follow-ups" summary (roleScopedRepository.js.getFollowUpSummary), so the
+ * two stay in sync. Excludes completed/missed/cancelled and anything overdue (scheduled before
+ * today) — intentionally narrower than buildFollowUpTabFilter('today'), which is unrelated list/
+ * tab-view filtering and is left as-is.
+ */
+function buildDueTodayFollowUpFilter() {
+  return { status: 'pending', scheduledAt: { $gte: startOfDay(), $lte: endOfDay() } };
+}
+
 function buildFollowUpTabFilter(tab) {
   const todayStart = startOfDay();
   const todayEnd = endOfDay();
@@ -272,6 +285,7 @@ module.exports = {
   enrichLead,
   buildLeadSearchFilter,
   buildFollowUpTabFilter,
+  buildDueTodayFollowUpFilter,
   buildFollowUpCategoryFilter,
   isMissedFollowUp,
   formatNotification,

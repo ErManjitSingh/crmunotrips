@@ -23,14 +23,14 @@ async function syncMissedFollowUps() {
 
 const listFollowUps = asyncHandler(async (req, res) => {
   await syncMissedFollowUps();
-  const result = await findFollowUpsPaginated(req.query);
+  const result = await findFollowUpsPaginated(req.query, { branchId: req.branchId });
   res.json(result);
 });
 
 const getFollowUpSummary = asyncHandler(async (req, res) => {
   await syncMissedFollowUps();
   const [summary, missedPreview, teamReport] = await Promise.all([
-    getAdminFollowUpSummary(),
+    getAdminFollowUpSummary(req.branchId),
     getMissedFollowUpsPreview({}, 8),
     getTeamFollowUpReport(req.branchId),
   ]);

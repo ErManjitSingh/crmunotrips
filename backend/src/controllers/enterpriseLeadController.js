@@ -8,6 +8,7 @@ const { findDuplicateLeads } = require('../services/duplicateDetectionService');
 const { getLeadTimeline } = require('../services/leadActivityService');
 const { getEntityAuditLog } = require('../services/leadAuditService');
 const { logLeadActivity } = require('../services/leadActivityService');
+const { trackLeadStatusMovement } = require('../services/leadStatusMovementService');
 const { formatStatusChangeDescription } = require('../services/leadAuditService');
 const { logAudit } = require('../services/leadAuditService');
 const { getClientIp } = require('../services/activityService');
@@ -309,6 +310,7 @@ const addCallNote = asyncHandler(async (req, res) => {
   // category / outcomeKey are already validated and set above (before CallNote.create()).
 
   const prevStatus = lead.status;
+  const prevStatusReason = lead.statusReason;
   const reasonStamp = String(bodyStatusReason || '').trim() || outcomeKey;
 
   if (category === 'hot') {
@@ -341,6 +343,14 @@ const addCallNote = asyncHandler(async (req, res) => {
 
   await applyLeadMetrics(lead);
   await lead.save();
+
+  await trackLeadStatusMovement({
+    lead,
+    previousStatus: prevStatus,
+    previousStatusReason: prevStatusReason,
+    actor: req.user,
+    source: 'call_note',
+  });
 
   let nextFollowUp = null;
   if (scheduleNextCall !== false && scheduleNextCall !== 'false') {
@@ -465,6 +475,7 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
 
   for (const lead of leads) {
     const prev = lead.status;
+    const prevReason = lead.statusReason;
     const nextStatus = status;
     const nextReason = statusReason ? String(statusReason).trim() : lead.statusReason;
 
@@ -495,6 +506,13 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
     }
     await applyLeadMetrics(lead);
     await lead.save();
+    await trackLeadStatusMovement({
+      lead,
+      previousStatus: prev,
+      previousStatusReason: prevReason,
+      actor: req.user,
+      source: 'bulk_status_update',
+    });
     await logLeadActivity({
       leadId: lead._id,
       branchId: lead.branchId,

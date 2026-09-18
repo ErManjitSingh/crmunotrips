@@ -841,8 +841,18 @@ async function listBookings(query = {}, { branchId } = {}) {
   const { page, limit, skip } = parsePagination(query, { defaultLimit: 10, maxLimit: 100 });
   const filter = withBranch(notArchivedFilter(), branchId);
 
-  const statusList = resolveStatusFilter(query.status);
-  if (statusList) filter.status = { $in: statusList };
+  if (query.status === 'unpaid') {
+    // "Bookings Pending Payment" drill-down — must reproduce the exact same population as the
+    // Admin Dashboard Action Required KPI (dashboardService.js buildAdminDashboard):
+    // paymentStatus pending/partial, excluding cancelled/refund_completed bookings. Deliberately
+    // bypasses the STATUS_ROUTE_MAP bucket below, since that bucket (booking workflow status)
+    // is a different concept from payment status and would under-count this population.
+    filter.paymentStatus = { $in: ['pending', 'partial'] };
+    filter.status = { $nin: ['cancelled', 'refund_completed'] };
+  } else {
+    const statusList = resolveStatusFilter(query.status);
+    if (statusList) filter.status = { $in: statusList };
+  }
 
   if (query.bookingStatus) {
     filter.status = query.bookingStatus;

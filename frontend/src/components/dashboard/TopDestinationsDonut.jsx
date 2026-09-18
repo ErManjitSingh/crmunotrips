@@ -21,14 +21,18 @@ function ChartTooltip({ active, payload }) {
   );
 }
 
+const isOtherName = (name) => /^others?$/i.test(String(name || '').trim());
+
 /**
- * Each rendered slice/legend row is clickable and carries `constituents`: the full list of
- * backend Top Destinations rollup names (states, or the "Other" bucket) it represents. A
- * top-5 slice constituents is just its own name; the synthesized "Others" slice (rank 6+,
- * merged for chart readability) constituents is every name it absorbed, so a click always
- * maps back to exactly the same grouping the chart itself used — never a re-derived one.
+ * Each rendered slice/legend row is clickable and carries `constituents`: the backend Top
+ * Destinations rollup name it represents — a real, named destination only. The "Other" bucket
+ * (unknown/unmapped destinations, plus anything past the display limit) is never shown as a
+ * segment here — see "View all destinations" for the complete breakdown, Other included.
+ * `total` still reflects the FULL received population (Other included) so the center count and
+ * each shown slice's percentage stay accurate to the actual period total, not just the visible
+ * top 5.
  */
-export default function TopDestinationsDonut({ data = [], onSelect }) {
+export default function TopDestinationsDonut({ data = [], onSelect, onViewAll }) {
   const normalized = (Array.isArray(data) ? data : [])
     .map((d) => ({
       name: String(d?.name || 'Unknown').trim() || 'Unknown',
@@ -38,40 +42,15 @@ export default function TopDestinationsDonut({ data = [], onSelect }) {
     .sort((a, b) => b.queries - a.queries);
 
   const total = normalized.reduce((s, d) => s + d.queries, 0);
-  const top = normalized.slice(0, 5);
-  const rest = normalized.slice(5);
-  const restTotal = rest.reduce((s, r) => s + r.queries, 0);
+  const top = normalized.filter((d) => !isOtherName(d.name)).slice(0, 5);
 
   const rows = top.map((d, i) => ({
     name: d.name,
     queries: d.queries,
     constituents: [d.name],
     pct: total ? Math.round((d.queries / total) * 1000) / 10 : 0,
-    color: COLORS[i % (COLORS.length - 1)],
+    color: COLORS[i % COLORS.length],
   }));
-
-  if (restTotal > 0) {
-    const restNames = rest.map((r) => r.name);
-    const otherIdx = rows.findIndex((r) => /^others?$/i.test(r.name));
-    if (otherIdx >= 0) {
-      const mergedQueries = rows[otherIdx].queries + restTotal;
-      rows[otherIdx] = {
-        ...rows[otherIdx],
-        queries: mergedQueries,
-        constituents: [...rows[otherIdx].constituents, ...restNames],
-        pct: total ? Math.round((mergedQueries / total) * 1000) / 10 : 0,
-        color: COLORS[COLORS.length - 1],
-      };
-    } else {
-      rows.push({
-        name: 'Others',
-        queries: restTotal,
-        constituents: restNames,
-        pct: total ? Math.round((restTotal / total) * 1000) / 10 : 0,
-        color: COLORS[COLORS.length - 1],
-      });
-    }
-  }
 
   const handleSelect = (row) => {
     if (!onSelect || !row?.constituents?.length) return;
@@ -163,6 +142,18 @@ export default function TopDestinationsDonut({ data = [], onSelect }) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {onViewAll && (
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={onViewAll}
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+          >
+            View all destinations →
+          </button>
         </div>
       )}
     </DashboardPanel>

@@ -53,6 +53,15 @@ const PAGE_META = {
     searchPlaceholder: 'Search by booking #, customer, destination, hotel...',
     paginationLabel: 'completed trips',
   },
+  // Admin Dashboard "Bookings Pending Payment" Action Required drill-down — paymentStatus
+  // pending/partial, excluding cancelled/refund_completed (see listBookings in
+  // backend/src/services/operationsService.js).
+  unpaid: {
+    title: 'Bookings Pending Payment',
+    desc: 'Outstanding customer payment — excludes cancelled & refunded bookings',
+    searchPlaceholder: 'Search customer, booking #, destination...',
+    paginationLabel: 'bookings',
+  },
 };
 
 const EMPTY_FILTERS = {

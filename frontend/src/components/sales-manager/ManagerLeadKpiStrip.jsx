@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import { Users, Sparkles, Flame, Loader, AlertTriangle } from 'lucide-react';
 import { useSidebarCounts } from '../../hooks/useSidebarCounts';
+import API from '../../api/axios';
+import { buildListParams } from '../../utils/apiHelpers';
+import { LIST_STALE_MS, GC_TIME_MS } from '../../lib/queryConfig';
 
 const CARDS = [
   { key: 'all', label: 'Total Leads', hint: 'All team leads', icon: Users, iconBg: 'bg-[#5D5FEF]', path: '/sales-manager/leads/all' },
@@ -15,8 +19,42 @@ function getCount(counts, key) {
   return counts?.leads?.[key] ?? 0;
 }
 
-export default function ManagerLeadKpiStrip({ basePath = '/sales-manager/leads' }) {
-  const counts = useSidebarCounts();
+export default function ManagerLeadKpiStrip({ basePath = '/sales-manager/leads', filters }) {
+  // Sidebar counts are global (whole branch, no Filters-panel awareness) — the default source,
+  // used as-is by every other caller of this component (e.g. Team Leader's own page). When the
+  // Sales Manager "All Leads" tab passes its current `filters`, these cards switch to a
+  // dedicated, filter-aware endpoint instead — same effective filter the Leads List itself
+  // queries with (see roleScopedRepository.buildEffectiveManagerLeadFilter), so Total/New/Hot/
+  // Work in Progress/Urgent always match what's actually shown below, not the whole team's data.
+  const sidebarCounts = useSidebarCounts(!filters);
+
+  const kpiParams = filters ? buildListParams({ filters }) : null;
+  const { data: filteredKpis } = useQuery({
+    queryKey: ['sales-manager', 'leads-list-kpis', kpiParams],
+    queryFn: async () => {
+      const { data } = await API.get('/sales-manager/leads/list-kpis', {
+        params: kpiParams,
+        skipSuccessToast: true,
+      });
+      return data;
+    },
+    enabled: Boolean(filters),
+    staleTime: LIST_STALE_MS,
+    gcTime: GC_TIME_MS,
+  });
+
+  const counts = filters
+    ? {
+        leads: {
+          all: filteredKpis?.all ?? 0,
+          statusNew: filteredKpis?.statusNew ?? 0,
+          hot: filteredKpis?.hot ?? 0,
+          workingProgress: filteredKpis?.workingProgress ?? 0,
+          needsAttention: filteredKpis?.needsAttention ?? 0,
+        },
+      }
+    : sidebarCounts;
+
   const cards = CARDS.map((card) => {
     if (basePath === '/team-leader/leads') {
       if (card.key === 'all') return { ...card, path: '/team-leader/leads' };

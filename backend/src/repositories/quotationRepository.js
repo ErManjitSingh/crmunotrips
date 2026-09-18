@@ -34,7 +34,13 @@ function intersectLeadIds(existing, next) {
 async function applyQuotationQueryFilters(filter, query = {}, branchId) {
   const { status, executiveId, dateFrom, dateTo, destination, search } = query;
 
-  if (status && filter.status === undefined) filter.status = status;
+  if (status && filter.status === undefined) {
+    // Supports a single status ("sent") or a comma-separated set ("sent,viewed,negotiation") —
+    // the latter used by the Action Required "Quotations Awaiting Response" drill-down so the
+    // list page can open pre-filtered to the KPI's exact multi-status population.
+    const statusList = String(status).split(',').map((s) => s.trim()).filter(Boolean);
+    filter.status = statusList.length > 1 ? { $in: statusList } : statusList[0];
+  }
   if (executiveId) filter.createdByExecutive = executiveId;
 
   if (dateFrom || dateTo) {

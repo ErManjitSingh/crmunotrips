@@ -21,6 +21,7 @@ import {
   MealPlanBadge,
   ManagerStatusBadge,
   CustomerCell,
+  PhoneCell,
   FILTER_THEMES,
 } from './LeadListBadges';
 import { leadListRowClass, LEAD_LIST_TD } from '../leads/leadListStyles';
@@ -34,7 +35,7 @@ const AUTO_RULES = [
 ];
 
 const theme = FILTER_THEMES.unassigned;
-const columns = ['Lead ID', 'Customer', 'Destination', 'Meal Plan', 'Source', 'Intent', 'Status', 'Actions'];
+const columns = ['Lead ID', 'Customer', 'Phone', 'Destination', 'Meal Plan', 'Source', 'Intent', 'Status', 'Actions'];
 
 export default function LeadAssignmentPage() {
   const [leads, setLeads] = useState([]);
@@ -211,13 +212,13 @@ export default function LeadAssignmentPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="p-12 text-center text-content-muted">Loading…</td></tr>
+                <tr><td colSpan={10} className="p-12 text-center text-content-muted">Loading…</td></tr>
               ) : leads.length === 0 ? (
-                <tr><td colSpan={9} className="p-12 text-center text-content-muted">No unassigned leads</td></tr>
+                <tr><td colSpan={10} className="p-12 text-center text-content-muted">No unassigned leads</td></tr>
               ) : (
                 <>
                   {paddingTop > 0 && (
-                    <tr aria-hidden><td colSpan={9} style={{ height: paddingTop, padding: 0, border: 0 }} /></tr>
+                    <tr aria-hidden><td colSpan={10} style={{ height: paddingTop, padding: 0, border: 0 }} /></tr>
                   )}
                   {virtualRows.map((virtualRow) => {
                     const lead = leads[virtualRow.index];
@@ -243,6 +244,7 @@ export default function LeadAssignmentPage() {
                         </td>
                         <td className={LEAD_LIST_TD}><LeadIdPill id={lead.leadId} lead={lead} /></td>
                         <td className={LEAD_LIST_TD}><div className="flex items-center gap-1 min-w-0 flex-wrap"><CustomerCell name={lead.name} lead={lead} /><PriorityBadge lead={lead} /></div></td>
+                        <td className={LEAD_LIST_TD}><PhoneCell phone={lead.phone} leadId={lead._id} lead={lead} /></td>
                         <td className={LEAD_LIST_TD}><DestinationChip name={lead.destination} /></td>
                         <td className={LEAD_LIST_TD}><MealPlanBadge mealPlan={lead.mealPlan} mealPreference={lead.mealPreference} /></td>
                         <td className={LEAD_LIST_TD}><SourceBadge source={lead.source} label={lead.sourceLabel} /></td>
@@ -262,7 +264,7 @@ export default function LeadAssignmentPage() {
                     );
                   })}
                   {paddingBottom > 0 && (
-                    <tr aria-hidden><td colSpan={9} style={{ height: paddingBottom, padding: 0, border: 0 }} /></tr>
+                    <tr aria-hidden><td colSpan={10} style={{ height: paddingBottom, padding: 0, border: 0 }} /></tr>
                   )}
                 </>
               )}

@@ -15,7 +15,7 @@ const {
   wantsPackageSharedLeads,
 } = require('../utils/packageSharedLeads');
 const { applyListStatusBucket } = require('../utils/listStatusBucketFilter');
-const { findConnectedLeadIds, wantsConnectedFilter } = require('../utils/connectedLeadIds');
+const { findConnectedLeadIds, wantsConnectedFilter, findCalledLeadIds } = require('../utils/connectedLeadIds');
 const { attachFirstCall } = require('../utils/firstCallInfo');
 const { resolveDestinationGroupValues } = require('../utils/destinationHierarchy');
 
@@ -45,6 +45,7 @@ async function buildLeadListFilter(query = {}, { branchId } = {}) {
     search,
     filter: listFilter,
     listStatus,
+    statusReason,
     destination,
     destinationNames,
     source,
@@ -65,11 +66,12 @@ async function buildLeadListFilter(query = {}, { branchId } = {}) {
     priority,
     teamId,
     state,
+    engagementStatus,
   } = query;
 
   const mongoFilter = { ...buildLeadSearchFilter(search), isDeleted: { $ne: true } };
 
-  if (status && !listStatus) mongoFilter.status = status;
+  if (status && !listStatus && !statusReason) mongoFilter.status = status;
   if (reactivatedOnly === 'true') mongoFilter['reactivation.isReactivated'] = true;
   if (reactivationStage) mongoFilter['reactivation.stage'] = reactivationStage;
   if (executiveId) mongoFilter.assignedTo = executiveId;
@@ -150,7 +152,7 @@ async function buildLeadListFilter(query = {}, { branchId } = {}) {
     mongoFilter.$expr = { $eq: [{ $month: '$travelDate' }, Number(travelMonth) + 1] };
   }
 
-  applyListStatusBucket(mongoFilter, listStatus);
+  applyListStatusBucket(mongoFilter, listStatus, statusReason);
 
   // Connected = at least one CallNote whose outcome is in the canonical "connected"
   // bucket (see CallNote.OUTCOME_BUCKETS). Uses $and rather than mongoFilter._id so it
@@ -159,6 +161,21 @@ async function buildLeadListFilter(query = {}, { branchId } = {}) {
     const connectedIds = await findConnectedLeadIds({ branchId });
     if (!mongoFilter.$and) mongoFilter.$and = [];
     mongoFilter.$and.push({ _id: { $in: connectedIds } });
+  }
+
+  // Engagement Status (Admin "Engagement Status" filter) — Not Opened / Opened, Not Called /
+  // Opened & Called, using only Lead.firstOpenedAt and CallNote existence exactly as they
+  // already mean elsewhere (see utils/firstCallInfo.js's lead-wide, outcome-agnostic "First
+  // Call"). "Called" is intentionally not scoped to the assigned executive or any outcome.
+  if (engagementStatus === 'not_opened') {
+    mongoFilter.firstOpenedAt = null;
+  } else if (engagementStatus === 'opened_not_called' || engagementStatus === 'opened_called') {
+    mongoFilter.firstOpenedAt = { $ne: null };
+    const calledIds = await findCalledLeadIds({ branchId });
+    if (!mongoFilter.$and) mongoFilter.$and = [];
+    mongoFilter.$and.push({
+      _id: engagementStatus === 'opened_called' ? { $in: calledIds } : { $nin: calledIds },
+    });
   }
 
   // Top Destinations drill-down: resolve rollup name(s) (a state, or the "Other" bucket) back to
@@ -181,14 +198,13 @@ async function buildLeadListFilter(query = {}, { branchId } = {}) {
   return mongoFilter;
 }
 
-async function findLeadsPaginated(query = {}, { branchId, includeManagementFields = false } = {}) {
-  const { page, limit, skip } = parsePagination(query);
-  const sort = parseSort(
-    query,
-    isConvertedListQuery(query) ? { convertedAt: -1, updatedAt: -1 } : { createdAt: -1 }
-  );
-  const sortField = Object.keys(sort)[0] || 'createdAt';
-  const sortDir = sort[sortField] ?? -1;
+/**
+ * The complete effective Mongo filter for the Admin All Leads list — every Filters-panel field
+ * (via buildLeadListFilter) plus branch scoping plus the id-narrowing filters (duplicates /
+ * package-shared) that can't be expressed as plain field matches. Shared by the leads list query
+ * and the KPI strip (leadListKpiService) so both always see exactly the same filtered set.
+ */
+async function buildEffectiveLeadFilter(query = {}, { branchId } = {}) {
   const filter = withBranch(await buildLeadListFilter(query, { branchId }), branchId);
 
   if (query.filter === 'duplicates') {
@@ -201,6 +217,35 @@ async function findLeadsPaginated(query = {}, { branchId, includeManagementField
     const ids = await findPackageSharedLeadIds({ branchId });
     filter._id = { $in: ids.length ? ids : [] };
   }
+
+  // Status Movement (Admin "Status Movement" filter) — leads that have ever recorded the
+  // requested Cold/Warm/Hot bucket transition, per LeadStatusMovement (see
+  // leadStatusMovementService). Queries the transition ledger, never infers movement from the
+  // Lead document's current status/statusReason. Intersected with any id-narrowing already
+  // applied above so it composes correctly if ever combined with duplicates/package-shared.
+  if (query.statusMovement) {
+    const { findLeadIdsForMovement } = require('../services/leadStatusMovementService');
+    const ids = await findLeadIdsForMovement(query.statusMovement, { branchId });
+    const idSet = new Set(ids.map(String));
+    if (filter._id && filter._id.$in) {
+      filter._id = { $in: filter._id.$in.filter((id) => idSet.has(String(id))) };
+    } else {
+      filter._id = { $in: ids };
+    }
+  }
+
+  return filter;
+}
+
+async function findLeadsPaginated(query = {}, { branchId, includeManagementFields = false } = {}) {
+  const { page, limit, skip } = parsePagination(query);
+  const sort = parseSort(
+    query,
+    isConvertedListQuery(query) ? { convertedAt: -1, updatedAt: -1 } : { createdAt: -1 }
+  );
+  const sortField = Object.keys(sort)[0] || 'createdAt';
+  const sortDir = sort[sortField] ?? -1;
+  const filter = await buildEffectiveLeadFilter(query, { branchId });
 
   // Expired acceptances are handled by notificationScheduler — not on every list request
 
@@ -254,6 +299,7 @@ async function countLeads(query = {}, { branchId } = {}) {
 
 module.exports = {
   buildLeadListFilter,
+  buildEffectiveLeadFilter,
   findLeadsPaginated,
   countLeads,
 };

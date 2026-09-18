@@ -108,6 +108,8 @@ export default function DashboardHeader({
   isRefreshing = false,
   periodLabel,
   badgeLabel = "Admin Insights",
+  title = "Lead Management Report",
+  subtitle = "Leads & conversions overview",
 }) {
   const currentPreset = activePreset(filters);
   const hasCustomRange =
@@ -176,10 +178,10 @@ export default function DashboardHeader({
                 )}
               </div>
               <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-                Lead Management Report
+                {title}
               </h1>
               <p className="mt-0.5 text-sm text-slate-500">
-                Leads &amp; conversions overview
+                {subtitle}
                 {periodLabel ? (
                   <span className="text-slate-400"> · {periodLabel}</span>
                 ) : null}

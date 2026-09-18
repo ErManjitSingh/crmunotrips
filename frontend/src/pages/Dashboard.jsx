@@ -91,6 +91,17 @@ export default function Dashboard() {
     [navigate, filters]
   );
 
+  // "View all destinations" — full dedicated page, not a modal, preserving the dashboard's
+  // current period/source so the page opens already scoped to the same context.
+  const goToAllDestinations = useCallback(() => {
+    const params = new URLSearchParams();
+    if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+    if (filters.dateTo) params.set("dateTo", filters.dateTo);
+    if (filters.source) params.set("source", filters.source);
+    const qs = params.toString();
+    navigate(qs ? `/destinations?${qs}` : "/destinations");
+  }, [navigate, filters]);
+
   const report = stats?.report;
 
   if (isLoading && !stats) return <DashboardSkeleton />;
@@ -176,6 +187,7 @@ export default function Dashboard() {
             <TopDestinationsDonut
               data={report?.topDestinations || []}
               onSelect={handleDestinationSelect}
+              onViewAll={goToAllDestinations}
             />
           </div>
           <div className="min-w-0 xl:col-span-4">

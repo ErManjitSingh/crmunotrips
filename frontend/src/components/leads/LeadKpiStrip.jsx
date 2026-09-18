@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import API from '../../api/axios';
 import { LIST_STALE_MS, GC_TIME_MS } from '../../lib/queryConfig';
 import { cn } from '../../lib/utils';
+import { buildListParams } from '../../utils/apiHelpers';
 
 function CompactKpi({ label, value, icon: Icon, iconColor, href, index = 0 }) {
   const inner = (
@@ -50,19 +51,24 @@ function CompactKpi({ label, value, icon: Icon, iconColor, href, index = 0 }) {
   );
 }
 
-export default function LeadKpiStrip() {
-  const { data: stats, isLoading } = useQuery({
-    queryKey: ['leads', 'list-kpis'],
+export default function LeadKpiStrip({ filters = {} }) {
+  // Same filter object the Leads List table queries with (Leads.jsx's `apiFilters`) — every
+  // card below must reflect exactly that filtered result set, never the whole collection.
+  const kpiParams = buildListParams({ filters });
+  const { data: stats, isLoading, isFetching } = useQuery({
+    queryKey: ['leads', 'list-kpis', kpiParams],
     queryFn: async () => {
-      const { data } = await API.get('/leads/list-kpis', { skipSuccessToast: true });
+      const { data } = await API.get('/leads/list-kpis', {
+        params: kpiParams,
+        skipSuccessToast: true,
+      });
       return data;
     },
     staleTime: LIST_STALE_MS,
     gcTime: GC_TIME_MS,
-    placeholderData: (prev) => prev,
   });
 
-  if (isLoading && !stats) {
+  if ((isLoading || isFetching) && !stats) {
     return (
       <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
         {[...Array(8)].map((_, i) => (

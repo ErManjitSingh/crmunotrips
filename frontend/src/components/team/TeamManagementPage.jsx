@@ -80,7 +80,23 @@ export default function TeamManagementPage() {
   }, [filters, usersPagination.page, usersPagination.limit]);
   const fetchRoles = useCallback(() => API.get('/roles').then((r) => setRoles(r.data)), []);
   const fetchLogs = useCallback(() => API.get('/activity-logs', { params: activityFilters }).then((r) => setLogs(r.data)), [activityFilters]);
-  const fetchPerformance = useCallback(() => API.get('/team/performance').then((r) => setPerformance(r.data)), []);
+  // Deep-link support for the Admin Dashboard's "Low Follow-up Executives" Action Required card
+  // (?tab=performance&dateFrom=...&dateTo=...&source=...) — reproduces the exact same dashboard
+  // period the KPI was evaluated against, via the same getExecutivePerformance calculation.
+  const perfDateFrom = searchParams.get('dateFrom') || '';
+  const perfDateTo = searchParams.get('dateTo') || '';
+  const perfSource = searchParams.get('source') || '';
+  const fetchPerformance = useCallback(
+    () =>
+      API.get('/team/performance', {
+        params: {
+          dateFrom: perfDateFrom || undefined,
+          dateTo: perfDateTo || undefined,
+          source: perfSource || undefined,
+        },
+      }).then((r) => setPerformance(r.data)),
+    [perfDateFrom, perfDateTo, perfSource]
+  );
 
   const fetchAll = useCallback(() => {
     setLoading(true);
