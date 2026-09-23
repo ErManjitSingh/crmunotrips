@@ -80,7 +80,84 @@ function resolveStateForDestination(destinationText, byKey) {
     if (key.length >= 3 && fullKey.includes(key)) return byKey.get(key);
   }
 
+  // Reverse of the check above: the raw text is itself a shorter abbreviation/prefix of a known
+  // state name or alias (e.g. "Arunachal" -> "Arunachal Pradesh"). Same >=3-char confidence
+  // threshold as the forward substring check, just applied in the other direction — this was the
+  // one asymmetry in an otherwise-symmetric fuzzy match, not a new matching strategy.
+  if (fullKey.length >= 3) {
+    for (const key of keys) {
+      if (key.length > fullKey.length && key.includes(fullKey)) return byKey.get(key);
+    }
+  }
+
   return null;
+}
+
+/** Aliases the codebase already treats as "the missing-destination bucket," whichever label a
+ * given call site chose to display it under (Other/Others on the capped card, Not specified on
+ * the full breakdown — see rollupCityStatsIntoStates callers). */
+const MISSING_DESTINATION_KEYS = new Set(['other', 'others', 'notspecified']);
+
+/** A real destination name — including known multi-word ones like "Jammu and Kashmir" or
+ * "Andaman and Nicobar" — is short. Chat/webhook-sourced leads sometimes end up with a full
+ * question or request in the destination field instead (e.g. "Connect me with team head",
+ * "Have you any package for Mathura Vrindavan temples area"). Beyond this many words, a value
+ * reads as a sentence rather than a place name. */
+const MAX_PLAUSIBLE_DESTINATION_WORDS = 4;
+
+/** Common English function/question words that essentially never appear in a geographic place
+ * name, only in a sentence about one. A secondary signal (on top of the word-count check above)
+ * for shorter free-text values ("call me now"), not a list of specific known-bad phrases — any
+ * value matching this structure is caught the same way, present or future. */
+const SENTENCE_LIKE_WORDS = new Set([
+  'me', 'my', 'you', 'your', 'i', 'we', 'us', 'please', 'connect', 'have', 'has', 'had', 'any',
+  'want', 'need', 'looking', 'help', 'team', 'head', 'package', 'packages', 'kindly', 'can',
+  'could', 'would', 'will', 'should', 'is', 'are', 'do', 'does', 'did', 'what', 'when', 'how',
+  'why', 'who', 'call', 'contact', 'send', 'share', 'give',
+]);
+
+/**
+ * Does this destination value read as free-form lead/inquiry text rather than a place name?
+ * Deliberately a structural heuristic (word count / question mark / common sentence words), NOT
+ * a list of specific known-bad strings, so any sufficiently sentence-like value is caught the
+ * same way rather than only the two examples that surfaced this issue.
+ */
+function looksLikeFreeformText(trimmed) {
+  if (trimmed.includes('?')) return true;
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length > MAX_PLAUSIBLE_DESTINATION_WORDS) return true;
+  if (words.length >= 2) {
+    return words.some((w) => SENTENCE_LIKE_WORDS.has(w.toLowerCase().replace(/[^a-z]/g, '')));
+  }
+  return false;
+}
+
+/**
+ * Classify one destination value into the bucket it belongs to — the SINGLE rule both the
+ * dashboard rollup (rollupCityStatsIntoStates) and the Leads drill-down
+ * (resolveDestinationGroupValues) use, so the two can never disagree about what a lead's
+ * destination "really" groups into:
+ *   - empty/whitespace, or already one of the missing-destination markers -> the missing bucket
+ *   - resolves to a known state via the existing hierarchy (exact/alias/fuzzy match) -> that state
+ *   - free-form inquiry text that isn't a place name at all (see looksLikeFreeformText) -> the
+ *     missing bucket too — it must never become a fake "destination"
+ *   - a real, non-empty, place-name-shaped value the hierarchy doesn't recognize -> preserved as
+ *     its OWN bucket, keyed by its own normalized text. To make a specific value resolve, extend
+ *     the hierarchy itself (MARGIN_STATES / the Destination collection's aliases) — never
+ *     special-case it here.
+ */
+function classifyDestination(rawText, byKey, missingLabel = 'Not specified') {
+  const trimmed = String(rawText || '').trim();
+  const trimmedKey = trimmed ? normalizeDestinationKey(trimmed) : '';
+  if (!trimmed || MISSING_DESTINATION_KEYS.has(trimmedKey)) {
+    return { missing: true, key: normalizeDestinationKey(missingLabel) || 'notspecified', name: missingLabel };
+  }
+  const resolved = resolveStateForDestination(trimmed, byKey);
+  if (resolved) return { missing: false, key: resolved.key, name: resolved.name };
+  if (looksLikeFreeformText(trimmed)) {
+    return { missing: true, key: normalizeDestinationKey(missingLabel) || 'notspecified', name: missingLabel };
+  }
+  return { missing: false, key: trimmedKey || trimmed.toLowerCase(), name: trimmed };
 }
 
 function blankMetrics(metricFields) {
@@ -162,12 +239,17 @@ async function rollupCityStatsIntoStates(rows = [], options = {}) {
     const otherLabel = String(groupUnknownAs).trim() || 'Other';
     const otherKey = normalizeDestinationKey(otherLabel) || 'other';
     let otherRow = null;
-    const unknownKeys = [];
+    const missingKeys = [];
 
     for (const [key, row] of working.entries()) {
       if (key === otherKey) continue;
-      if (resolveStateForDestination(row[nameField], byKey)) continue;
-      unknownKeys.push(key);
+      // Only genuinely missing/unspecified destinations fold into this bucket. A real, non-empty
+      // destination the hierarchy simply doesn't recognize (e.g. "Arunachal" with no matching
+      // state/alias) is NOT "missing" — it stays as its own preserved row (see classifyDestination)
+      // instead of being silently discarded into Other/Not specified.
+      const classification = classifyDestination(row[nameField], byKey, otherLabel);
+      if (!classification.missing) continue;
+      missingKeys.push(key);
       if (!otherRow) {
         otherRow = working.get(otherKey) || {
           [nameField]: otherLabel,
@@ -180,7 +262,7 @@ async function rollupCityStatsIntoStates(rows = [], options = {}) {
       }
     }
 
-    for (const key of unknownKeys) working.delete(key);
+    for (const key of missingKeys) working.delete(key);
     if (otherRow) {
       const hasAny = metricFields.some((f) => Number(otherRow[f]) > 0);
       if (hasAny) working.set(otherKey, otherRow);
@@ -205,8 +287,52 @@ async function rollupCityStatsIntoStates(rows = [], options = {}) {
     result.sort((a, b) => (Number(b[sortBy]) || 0) - (Number(a[sortBy]) || 0));
   }
 
-  if (limit != null && limit > 0) {
-    result = result.slice(0, limit);
+  if (limit != null && limit > 0 && result.length > limit) {
+    if (groupUnknownAs) {
+      // Fold everything beyond the display limit into the Other bucket instead of dropping it —
+      // every matching lead must still be represented in the returned rows (sum(rows) must equal
+      // the population that was passed in). Other always gets a reserved slot so overflow never
+      // has nowhere to go, even when nothing was already unmapped.
+      const otherLabel = String(groupUnknownAs).trim() || 'Other';
+      const otherKey = normalizeDestinationKey(otherLabel) || 'other';
+      const otherIndex = result.findIndex(
+        (row) => (normalizeDestinationKey(row[nameField]) || '') === otherKey
+      );
+      const existingOther = otherIndex >= 0 ? result[otherIndex] : null;
+      const withoutOther = existingOther
+        ? result.filter((_, i) => i !== otherIndex)
+        : result;
+
+      const keepCount = Math.max(limit - 1, 0);
+      const kept = withoutOther.slice(0, keepCount);
+      const overflow = withoutOther.slice(keepCount);
+
+      if (overflow.length) {
+        const otherRow = existingOther
+          ? { ...existingOther }
+          : { [nameField]: otherLabel, ...blankMetrics(metricFields) };
+        otherRow[nameField] = otherLabel;
+        for (const row of overflow) {
+          for (const field of metricFields) {
+            otherRow[field] = (Number(otherRow[field]) || 0) + (Number(row[field]) || 0);
+          }
+        }
+        if (rateConfig?.field && rateConfig.numerator && rateConfig.denominator) {
+          const den = Number(otherRow[rateConfig.denominator]) || 0;
+          const num = Number(otherRow[rateConfig.numerator]) || 0;
+          otherRow[rateConfig.field] = den ? Math.round((num / den) * 1000) / 10 : 0;
+        }
+        result = [...kept, otherRow];
+      } else {
+        // Nothing overflowed past the reserved slot — keep Other as-is if it already existed.
+        result = existingOther ? [...kept, existingOther] : kept;
+      }
+
+      result.sort((a, b) => (Number(b[sortBy]) || 0) - (Number(a[sortBy]) || 0));
+    } else {
+      // No Other bucket requested by this caller — unchanged legacy behavior (plain truncation).
+      result = result.slice(0, limit);
+    }
   }
 
   return result;
@@ -217,11 +343,13 @@ function invalidateStateHierarchyCache() {
 }
 
 /**
- * Resolve one or more Top Destinations rollup names (e.g. "Himachal Pradesh", or the
- * "Other" bucket) back to the exact raw `Lead.destination` values that rollupCityStatsIntoStates
- * would have grouped into them, scoped by `matchFilter` (same branch/date/source scope the
- * dashboard used to build the chart). This is the single source of truth for what a click on a
- * Top Destinations segment should filter leads by — never redefine "destination" elsewhere.
+ * Resolve one or more Top Destinations rollup names (e.g. "Himachal Pradesh", a preserved
+ * unrecognized destination like "Arunachal", or the missing-destination bucket under whichever
+ * label it was displayed as — "Other"/"Others"/"Not specified") back to the exact raw
+ * `Lead.destination` values that rollupCityStatsIntoStates would have grouped into them, scoped
+ * by `matchFilter` (same branch/date/source scope the dashboard used to build the chart). Uses
+ * the exact same classifyDestination rule the aggregation side uses, so a click here can never
+ * disagree with what the dashboard counted — never redefine "destination" elsewhere.
  */
 async function resolveDestinationGroupValues(names, matchFilter = {}) {
   const list = (Array.isArray(names) ? names : [names])
@@ -231,19 +359,12 @@ async function resolveDestinationGroupValues(names, matchFilter = {}) {
 
   const byKey = await loadStateHierarchyIndex();
   const targetKeys = new Set(list.map((n) => normalizeDestinationKey(n)));
-  const wantsOther = targetKeys.has(normalizeDestinationKey('Other'));
 
   const distinctValues = await Lead.distinct('destination', matchFilter);
   const matches = [];
   for (const raw of distinctValues) {
-    const trimmed = String(raw || '').trim();
-    const display = trimmed || 'Not specified';
-    const resolved = resolveStateForDestination(display, byKey);
-    if (resolved) {
-      if (targetKeys.has(normalizeDestinationKey(resolved.name))) matches.push(raw);
-    } else if (wantsOther) {
-      matches.push(raw);
-    }
+    const classification = classifyDestination(raw, byKey);
+    if (targetKeys.has(classification.key)) matches.push(raw);
   }
   return matches;
 }

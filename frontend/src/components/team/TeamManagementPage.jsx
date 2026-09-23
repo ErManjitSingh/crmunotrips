@@ -19,6 +19,7 @@ import { toast } from '../../context/ToastContext';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
+import { LEAD_PROVIDER_BLOCKED_ROLE_SLUGS } from '../../auth';
 
 const tabIcons = { Users, Shield, Activity, Trophy };
 const emptyFilters = { search: '', status: '', roleId: '', department: '' };
@@ -58,7 +59,7 @@ export default function TeamManagementPage() {
   const canSetTargets = TARGET_SETTER_ROLES.has(authUser?.role);
   const assignableRoles =
     authUser?.role === 'lead_provider'
-      ? roles.filter((r) => !['admin', 'hr_admin', 'lead_provider'].includes(r.slug))
+      ? roles.filter((r) => !LEAD_PROVIDER_BLOCKED_ROLE_SLUGS.includes(r.slug))
       : roles;
 
   const fetchUsers = useCallback(() => {
@@ -80,7 +81,23 @@ export default function TeamManagementPage() {
   }, [filters, usersPagination.page, usersPagination.limit]);
   const fetchRoles = useCallback(() => API.get('/roles').then((r) => setRoles(r.data)), []);
   const fetchLogs = useCallback(() => API.get('/activity-logs', { params: activityFilters }).then((r) => setLogs(r.data)), [activityFilters]);
-  const fetchPerformance = useCallback(() => API.get('/team/performance').then((r) => setPerformance(r.data)), []);
+  // Deep-link support for the Admin Dashboard's "Low Follow-up Executives" Action Required card
+  // (?tab=performance&dateFrom=...&dateTo=...&source=...) — reproduces the exact same dashboard
+  // period the KPI was evaluated against, via the same getExecutivePerformance calculation.
+  const perfDateFrom = searchParams.get('dateFrom') || '';
+  const perfDateTo = searchParams.get('dateTo') || '';
+  const perfSource = searchParams.get('source') || '';
+  const fetchPerformance = useCallback(
+    () =>
+      API.get('/team/performance', {
+        params: {
+          dateFrom: perfDateFrom || undefined,
+          dateTo: perfDateTo || undefined,
+          source: perfSource || undefined,
+        },
+      }).then((r) => setPerformance(r.data)),
+    [perfDateFrom, perfDateTo, perfSource]
+  );
 
   const fetchAll = useCallback(() => {
     setLoading(true);

@@ -28,6 +28,12 @@ const callNoteSchema = new mongoose.Schema(
     leadId: { type: mongoose.Schema.Types.ObjectId, ref: 'Lead', required: true, index: true },
     branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    /**
+     * Role of the caller AT THE TIME of the call (userId is always the authenticated caller, never the
+     * lead's owner). Lets team-wide Call Report totals exclude Cold Calling agents so they don't
+     * distort Sales Executive metrics, and lets analytics tell the two apart. Absent on older calls.
+     */
+    callerRole: { type: String, trim: true },
     // No `enum` here on purpose: outcomes are admin-configurable (see
     // services/leadStatusConfigService.js), so a static Mongoose enum would silently block a
     // newly-added admin outcome from ever being saved. The authoritative category<->outcome
@@ -44,6 +50,13 @@ const callNoteSchema = new mongoose.Schema(
 );
 
 callNoteSchema.index({ leadId: 1, createdAt: -1 });
+// One Cold Calling call = one CallNote: the same (lead, agent, call start) submitted twice (double click,
+// retry, two tabs) can never create a second record. Partial, so it only ever covers new Cold Calling
+// calls — existing Sales calls (and any historical data) are outside it and cannot make the build fail.
+callNoteSchema.index(
+  { leadId: 1, userId: 1, startedAt: 1 },
+  { unique: true, partialFilterExpression: { callerRole: 'cold_calling', startedAt: { $exists: true } }, name: 'unique_cold_calling_call_start' }
+);
 
 /**
  * Call Report bucketing: "connected" = guest answered (regardless of sales outcome),

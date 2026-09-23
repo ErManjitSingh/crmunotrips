@@ -133,8 +133,11 @@ async function syncLeadFollowUpDates(leadId) {
   await lead.save();
 }
 
-async function applyCategoryToLead(lead, category, status, body = {}) {
+async function applyCategoryToLead(lead, category, status, body = {}, actor = null) {
   if (!lead || !category) return;
+
+  const previousStatus = lead.status;
+  const previousStatusReason = lead.statusReason;
 
   const outcomeKey = String(
     body.pickedOutcome ||
@@ -222,6 +225,15 @@ async function applyCategoryToLead(lead, category, status, body = {}) {
   promoteReactivatedLeadOnFollowUp(lead, lead.assignedTo);
 
   await lead.save();
+
+  const { trackLeadStatusMovement } = require('../services/leadStatusMovementService');
+  await trackLeadStatusMovement({
+    lead,
+    previousStatus,
+    previousStatusReason,
+    actor,
+    source: 'followup_outcome',
+  });
 }
 
 function normalizeFollowUpPayload(body, user, lead) {

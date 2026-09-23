@@ -8,14 +8,18 @@ const {
   buildLeadSearchFilter,
 } = require('../utils/queryHelpers');
 const { parsePagination, parseSort, paginatedResponse } = require('../utils/pagination');
+const { withBranch } = require('../utils/branchScope');
 
-function buildFollowUpListFilter(query = {}) {
+function buildFollowUpListFilter(query = {}, branchId = null) {
   const { status, tab, kpiTab, leadId, category, search, priority } = query;
 
-  const filter = {
-    ...buildFollowUpTabFilter(tab || kpiTab),
-    ...buildFollowUpCategoryFilter(category),
-  };
+  const filter = withBranch(
+    {
+      ...buildFollowUpTabFilter(tab || kpiTab),
+      ...buildFollowUpCategoryFilter(category),
+    },
+    branchId
+  );
 
   if (status) filter.status = status;
   if (leadId) filter.lead = leadId;
@@ -28,10 +32,14 @@ function buildFollowUpListFilter(query = {}) {
   return filter;
 }
 
-async function findFollowUpsPaginated(query = {}) {
+async function findFollowUpsPaginated(query = {}, options = {}) {
   const { page, limit, skip } = parsePagination(query, { defaultLimit: 20, maxLimit: 200 });
-  const sort = parseSort(query, { scheduledAt: 1 });
-  const filter = buildFollowUpListFilter(query);
+  // Missed follow-ups must show the newest (most recently overdue) scheduledAt first, applied
+  // server-side before pagination so page 1 is genuinely the newest globally — not just the
+  // generic oldest-first default used by the other tabs.
+  const isMissedTab = (query.tab || query.kpiTab) === 'missed';
+  const sort = parseSort(query, isMissedTab ? { scheduledAt: -1 } : { scheduledAt: 1 });
+  const filter = buildFollowUpListFilter(query, options.branchId);
 
   if (filter._leadSearch) {
     const q = filter._leadSearch;

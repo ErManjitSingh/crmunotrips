@@ -1,4 +1,5 @@
 import API from '../api/axios';
+import { coldCallingCallAccessPath } from './coldCallingCalls';
 
 const CALL_SESSION_KEY = 'uno-crm-active-call-session';
 /** Cap on how long dialing waits for the backend to confirm Opened — keeps a slow/offline
@@ -51,7 +52,7 @@ export function formatDurationHuman(totalSeconds = 0, { includeSeconds = false }
   return seconds ? `${seconds}s` : '0m';
 }
 
-export function startCallSession({ leadId, leadName, phone }) {
+export function startCallSession({ leadId, leadName, phone, coldCalling = false }) {
   if (!leadId || !phone) return null;
   const session = {
     leadId: String(leadId),
@@ -59,6 +60,9 @@ export function startCallSession({ leadId, leadName, phone }) {
     phone: String(phone),
     startedAt: Date.now(),
     dialedAt: Date.now(),
+    // Which call-end endpoint the post-call form must use. Only a routing hint: the server decides
+    // (from the signed-in role and the lead's assignment) whether the call is allowed.
+    ...(coldCalling ? { coldCalling: true } : {}),
   };
   try {
     sessionStorage.setItem(CALL_SESSION_KEY, JSON.stringify(session));
@@ -113,10 +117,12 @@ export function dialLeadPhone(phone) {
  * Admin, who has no route to this endpoint at all — can ever obtain it, and only at the moment
  * of placing the call.
  */
-async function authorizeLeadCallAccess(leadId) {
+async function authorizeLeadCallAccess(leadId, { coldCalling = false } = {}) {
   if (!leadId) return null;
   try {
-    const { data } = await API.post(`/sales-executive/leads/${leadId}/call-access`);
+    // Cold Calling agents use their own twin of this endpoint, which requires an active assignment.
+    const url = coldCalling ? coldCallingCallAccessPath(leadId) : `/sales-executive/leads/${leadId}/call-access`;
+    const { data } = await API.post(url);
     return data;
   } catch {
     return null;
@@ -130,10 +136,13 @@ async function authorizeLeadCallAccess(leadId) {
  * above). Falls back to the passed-in `phone` only if that request is slow/unavailable.
  * Returns the session for callers that need it.
  */
-export async function beginLeadCall({ leadId, leadName, phone }) {
-  const access = await withTimeout(authorizeLeadCallAccess(leadId), CALL_ACCESS_TIMEOUT_MS);
+export async function beginLeadCall({ leadId, leadName, phone, coldCalling = false }) {
+  const access = await withTimeout(authorizeLeadCallAccess(leadId, { coldCalling }), CALL_ACCESS_TIMEOUT_MS);
+  // A Cold Calling agent has no number of their own to fall back on: without the server's go-ahead
+  // there is no call, no timer and no post-call form.
+  if (coldCalling && !access?.phone) return null;
   const dialPhone = access?.phone || phone;
-  const session = startCallSession({ leadId, leadName, phone: dialPhone });
+  const session = startCallSession({ leadId, leadName, phone: dialPhone, coldCalling });
   if (dialPhone && dialPhone !== 'XXXX') {
     dialLeadPhone(dialPhone);
   }

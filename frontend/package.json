@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --import ./src/lib/__tests__/registerExtResolver.mjs --test src/lib/__tests__/coldToWarm.test.js"
+    "test": "node --import ./src/lib/__tests__/registerExtResolver.mjs --test src/lib/__tests__/coldToWarm.test.js src/lib/__tests__/executiveLeadStatusFilters.test.js src/lib/__tests__/executiveLeadStatusReason.test.js src/lib/__tests__/coldCallingRole.test.js src/lib/__tests__/coldCallingWorkspace.test.js src/lib/__tests__/coldCallingAssignment.test.js src/lib/__tests__/coldCallingCalls.test.js src/lib/__tests__/coldCallingAnalytics.test.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

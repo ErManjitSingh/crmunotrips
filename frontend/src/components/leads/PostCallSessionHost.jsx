@@ -14,6 +14,7 @@ export default function PostCallSessionHost() {
       session={pendingCall}
       onClose={dismissPostCall}
       onSaved={() => {
+        if (pendingCall?.coldCalling) queryClient.invalidateQueries({ queryKey: ['cold-calling'] });
         completePostCall();
         invalidateLeadLists(queryClient);
         invalidateNavCounts(queryClient);

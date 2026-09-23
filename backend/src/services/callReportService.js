@@ -55,7 +55,10 @@ const ORG_TZ = process.env.ATTENDANCE_TZ || 'Asia/Kolkata';
 function baseMatch({ userId, branchId, periodStart, periodEnd }) {
   const branchObjectId = toObjectId(branchId);
   return {
-    ...(userId ? { userId: new mongoose.Types.ObjectId(String(userId)) } : {}),
+    ...(userId
+      ? { userId: new mongoose.Types.ObjectId(String(userId)) }
+      // Team-wide totals are Sales figures: Cold Calling agents' calls are theirs, not the sales team's.
+      : { callerRole: { $ne: 'cold_calling' } }),
     ...(branchObjectId ? { branchId: branchObjectId } : {}),
     createdAt: { $gte: periodStart, $lte: periodEnd },
   };
@@ -439,6 +442,7 @@ async function getAnalytics({ userId, branchId, dateFrom, dateTo }) {
 }
 
 module.exports = {
+  bucketSwitchStage,
   getExecutiveTimeline,
   getExecutiveSummary,
   getTeamOverview,

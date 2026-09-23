@@ -35,13 +35,19 @@ const STATUS_OPTIONS = [{ value: '', label: 'All Statuses' }, ...QUOTE_STATUSES.
 export default function QuotationListPage() {
   const queryClient = useQueryClient();
   const { dateFrom, dateTo, setPeriod } = useUrlPeriodFilter();
+  const [searchParams] = useSearchParams();
+  // Deep-link support for the Admin Dashboard's "Quotations Awaiting Response" Action Required
+  // card (?status=sent,viewed,negotiation) — reproduces that KPI's exact status population.
+  const initialStatus = searchParams.get('status') || '';
   const [draftFilters, setDraftFilters] = useState(() => ({
     ...emptyQuotationFilters,
+    status: initialStatus,
     dateFrom,
     dateTo,
   }));
   const [appliedFilters, setAppliedFilters] = useState(() => ({
     ...emptyQuotationFilters,
+    status: initialStatus,
     dateFrom,
     dateTo,
   }));
@@ -50,7 +56,6 @@ export default function QuotationListPage() {
   const [showPdf, setShowPdf] = useState(false);
   const [autoPrint, setAutoPrint] = useState(false);
   const pdfRef = useRef(null);
-  const [searchParams] = useSearchParams();
   const debouncedSearch = useDebouncedValue(appliedFilters.search, 350);
 
   const queryFilters = useMemo(

@@ -66,7 +66,7 @@ async function createFollowUpForLead({ body, user, leadFilter = null }) {
   // flip lead.status to converted on its own; conversion is driven by the dedicated lead-status
   // endpoints (see leadConversionService.onLeadConverted), which independently cancel any
   // pending follow-ups once the lead actually converts.
-  await applyCategoryToLead(lead, payload.category, 'pending', body);
+  await applyCategoryToLead(lead, payload.category, 'pending', body, user);
   await syncLeadFollowUpDates(lead._id);
   await resolveMissedAlertsForLead(lead._id, followup._id);
 
@@ -139,7 +139,7 @@ async function updateFollowUpRecord({ followup, body, user } = {}) {
 
   const lead = await Lead.findById(followup.lead);
   if (lead) {
-    await applyCategoryToLead(lead, followup.category, followup.status, body);
+    await applyCategoryToLead(lead, followup.category, followup.status, body, user);
     await syncLeadFollowUpDates(lead._id);
     if (
       (action === 'complete' || followup.status === 'completed') &&

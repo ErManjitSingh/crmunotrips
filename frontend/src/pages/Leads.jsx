@@ -34,7 +34,12 @@ function filtersFromLocation(location, config) {
   const params = new URLSearchParams(location.search);
   let dateFrom = params.get('dateFrom') || '';
   let dateTo = params.get('dateTo') || '';
-  if (config.todayOnly && !dateFrom && !dateTo) {
+  // A destination drill-down (Dashboard → "View all destinations" / Top Destinations click)
+  // carries its own explicit period context, including an intentionally empty one for "All
+  // Time" — this page's own today-only default must not silently override that, or the leads
+  // shown would stop matching the count the admin clicked through from.
+  const hasDrillDownContext = Boolean(params.get('destinationNames'));
+  if (config.todayOnly && !dateFrom && !dateTo && !hasDrillDownContext) {
     const today = applyPeriodPreset('today');
     dateFrom = today.dateFrom;
     dateTo = today.dateTo;
@@ -48,6 +53,7 @@ function filtersFromLocation(location, config) {
     dateTo,
     source: params.get('source') || '',
     agent: params.get('agent') || '',
+    destinationNames: params.get('destinationNames') || '',
   };
 }
 
@@ -127,7 +133,9 @@ export default function Leads() {
     if (config.assignee === 'unassigned') base.filter = 'unassigned';
     else if (config.assignee === 'assigned') base.filter = 'assigned';
     else if (config.listFilter && !base.filter) base.filter = config.listFilter;
-    if (config.todayOnly && !base.dateFrom && !base.dateTo) {
+    // Same destination-drill-down exception as filtersFromLocation above — a destination click
+    // carrying an intentionally empty (All Time) period must not be silently narrowed to today.
+    if (config.todayOnly && !base.dateFrom && !base.dateTo && !base.destinationNames) {
       base.todayOnly = true;
     }
     return base;
@@ -152,15 +160,16 @@ export default function Leads() {
     const nextStatus = config.status || statusFromQuery || '';
     let dateFrom = params.get('dateFrom') || '';
     let dateTo = params.get('dateTo') || '';
-    if (config.todayOnly && !dateFrom && !dateTo) {
+    const destinationNames = params.get('destinationNames') || '';
+    if (config.todayOnly && !dateFrom && !dateTo && !destinationNames) {
       const today = applyPeriodPreset('today');
       dateFrom = today.dateFrom;
       dateTo = today.dateTo;
     }
     const source = params.get('source') || '';
     const nextFilter = config.listFilter || params.get('filter') || '';
-    setFilters((f) => ({ ...f, status: nextStatus, filter: nextFilter, dateFrom, dateTo, source }));
-    setAppliedFilters((f) => ({ ...f, status: nextStatus, filter: nextFilter, dateFrom, dateTo, source }));
+    setFilters((f) => ({ ...f, status: nextStatus, filter: nextFilter, dateFrom, dateTo, source, destinationNames }));
+    setAppliedFilters((f) => ({ ...f, status: nextStatus, filter: nextFilter, dateFrom, dateTo, source, destinationNames }));
     setPagination({
       pageIndex: 0,
       pageSize: isAllLeadsPage ? ALL_LEADS_PAGE_SIZE : LEADS_PAGE_SIZE,
@@ -257,16 +266,22 @@ export default function Leads() {
     syncPeriodToUrl(next);
   };
   const handleReset = () => {
+    // Reset returns Period to the page's own default (Today for All Leads, same as initial
+    // load via filtersFromLocation) rather than always falling back to All Time.
+    const todayDates = config.todayOnly ? applyPeriodPreset('today') : { dateFrom: '', dateTo: '' };
     const base = {
       ...emptyFilters,
       status: config.status || '',
       filter: config.listFilter || '',
+      ...todayDates,
     };
     setFilters(base);
     setAppliedFilters(base);
     const params = new URLSearchParams(location.search);
-    params.delete('dateFrom');
-    params.delete('dateTo');
+    if (todayDates.dateFrom) params.set('dateFrom', todayDates.dateFrom);
+    else params.delete('dateFrom');
+    if (todayDates.dateTo) params.set('dateTo', todayDates.dateTo);
+    else params.delete('dateTo');
     params.delete('source');
     if (!config.status) params.delete('status');
     const search = params.toString();
@@ -387,7 +402,7 @@ export default function Leads() {
           compact={isAllLeadsPage}
         />
 
-        {isAllLeadsPage && <LeadKpiStrip />}
+        {isAllLeadsPage && <LeadKpiStrip filters={apiFilters} />}
 
         <LeadFilterBar
           filters={filters}

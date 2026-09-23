@@ -26,6 +26,7 @@ const ACTIVITY_TITLES = {
   lead_lost: 'Lead Lost',
   lead_reactivated: 'Lead Reactivated',
   lead_converted: 'Lead Converted',
+  cold_calling_assigned: 'Assigned to Cold Calling',
   lead_deleted: 'Lead Deleted',
   lead_restored: 'Lead Restored',
   note_added: 'Note Added',
@@ -55,6 +56,7 @@ async function logLeadActivity({
     description,
     actorId: actor?._id || actor?.id || null,
     actorName: actor?.name || 'System',
+    actorRole: actor?.role || undefined,
     meta,
   });
 }

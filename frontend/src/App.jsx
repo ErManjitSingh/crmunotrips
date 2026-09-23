@@ -10,6 +10,7 @@ import HrProtectedRoute from "./components/hr/HrProtectedRoute";
 import PermissionRoute from "./components/PermissionRoute";
 import RoleRoute, { RoleDashboardRedirect } from "./components/RoleRoute";
 import Layout from "./components/Layout";
+import KeepColdCallingInWorkspace from "./components/cold-calling/KeepColdCallingInWorkspace";
 import ComingSoon from "./components/ui/ComingSoon";
 import {
   Login,
@@ -21,6 +22,7 @@ import {
   Leads,
   LeadDetail,
   DestinationDetail,
+  AllDestinations,
   MarketingSpendReport,
   LeadForm,
   Followups,
@@ -29,6 +31,12 @@ import {
   SlaMonitor,
   RecycleBin,
   LeadAuditLog,
+  ExecutiveLeadStatus,
+  ExecutiveLeadStatusDetail,
+  ColdCallingAgentDetail,
+  ColdCallingLayout,
+  ColdCallingDashboard,
+  ColdCallingMyLeads,
   WhatsAppLeads,
   Packages,
   Quotations,
@@ -212,6 +220,19 @@ function App() {
                     element={<ManagerNotificationsPage />}
                   />
                   <Route path="profile" element={<ManagerProfilePage />} />
+                </Route>
+
+                <Route
+                  path="/cold-calling"
+                  element={
+                    <ProtectedRoute allowedRoles={["cold_calling"]}>
+                      <ColdCallingLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<ColdCallingDashboard />} />
+                  <Route path="leads" element={<ColdCallingMyLeads />} />
+                  <Route path="*" element={<Navigate to="/cold-calling" replace />} />
                 </Route>
 
                 <Route
@@ -570,7 +591,9 @@ function App() {
                   path="/"
                   element={
                     <ProtectedRoute>
-                      <Layout />
+                      <KeepColdCallingInWorkspace>
+                        <Layout />
+                      </KeepColdCallingInWorkspace>
                     </ProtectedRoute>
                   }
                 >
@@ -779,6 +802,30 @@ function App() {
                     }
                   />
                   <Route
+                    path="leads/executive-lead-status"
+                    element={
+                      <RoleRoute roles={["admin"]}>
+                        <ExecutiveLeadStatus />
+                      </RoleRoute>
+                    }
+                  />
+                  <Route
+                    path="leads/executive-lead-status/cold-calling/:agentId"
+                    element={
+                      <RoleRoute roles={["admin"]}>
+                        <ColdCallingAgentDetail />
+                      </RoleRoute>
+                    }
+                  />
+                  <Route
+                    path="leads/executive-lead-status/:executiveId"
+                    element={
+                      <RoleRoute roles={["admin"]}>
+                        <ExecutiveLeadStatusDetail />
+                      </RoleRoute>
+                    }
+                  />
+                  <Route
                     path="leads/audit-log"
                     element={
                       <RoleRoute roles={["admin", "sales_manager"]}>
@@ -829,6 +876,17 @@ function App() {
                         denyRoles={["sales_executive", "team_leader"]}
                       >
                         <DestinationDetail />
+                      </PermissionRoute>
+                    }
+                  />
+                  <Route
+                    path="destinations"
+                    element={
+                      <PermissionRoute
+                        module="leads"
+                        denyRoles={["sales_executive", "team_leader"]}
+                      >
+                        <AllDestinations />
                       </PermissionRoute>
                     }
                   />

@@ -5,6 +5,7 @@ export {
   VALID_ROLES,
   ROLE_DASHBOARD_PATHS,
   ROLE_LABELS,
+  LEAD_PROVIDER_BLOCKED_ROLE_SLUGS,
 } from './constants';
 
 /** Demo login shortcuts (seed accounts) — password from SEED_PASSWORD / 123456 */

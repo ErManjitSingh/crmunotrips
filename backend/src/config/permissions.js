@@ -103,6 +103,8 @@ const ROLE_PERMISSIONS = {
     users: { view: true, create: true, edit: false, delete: false },
     whatsapp: { use: true, manage: false },
   },
+  // Recognised role only — no business permissions until the Cold Calling feature defines them.
+  cold_calling: { ...noPerms() },
 };
 
 const PERMISSION_MODULES = [

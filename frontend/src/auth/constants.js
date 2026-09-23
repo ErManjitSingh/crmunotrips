@@ -17,6 +17,7 @@ export const VALID_ROLES = /** @type {RoleSlug[]} */ ([
   "operations_manager",
   "hr_admin",
   "lead_provider",
+  "cold_calling",
 ]);
 
 /** @type {Record<RoleSlug, string>} */
@@ -29,6 +30,7 @@ export const ROLE_DASHBOARD_PATHS = {
   operations_manager: "/operations-manager/dashboard",
   hr_admin: "/hr/dashboard",
   lead_provider: "/lead-provider/dashboard",
+  cold_calling: "/cold-calling",
 };
 
 export const ROLE_LABELS = {
@@ -40,4 +42,8 @@ export const ROLE_LABELS = {
   operations_manager: "Operations Manager",
   hr_admin: "HR Admin",
   lead_provider: "Lead Provider",
+  cold_calling: "Cold Calling",
 };
+
+/** Roles a Lead Provider may not assign when creating/inviting users (mirrors the backend rule). */
+export const LEAD_PROVIDER_BLOCKED_ROLE_SLUGS = ["admin", "hr_admin", "lead_provider", "cold_calling"];

@@ -62,6 +62,12 @@ const listLeads = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+const getListKpis = asyncHandler(async (req, res) => {
+  const { getManagerLeadListKpis } = require('../services/leadListKpiService');
+  const data = await getManagerLeadListKpis(req.query, req.branchId);
+  res.json(data);
+});
+
 const getLeadDetail = asyncHandler(async (req, res) => {
   const lead = await loadLeadCore(req.params.id, {
     branchId: req.branchId,
@@ -456,6 +462,7 @@ const getCalendar = asyncHandler(async (req, res) => {
 module.exports = {
   getDashboard,
   listLeads,
+  getListKpis,
   getLeadDetail,
   getLeadQuotationsList,
   getLeadNotesList,

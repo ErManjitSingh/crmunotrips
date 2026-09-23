@@ -25,6 +25,7 @@ const LEAD_ACTIVITY_TYPES = [
   'lead_lost',
   'lead_reactivated',
   'lead_converted',
+  'cold_calling_assigned',
   'lead_merged',
   'lead_deleted',
   'lead_restored',
@@ -46,6 +47,8 @@ const leadActivitySchema = new mongoose.Schema(
     description: { type: String, trim: true, default: '' },
     actorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     actorName: { type: String, trim: true, default: 'System' },
+    /** Role of the actor when the activity happened. Lets team-wide activity analytics exclude Cold Calling agents. Absent on older rows. */
+    actorRole: { type: String, trim: true },
     meta: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

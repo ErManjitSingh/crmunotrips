@@ -355,9 +355,9 @@ async function getActivityAnalytics({ userId, branchId, dateFrom, dateTo }) {
   const userObjectId = userId ? toObjectId(userId) : null;
   const range = { $gte: periodStart, $lte: periodEnd };
 
-  const leadMatch = { ...(userObjectId ? { actorId: userObjectId } : {}), ...(branchObjectId ? { branchId: branchObjectId } : {}), createdAt: range };
+  const leadMatch = { ...(userObjectId ? { actorId: userObjectId } : { actorRole: { $ne: 'cold_calling' } }), ...(branchObjectId ? { branchId: branchObjectId } : {}), createdAt: range };
   const execMatch = { ...(userObjectId ? { userId: userObjectId } : {}), ...(branchObjectId ? { branchId: branchObjectId } : {}), createdAt: range };
-  const callMatch = { ...(userObjectId ? { userId: userObjectId } : {}), ...(branchObjectId ? { branchId: branchObjectId } : {}), createdAt: range };
+  const callMatch = { ...(userObjectId ? { userId: userObjectId } : { callerRole: { $ne: 'cold_calling' } }), ...(branchObjectId ? { branchId: branchObjectId } : {}), createdAt: range };
 
   const [leadAgg, execAgg, callAgg] = await Promise.all([
     LeadActivity.aggregate([

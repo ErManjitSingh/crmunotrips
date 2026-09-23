@@ -12,11 +12,11 @@ const BADGE = {
 };
 
 const DEFAULT_ROWS = [
-  { key: 'followups_due', label: 'Follow-ups Due Today', count: 0, link: '/followups', tone: 'rose' },
+  { key: 'followups_due', label: 'Follow-ups Due Today', count: 0, link: '/followups?kpiTab=today&status=pending', tone: 'rose' },
   { key: 'untouched', label: 'Leads Untouched (24+ hrs)', count: 0, link: '/leads/inbox/new', tone: 'amber' },
-  { key: 'quotes_awaiting', label: 'Quotations Awaiting Response', count: 0, link: '/quotations', tone: 'violet' },
-  { key: 'pending_payment', label: 'Bookings Pending Payment', count: 0, link: '/bookings', tone: 'blue' },
-  { key: 'low_followup_execs', label: 'Low Follow-up Executives', count: 0, link: '/team', tone: 'orange' },
+  { key: 'quotes_awaiting', label: 'Quotations Awaiting Response', count: 0, link: '/quotations?status=sent,viewed,negotiation', tone: 'violet' },
+  { key: 'pending_payment', label: 'Bookings Pending Payment', count: 0, link: '/operations-manager/bookings/unpaid', tone: 'blue' },
+  { key: 'low_followup_execs', label: 'Low Follow-up Executives', count: 0, link: '/team?tab=performance', tone: 'orange' },
 ];
 
 export default function ActionRequiredPanel({ items = [] }) {

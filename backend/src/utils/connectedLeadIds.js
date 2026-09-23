@@ -19,4 +19,16 @@ function wantsConnectedFilter(query = {}) {
   return flag === '1' || flag === 'true' || flag === true;
 }
 
-module.exports = { findConnectedLeadIds, wantsConnectedFilter, CONNECTED_OUTCOMES };
+/**
+ * Lead IDs with at least one CallNote at all — any outcome, any user. Deliberately no `outcome`
+ * or `userId` filter: "Called" means the same thing `attachFirstCall` (utils/firstCallInfo.js)
+ * already means for the "First Call" badge — lead-wide, outcome-agnostic, actor-agnostic. Used by
+ * the Admin "Engagement Status" filter (Opened, Not Called / Opened & Called).
+ */
+async function findCalledLeadIds({ branchId } = {}) {
+  const filter = withBranch({}, branchId);
+  const ids = await CallNote.distinct('leadId', filter);
+  return ids.filter(Boolean);
+}
+
+module.exports = { findConnectedLeadIds, wantsConnectedFilter, findCalledLeadIds, CONNECTED_OUTCOMES };

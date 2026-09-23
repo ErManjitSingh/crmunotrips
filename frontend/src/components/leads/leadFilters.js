@@ -82,6 +82,8 @@ export function countActiveFilters(filters) {
   return Object.entries(filters).filter(([k, v]) => {
     if (v === '' || v == null) return false;
     if (k === 'search' || k === 'budgetRange' || k === 'budgetMinExclusive' || k === 'budgetMaxExclusive') return false;
+    // Sub-status is a refinement of listStatus, not a separate filter — avoid double-counting.
+    if (k === 'statusReason') return false;
     return true;
   }).length;
 }

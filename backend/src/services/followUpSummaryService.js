@@ -4,8 +4,10 @@ const { getFollowUpSummary } = require('../repositories/roleScopedRepository');
 const { buildFollowUpTabFilter, startOfDay } = require('../utils/queryHelpers');
 const { withBranch } = require('../utils/branchScope');
 
-async function getAdminFollowUpSummary() {
-  return getFollowUpSummary({});
+async function getAdminFollowUpSummary(branchId = null) {
+  // "Today's Follow-ups" must match the Dashboard Action Required "Follow-ups Due Today"
+  // population (pending-only), per the Phase 2 consistency requirement.
+  return getFollowUpSummary({}, { branchId, dueTodayOnly: true });
 }
 
 async function getExecutiveFollowUpSummary(userId, leadIds) {
@@ -24,7 +26,8 @@ async function getMissedFollowUpsPreview(baseFilter, limit = 8) {
   })
     .populate('lead', 'name phone destination')
     .populate('assignedTo', 'name')
-    .sort({ scheduledAt: 1 })
+    // Newest (most recently overdue) missed follow-up first — same fix as the main missed list.
+    .sort({ scheduledAt: -1 })
     .limit(limit)
     .lean();
 }

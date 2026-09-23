@@ -32,6 +32,9 @@ import {
   ExecutiveBadge,
   ManagerStatusBadge,
   CustomerCell,
+  PhoneCell,
+  TravelDateCell,
+  TravelersBadge,
   formatFollowUpDate,
   FILTER_THEMES,
 } from './LeadListBadges';
@@ -214,7 +217,7 @@ export default function TeamLeadsPage() {
         header: 'Customer',
         cell: ({ row }) => (
           <div className="space-y-1.5 min-w-0">
-            <CustomerCell name={row.original.name} lead={row.original} showPhone={isAllView} />
+            <CustomerCell name={row.original.name} lead={row.original} />
             <div className="flex items-center gap-1.5 flex-wrap pl-10">
               <ExecutiveStallIndicator lead={row.original} />
               {!isAllView && <PriorityBadge lead={row.original} />}
@@ -222,9 +225,22 @@ export default function TeamLeadsPage() {
           </div>
         ),
       }),
+      // Same PhoneCell + backend visibility gate as the Admin Leads List (LeadDataTable.jsx) —
+      // shown on every tab, not just "All Leads", to match Admin exactly.
+      columnHelper.accessor('phone', {
+        header: 'Phone',
+        cell: ({ row }) => (
+          <PhoneCell phone={row.original.phone} leadId={row.original._id} lead={row.original} />
+        ),
+      }),
       columnHelper.accessor('destination', {
         header: 'Destination',
         cell: (i) => <DestinationChip name={i.getValue()} />,
+      }),
+      // Same TravelDateCell as the Admin Leads List (LeadDataTable.jsx).
+      columnHelper.accessor('travelDate', {
+        header: 'Travel Date',
+        cell: ({ getValue }) => <TravelDateCell date={getValue()} />,
       }),
       columnHelper.accessor((row) => row.mealPlan || row.mealPreference || 'map', {
         id: 'mealPlan',
@@ -239,6 +255,17 @@ export default function TeamLeadsPage() {
       columnHelper.accessor('budget', {
         header: 'Budget',
         cell: ({ getValue }) => <BudgetBadge amount={getValue()} />,
+      }),
+      // Same TravelersBadge as the Admin Leads List (LeadDataTable.jsx).
+      columnHelper.accessor('travelers', {
+        header: 'Pax',
+        cell: ({ row }) => (
+          <TravelersBadge
+            travelers={row.original.travelers}
+            adults={row.original.adults}
+            children={row.original.children}
+          />
+        ),
       }),
       columnHelper.accessor('sourceLabel', {
         header: 'Source',
@@ -313,7 +340,7 @@ export default function TeamLeadsPage() {
       {isAllView ? (
         <>
           <div className="flex flex-col xl:flex-row gap-4 items-stretch">
-            <ManagerLeadKpiStrip />
+            <ManagerLeadKpiStrip filters={allLeadsFilters} />
             <ManagerPipelineCard />
           </div>
 

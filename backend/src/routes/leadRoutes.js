@@ -23,6 +23,17 @@ const {
   reassignReactivatedLead,
   updateReactivationStage,
 } = require('../controllers/leadController');
+const {
+  getExecutiveLeadStatusHandler,
+  getExecutiveLeadStatusLeadsHandler,
+  listColdCallingAgentsHandler,
+  assignColdLeadsHandler,
+} = require('../controllers/executiveLeadStatusController');
+const {
+  getColdCallingAnalyticsHandler,
+  getColdCallingAgentDetailHandler,
+  getColdCallingAgentLeadsHandler,
+} = require('../controllers/coldCallingAnalyticsController');
 const { protect } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/requirePermission');
 const { authorize } = require('../middleware/rbac');
@@ -59,6 +70,18 @@ router.get('/check-duplicate', checkDuplicate);
 router.get('/analytics/aging', authorize('admin', 'sales_manager', 'lead_provider'), getAgingAnalytics);
 router.get('/analytics/sources', authorize('admin', 'sales_manager', 'lead_provider'), getSourceAnalyticsHandler);
 router.get('/analytics/executives', authorize('admin', 'sales_manager', 'lead_provider'), getExecutivePerformanceHandler);
+router.get('/analytics/executive-lead-status', authorize('admin'), getExecutiveLeadStatusHandler);
+router.get('/analytics/executive-lead-status/cold-calling/agents', authorize('admin'), listColdCallingAgentsHandler);
+router.post('/analytics/executive-lead-status/cold-calling/assign', authorize('admin'), assignColdLeadsHandler);
+router.get(
+  '/analytics/executive-lead-status/:executiveId/leads',
+  authorize('admin'),
+  getExecutiveLeadStatusLeadsHandler
+);
+// Cold Calling analytics: Admin only (Cold Calling users are additionally fenced out by the role fence).
+router.get('/analytics/cold-calling', authorize('admin'), getColdCallingAnalyticsHandler);
+router.get('/analytics/cold-calling/:agentId', authorize('admin'), getColdCallingAgentDetailHandler);
+router.get('/analytics/cold-calling/:agentId/leads', authorize('admin'), getColdCallingAgentLeadsHandler);
 router.get('/analytics/kpis', authorize('admin', 'sales_manager', 'lead_provider'), getKpis);
 router.get('/analytics/sla', authorize('admin', 'sales_manager', 'lead_provider'), getSlaAnalytics);
 router.get('/audit-log', authorize('admin', 'sales_manager'), listAuditLog);

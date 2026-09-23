@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import API from '../../api/axios';
@@ -32,6 +33,24 @@ import { DEFAULT_PAGE_SIZE } from '../ui/TablePagination';
 
 const emptyFilters = { search: '', status: '', priority: '', executive: '' };
 
+/**
+ * The `status` value each KPI tab needs alongside `kpiTab` to reproduce that KPI's exact backend
+ * population (getFollowUpSummary's facets, queryHelpers.buildFollowUpTabFilter) — NOT a new
+ * filtering system, just correctly driving the two existing params (`tab`/`kpiTab` and `status`)
+ * together instead of leaving a stale `status` value from a prior selection combined in:
+ * - today: buildDueTodayFollowUpFilter/the "today" facet is status:'pending' + scheduledAt today,
+ *   but buildFollowUpTabFilter('today') only encodes the date half — status:'pending' must be
+ *   supplied externally (this is also how the Admin Dashboard's deep link already works).
+ * - missed: buildFollowUpTabFilter('missed') is a self-contained $or (status:'missed' OR
+ *   overdue-pending) — any external `status` equality ANDed on top of that $or silently
+ *   collapses it to just the overdue-pending branch (or nothing, once syncMissedFollowUps has
+ *   already flipped those to 'missed') — this was the reported bug.
+ * - upcoming: buildFollowUpTabFilter('upcoming') already includes status:'pending' internally.
+ * - completed: buildFollowUpTabFilter has no 'completed' branch (falls through to `{}`) — the
+ *   completed facet is status:'completed' alone, so it must be supplied externally.
+ */
+const KPI_TAB_STATUS = { today: 'pending', missed: '', upcoming: '', completed: 'completed' };
+
 export default function FollowUpPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -40,9 +59,18 @@ export default function FollowUpPage() {
   const followEndpoint = canCreate ? '/sales-executive/followups' : '/followups';
   const leadsEndpoint = canCreate ? '/sales-executive/leads' : '/leads';
 
+  // Deep-link support for Action Required cards (?kpiTab=today|missed|upcoming|completed,
+  // optionally &status=...). An explicit ?status= always wins; otherwise it's derived from
+  // ?kpiTab= via KPI_TAB_STATUS so a bare ?kpiTab=missed link still reproduces that KPI's
+  // exact population on open.
+  const [searchParams] = useSearchParams();
+  const initialKpiTab = searchParams.get('kpiTab') || '';
   const [view, setView] = useState('list');
-  const [filters, setFilters] = useState(emptyFilters);
-  const [kpiFilter, setKpiFilter] = useState('');
+  const [filters, setFilters] = useState(() => ({
+    ...emptyFilters,
+    status: searchParams.get('status') ?? (KPI_TAB_STATUS[initialKpiTab] ?? ''),
+  }));
+  const [kpiFilter, setKpiFilter] = useState(() => initialKpiTab);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   const [modalOpen, setModalOpen] = useState(false);
   const [editFollowup, setEditFollowup] = useState(null);
@@ -126,7 +154,15 @@ export default function FollowUpPage() {
   }, [timeline, filters.search]);
 
   const handleKpiFilter = (key) => {
-    setKpiFilter((prev) => (prev === key ? '' : key));
+    setKpiFilter((prev) => {
+      const next = prev === key ? '' : key;
+      // The selected KPI tab is authoritative over the manual status dropdown for the
+      // population it represents — otherwise a leftover status from a previous KPI/manual
+      // selection gets ANDed onto the new tab's filter and silently breaks it (see
+      // KPI_TAB_STATUS above). Toggling a KPI off clears status back to unfiltered.
+      setFilters((f) => ({ ...f, status: next ? (KPI_TAB_STATUS[next] ?? '') : '' }));
+      return next;
+    });
   };
 
   const handleAdd = async (data) => {

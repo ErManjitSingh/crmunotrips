@@ -15,6 +15,7 @@ const {
   buildLeadSearchFilter,
   buildFollowUpTabFilter,
   buildFollowUpCategoryFilter,
+  buildDueTodayFollowUpFilter,
   startOfDay,
   isConvertedListQuery,
   applyConvertedPeriodFilter,
@@ -212,28 +213,59 @@ function buildExecutiveLeadFilter(filterKey, query = {}) {
   return {};
 }
 
+// Sales Manager's "All Leads" Branch filter is a read-only widening of this list only.
+// Read from `leadBranchId`, NOT `branchId` — the generic `branchId` query param is
+// inspected by the auth middleware (req.branchId resolution) for org-wide branch
+// switching, and a non-org-wide role sending a mismatched `branchId` gets a 403 before
+// this code ever runs. This dedicated param avoids that collision entirely, and never
+// overwrites options.branchId (req.branchId) — every other manager endpoint (assign,
+// quotations, dashboard, notifications, reports...) stays scoped to their own branch
+// exactly as before. No branch picked -> falls back to their own branch, same as today.
+function resolveManagerLeadBranchId(query = {}, options = {}) {
+  const requestedBranchId = parseValidObjectId(query.leadBranchId);
+  return requestedBranchId || options.branchId;
+}
+
+/**
+ * The complete effective Mongo filter for the Sales Manager "All Leads" list — mirrors
+ * leadRepository.buildEffectiveLeadFilter's Admin counterpart exactly, so the Leads List and the
+ * KPI strip always see the same filtered set. Every Filters-panel field (via buildManagerLeadFilter,
+ * which itself falls through to buildLeadListFilter) plus branch scoping plus the id-narrowing
+ * filters (package-shared, Status Movement) that can't be expressed as plain field matches.
+ */
+async function buildEffectiveManagerLeadFilter(query = {}, options = {}) {
+  const branchId = resolveManagerLeadBranchId(query, options);
+  const built = await buildManagerLeadFilter(query, { branchId });
+  const filter = withActiveLead(withBranch(built, branchId));
+
+  if (wantsPackageSharedLeads(query)) {
+    const ids = await findPackageSharedLeadIds({ branchId });
+    filter._id = { $in: ids.length ? ids : [] };
+  }
+
+  // Status Movement (Admin/Sales Manager "Status Movement" filter — same query, same ledger,
+  // see leadRepository.buildEffectiveLeadFilter's identical block for the Admin list). Queries
+  // LeadStatusMovement only, never infers movement from the Lead document itself. Intersected
+  // with any id-narrowing already applied above (package-shared) so it composes correctly.
+  if (query.statusMovement) {
+    const { findLeadIdsForMovement } = require('../services/leadStatusMovementService');
+    const ids = await findLeadIdsForMovement(query.statusMovement, { branchId });
+    const idSet = new Set(ids.map(String));
+    if (filter._id && filter._id.$in) {
+      filter._id = { $in: filter._id.$in.filter((id) => idSet.has(String(id))) };
+    } else {
+      filter._id = { $in: ids };
+    }
+  }
+
+  return filter;
+}
+
 async function findManagerLeadsPaginated(query = {}, options = {}) {
   const { page, limit, skip } = parsePagination(query);
   const sort = parseSort(query, { createdAt: -1 });
 
-  // Sales Manager's "All Leads" Branch filter is a read-only widening of this list only.
-  // Read from `leadBranchId`, NOT `branchId` — the generic `branchId` query param is
-  // inspected by the auth middleware (req.branchId resolution) for org-wide branch
-  // switching, and a non-org-wide role sending a mismatched `branchId` gets a 403 before
-  // this code ever runs. This dedicated param avoids that collision entirely, and never
-  // overwrites options.branchId (req.branchId) — every other manager endpoint (assign,
-  // quotations, dashboard, notifications, reports...) stays scoped to their own branch
-  // exactly as before. No branch picked -> falls back to their own branch, same as today.
-  const requestedBranchId = parseValidObjectId(query.leadBranchId);
-  const effectiveBranchId = requestedBranchId || options.branchId;
-
-  const built = await buildManagerLeadFilter(query, { branchId: effectiveBranchId });
-  const filter = withActiveLead(withBranch(built, effectiveBranchId));
-
-  if (wantsPackageSharedLeads(query)) {
-    const ids = await findPackageSharedLeadIds({ branchId: effectiveBranchId });
-    filter._id = { $in: ids.length ? ids : [] };
-  }
+  const filter = await buildEffectiveManagerLeadFilter(query, options);
 
   const needsTotal = page <= DEEP_PAGE_THRESHOLD;
 
@@ -248,8 +280,12 @@ async function findManagerLeadsPaginated(query = {}, options = {}) {
     needsTotal ? Lead.countDocuments(filter) : Promise.resolve(null),
   ]);
 
-  const enriched = rows.map(enrichLead);
+  let enriched = rows.map(enrichLead);
   await attachFirstCall(enriched);
+  // Phone Number Visibility / Call-Gating: same gate as Admin (leadController.listLeads) and the
+  // Sales Executive's own list below — the Sales Manager view must not leak the real number ahead
+  // of a first logged call either. See utils/leadPhoneVisibility.
+  enriched = await applyPhoneVisibilityGate(enriched);
 
   return paginatedResponse(enriched, {
     page,
@@ -477,7 +513,11 @@ async function resolveLeadIdsForSearch(search, options = {}) {
 
 async function findScopedFollowUpsPaginated(baseFilter, query = {}, options = {}) {
   const { page, limit, skip } = parsePagination(query, LIST_PAGINATION);
-  const sort = parseSort(query, { scheduledAt: 1 });
+  // Missed follow-ups must show the newest (most recently overdue) scheduledAt first, applied
+  // server-side before pagination so page 1 is genuinely the newest globally — not just the
+  // generic oldest-first default used by the other tabs.
+  const isMissedTab = (query.tab || query.kpiTab) === 'missed';
+  const sort = parseSort(query, isMissedTab ? { scheduledAt: -1 } : { scheduledAt: 1 });
 
   const filter = {
     ...withBranch(baseFilter, options.branchId),
@@ -530,6 +570,13 @@ async function getFollowUpSummary(baseFilter = {}, options = {}) {
   const todayStart = startOfDay();
   const todayEnd = new Date(todayStart);
   todayEnd.setHours(23, 59, 59, 999);
+  // Admin Follow-up Management "Today's Follow-ups" must match the Dashboard's "Follow-ups Due
+  // Today" Action Required KPI population exactly (pending-only) — gated behind an option so the
+  // executive's own follow-up summary (getExecutiveFollowUpSummary) keeps its existing
+  // all-statuses "today" behavior, unchanged.
+  const todayMatch = options.dueTodayOnly
+    ? buildDueTodayFollowUpFilter()
+    : { scheduledAt: { $gte: todayStart, $lte: todayEnd } };
 
   const [row] = await FollowUp.aggregate([
     { $match: scopedBase },
@@ -537,7 +584,7 @@ async function getFollowUpSummary(baseFilter = {}, options = {}) {
       $facet: {
         total: [{ $count: 'n' }],
         today: [
-          { $match: { scheduledAt: { $gte: todayStart, $lte: todayEnd } } },
+          { $match: todayMatch },
           { $count: 'n' },
         ],
         missed: [
@@ -598,4 +645,6 @@ module.exports = {
   getFollowUpSummary,
   getQuotationStats,
   buildExecutiveLeadFilter,
+  buildEffectiveManagerLeadFilter,
+  resolveManagerLeadBranchId,
 };

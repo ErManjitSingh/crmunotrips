@@ -233,7 +233,17 @@ export default function TeamPerformanceDashboard({ data, canSetTargets = false, 
                       {i === 0 ? <Medal className="w-4 h-4" /> : member.rank}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-content-primary">{member.name}</p>
+                      <p className="font-semibold text-sm text-content-primary flex items-center gap-2">
+                        {member.name}
+                        {member.lowFollowUp && (
+                          <span
+                            title={`Follow-up completion ${member.followUpCompletion}% — below the 40% threshold`}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200"
+                          >
+                            Low Follow-up
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-content-muted">{member.conversions} conversions · {member.followUps} follow-ups</p>
                     </div>
                     <div className="text-right">

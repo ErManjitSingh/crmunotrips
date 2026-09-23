@@ -185,7 +185,15 @@ const updateTeamLeader = asyncHandler(async (req, res) => {
 
 const getTeamPerformance = asyncHandler(async (req, res) => {
   const { buildTeamPerformance } = require('../services/dashboardService');
-  const data = await buildTeamPerformance({ branchId: req.branchId });
+  const dateFrom = typeof req.query.dateFrom === 'string' ? req.query.dateFrom : '';
+  const dateTo = typeof req.query.dateTo === 'string' ? req.query.dateTo : '';
+  const source = typeof req.query.source === 'string' ? req.query.source : '';
+  const data = await buildTeamPerformance({
+    branchId: req.branchId,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+    source: source || undefined,
+  });
   res.json(data);
 });
 

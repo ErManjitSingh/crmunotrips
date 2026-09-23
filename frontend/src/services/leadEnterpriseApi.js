@@ -1,4 +1,5 @@
 import API from '../api/axios';
+import { coldCallingCallHistoryPath, coldCallingCallNotesPath } from '../lib/coldCallingCalls';
 
 export async function checkLeadDuplicate({ phone, alternatePhone, email, excludeId }) {
   const { data } = await API.get('/leads/check-duplicate', {
@@ -45,6 +46,18 @@ export async function fetchLeadAgingAnalytics() {
 
 export async function addCallNote(leadId, payload) {
   const { data } = await API.post(`/leads/${leadId}/call-notes`, payload);
+  return data;
+}
+
+/** Cold Calling: same CallNote write as addCallNote, through the route that requires an active assignment. */
+export async function addColdCallingCallNote(leadId, payload) {
+  const { data } = await API.post(coldCallingCallNotesPath(leadId), payload, { skipSuccessToast: true });
+  return data;
+}
+
+/** Cold Calling: the signed-in agent's own calls on one lead. */
+export async function fetchColdCallingCallHistory(leadId, params = {}) {
+  const { data } = await API.get(coldCallingCallHistoryPath(leadId), { params, skipSuccessToast: true, skipErrorToast: true });
   return data;
 }
 
@@ -117,6 +130,71 @@ export async function fetchSourceAnalytics() {
 
 export async function fetchExecutivePerformance() {
   const { data } = await API.get('/leads/analytics/executives', { skipSuccessToast: true });
+  return data;
+}
+
+/** Admin: per-executive Assigned / Cold / Warm / Hot / Unclassified. Errors are shown inline by the page. */
+export async function fetchExecutiveLeadStatus(params = {}) {
+  const { data } = await API.get('/leads/analytics/executive-lead-status', {
+    params,
+    skipSuccessToast: true,
+    skipErrorToast: true,
+  });
+  return data;
+}
+
+/** Admin: every lead in one executive's overview row (paginated). */
+export async function fetchExecutiveLeadStatusLeads(executiveId, params = {}) {
+  const { data } = await API.get(`/leads/analytics/executive-lead-status/${executiveId}/leads`, {
+    params,
+    skipSuccessToast: true,
+    skipErrorToast: true,
+  });
+  return data;
+}
+
+/** Admin: active Cold Calling users for the assignment picker. */
+export async function fetchColdCallingAgents(branchId) {
+  const { data } = await API.get('/leads/analytics/executive-lead-status/cold-calling/agents', {
+    params: branchId ? { branchId } : undefined,
+    skipSuccessToast: true,
+    skipErrorToast: true,
+  });
+  return Array.isArray(data?.data) ? data.data : [];
+}
+
+/**
+ * Admin: assign Cold leads to a Cold Calling agent in one request (all-or-nothing). This does NOT
+ * change the Sales owner. A 409 carries `failures` per lead; the modal shows them inline.
+ */
+export async function assignLeadsToColdCalling({ executiveId, leadIds, coldCallerId }) {
+  const { data } = await API.post(
+    '/leads/analytics/executive-lead-status/cold-calling/assign',
+    { executiveId, leadIds, coldCallerId },
+    { skipSuccessToast: true, skipErrorToast: true }
+  );
+  return data;
+}
+
+/** Admin: Cold Calling analytics overview / one agent / one agent's leads. Errors are shown inline by the page. */
+export async function fetchColdCallingAnalytics(params = {}) {
+  const { data } = await API.get('/leads/analytics/cold-calling', { params, skipSuccessToast: true, skipErrorToast: true });
+  return data;
+}
+
+export async function fetchColdCallingAgentDetail(agentId, params = {}) {
+  const { data } = await API.get(`/leads/analytics/cold-calling/${agentId}`, { params, skipSuccessToast: true, skipErrorToast: true });
+  return data;
+}
+
+export async function fetchColdCallingAgentLeads(agentId, params = {}) {
+  const { data } = await API.get(`/leads/analytics/cold-calling/${agentId}/leads`, { params, skipSuccessToast: true, skipErrorToast: true });
+  return data;
+}
+
+/** Cold Caller: my own assignments (read-only). Scope comes from the session, never from a param. */
+export async function fetchMyColdCallingLeads(params = {}) {
+  const { data } = await API.get('/cold-calling/my-leads', { params, skipSuccessToast: true, skipErrorToast: true });
   return data;
 }
 

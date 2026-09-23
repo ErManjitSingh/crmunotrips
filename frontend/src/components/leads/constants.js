@@ -5,6 +5,33 @@ export const LEAD_STATUSES = [
   { value: 'converted', label: 'Converted', meaning: 'Customer confirmed / paid — booking started' },
 ];
 
+/**
+ * Leads that have actually transitioned between Cold/Warm/Hot buckets at some point, per the
+ * LeadStatusMovement ledger (backend/src/models/LeadStatusMovement.js) — not inferred from the
+ * lead's current status/statusReason. Only transitions recorded from this feature's deployment
+ * date onward exist; there is no backfill for earlier history.
+ */
+export const STATUS_MOVEMENT_OPTIONS = [
+  { value: 'cold_to_warm', label: 'Cold → Warm' },
+  { value: 'warm_to_cold', label: 'Warm → Cold' },
+  { value: 'warm_to_hot', label: 'Warm → Hot' },
+  { value: 'hot_to_warm', label: 'Hot → Warm' },
+  { value: 'cold_to_hot', label: 'Cold → Hot' },
+  { value: 'hot_to_cold', label: 'Hot → Cold' },
+];
+
+/**
+ * Not Opened / Opened, Not Called / Opened & Called — uses only Lead.firstOpenedAt and CallNote
+ * existence exactly as they already mean elsewhere in the app (see LeadListBadges.jsx's
+ * "Opened"/"First call" lines). "Called" is any CallNote, any outcome, any user — not scoped to
+ * the assigned executive.
+ */
+export const ENGAGEMENT_STATUS_OPTIONS = [
+  { value: 'not_opened', label: 'Not Opened' },
+  { value: 'opened_not_called', label: 'Opened, Not Called' },
+  { value: 'opened_called', label: 'Opened & Called' },
+];
+
 /** Internal pipeline values still stored on Lead.status (do not show in UI pickers) */
 export const PIPELINE_LEAD_STATUSES = [
   { value: 'new', label: 'New' },
@@ -58,7 +85,7 @@ export const TRAVEL_MONTHS = [
 ];
 
 export const pageConfig = {
-  '/leads': { title: 'Lead Management', subtitle: 'All travel inquiries', status: '', assignee: '' },
+  '/leads': { title: 'Lead Management', subtitle: 'All travel inquiries', status: '', assignee: '', todayOnly: true },
   '/leads/inbox/new': {
     title: 'New Leads',
     subtitle: 'Fresh inquiries awaiting first contact',
@@ -129,11 +156,17 @@ export const BUDGET_FILTER_OPTIONS = [
 export const emptyFilters = {
   search: '',
   destination: '',
+  // Programmatic-only, URL-driven filter — no Advanced Search control (same pattern as `agent`).
+  // Set when navigating in from the Dashboard's Top Destinations / "View all destinations" drill-down.
+  destinationNames: '',
   source: '',
   agent: '',
   status: '',
   filter: '',
   listStatus: '',
+  statusReason: '',
+  statusMovement: '',
+  engagementStatus: '',
   connected: '',
   travelMonth: '',
   budgetMin: '',

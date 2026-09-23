@@ -11,6 +11,7 @@ const { buildExecutiveDashboard } = require('../services/dashboardService');
 const { getTeamLeaderForExecutive } = require('../services/teamScopeService');
 const { logActivity, getClientIp } = require('../services/activityService');
 const { logLeadActivity } = require('../services/leadActivityService');
+const { trackLeadStatusMovement } = require('../services/leadStatusMovementService');
 const {
   buildLeadEditChanges,
   formatLeadChangeDescription,
@@ -421,6 +422,14 @@ const updateLead = asyncHandler(async (req, res) => {
     }
 
     await lead.save();
+
+    await trackLeadStatusMovement({
+      lead,
+      previousStatus: prevStatus,
+      previousStatusReason: prevReason,
+      actor: req.user,
+      source: 'sales_executive_status_update',
+    });
 
     if (nextStatus !== prevStatus) {
       const typeMap = {

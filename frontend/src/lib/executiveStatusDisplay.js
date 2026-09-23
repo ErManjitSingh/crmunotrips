@@ -158,6 +158,18 @@ function humanizeReasonKey(key) {
 }
 
 /**
+ * Display label for a lead's `statusReason` ONLY: the exact admin-configured option label (Lead
+ * Status Control), else a humanised key; '' when there is no usable reason (empty, or a system
+ * marker like working_progress). Deliberately does no Warm/Hot/Cold classification — callers that
+ * already know the bucket (e.g. the backend's) use this just to explain it.
+ */
+export function getStatusReasonLabel(statusReason) {
+  // Option keys are lowercase, and the backend's bucket match is case-insensitive — match the same way.
+  const key = resolveListReasonKey({ statusReason: String(statusReason ?? '').toLowerCase() });
+  return key ? humanizeReasonKey(key) : '';
+}
+
+/**
  * Status display for leads.
  * - Only Warm / Hot / Cold when user picked an option (temperature alone ≠ status)
  * - The selected option's bucket is always the lead's current Warm/Hot/Cold status

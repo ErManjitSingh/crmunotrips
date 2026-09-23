@@ -7,7 +7,7 @@ const User = require('../models/User');
 const Team = require('../models/Team');
 const Booking = require('../models/Booking');
 const LeadActivity = require('../models/LeadActivity');
-const { startOfDay, endOfDay, enrichLead } = require('../utils/queryHelpers');
+const { startOfDay, endOfDay, enrichLead, buildDueTodayFollowUpFilter } = require('../utils/queryHelpers');
 const {
   sumConvertedPackageRevenue,
   aggregateConvertedPackageRevenueByMonth,
@@ -20,6 +20,11 @@ const { withBranch } = require('../utils/branchScope');
 const { sumMarketingSpendInRange } = require('./marketingSpendService');
 const { rollupCityStatsIntoStates, resolveDestinationGroupValues } = require('../utils/destinationHierarchy');
 const { attachPhoneVisibility, maskLeadPhone } = require('../utils/leadPhoneVisibility');
+
+/** Single source of truth for the "Low Follow-up Executives" cutoff — used by both the
+ * Action Required KPI (buildAdminDashboard) and the /team performance drill-down
+ * (buildTeamPerformance), so the two never diverge. */
+const LOW_FOLLOWUP_COMPLETION_THRESHOLD = 40;
 
 /**
  * Apply the SAME call-gated phone visibility rule (see utils/leadPhoneVisibility.js) to a batch
@@ -462,6 +467,47 @@ function activeLeadScope(extra = {}, branchId) {
   return withBranch({ ...extra, isDeleted: { $ne: true } }, branchId);
 }
 
+/**
+ * Raw per-destination-text lead counts (name-normalized to 'Not specified' when empty, grouped
+ * case-insensitively) for the given lead scope — the one place this counting logic is defined.
+ * Callers pass the result through rollupCityStatsIntoStates (utils/destinationHierarchy.js) for
+ * the city→state collapse + unknown/Other handling. Used by both buildAdminDashboard's Top-12
+ * card and buildAllDestinations' complete breakdown — never duplicated between them.
+ */
+async function aggregateDestinationCounts(scope) {
+  return Lead.aggregate([
+    { $match: scope },
+    {
+      $project: {
+        destinationRaw: { $trim: { input: { $ifNull: ['$destination', ''] } } },
+        status: 1,
+      },
+    },
+    {
+      $addFields: {
+        destination: {
+          $cond: [
+            { $or: [{ $eq: ['$destinationRaw', ''] }, { $eq: ['$destinationRaw', null] }] },
+            'Not specified',
+            '$destinationRaw',
+          ],
+        },
+      },
+    },
+    {
+      $group: {
+        _id: { $toLower: '$destination' },
+        name: { $first: '$destination' },
+        queries: { $sum: 1 },
+        conversions: {
+          $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] },
+        },
+      },
+    },
+    { $sort: { queries: -1, name: 1 } },
+  ]);
+}
+
 async function buildReactivationWidget(branchId, assigneeIds = null) {
   const base = activeLeadScope({ 'reactivation.isReactivated': true }, branchId);
   if (Array.isArray(assigneeIds)) {
@@ -775,39 +821,7 @@ async function buildAdminDashboard(options = {}) {
         },
       },
     ]),
-    Lead.aggregate([
-      {
-        $match: isAllTime ? liveLeadScope : periodLeadScope,
-      },
-      {
-        $project: {
-          destinationRaw: { $trim: { input: { $ifNull: ['$destination', ''] } } },
-          status: 1,
-        },
-      },
-      {
-        $addFields: {
-          destination: {
-            $cond: [
-              { $or: [{ $eq: ['$destinationRaw', ''] }, { $eq: ['$destinationRaw', null] }] },
-              'Not specified',
-              '$destinationRaw',
-            ],
-          },
-        },
-      },
-      {
-        $group: {
-          _id: { $toLower: '$destination' },
-          name: { $first: '$destination' },
-          queries: { $sum: 1 },
-          conversions: {
-            $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] },
-          },
-        },
-      },
-      { $sort: { queries: -1, name: 1 } },
-    ]),
+    aggregateDestinationCounts(isAllTime ? liveLeadScope : periodLeadScope),
   ]);
 
   const agentIds = topAgents.map((a) => a._id);
@@ -1120,46 +1134,91 @@ async function buildAdminDashboard(options = {}) {
   ];
 
   const followUpsDueToday = await FollowUp.countDocuments(
-    withBranch(
-      {
-        status: 'pending',
-        scheduledAt: { $gte: todayStart, $lte: todayEnd },
-      },
-      branchId
-    )
+    withBranch(buildDueTodayFollowUpFilter(), branchId)
   );
+  // "24+ hrs" cutoff — same rolling-window convention used elsewhere for hour-based
+  // aging (e.g. leadConnectedProgressService.js CONNECTED_TO_WIP_HOURS), not a calendar-day
+  // boundary. Untouched semantics (firstContactAt) are unchanged — this only adds the missing age gate.
+  const untouchedCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const leadsUntouched = await Lead.countDocuments(
     activeLeadScope(
       {
         status: 'new',
         $or: [{ firstContactAt: null }, { firstContactAt: { $exists: false } }],
+        createdAt: { $lte: untouchedCutoff },
       },
       branchId
     )
   );
+  // Customer-facing, not-yet-decided quotations only. 'pending_approval' is an internal
+  // TL/manager approval-workflow status (the customer never saw it) — excluded per the Phase 2
+  // definition. 'draft'/'approved'/'rejected' are already excluded (not in the $in list); no
+  // 'expired'/'cancelled' status exists on this model (see backend/src/models/Quotation.js).
   const quotationsAwaiting = await Quotation.countDocuments(
-    withBranch({ status: { $in: ['sent', 'viewed', 'negotiation', 'pending_approval'] } }, branchId)
+    withBranch({ status: { $in: ['sent', 'viewed', 'negotiation'] } }, branchId)
   );
 
   let pendingPaymentCount = 0;
   try {
+    // Exclude cancelled + refund_completed bookings — both are terminal/exited states
+    // (same treatment as the archived/cancelled exclusion already used for the "upcoming trips"
+    // scope in operationsService.js). refund_pending is intentionally kept: elsewhere in this
+    // codebase (operationsService.js "active" booking scope) it is still treated as an open,
+    // in-progress state, not a settled one.
     pendingPaymentCount = await Booking.countDocuments(
-      withBranch({ paymentStatus: { $in: ['pending', 'partial'] } }, branchId)
+      withBranch(
+        { paymentStatus: { $in: ['pending', 'partial'] }, status: { $nin: ['cancelled', 'refund_completed'] } },
+        branchId
+      )
     );
   } catch {
     pendingPaymentCount = 0;
   }
 
   const lowFollowUpExecutives = (executivePerformance?.executives || []).filter(
-    (ex) => Number(ex.followUpCompletion || 0) < 40 && Number(ex.assigned || 0) > 0
+    (ex) =>
+      Number(ex.followUpCompletion || 0) < LOW_FOLLOWUP_COMPLETION_THRESHOLD &&
+      Number(ex.assigned || 0) > 0
   ).length;
 
+  // Carry the same dashboard period into the /team drill-down so it evaluates the identical
+  // executive population the KPI just counted (see buildTeamPerformance, which reuses
+  // getExecutivePerformance — the same calculation, not a second one).
+  const teamPerfParams = new URLSearchParams({ tab: 'performance' });
+  if (dateFrom) teamPerfParams.set('dateFrom', dateFrom);
+  if (dateTo) teamPerfParams.set('dateTo', dateTo);
+  if (source) teamPerfParams.set('source', source);
+
   const actionRequired = [
-    { key: 'followups_due', label: 'Follow-ups Due Today', count: followUpsDueToday, link: '/followups', tone: 'violet' },
+    {
+      key: 'followups_due',
+      label: 'Follow-ups Due Today',
+      count: followUpsDueToday,
+      link: '/followups?kpiTab=today&status=pending',
+      tone: 'violet',
+    },
     { key: 'untouched', label: 'Leads Untouched', count: leadsUntouched, link: '/leads/inbox/new', tone: 'amber' },
-    { key: 'quotes_awaiting', label: 'Quotations Awaiting Response', count: quotationsAwaiting, link: '/quotations', tone: 'blue' },
-    { key: 'pending_payment', label: 'Bookings Pending Payment', count: pendingPaymentCount, link: '/bookings', tone: 'rose' },
-    { key: 'low_followup_execs', label: 'Low Follow-up Executives', count: lowFollowUpExecutives, link: '/team', tone: 'orange' },
+    {
+      key: 'quotes_awaiting',
+      label: 'Quotations Awaiting Response',
+      count: quotationsAwaiting,
+      link: '/quotations?status=sent,viewed,negotiation',
+      tone: 'blue',
+    },
+    {
+      key: 'pending_payment',
+      label: 'Bookings Pending Payment',
+      count: pendingPaymentCount,
+      link: '/operations-manager/bookings/unpaid',
+      tone: 'rose',
+    },
+    {
+      key: 'low_followup_execs',
+      label: 'Low Follow-up Executives',
+      count: lowFollowUpExecutives,
+      link: `/team?${teamPerfParams.toString()}`,
+      tone: 'orange',
+    },
   ];
 
   const todayRevenue = await sumRevenueInRange(branchId, todayStart, todayEnd);
@@ -1408,6 +1467,67 @@ async function buildDestinationDetail(options = {}) {
       revenue,
       conversionRate,
     },
+  };
+}
+
+/**
+ * Complete destination breakdown (no Top-N cap) for the "View all destinations" drill-down —
+ * same period/branch/source scope, same aggregateDestinationCounts + rollupCityStatsIntoStates
+ * pipeline as buildAdminDashboard's Top-12 card, just without the display `limit`, so every
+ * matching lead is represented in the returned rows (sum(destinations[].queries) === totalLeads).
+ */
+async function buildAllDestinations(options = {}) {
+  const { branchId, dateFrom, dateTo, source } = options;
+  const { isAllTime, periodStart, periodEnd } = resolveReportPeriod(dateFrom, dateTo);
+  const sourceFilter = source ? { source } : {};
+  const scope = activeLeadScope(
+    isAllTime
+      ? { ...sourceFilter }
+      : { createdAt: { $gte: periodStart, $lte: periodEnd }, ...sourceFilter },
+    branchId
+  );
+
+  const destinationAgg = await aggregateDestinationCounts(scope);
+
+  const destinations = await rollupCityStatsIntoStates(
+    destinationAgg.map((row) => ({
+      name: row.name,
+      queries: row.queries || 0,
+      conversions: row.conversions || 0,
+      conversionRate: row.queries
+        ? Math.round(((row.conversions || 0) / row.queries) * 1000) / 10
+        : 0,
+    })),
+    {
+      nameField: 'name',
+      metricFields: ['queries', 'conversions'],
+      rateConfig: { field: 'conversionRate', numerator: 'conversions', denominator: 'queries' },
+      sortField: 'queries',
+      // "Not specified" here (vs. the Top-12 card's "Other") only changes the display label for
+      // this endpoint's missing-destination row — classifyDestination treats both labels (plus
+      // "Others") as the same bucket, so a click-through still resolves correctly either way.
+      groupUnknownAs: 'Not specified',
+      // No `limit` — this endpoint's entire purpose is the complete, uncapped breakdown.
+    }
+  );
+
+  const totalLeads = destinations.reduce((sum, d) => sum + (Number(d.queries) || 0), 0);
+  const withPercentage = destinations.map((d) => ({
+    ...d,
+    percentage: totalLeads ? Math.round((d.queries / totalLeads) * 1000) / 10 : 0,
+  }));
+
+  return {
+    period: {
+      from: isAllTime ? null : periodStart.toISOString(),
+      to: periodEnd.toISOString(),
+      isAllTime,
+      label: isAllTime
+        ? 'All Time'
+        : `${periodStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} - ${periodEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+    },
+    totalLeads,
+    destinations: withPercentage,
   };
 }
 
@@ -2532,8 +2652,16 @@ async function buildReportsAnalytics(options = {}) {
 }
 
 async function buildTeamPerformance(options = {}) {
-  const { branchId } = options;
+  const { branchId, dateFrom, dateTo, source } = options;
   const executives = await User.find(withBranch({ role: 'sales_executive', status: 'active' }, branchId)).lean();
+
+  // Reuse the SAME executive-performance calculation the Action Required "Low Follow-up
+  // Executives" KPI uses (leadAnalyticsService.getExecutivePerformance, called from
+  // buildAdminDashboard) — so this drill-down can never diverge from what the KPI counted, and
+  // so it respects the same dashboard date period instead of a second, independent definition.
+  const executivePerf = await getExecutivePerformance(branchId, { dateFrom, dateTo, source });
+  const perfByExec = new Map((executivePerf.executives || []).map((ex) => [String(ex._id), ex]));
+
   const members = await Promise.all(
     executives.map(async (ex) => {
       const [assigned, converted, followUps, revenue] = await Promise.all([
@@ -2542,6 +2670,9 @@ async function buildTeamPerformance(options = {}) {
         FollowUp.countDocuments({ assignedTo: ex._id, status: 'pending' }),
         sumConvertedPackageRevenue({ assigneeId: ex._id, branchId }),
       ]);
+      const perf = perfByExec.get(String(ex._id));
+      const followUpCompletion = Number(perf?.followUpCompletion || 0);
+      const perfAssigned = Number(perf?.assigned || 0);
       return {
         name: ex.name,
         assigned,
@@ -2550,6 +2681,10 @@ async function buildTeamPerformance(options = {}) {
         followUps,
         revenue,
         conversionRate: assigned ? Math.round((converted / assigned) * 100) : 0,
+        followUpCompletion,
+        // Same threshold + population rule as the Action Required KPI (LOW_FOLLOWUP_COMPLETION_THRESHOLD),
+        // evaluated over the SAME getExecutivePerformance result the KPI itself used.
+        lowFollowUp: followUpCompletion < LOW_FOLLOWUP_COMPLETION_THRESHOLD && perfAssigned > 0,
         rank: 0,
       };
     })
@@ -2562,15 +2697,18 @@ async function buildTeamPerformance(options = {}) {
 
   return {
     members,
+    period: executivePerf.period,
     teamRevenue: members.reduce((sum, m) => sum + m.revenue, 0),
     teamConversions: members.reduce((sum, m) => sum + m.conversions, 0),
     teamFollowUps: await FollowUp.countDocuments({ status: 'pending' }),
+    lowFollowUpCount: members.filter((m) => m.lowFollowUp).length,
   };
 }
 
 module.exports = {
   buildAdminDashboard,
   buildDestinationDetail,
+  buildAllDestinations,
   buildExecutiveDashboard,
   buildSalesManagerDashboard,
   buildTeamLeaderDashboard,
