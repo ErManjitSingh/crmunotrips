@@ -116,4 +116,27 @@ function bucketForLead(status, statusReason) {
   return null;
 }
 
-module.exports = { applyListStatusBucket, bucketForLead, BUCKETS };
+/**
+ * The SAME Cold/Warm/Hot rule as bucketForLead() above, expressed as a MongoDB aggregation
+ * expression so a `$group` can classify every lead in the database instead of Node looping
+ * over them. It reuses resolveKeys + reasonPattern (same key lists, same regex source/flags as
+ * the "Lead Status" list filter) and evaluates buckets in the same BUCKETS order, so the first
+ * match wins exactly like bucketForLead. Evaluates to 'cold' | 'warm' | 'hot', or null when the
+ * lead has no bucket (converted, empty/non-matching statusReason) — callers decide how to label null.
+ */
+function buildBucketExpression({ status = '$status', statusReason = '$statusReason' } = {}) {
+  // $regexMatch throws on a non-string input — guard so one malformed document can't fail the query.
+  const reason = { $cond: [{ $eq: [{ $type: statusReason }, 'string'] }, statusReason, null] };
+  const branches = [{ case: { $eq: [status, 'converted'] }, then: null }];
+  for (const bucket of BUCKETS) {
+    const pattern = reasonPattern(resolveKeys(bucket));
+    if (!pattern) continue;
+    branches.push({
+      case: { $regexMatch: { input: reason, regex: pattern.source, options: pattern.flags } },
+      then: bucket,
+    });
+  }
+  return { $switch: { branches, default: null } };
+}
+
+module.exports = { applyListStatusBucket, bucketForLead, buildBucketExpression, BUCKETS };

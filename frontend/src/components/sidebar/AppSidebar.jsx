@@ -66,6 +66,7 @@ export default function AppSidebar({
   quickActions,
   sidebarHero,
   sidebarFooter,
+  showCounts = true,
 }) {
   const location = useLocation();
   const { collapsed, expandedWidth, collapsedWidth } = useSidebar();
@@ -87,7 +88,8 @@ export default function AppSidebar({
     return () => window.clearTimeout(timer);
   }, []);
 
-  const sidebarCounts = useSidebarCounts();
+  // Workspaces with no lead badges (Cold Calling) opt out, so the sidebar never polls /nav-counts.
+  const sidebarCounts = useSidebarCounts(showCounts);
 
   const baseNavItems = useMemo(() => {
     const items = navItemsProp ? navItemsProp : filterNavItems(mainNavItems, authUser || user);

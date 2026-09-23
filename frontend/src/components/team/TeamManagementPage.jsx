@@ -19,6 +19,7 @@ import { toast } from '../../context/ToastContext';
 import { useDataRefresh } from '../../hooks/useDataRefresh';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
+import { LEAD_PROVIDER_BLOCKED_ROLE_SLUGS } from '../../auth';
 
 const tabIcons = { Users, Shield, Activity, Trophy };
 const emptyFilters = { search: '', status: '', roleId: '', department: '' };
@@ -58,7 +59,7 @@ export default function TeamManagementPage() {
   const canSetTargets = TARGET_SETTER_ROLES.has(authUser?.role);
   const assignableRoles =
     authUser?.role === 'lead_provider'
-      ? roles.filter((r) => !['admin', 'hr_admin', 'lead_provider'].includes(r.slug))
+      ? roles.filter((r) => !LEAD_PROVIDER_BLOCKED_ROLE_SLUGS.includes(r.slug))
       : roles;
 
   const fetchUsers = useCallback(() => {

@@ -25,6 +25,7 @@ const TripTask = require('../models/TripTask');
 const TripDocument = require('../models/TripDocument');
 const SupportTicket = require('../models/SupportTicket');
 const Voucher = require('../models/Voucher');
+const ColdCallingAssignment = require('../models/ColdCallingAssignment');
 
 async function ensureIndexes() {
   await Promise.all([
@@ -119,6 +120,8 @@ async function ensureIndexes() {
     Quotation.collection.createIndex({ createdByExecutive: 1, branchId: 1, status: 1 }, { background: true }),
     Lead.collection.createIndex({ branchId: 1, status: 1, firstContactAt: 1, createdAt: 1 }, { background: true }),
     Lead.collection.createIndex({ branchId: 1, assignedTo: 1, isDeleted: 1, priority: 1 }, { background: true }),
+    // Executive Lead Status report: branch-scoped "assigned in period" ($match on branchId + assignedAt range).
+    Lead.collection.createIndex({ branchId: 1, assignedAt: 1 }, { background: true }),
     FollowUp.collection.createIndex({ status: 1, scheduledAt: 1 }, { background: true }),
 
     UserSession.collection.createIndex({ userId: 1, loginAt: -1 }, { background: true }),
@@ -126,6 +129,22 @@ async function ensureIndexes() {
     UserSession.collection.createIndex({ status: 1, disconnectSignalAt: 1 }, { background: true }),
     UserSession.collection.createIndex({ role: 1, status: 1, loginAt: 1 }, { background: true }),
     UserSession.collection.createIndex({ branchId: 1, loginAt: -1 }, { background: true }),
+    // Cold Calling assignments: the partial UNIQUE index on active leadId is what makes duplicate
+    // assignment impossible under concurrency, so it is built at boot rather than left to autoIndex.
+    // Idempotent (same definition as the schema); the collection starts empty.
+    ColdCallingAssignment.createIndexes(),
+    // Cold Calling call de-duplication (partial unique; see models/CallNote.js). Only this ONE index is
+    // ensured here — CallNote.createIndexes() would also try to build every other schema-declared index
+    // on the (large) calls collection at boot. Partial filter => only new Cold Calling calls are indexed.
+    CallNote.collection.createIndex(
+      { leadId: 1, userId: 1, startedAt: 1 },
+      {
+        unique: true,
+        background: true,
+        name: 'unique_cold_calling_call_start',
+        partialFilterExpression: { callerRole: 'cold_calling', startedAt: { $exists: true } },
+      }
+    ),
   ]);
 
   console.log('[MongoDB] Performance indexes ensured');

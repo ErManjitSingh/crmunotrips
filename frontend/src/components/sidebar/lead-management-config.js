@@ -14,6 +14,7 @@ import {
   Timer,
   Shield,
   Archive,
+  ListChecks,
 } from 'lucide-react';
 
 const leadPerm = { module: 'leads', action: 'view' };
@@ -141,6 +142,13 @@ export const leadManagementSections = [
         label: 'Lead Analytics',
         icon: BarChart2,
         roles: analyticsRoles,
+        permission: leadPerm,
+      },
+      {
+        path: '/leads/executive-lead-status',
+        label: 'Executive Lead Status',
+        icon: ListChecks,
+        roles: ['admin'],
         permission: leadPerm,
       },
       {

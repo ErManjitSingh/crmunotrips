@@ -17,6 +17,7 @@ const {
   SESSION_WINDOW_ROLES,
 } = require('../utils/orgTimezone');
 const { getClientIp } = require('../services/activityService');
+const { assertRoleMayCall } = require('./restrictedRoleAccess');
 
 const userCache = new Map();
 const USER_CACHE_MS = 45_000;
@@ -122,6 +123,9 @@ const protect = asyncHandler(async (req, res, next) => {
       throw new ApiError(401, `Work day ended at ${formatClockLabel(EOD_HOUR, EOD_MINUTE)}. Please sign in again.`);
     }
   }
+
+  // Roles that have no business access yet (Cold Calling) are fenced to an explicit allow-list.
+  assertRoleMayCall(user.role, req.originalUrl);
 
   req.sessionId = decoded.sessionId;
 

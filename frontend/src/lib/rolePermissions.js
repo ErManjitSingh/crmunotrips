@@ -104,6 +104,8 @@ const ROLE_PERMISSIONS = {
     users: { view: true, create: true, edit: false, delete: false },
     whatsapp: { use: true, manage: false },
   },
+  // Recognised role only — no permissions until the Cold Calling feature defines them.
+  cold_calling: { ...noPerms() },
 };
 
 export function getPermissionsForRole(role) {

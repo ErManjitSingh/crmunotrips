@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
 
 /** Roles lead providers may not assign when creating/inviting users. */
-const LEAD_PROVIDER_BLOCKED_ROLE_SLUGS = new Set(['admin', 'hr_admin', 'lead_provider']);
+const LEAD_PROVIDER_BLOCKED_ROLE_SLUGS = new Set(['admin', 'hr_admin', 'lead_provider', 'cold_calling']);
 
 function assertActorCanAssignRole(actorRole, roleSlug) {
   if (actorRole === 'admin') return;

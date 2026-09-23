@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Phone } from 'lucide-react';
 import AppModal from '../ui/AppModal';
 import { Button } from '../ui/button';
-import { addCallNote } from '../../services/leadEnterpriseApi';
+import { addCallNote, addColdCallingCallNote } from '../../services/leadEnterpriseApi';
 import { formatCallDurationExact } from '../../lib/callSession';
+import { toast } from '../../context/ToastContext';
 import {
   FOLLOWUP_CATEGORY_OPTIONS,
   getOutcomesForCategory,
@@ -29,6 +30,8 @@ export default function PostCallFollowUpModal({
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  // Synchronous guard: state updates lag a fast double click, a ref does not.
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (!open || !session) return;
@@ -45,14 +48,18 @@ export default function PostCallFollowUpModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     if (!outcome) {
       setError('Select a status option');
       return;
     }
+    submittingRef.current = true;
     setSaving(true);
     setError('');
     try {
-      const saved = await addCallNote(session.leadId, {
+      // Same call-end mechanism for everyone; a Cold Calling agent's goes through the assignment-checked route.
+      const saveCall = session.coldCalling ? addColdCallingCallNote : addCallNote;
+      const saved = await saveCall(session.leadId, {
         outcome,
         notes: notes.trim(),
         durationSeconds,
@@ -62,11 +69,14 @@ export default function PostCallFollowUpModal({
         category,
         statusReason: notes.trim() ? `${outcome} — ${notes.trim()}` : outcome,
       });
+      // The shared success toast reads "Lead added" for any /leads URL; say what actually happened.
+      if (session.coldCalling) toast.success(saved?.duplicate ? 'Call was already saved' : 'Call saved');
       onSaved?.(saved);
       onClose?.();
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to save call');
     } finally {
+      submittingRef.current = false;
       setSaving(false);
     }
   };
@@ -85,7 +95,7 @@ export default function PostCallFollowUpModal({
               Duration: {formatCallDurationExact(durationSeconds)}
             </p>
             <p className="mt-1 text-[11px] font-medium text-violet-600">
-              Set Warm / Hot / Cold from this call. Next reminder in 2 hours.
+              {session.coldCalling ? 'Set Warm / Hot / Cold from this call.' : 'Set Warm / Hot / Cold from this call. Next reminder in 2 hours.'}
             </p>
           </div>
         </div>

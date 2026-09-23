@@ -90,6 +90,7 @@ router.use('/skill-assignment', skillAssignmentRoutes);
 router.use('/assignment', assignmentConfigRoutes);
 router.use('/margin-control', destinationMarginRoutes);
 router.use('/marketing-spend', marketingSpendRoutes);
+router.use('/cold-calling', require('./coldCallingRoutes'));
 
 const publicLeadRoutes = require('./publicLeadRoutes');
 const facebookWebhookRoutes = require('./facebookWebhookRoutes');

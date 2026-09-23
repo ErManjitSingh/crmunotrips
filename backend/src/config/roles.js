@@ -7,6 +7,7 @@ const ROLES = [
   "operations_manager",
   "hr_admin",
   "lead_provider",
+  "cold_calling",
 ];
 
 const ROLE_LABELS = {
@@ -18,6 +19,7 @@ const ROLE_LABELS = {
   operations_manager: "Operations Manager",
   hr_admin: "HR Admin",
   lead_provider: "Lead Provider",
+  cold_calling: "Cold Calling",
 };
 
 const ROLE_DASHBOARD_PATHS = {
@@ -29,6 +31,7 @@ const ROLE_DASHBOARD_PATHS = {
   operations_manager: "/operations-manager/dashboard",
   hr_admin: "/hr/dashboard",
   lead_provider: "/lead-provider/dashboard",
+  cold_calling: "/cold-calling",
 };
 
 module.exports = { ROLES, ROLE_LABELS, ROLE_DASHBOARD_PATHS };

@@ -267,7 +267,7 @@ const addCallNote = asyncHandler(async (req, res) => {
       : null;
 
   const role = req.user?.role;
-  const isExecLike = role === 'sales_executive' || role === 'team_leader';
+  const isExecLike = role === 'sales_executive' || role === 'team_leader' || role === 'cold_calling';
   // Executives cannot set/edit duration manually — only tracked dial→return window
   let seconds = 0;
   if (fromTimestamps != null) {
@@ -280,6 +280,7 @@ const addCallNote = asyncHandler(async (req, res) => {
     leadId: lead._id,
     branchId: lead.branchId,
     userId: req.user._id,
+    callerRole: req.user.role,
     outcome,
     notes: noteText || `Call outcome: ${String(outcome).replace(/_/g, ' ')}`,
     duration: seconds,

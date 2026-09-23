@@ -6,6 +6,7 @@ const { port, corsOrigins } = require('./config/env');
 const { connectDB, getDbStatus } = require('./config/db');
 const { connectRedis } = require('./config/redis');
 const { ensureIndexes } = require('./config/ensureIndexes');
+const { ensureSystemRoles } = require('./config/ensureSystemRoles');
 const apiRoutes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 const { applySecurityMiddleware } = require('./middleware/security');
@@ -89,6 +90,8 @@ async function start() {
   await connectDB();
   await connectRedis();
   await ensureIndexes();
+  // A missing role document only hides the role from dropdowns — never stop the API for it.
+  await ensureSystemRoles().catch((err) => console.error('[Roles] ensureSystemRoles failed:', err.message));
   await purgeOldActivityLogs();
 
   const httpServer = http.createServer(app);

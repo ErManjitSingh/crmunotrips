@@ -7,6 +7,7 @@ export function isNavItemActive(pathname, path) {
     return pathname === "/lead-provider/dashboard";
   }
   if (basePath === "/leads") return pathname === "/leads";
+  if (basePath === "/cold-calling") return pathname === "/cold-calling";
   if (basePath === "/hr/dashboard")
     return pathname === "/hr/dashboard" || pathname === "/hr";
   if (basePath === "/team/sales-targets") {
