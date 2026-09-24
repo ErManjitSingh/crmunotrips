@@ -46,7 +46,9 @@ export const AuthProvider = ({ children }) => {
         try {
           const fresh = await authService.fetchCurrentUser();
           setUser(fresh);
-          if (fresh?.branchId && fresh?.role !== 'admin') {
+          // Admin + lead_provider are org-wide: don't force home branch on every session
+          // (TopBar still resolves a branch for switching; they can see all via filters).
+          if (fresh?.branchId && fresh?.role !== 'admin' && fresh?.role !== 'lead_provider') {
             store.dispatch(setSelectedBranch(fresh.branchId));
           }
         } catch {
@@ -65,7 +67,7 @@ export const AuthProvider = ({ children }) => {
     const sessionUser = await authService.login(email, password);
     setUser(sessionUser);
     store.dispatch(setCredentials({ user: sessionUser, token: authStorage.getToken() }));
-    if (sessionUser?.branchId && sessionUser?.role !== 'admin') {
+    if (sessionUser?.branchId && sessionUser?.role !== 'admin' && sessionUser?.role !== 'lead_provider') {
       store.dispatch(setSelectedBranch(sessionUser.branchId));
     }
     return sessionUser;
