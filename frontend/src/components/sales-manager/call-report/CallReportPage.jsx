@@ -30,6 +30,8 @@ export default function CallReportPage({ selfOnly = false }) {
   // selfOnly: synthesize the one-item "team" from the already-authenticated user — no roster
   // fetch, since /sales-manager/executives isn't (and shouldn't be) authorized for this role.
   const [executives, setExecutives] = useState(() => (selfOnly && user ? [user] : []));
+  // 'sales' | 'cold_calling' — which team the roster, Team Overview and team-wide analytics show.
+  const [team, setTeam] = useState('sales');
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('timeline');
   const [topTab, setTopTab] = useState('callReport');
@@ -48,8 +50,18 @@ export default function CallReportPage({ selfOnly = false }) {
 
   useEffect(() => {
     if (selfOnly) return;
-    API.get('/sales-manager/executives', { skipSuccessToast: true }).then((r) => setExecutives(r.data || []));
-  }, [selfOnly]);
+    setExecutives([]);
+    const request = team === 'cold_calling'
+      ? API.get('/sales-manager/call-report/team-members', { params: { team }, skipSuccessToast: true })
+      : API.get('/sales-manager/executives', { skipSuccessToast: true });
+    request.then((r) => setExecutives(r.data || []));
+  }, [selfOnly, team]);
+
+  const handleTeamChange = useCallback((next) => {
+    setTeam(next);
+    setExecutiveId('all');
+    setSearch('');
+  }, []);
 
   const fetchSummary = useCallback(() => {
     if (executiveId === 'all') return;
@@ -83,12 +95,12 @@ export default function CallReportPage({ selfOnly = false }) {
     if (executiveId !== 'all') return;
     setTeamLoading(true);
     API.get('/sales-manager/call-report/team-overview', {
-      params: { dateFrom: filters.dateFrom, dateTo: filters.dateTo },
+      params: { dateFrom: filters.dateFrom, dateTo: filters.dateTo, team },
       skipSuccessToast: true,
     })
       .then((r) => setTeamRows(r.data || []))
       .finally(() => setTeamLoading(false));
-  }, [executiveId, filters.dateFrom, filters.dateTo]);
+  }, [executiveId, filters.dateFrom, filters.dateTo, team]);
 
   useEffect(() => { setPageIndex(0); }, [executiveId, filters.dateFrom, filters.dateTo]);
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
@@ -148,7 +160,9 @@ export default function CallReportPage({ selfOnly = false }) {
         description={
           selfOnly
             ? 'Your chronological calling history, summary metrics, and daily target progress'
-            : 'Chronological calling history, summary metrics, and analytics for every sales executive'
+            : team === 'cold_calling'
+              ? 'Chronological calling history, summary metrics, and analytics for every cold calling agent'
+              : 'Chronological calling history, summary metrics, and analytics for every sales executive'
         }
         breadcrumbs={[
           selfOnly ? 'Sales Executive' : user?.role === 'admin' ? 'Admin' : 'Sales Manager',
@@ -198,6 +212,8 @@ export default function CallReportPage({ selfOnly = false }) {
         onExecutiveChange={setExecutiveId}
         search={search}
         onSearchChange={setSearch}
+        team={team}
+        onTeamChange={handleTeamChange}
         selfOnly={selfOnly}
       />
 
@@ -211,11 +227,11 @@ export default function CallReportPage({ selfOnly = false }) {
                 <BarChart3 className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-amber-700">Team Analytics</h3>
+                <h3 className="text-sm font-bold text-amber-700">{team === 'cold_calling' ? 'Cold Calling Analytics' : 'Team Analytics'}</h3>
                 <p className="text-[11px] text-amber-600/80">Trends, peak hours, and executive comparisons</p>
               </div>
             </div>
-            <AnalyticsSection executiveId="all" executives={executives} />
+            <AnalyticsSection executiveId="all" executives={executives} team={team} />
           </div>
         </div>
       ) : (
@@ -283,7 +299,7 @@ export default function CallReportPage({ selfOnly = false }) {
               onSelectEvent={setSelectedEvent}
             />
           ) : (
-            <AnalyticsSection executiveId={executiveId} executives={executives} />
+            <AnalyticsSection executiveId={executiveId} executives={executives} team={team} />
           )}
         </div>
       )}

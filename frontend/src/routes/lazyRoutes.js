@@ -65,6 +65,7 @@ export const SalesExecutiveLayout = lazy(() => import('../components/sales-execu
 export const ExecutiveDashboard = lazy(() => import('../components/sales-executive/ExecutiveDashboard'));
 export const MyLeadsPage = lazy(() => import('../components/sales-executive/MyLeadsPage'));
 export const ExecutiveLeadDetailPage = lazy(() => import('../components/sales-executive/ExecutiveLeadDetailPage'));
+export const ReassignedLeadsPage = lazy(() => import('../components/sales-executive/reassigned/ReassignedLeadsPage'));
 export const ExecutiveFollowUpsPage = lazy(() => import('../components/sales-executive/ExecutiveFollowUpsPage'));
 export const ExecutiveQuotationsPage = lazy(() => import('../components/sales-executive/ExecutiveQuotationsPage'));
 export const ExecutiveQuotationBuilder = lazy(() => import('../components/sales-executive/ExecutiveQuotationBuilder'));

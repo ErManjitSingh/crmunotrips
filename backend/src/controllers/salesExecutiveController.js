@@ -6,6 +6,12 @@ const Notification = require('../models/Notification');
 const ActivityLog = require('../models/ActivityLog');
 const ApiError = require('../utils/apiError');
 const asyncHandler = require('../utils/asyncHandler');
+const {
+  findReassignedAway,
+  reassignedMessage,
+  listReassignedAwayLeads,
+  getReassignedAwayLeadDetail,
+} = require('../services/coldCallingReassignService');
 const { LEAD_STATUSES } = require('../models/Lead');
 const { buildExecutiveDashboard } = require('../services/dashboardService');
 const { getTeamLeaderForExecutive } = require('../services/teamScopeService');
@@ -694,7 +700,8 @@ const createFollowUp = asyncHandler(async (req, res) => {
   if (!lead) throw new ApiError(404, 'Lead not found');
 
   if (lead.assignedTo?.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, 'This lead is not assigned to you');
+    const reassigned = await findReassignedAway({ executiveId: req.user._id, leadId: String(lead._id) });
+    throw new ApiError(403, reassigned ? reassignedMessage(reassigned.currentOwner?.name) : 'This lead is not assigned to you');
   }
 
   const populated = await createFollowUpForLead({ body: req.body, user: req.user });
@@ -1244,7 +1251,19 @@ const saveCommercialForm = asyncHandler(async (req, res) => {
   res.json(saved);
 });
 
+/** GET /sales-executive/reassigned-leads — leads transferred away from me through Cold Calling (read-only). */
+const listReassignedLeads = asyncHandler(async (req, res) => {
+  res.json(await listReassignedAwayLeads({ executiveId: req.user._id, branchId: req.branchId, query: req.query }));
+});
+
+/** GET /sales-executive/reassigned-leads/:leadId — read-only detail (summary, calls, timeline, ownership chain). */
+const getReassignedLead = asyncHandler(async (req, res) => {
+  res.json(await getReassignedAwayLeadDetail({ executiveId: req.user._id, leadId: req.params.leadId }));
+});
+
 module.exports = {
+  listReassignedLeads,
+  getReassignedLead,
   LEAD_FILTER_KEYS,
   getDashboard,
   listLeads,

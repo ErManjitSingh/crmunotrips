@@ -33,8 +33,10 @@ const {
   getColdCallingAnalyticsHandler,
   getColdCallingAgentDetailHandler,
   getColdCallingAgentLeadsHandler,
+  getColdCallingAgentLeadActivityHandler,
 } = require('../controllers/coldCallingAnalyticsController');
 const { protect } = require('../middleware/auth');
+const { rejectReassignedAwayLead } = require('../middleware/reassignedLeadGuard');
 const { requirePermission } = require('../middleware/requirePermission');
 const { authorize } = require('../middleware/rbac');
 const { validatePaginationQuery } = require('../validators/paginationValidator');
@@ -65,6 +67,8 @@ const {
 } = require('../controllers/enterpriseLeadController');
 
 router.use(protect);
+// Previous owners of a lead reassigned away through Cold Calling get the reason instead of a generic 404.
+router.param('id', rejectReassignedAwayLead);
 
 router.get('/check-duplicate', checkDuplicate);
 router.get('/analytics/aging', authorize('admin', 'sales_manager', 'lead_provider'), getAgingAnalytics);
@@ -82,6 +86,7 @@ router.get(
 router.get('/analytics/cold-calling', authorize('admin'), getColdCallingAnalyticsHandler);
 router.get('/analytics/cold-calling/:agentId', authorize('admin'), getColdCallingAgentDetailHandler);
 router.get('/analytics/cold-calling/:agentId/leads', authorize('admin'), getColdCallingAgentLeadsHandler);
+router.get('/analytics/cold-calling/:agentId/leads/:leadId/activity', authorize('admin'), getColdCallingAgentLeadActivityHandler);
 router.get('/analytics/kpis', authorize('admin', 'sales_manager', 'lead_provider'), getKpis);
 router.get('/analytics/sla', authorize('admin', 'sales_manager', 'lead_provider'), getSlaAnalytics);
 router.get('/audit-log', authorize('admin', 'sales_manager'), listAuditLog);

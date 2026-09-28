@@ -1,5 +1,9 @@
 const asyncHandler = require('../utils/asyncHandler');
 const { getMyColdCallingLeads } = require('../services/coldCallingAssignmentService');
+const { getMyCallingSummary } = require('../services/coldCallingAnalyticsService');
+const { recordLeadOpened, getAgentLeadActivity } = require('../services/coldCallingLeadActivityService');
+const { listReassignOptions, reassignLeadToExecutive } = require('../services/coldCallingReassignService');
+const { getClientIp } = require('../services/activityService');
 const { loadAssignedLead, findExistingCall, listMyCallsForLead, assertLeadCallable } = require('../services/coldCallingCallService');
 const { addCallNote } = require('./enterpriseLeadController');
 
@@ -9,6 +13,11 @@ const { addCallNote } = require('./enterpriseLeadController');
  */
 const getMyLeadsHandler = asyncHandler(async (req, res) => {
   res.json(await getMyColdCallingLeads({ coldCallerId: req.user._id, query: req.query }));
+});
+
+/** GET /cold-calling/my-summary — the signed-in Cold Caller's own dashboard cards (identity from the session only). */
+const getMySummaryHandler = asyncHandler(async (req, res) => {
+  res.json(await getMyCallingSummary({ coldCallerId: req.user._id }));
 });
 
 /**
@@ -38,6 +47,8 @@ const requireCallableLead = (req, res, next) => {
  */
 const callAccessHandler = asyncHandler(async (req, res) => {
   const { lead } = req.coldCalling;
+  // "Opened" for the per-lead history (when the agent opened this lead to dial). Never blocks the call.
+  await recordLeadOpened({ lead, user: req.user });
   res.json({ opened: true, phone: lead.phone });
 });
 
@@ -70,4 +81,35 @@ const callHistoryHandler = asyncHandler(async (req, res) => {
   res.json(await listMyCallsForLead({ coldCallerId: req.user._id, leadId: req.coldCalling.lead._id, query: req.query }));
 });
 
-module.exports = { getMyLeadsHandler, requireAssignedLead, requireCallableLead, callAccessHandler, addCallHandler, callHistoryHandler };
+/** GET /cold-calling/leads/:id/activity — this agent's opens + calls on the lead, grouped by day. */
+const leadActivityHandler = asyncHandler(async (req, res) => {
+  res.json(await getAgentLeadActivity({ coldCallerId: req.user._id, leadId: req.coldCalling.lead._id }));
+});
+
+/**
+ * GET /cold-calling/leads/:id/reassign-options — eligible Sales Executives (active, same branch as the lead,
+ * excluding the current owner). Only reachable for a lead the agent holds an ACTIVE assignment on.
+ */
+const reassignOptionsHandler = asyncHandler(async (req, res) => {
+  res.json(await listReassignOptions({ leadId: req.coldCalling.lead._id }));
+});
+
+/**
+ * POST /cold-calling/leads/:id/reassign { executiveId, expectedCurrentOwnerId? } — transfer the lead's
+ * current Sales ownership to another executive (same Lead document; see coldCallingReassignService).
+ * requireAssignedLead has already proven the agent's ACTIVE assignment; everything else is re-validated
+ * server-side from the database.
+ */
+const reassignHandler = asyncHandler(async (req, res) => {
+  const { executiveId, expectedCurrentOwnerId } = req.body || {};
+  res.json(await reassignLeadToExecutive({
+    actor: req.user,
+    assignment: req.coldCalling.assignment,
+    leadId: req.coldCalling.lead._id,
+    executiveId: typeof executiveId === 'string' ? executiveId : undefined,
+    expectedCurrentOwnerId: typeof expectedCurrentOwnerId === 'string' ? expectedCurrentOwnerId : undefined,
+    ip: getClientIp(req),
+  }));
+});
+
+module.exports = { getMyLeadsHandler, getMySummaryHandler, leadActivityHandler, reassignOptionsHandler, reassignHandler, requireAssignedLead, requireCallableLead, callAccessHandler, addCallHandler, callHistoryHandler };

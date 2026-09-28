@@ -66,7 +66,7 @@ export function CallRow({ call: c }) {
   );
 }
 
-export default function HourCallDetailModal({ open, hour, dateFrom, dateTo, initialExecutiveId, executives = [], onClose }) {
+export default function HourCallDetailModal({ open, hour, dateFrom, dateTo, initialExecutiveId, executives = [], team = 'sales', onClose }) {
   const [hourFilter, setHourFilter] = useState(hour);
   const [executiveId, setExecutiveId] = useState(initialExecutiveId || 'all');
   const [outcome, setOutcome] = useState('all');
@@ -99,14 +99,14 @@ export default function HourCallDetailModal({ open, hour, dateFrom, dateTo, init
   useEffect(() => {
     if (!open || hourFilter == null) return;
     setLoading(true);
-    const params = { dateFrom, dateTo, hour: hourFilter, page: pageIndex + 1, limit: PAGE_SIZE };
+    const params = { dateFrom, dateTo, hour: hourFilter, page: pageIndex + 1, limit: PAGE_SIZE, team };
     if (executiveId && executiveId !== 'all') params.executiveId = executiveId;
     if (outcome && outcome !== 'all') params.outcome = outcome;
     if (debouncedSearch) params.search = debouncedSearch;
     API.get('/sales-manager/call-report/hour-detail', { params, skipSuccessToast: true })
       .then((r) => setResult(r.data))
       .finally(() => setLoading(false));
-  }, [open, dateFrom, dateTo, hourFilter, executiveId, outcome, debouncedSearch, pageIndex]);
+  }, [open, dateFrom, dateTo, hourFilter, executiveId, outcome, debouncedSearch, pageIndex, team]);
 
   const dateLabel = useMemo(() => formatDateLabel(dateFrom, dateTo), [dateFrom, dateTo]);
   const summary = result?.summary;
@@ -156,7 +156,7 @@ export default function HourCallDetailModal({ open, hour, dateFrom, dateTo, init
             </select>
           </label>
           <label className="text-[10px] font-semibold uppercase tracking-wide text-content-muted">
-            Sales Executive
+            {team === 'cold_calling' ? 'Cold Caller' : 'Sales Executive'}
             <select
               value={executiveId}
               onChange={(e) => setExecutiveId(e.target.value)}

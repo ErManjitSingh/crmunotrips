@@ -22,6 +22,7 @@ const RESTRICTED_ROLE_ALLOWED_PATHS = {
     '/notifications/*', // the signed-in user's own notifications (polled by the app shell)
     '/lead-status-config', // read-only option labels the app shell loads for every signed-in user
     '/cold-calling/my-leads', // the agent's OWN assignments (identity comes from the session, never a parameter)
+    '/cold-calling/my-summary', // the agent's OWN dashboard cards (identity comes from the session, never a parameter)
     '/cold-calling/leads/*', // per-lead calling; the router itself requires an ACTIVE assignment for the signed-in agent
   ],
 };

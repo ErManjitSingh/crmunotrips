@@ -1,5 +1,5 @@
 import API from '../api/axios';
-import { coldCallingCallHistoryPath, coldCallingCallNotesPath } from '../lib/coldCallingCalls';
+import { coldCallingCallHistoryPath, coldCallingLeadActivityPath, coldCallingReassignOptionsPath, coldCallingReassignPath, coldCallingCallNotesPath } from '../lib/coldCallingCalls';
 
 export async function checkLeadDuplicate({ phone, alternatePhone, email, excludeId }) {
   const { data } = await API.get('/leads/check-duplicate', {
@@ -58,6 +58,46 @@ export async function addColdCallingCallNote(leadId, payload) {
 /** Cold Calling: the signed-in agent's own calls on one lead. */
 export async function fetchColdCallingCallHistory(leadId, params = {}) {
   const { data } = await API.get(coldCallingCallHistoryPath(leadId), { params, skipSuccessToast: true, skipErrorToast: true });
+  return data;
+}
+
+/** Cold Calling: the signed-in agent's day-wise opens + calls on one lead. */
+export async function fetchColdCallingLeadActivity(leadId) {
+  const { data } = await API.get(coldCallingLeadActivityPath(leadId), { skipSuccessToast: true, skipErrorToast: true });
+  return data;
+}
+
+/** Cold Calling: eligible Sales Executives for handing this lead over (server-filtered). */
+export async function fetchColdCallingReassignOptions(leadId) {
+  const { data } = await API.get(coldCallingReassignOptionsPath(leadId), { skipSuccessToast: true, skipErrorToast: true });
+  return data;
+}
+
+/** Cold Calling: transfer the lead's current Sales ownership (same lead; status and history are kept). */
+export async function reassignColdCallingLead(leadId, { executiveId, expectedCurrentOwnerId }) {
+  const { data } = await API.post(
+    coldCallingReassignPath(leadId),
+    { executiveId, ...(expectedCurrentOwnerId ? { expectedCurrentOwnerId } : {}) },
+    { skipSuccessToast: true, skipErrorToast: true }
+  );
+  return data;
+}
+
+/** Sales Executive: leads reassigned away from me through Cold Calling (read-only). */
+export async function fetchMyReassignedLeads(params = {}) {
+  const { data } = await API.get('/sales-executive/reassigned-leads', { params, skipSuccessToast: true, skipErrorToast: true });
+  return data;
+}
+
+/** Sales Executive: read-only detail of one lead reassigned away from me. */
+export async function fetchMyReassignedLead(leadId) {
+  const { data } = await API.get(`/sales-executive/reassigned-leads/${leadId}`, { skipSuccessToast: true, skipErrorToast: true });
+  return data;
+}
+
+/** Admin: one Cold Calling agent's day-wise opens + calls on one lead. */
+export async function fetchAdminColdCallingLeadActivity(agentId, leadId) {
+  const { data } = await API.get(`/leads/analytics/cold-calling/${agentId}/leads/${leadId}/activity`, { skipSuccessToast: true, skipErrorToast: true });
   return data;
 }
 
@@ -193,8 +233,15 @@ export async function fetchColdCallingAgentLeads(agentId, params = {}) {
 }
 
 /** Cold Caller: my own assignments (read-only). Scope comes from the session, never from a param. */
-export async function fetchMyColdCallingLeads(params = {}) {
+export async function fetchMyColdCallingLeads({ view, ...params } = {}) {
+  if (view && view !== 'all') params.view = view;
   const { data } = await API.get('/cold-calling/my-leads', { params, skipSuccessToast: true, skipErrorToast: true });
+  return data;
+}
+
+/** Cold Caller: my own dashboard cards (assigned / called today / still cold / moved to warm / hot). */
+export async function fetchMyColdCallingSummary() {
+  const { data } = await API.get('/cold-calling/my-summary', { skipSuccessToast: true, skipErrorToast: true });
   return data;
 }
 

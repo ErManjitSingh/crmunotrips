@@ -1,5 +1,10 @@
+import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, PhoneCall, X } from 'lucide-react';
 import AppModal from '../ui/AppModal';
+import LeadActivityTimeline from '../cold-calling/LeadActivityTimeline';
+import { fetchAdminColdCallingLeadActivity } from '../../services/leadEnterpriseApi';
+import { shouldRetryColdCalling } from '../../lib/coldCallingAnalytics';
 import { useLeadCallHistoryQuery } from '../../features/leads/hooks/useColdCallingAnalyticsQuery';
 import { formatDateTime, formatDuration, outcomeLabel } from '../../lib/coldCallingAnalytics';
 import { cn } from '../../lib/utils';
@@ -11,25 +16,67 @@ const ROLE_LABEL = { cold_calling: 'Cold Calling', sales_executive: 'Sales Execu
  * (with their role, so Cold Calling and Sales calls are never confused), when, for how long, and the outcome.
  * Fetched only while open — never one request per table row.
  */
-export default function AdminCallHistoryModal({ open, lead, onClose }) {
-  const { data, isPending, isError, refetch } = useLeadCallHistoryQuery(lead?._id, open);
+export default function AdminCallHistoryModal({ open, lead, onClose, agentId, agentName }) {
+  // With an agent in context the modal opens on that agent's day-wise activity; "All calls" is every caller.
+  const [tab, setTab] = useState(agentId ? 'activity' : 'calls');
+  useEffect(() => { if (open) setTab(agentId ? 'activity' : 'calls'); }, [open, agentId, lead?._id]);
+
+  const { data, isPending, isError, refetch } = useLeadCallHistoryQuery(lead?._id, open && tab === 'calls');
   const calls = data?.data ?? [];
+  const activity = useQuery({
+    queryKey: ['cold-calling-analytics', 'lead-activity', agentId, lead?._id],
+    queryFn: () => fetchAdminColdCallingLeadActivity(agentId, lead._id),
+    enabled: Boolean(open && agentId && lead?._id && tab === 'activity'),
+    staleTime: 0,
+    retry: shouldRetryColdCalling,
+  });
 
   return (
     <AppModal open={open} onClose={onClose} size="lg">
       <div className="space-y-4 p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">Call history</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">{tab === 'activity' ? 'Lead history' : 'Call history'}</p>
             <h3 className="mt-1 truncate text-xl font-bold text-content-primary">{lead?.name}</h3>
-            {data?.pagination && <p className="mt-0.5 text-xs text-content-muted">{data.pagination.total} call{data.pagination.total === 1 ? '' : 's'} in total</p>}
+            {tab === 'activity' ? (
+              <p className="mt-0.5 text-xs text-content-muted">When {agentName || 'the agent'} opened this lead and every call they made, day by day</p>
+            ) : (
+              data?.pagination && <p className="mt-0.5 text-xs text-content-muted">{data.pagination.total} call{data.pagination.total === 1 ? '' : 's'} in total</p>
+            )}
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-content-muted transition hover:bg-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/70">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {isError ? (
+        {agentId && (
+          <div className="flex w-fit items-center gap-1 rounded-xl border border-subtle bg-white p-1">
+            {[['activity', `${agentName || 'Agent'} — by day`], ['calls', 'All calls on lead']].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={tab === key}
+                onClick={() => setTab(key)}
+                className={cn(
+                  'rounded-lg px-3 py-1.5 text-xs font-semibold transition',
+                  tab === key ? 'bg-violet-600 text-white shadow-sm' : 'text-content-muted hover:text-content-primary'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {tab === 'activity' ? (
+          <LeadActivityTimeline
+            data={activity.data}
+            isPending={activity.isPending}
+            isError={activity.isError}
+            onRetry={() => activity.refetch()}
+            emptyHint="This agent has not opened or called this lead yet."
+          />
+        ) : isError ? (
           <div role="alert" className="flex flex-col items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-8 text-center">
             <AlertTriangle className="h-6 w-6 text-rose-500" aria-hidden="true" />
             <p className="text-sm font-semibold text-rose-800">Couldn&apos;t load call history</p>

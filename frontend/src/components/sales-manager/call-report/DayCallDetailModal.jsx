@@ -10,7 +10,7 @@ function formatDateLabel(date) {
   return new Date(`${date}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
-export default function DayCallDetailModal({ open, date, initialExecutiveId, executives = [], onClose }) {
+export default function DayCallDetailModal({ open, date, initialExecutiveId, executives = [], team = 'sales', onClose }) {
   const [executiveId, setExecutiveId] = useState(initialExecutiveId || 'all');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -25,12 +25,12 @@ export default function DayCallDetailModal({ open, date, initialExecutiveId, exe
   useEffect(() => {
     if (!open || !date) return;
     setLoading(true);
-    const params = { dateFrom: date, dateTo: date };
+    const params = { dateFrom: date, dateTo: date, team };
     if (executiveId && executiveId !== 'all') params.executiveId = executiveId;
     API.get('/sales-manager/call-report/analytics', { params, skipSuccessToast: true })
       .then((r) => setData(r.data))
       .finally(() => setLoading(false));
-  }, [open, date, executiveId]);
+  }, [open, date, executiveId, team]);
 
   const byExecutive = useMemo(
     () => [...(data?.byExecutive || [])].sort((a, b) => b.calls - a.calls),
@@ -59,7 +59,7 @@ export default function DayCallDetailModal({ open, date, initialExecutiveId, exe
         </div>
 
         <label className="mt-4 block text-[10px] font-semibold uppercase tracking-wide text-content-muted">
-          Sales Executive
+          {team === 'cold_calling' ? 'Cold Caller' : 'Sales Executive'}
           <select
             value={executiveId}
             onChange={(e) => setExecutiveId(e.target.value)}

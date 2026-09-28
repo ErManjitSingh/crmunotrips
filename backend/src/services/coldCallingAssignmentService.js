@@ -3,9 +3,11 @@ const Lead = require('../models/Lead');
 const User = require('../models/User');
 const LeadActivity = require('../models/LeadActivity');
 const ColdCallingAssignment = require('../models/ColdCallingAssignment');
+const LeadStatusMovement = require('../models/LeadStatusMovement');
 const ApiError = require('../utils/apiError');
 const { getConfig } = require('./leadStatusConfigService');
-const { summarizeMyCalls, canCallLead, lifecycleOf } = require('./coldCallingCallService');
+const { summarizeMyCalls, canCallLead, lifecycleOf, leadIdsCalledToday } = require('./coldCallingCallService');
+const { TERMINAL_STATUSES } = require('./leadExecutiveStallService');
 const { buildBucketExpression } = require('../utils/listStatusBucketFilter');
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
 
@@ -220,6 +222,45 @@ async function assignColdLeads({ actor, branchId = null, body }) {
 }
 
 /**
+ * My Leads filters — one per dashboard card, with the SAME rules as GET /cold-calling/my-summary:
+ *   all           every active assignment
+ *   called_today  leads I called today (org calendar day)
+ *   still_cold    current bucket is Cold and the lead is not converted / lost
+ *   moved_warm    the lead reached Warm at some point after it was assigned to me (movement ledger)
+ *   moved_hot     the lead reached Hot at some point after it was assigned to me (movement ledger)
+ */
+const MY_LEADS_VIEWS = ['all', 'called_today', 'still_cold', 'moved_warm', 'moved_hot'];
+
+function parseMyLeadsView(value) {
+  if (value === undefined || value === null || value === '') return 'all';
+  if (typeof value !== 'string' || !MY_LEADS_VIEWS.includes(value)) throw new ApiError(400, 'view is invalid');
+  return value;
+}
+
+/** Lead ids (among my active assignments) that reached `bucket` at/after their assignedAt. */
+async function leadIdsReachedBucket({ coldCallerId, bucket }) {
+  const assignments = await ColdCallingAssignment.find({ coldCallerId, status: 'active' }).select('leadId assignedAt').lean();
+  if (!assignments.length) return [];
+  const assignedAt = new Map(assignments.map((a) => [String(a.leadId), a.assignedAt]));
+  const moves = await LeadStatusMovement.find({ leadId: { $in: assignments.map((a) => a.leadId) }, toBucket: bucket })
+    .select('leadId changedAt')
+    .lean();
+  const reached = new Set(
+    moves.filter((m) => m.changedAt >= assignedAt.get(String(m.leadId))).map((m) => String(m.leadId))
+  );
+  return assignments.filter((a) => reached.has(String(a.leadId))).map((a) => a.leadId);
+}
+
+/** Extra $match stages for a view: lead-id views narrow the assignment match; still_cold filters on the joined lead. */
+async function viewStages({ coldCallerId, view }) {
+  if (view === 'called_today') return { preMatch: { leadId: { $in: await leadIdsCalledToday({ coldCallerId }) } } };
+  if (view === 'moved_warm') return { preMatch: { leadId: { $in: await leadIdsReachedBucket({ coldCallerId, bucket: 'warm' }) } } };
+  if (view === 'moved_hot') return { preMatch: { leadId: { $in: await leadIdsReachedBucket({ coldCallerId, bucket: 'hot' }) } } };
+  if (view === 'still_cold') return { postMatch: { currentBucket: 'cold', 'lead.status': { $nin: TERMINAL_STATUSES } } };
+  return {};
+}
+
+/**
  * The authenticated Cold Caller's own current assignments (read-only). The caller id comes from the
  * session — never from the request — so one agent can never read another's list. Deleted leads are
  * hidden. Status is the lead's CURRENT bucket (same rule as everywhere); the immutable snapshot of
@@ -228,9 +269,11 @@ async function assignColdLeads({ actor, branchId = null, body }) {
 async function getMyColdCallingLeads({ coldCallerId, query = {} }) {
   await getConfig({ includeDisabled: false });
   const { page, limit, skip } = parsePagination(query, { defaultLimit: 25, maxLimit: 100 });
+  const callerObjectId = new mongoose.Types.ObjectId(String(coldCallerId));
+  const { preMatch, postMatch } = await viewStages({ coldCallerId: callerObjectId, view: parseMyLeadsView(query.view) });
 
   const [result] = await ColdCallingAssignment.aggregate([
-    { $match: { coldCallerId: new mongoose.Types.ObjectId(String(coldCallerId)), status: 'active' } },
+    { $match: { coldCallerId: callerObjectId, status: 'active', ...(preMatch || {}) } },
     {
       $lookup: {
         from: 'leads',
@@ -249,6 +292,7 @@ async function getMyColdCallingLeads({ coldCallerId, query = {} }) {
         currentBucket: { $ifNull: [buildBucketExpression({ status: '$lead.status', statusReason: '$lead.statusReason' }), 'unclassified'] },
       },
     },
+    ...(postMatch ? [{ $match: postMatch }] : []),
     {
       $facet: {
         rows: [
@@ -305,6 +349,8 @@ async function getMyColdCallingLeads({ coldCallerId, query = {} }) {
     originalSalesOwner: { _id: row.originalSalesOwnerId, name: row.originalSalesOwnerName || '' },
     currentSalesOwner: row.currentOwner ? { _id: row.currentOwner._id, name: row.currentOwner.name } : null,
     canCall: canCallLead(row.lead),
+    // Hand-over to a Sales Executive (POST /cold-calling/leads/:id/reassign) follows the same rule: open leads only.
+    canReassign: canCallLead(row.lead),
     calls: {
       count: calls.get(String(row.lead._id))?.count || 0,
       lastCallAt: calls.get(String(row.lead._id))?.lastCallAt || null,

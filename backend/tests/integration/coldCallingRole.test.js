@@ -383,6 +383,7 @@ describe('RBAC: Cold Calling is fenced to an explicit allow-list (no extra acces
       '/notifications/*',
       '/lead-status-config',
       '/cold-calling/my-leads', // Phase 3: own assignments only, scoped server-side by the session
+      '/cold-calling/my-summary', // own dashboard cards, scoped server-side by the session
       '/cold-calling/leads/*', // Phase 4: per-lead calling, gated by an active assignment in the router
     ]);
     expect(Object.keys(RESTRICTED_ROLE_ALLOWED_PATHS)).toEqual(['cold_calling']);

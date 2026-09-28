@@ -5,7 +5,8 @@ import CallingSummaryCards from './CallingSummaryCards';
 import CallingQueuePreview from './CallingQueuePreview';
 import MyColdCallingLeadsList from './MyColdCallingLeadsList';
 import TablePagination from '../ui/TablePagination';
-import { COLD_CALLING_LEADS_PATH, getWorkspaceIdentity } from '../../lib/coldCallingWorkspace';
+import { COLD_CALLING_LEADS_PATH, MY_LEADS_VIEWS, getWorkspaceIdentity } from '../../lib/coldCallingWorkspace';
+import { cn } from '../../lib/utils';
 import { formatCount } from '../../lib/executiveLeadStatusFilters';
 
 /**
@@ -38,18 +39,50 @@ export function ColdCallingDashboardView({ user, summary, now }) {
 }
 
 /** /cold-calling/leads — the agent's own assigned leads, read-only. */
-export function ColdCallingMyLeadsView({ rows = [], loading = false, error = null, onRetry, pagination, pageIndex = 0, pageSize = 25, onPageChange, onOpenHistory }) {
+export function ColdCallingMyLeadsView({
+  rows = [], loading = false, error = null, onRetry, pagination, pageIndex = 0, pageSize = 25, onPageChange, onOpenHistory,
+  onReassign, view = 'all', counts, onViewChange,
+}) {
   const total = pagination?.total ?? rows.length;
+  const activeView = MY_LEADS_VIEWS.find((v) => v.key === view) || MY_LEADS_VIEWS[0];
   return (
     <div className="animate-fade-up">
       <header className="mb-5">
         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-sky-600">Cold Calling Workspace</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-[26px]">My Leads</h1>
         <p className="mt-1 max-w-xl text-sm text-slate-500">
-          Leads assigned to you for Cold Calling.
+          {view === 'all' ? 'Leads assigned to you for Cold Calling.' : `${activeView.label} — from the leads assigned to you.`}
           {!loading && !error && total > 0 && <span className="ml-1 font-semibold text-slate-700">{formatCount(total)} total</span>}
         </p>
       </header>
+
+      {onViewChange && (
+        <nav aria-label="Filter leads" className="mb-4 flex flex-wrap gap-1.5">
+          {MY_LEADS_VIEWS.map((v) => {
+            const count = counts?.[v.summaryKey];
+            const active = v.key === view;
+            return (
+              <button
+                key={v.key}
+                type="button"
+                aria-pressed={active}
+                onClick={() => onViewChange(v.key)}
+                className={cn(
+                  'inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition',
+                  active ? 'border-sky-600 bg-sky-600 text-white shadow-sm' : 'border-subtle bg-white text-slate-600 hover:text-slate-900'
+                )}
+              >
+                {v.label}
+                {count != null && (
+                  <span className={cn('metric-tabular rounded-md px-1.5 text-[11px]', active ? 'bg-white/20' : 'bg-slate-100 text-slate-500')}>
+                    {formatCount(count)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      )}
 
       {error ? (
         <div role="alert" className="flex flex-col items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/60 px-4 py-12 text-center">
@@ -64,7 +97,7 @@ export function ColdCallingMyLeadsView({ rows = [], loading = false, error = nul
         </div>
       ) : (
         <>
-          <MyColdCallingLeadsList rows={rows} loading={loading} onOpenHistory={onOpenHistory} />
+          <MyColdCallingLeadsList rows={rows} loading={loading} onOpenHistory={onOpenHistory} onReassign={onReassign} filterLabel={view === 'all' ? null : activeView.label} />
           {!loading && total > 0 && onPageChange && (
             <TablePagination
               pageIndex={pageIndex}

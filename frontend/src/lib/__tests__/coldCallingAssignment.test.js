@@ -86,10 +86,11 @@ test('submit needs an agent, a selection, and no request already in flight (doub
   assert.equal(canSubmitAssignment({ coldCallerId: 'u1', count: 3, pending: true }), false);
 });
 
-test('the workspace summary is real for Assigned and "not known" for the rest; unknown total stays null', () => {
-  assert.deepEqual(buildCallingSummary(7), { assigned: 7, calledToday: null, stillCold: null, movedToWarm: null, movedToHot: null });
-  assert.equal(buildCallingSummary(undefined).assigned, null);
-  assert.equal(buildCallingSummary(0).assigned, 0);
+test('the workspace summary maps the API counts; not-yet-loaded stays null (—), a real 0 stays 0', () => {
+  const api = { assigned: 7, calledToday: 3, stillCold: 4, movedToWarm: 2, movedToHot: 1 };
+  assert.deepEqual(buildCallingSummary(api), api);
+  assert.deepEqual(buildCallingSummary(undefined), { assigned: null, calledToday: null, stillCold: null, movedToWarm: null, movedToHot: null });
+  assert.deepEqual(buildCallingSummary({ assigned: 0, calledToday: 0, stillCold: 0, movedToWarm: 0, movedToHot: 0 }).calledToday, 0);
 });
 
 const listHtml = (leadsJson, selection) =>
@@ -185,7 +186,7 @@ test('Dashboard: real assigned count + View My Leads; other cards show an em das
     import { MemoryRouter } from 'react-router-dom';
     import { ColdCallingDashboardView } from './components/cold-calling/ColdCallingViews';
     import { buildCallingSummary } from './lib/coldCallingWorkspace';
-    export default () => renderToStaticMarkup(<MemoryRouter><ColdCallingDashboardView user={{ name: 'Amit Sharma' }} summary={buildCallingSummary(5)} now={new Date(2026, 8, 21, 9)} /></MemoryRouter>);
+    export default () => renderToStaticMarkup(<MemoryRouter><ColdCallingDashboardView user={{ name: 'Amit Sharma' }} summary={buildCallingSummary({ assigned: 5 })} now={new Date(2026, 8, 21, 9)} /></MemoryRouter>);
   `);
   const values = [...html.matchAll(/metric-tabular[^"]*text-2xl[^"]*">([^<]*)</g)].map((m) => m[1]);
   assert.deepEqual(values, ['5', '—', '—', '—', '—']);

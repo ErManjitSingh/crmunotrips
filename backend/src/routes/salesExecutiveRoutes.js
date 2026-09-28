@@ -1,4 +1,5 @@
 const express = require('express');
+const { rejectReassignedAwayLead } = require('../middleware/reassignedLeadGuard');
 const router = express.Router();
 const {
   LEAD_FILTER_KEYS,
@@ -27,6 +28,8 @@ const {
   listNotifications,
   getProfile,
   getCalendar,
+  listReassignedLeads,
+  getReassignedLead,
 } = require('../controllers/salesExecutiveController');
 const {
   initiateWhatsAppContact,
@@ -39,6 +42,15 @@ const { authorize } = require('../middleware/rbac');
 const { requirePermission } = require('../middleware/requirePermission');
 
 router.use(protect, authorize('sales_executive'));
+
+// A previous owner of a lead reassigned away through Cold Calling gets the reason ("reassigned to X"),
+// not a generic 404, on every lead-id route. Authorization itself is unchanged (see reassignedLeadGuard).
+router.param('id', rejectReassignedAwayLead);
+router.param('idOrFilter', rejectReassignedAwayLead);
+
+// Read-only history of leads reassigned away from me (they are no longer part of my active leads).
+router.get('/reassigned-leads', listReassignedLeads);
+router.get('/reassigned-leads/:leadId', getReassignedLead);
 
 router.get('/dashboard', getDashboard);
 router.get('/customers', listCustomers);

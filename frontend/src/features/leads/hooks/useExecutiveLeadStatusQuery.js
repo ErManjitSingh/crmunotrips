@@ -6,6 +6,7 @@ import {
   fetchExecutiveLeadStatus,
   fetchExecutiveLeadStatusLeads,
   fetchMyColdCallingLeads,
+  fetchMyColdCallingSummary,
 } from '../../../services/leadEnterpriseApi';
 import {
   shouldRetryExecutiveLeadStatus,
@@ -92,10 +93,21 @@ export function useAssignColdLeadsMutation() {
 }
 
 /** The signed-in Cold Caller's own assignments. Server-scoped by session; no id is ever sent. */
-export function useMyColdCallingLeadsQuery({ page, limit }) {
+/** Cold Caller dashboard cards. Refreshed after every cold call (PostCallSessionHost invalidates ['cold-calling']). */
+export function useMyColdCallingSummaryQuery() {
   return useQuery({
-    queryKey: ['cold-calling', 'my-leads', { page, limit }],
-    queryFn: () => fetchMyColdCallingLeads({ page, limit }),
+    queryKey: ['cold-calling', 'my-summary'],
+    queryFn: fetchMyColdCallingSummary,
+    staleTime: LIST_STALE_MS,
+    gcTime: GC_TIME_MS,
+    retry: shouldRetryExecutiveLeadStatus,
+  });
+}
+
+export function useMyColdCallingLeadsQuery({ page, limit, view = 'all' }) {
+  return useQuery({
+    queryKey: ['cold-calling', 'my-leads', { page, limit, view }],
+    queryFn: () => fetchMyColdCallingLeads({ page, limit, view }),
     staleTime: LIST_STALE_MS,
     gcTime: GC_TIME_MS,
     retry: shouldRetryExecutiveLeadStatus,

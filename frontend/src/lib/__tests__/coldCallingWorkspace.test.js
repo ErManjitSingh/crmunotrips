@@ -11,6 +11,9 @@ import {
   getDayPartGreeting,
   getWorkspaceIdentity,
   getInitials,
+  MY_LEADS_VIEWS,
+  resolveMyLeadsView,
+  myLeadsPathFor,
 } from '../coldCallingWorkspace.js';
 import { coldCallingNavItems } from '../../components/cold-calling/sidebar-config.js';
 import { renderToHtml } from './renderJsx.mjs';
@@ -20,8 +23,9 @@ const amit = { name: 'Amit Sharma', email: 'amit@example.com', role: 'cold_calli
 const dashboardHtml = (user, now = "new Date(2026, 8, 21, 9, 0)") =>
   renderToHtml(`
     import { renderToStaticMarkup } from 'react-dom/server';
+    import { MemoryRouter } from 'react-router-dom';
     import { ColdCallingDashboardView } from './components/cold-calling/ColdCallingViews';
-    export default () => renderToStaticMarkup(<ColdCallingDashboardView user={${JSON.stringify(user)}} now={${now}} />);
+    export default () => renderToStaticMarkup(<MemoryRouter><ColdCallingDashboardView user={${JSON.stringify(user)}} now={${now}} /></MemoryRouter>);
   `);
 
 test('Cold Calling users land on /cold-calling (not /unauthorized); every other role is unchanged', () => {
@@ -132,4 +136,25 @@ test('My Leads renders the empty queue and no lead data', async () => {
   assert.match(html, /My Leads/);
   assert.match(html, /No leads assigned yet/);
   assert.doesNotMatch(html, /<table|<tr|<li|LD-\d/);
+});
+
+test('every dashboard card links to My Leads filtered to the leads it counts', async () => {
+  const html = await dashboardHtml(amit);
+  const hrefs = [...html.matchAll(/href="([^"]*)"[^>]*aria-label="[^"]*: view leads"|aria-label="[^"]*: view leads"[^>]*href="([^"]*)"/g)].map((m) => (m[1] || m[2]).replace(/&amp;/g, '&'));
+  assert.deepEqual(hrefs, [
+    '/cold-calling/leads',
+    '/cold-calling/leads?view=called_today',
+    '/cold-calling/leads?view=still_cold',
+    '/cold-calling/leads?view=moved_warm',
+    '/cold-calling/leads?view=moved_hot',
+  ]);
+});
+
+test('My Leads view: unknown values fall back to all; the path helper keeps "all" as the plain path', () => {
+  assert.deepEqual(MY_LEADS_VIEWS.map((v) => v.key), ['all', 'called_today', 'still_cold', 'moved_warm', 'moved_hot']);
+  assert.equal(resolveMyLeadsView('moved_hot'), 'moved_hot');
+  assert.equal(resolveMyLeadsView('nope'), 'all');
+  assert.equal(resolveMyLeadsView(null), 'all');
+  assert.equal(myLeadsPathFor('all'), '/cold-calling/leads');
+  assert.equal(myLeadsPathFor('still_cold'), '/cold-calling/leads?view=still_cold');
 });

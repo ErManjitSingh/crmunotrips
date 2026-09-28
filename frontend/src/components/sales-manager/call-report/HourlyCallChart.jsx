@@ -57,7 +57,7 @@ function HourTooltipContent({ active, payload, cache }) {
   );
 }
 
-export default function HourlyCallChart({ rawByHour = [], dateFrom, dateTo, executiveId, executives = [] }) {
+export default function HourlyCallChart({ rawByHour = [], dateFrom, dateTo, executiveId, executives = [], team = 'sales' }) {
   const chartData = useMemo(
     () => rawByHour.map((r) => ({ hour: r._id, count: r.count, label: formatHourRangeLabel(r._id) })),
     [rawByHour]
@@ -75,7 +75,7 @@ export default function HourlyCallChart({ rawByHour = [], dateFrom, dateTo, exec
   useEffect(() => {
     cacheRef.current = new Map();
     setTick((n) => n + 1);
-  }, [dateFrom, dateTo, executiveId]);
+  }, [dateFrom, dateTo, executiveId, team]);
 
   useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
 
@@ -83,13 +83,13 @@ export default function HourlyCallChart({ rawByHour = [], dateFrom, dateTo, exec
     if (cacheRef.current.has(hour)) return;
     cacheRef.current.set(hour, 'loading');
     setTick((n) => n + 1);
-    const params = { dateFrom, dateTo, hour, page: 1, limit: 5 };
+    const params = { dateFrom, dateTo, hour, page: 1, limit: 5, team };
     if (executiveId && executiveId !== 'all') params.executiveId = executiveId;
     API.get('/sales-manager/call-report/hour-detail', { params, skipSuccessToast: true })
       .then((r) => cacheRef.current.set(hour, r.data?.calls || []))
       .catch(() => cacheRef.current.set(hour, []))
       .finally(() => setTick((n) => n + 1));
-  }, [dateFrom, dateTo, executiveId]);
+  }, [dateFrom, dateTo, executiveId, team]);
 
   const handleBarMouseEnter = useCallback((barData) => {
     const hour = barData?.hour;
@@ -137,6 +137,7 @@ export default function HourlyCallChart({ rawByHour = [], dateFrom, dateTo, exec
         dateTo={dateTo}
         initialExecutiveId={executiveId}
         executives={executives}
+        team={team}
         onClose={() => setSelectedHour(null)}
       />
     </ChartCard>

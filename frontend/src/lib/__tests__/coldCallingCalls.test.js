@@ -9,8 +9,11 @@ import {
   coldCallingCallAccessPath,
   coldCallingCallHistoryPath,
   coldCallingCallNotesPath,
+  coldCallingLeadActivityPath,
   describeCallActivity,
+  formatActivityDayLabel,
   formatCallDateTime,
+  formatCallTime,
   outcomeLabel,
 } from '../coldCallingCalls.js';
 import { renderToHtml } from './renderJsx.mjs';
@@ -180,4 +183,72 @@ test('My Leads: the phone card shows destination and travel date beside the name
   assert.match(card, /Manali/);
   assert.match(card, /14 Oct 2026/);
   assert.match(card, /Original:/);
+});
+
+test('lead history: IST time and day labels (Today / Yesterday / dated)', () => {
+  assert.equal(coldCallingLeadActivityPath('abc'), '/cold-calling/leads/abc/activity');
+  assert.match(formatCallTime('2026-09-20T09:00:00.000Z'), /2:30\s?pm/i);
+  const now = new Date('2026-09-27T06:00:00.000Z');
+  assert.equal(formatActivityDayLabel('2026-09-27', now), 'Today');
+  assert.equal(formatActivityDayLabel('2026-09-26', now), 'Yesterday');
+  assert.match(formatActivityDayLabel('2026-09-20', now), /Sun, 20 Sept?,? 2026/);
+});
+
+test('lead history renders day headers with per-day call counts, opens, and each call', async () => {
+  const data = {
+    totals: { opens: 2, calls: 3, connected: 2, talkTimeSec: 365, activeDays: 2, firstOpenedAt: '2026-09-20T03:59:00.000Z', lastCallAt: '2026-09-21T19:00:00.000Z' },
+    days: [
+      { date: '2026-09-22', opens: 0, calls: 1, connected: 1, talkTimeSec: 120, events: [
+        { type: 'call', id: 'c3', at: '2026-09-21T19:00:00.000Z', endedAt: '2026-09-21T19:02:00.000Z', duration: 120, outcome: 'requested_callback', bucket: 'connected', notes: '' },
+      ] },
+      { date: '2026-09-20', opens: 2, calls: 2, connected: 1, talkTimeSec: 245, events: [
+        { type: 'call', id: 'c2', at: '2026-09-20T09:00:00.000Z', endedAt: '2026-09-20T09:04:00.000Z', duration: 240, outcome: 'discussed_package', bucket: 'connected', notes: 'wants Goa' },
+        { type: 'opened', id: 'o2', at: '2026-09-20T08:59:00.000Z' },
+        { type: 'call', id: 'c1', at: '2026-09-20T04:00:00.000Z', endedAt: '2026-09-20T04:00:05.000Z', duration: 5, outcome: 'cnp_same_day', bucket: 'no_answer', notes: '' },
+        { type: 'opened', id: 'o1', at: '2026-09-20T03:59:00.000Z' },
+      ] },
+    ],
+  };
+  const html = await renderToHtml(`
+    import { renderToStaticMarkup } from 'react-dom/server';
+    import LeadActivityTimeline from './components/cold-calling/LeadActivityTimeline';
+    export default () => renderToStaticMarkup(<LeadActivityTimeline data={${JSON.stringify(data)}} />);
+  `);
+  assert.match(html, /2 calls/);
+  assert.match(html, /1 call</);
+  assert.match(html, /opened 2 times/);
+  assert.match(html, /Opened the lead to call/);
+  assert.match(html, /wants Goa/);
+  assert.match(html, /4:00/);
+  assert.equal((html.match(/Opened the lead to call/g) || []).length, 2);
+});
+
+test('lead history empty state', async () => {
+  const html = await renderToHtml(`
+    import { renderToStaticMarkup } from 'react-dom/server';
+    import LeadActivityTimeline from './components/cold-calling/LeadActivityTimeline';
+    export default () => renderToStaticMarkup(<LeadActivityTimeline data={{ totals: {}, days: [] }} />);
+  `);
+  assert.match(html, /No activity yet/);
+});
+
+test('⋮ menu: shown only when the server allows reassigning (canReassign) and a handler is wired', async () => {
+  const open = row('Open Lead', { count: 0 }, { canCall: true, canReassign: true });
+  const closed = row('Closed Lead Co', { count: 0 }, { canCall: false, canReassign: false, lifecycle: 'converted' });
+  const withMenu = await myLeadsHtml([open, closed], 'onReassign={() => {}}');
+  assert.equal((withMenu.match(/aria-label="More actions for /g) || []).length / 2, 1); // table + phone card
+  assert.match(withMenu, /More actions for Open Lead/);
+  assert.doesNotMatch(withMenu, /More actions for Closed Lead Co/);
+  const noHandler = await myLeadsHtml([open]);
+  assert.doesNotMatch(noHandler, /More actions for/);
+});
+
+test('reassigned banner shows the server message verbatim', async () => {
+  const html = await renderToHtml(`
+    import { renderToStaticMarkup } from 'react-dom/server';
+    import { ReassignedBanner } from './components/sales-executive/reassigned/ReassignedParts';
+    export default () => renderToStaticMarkup(<ReassignedBanner message="This lead has been reassigned to Aman and is no longer part of your active leads." />);
+  `);
+  assert.match(html, /This lead has been reassigned to Aman and is no longer part of your active leads\./);
+  assert.match(html, /role="status"/);
 });

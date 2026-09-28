@@ -1,6 +1,7 @@
+import { Link } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { formatCount } from '../../lib/executiveLeadStatusFilters';
-import { EMPTY_CALLING_SUMMARY } from '../../lib/coldCallingWorkspace';
+import { EMPTY_CALLING_SUMMARY, MY_LEADS_VIEWS, myLeadsPathFor } from '../../lib/coldCallingWorkspace';
 import { STATUS_THEME } from '../executive-lead-status/statusTheme';
 
 /** Same semantic palette as Executive Lead Status: Assigned violet, Cold blue, Warm amber, Hot rose, neutral slate. */
@@ -12,12 +13,23 @@ const CARDS = [
   { key: 'movedToHot', label: 'Moved to Hot', theme: STATUS_THEME.hot },
 ];
 
-/** Five compact tiles. Values default to the real empty state (zeros) — see EMPTY_CALLING_SUMMARY. */
+const VIEW_BY_CARD = Object.fromEntries(MY_LEADS_VIEWS.map((v) => [v.summaryKey, v.key]));
+
+/** Five compact tiles; each opens My Leads filtered to exactly the leads it counts. */
 export default function CallingSummaryCards({ summary = EMPTY_CALLING_SUMMARY }) {
   return (
     <section aria-label="Calling summary" className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
       {CARDS.map(({ key, label, theme, className }) => (
-        <div key={key} className={cn('rounded-xl border px-3.5 py-3 shadow-sm', theme.card, className)}>
+        <Link
+          key={key}
+          to={myLeadsPathFor(VIEW_BY_CARD[key])}
+          aria-label={`${label}: view leads`}
+          className={cn(
+            'block rounded-xl border px-3.5 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70',
+            theme.card,
+            className
+          )}
+        >
           <span className="flex items-center gap-2">
             <span className={cn('h-2 w-2 rounded-full', theme.dot)} aria-hidden="true" />
             <span className={cn('text-[11px] font-bold uppercase tracking-wide', theme.text)}>{label}</span>
@@ -25,7 +37,7 @@ export default function CallingSummaryCards({ summary = EMPTY_CALLING_SUMMARY })
           <span className={cn('metric-tabular mt-1.5 block text-2xl font-bold leading-none', theme.strong)}>
             {summary[key] == null ? '—' : formatCount(summary[key])}
           </span>
-        </div>
+        </Link>
       ))}
     </section>
   );

@@ -201,6 +201,12 @@ const leadSchema = new mongoose.Schema(
     acceptanceMissedName: { type: String, trim: true, default: '' },
     acceptanceMissedAt: { type: Date },
     assignmentHistoryIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    /**
+     * The Sales Executive who owned the lead before its FIRST ownership transfer out of Cold Calling
+     * (coldCallingReassignService). Set once, never overwritten, so Rahul -> Aman -> Priya keeps "Rahul".
+     * Absent on leads that were never transferred — their original owner is simply `assignedTo`.
+     */
+    originalAssignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     /** Computed first-call deadline (hot/warm/night) */
     firstContactDeadline: { type: Date, index: true },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

@@ -390,6 +390,90 @@ describe('phone protection', () => {
   });
 });
 
+describe('per-lead history: opens + calls grouped by day', () => {
+  const activity = (t, id) => request(app).get(`/api/cold-calling/leads/${id}/activity`).set(auth(t));
+  const adminActivity = (t, agentId, leadId) => request(app).get(`/api/leads/analytics/cold-calling/${agentId}/leads/${leadId}/activity`).set(auth(t));
+
+  test('opening a lead is recorded; calls are counted per IST day with time, duration and outcome', async () => {
+    const w = await world();
+    expect((await access(w.amitToken, w.abc._id)).status).toBe(200);
+    expect((await access(w.amitToken, w.abc._id)).status).toBe(200);
+    const day1a = { outcome: 'cnp_same_day', startedAt: '2026-09-20T04:00:00.000Z', endedAt: '2026-09-20T04:00:05.000Z' }; // 09:30 IST
+    const day1b = { outcome: 'discussed_package', startedAt: '2026-09-20T09:00:00.000Z', endedAt: '2026-09-20T09:04:00.000Z', notes: 'wants Goa' };
+    const day2 = { outcome: 'requested_callback', startedAt: '2026-09-21T19:00:00.000Z', endedAt: '2026-09-21T19:02:00.000Z' }; // 00:30 IST on the 22nd
+    for (const body of [day1a, day1b, day2]) expect((await endCall(w.amitToken, w.abc._id, body)).status).toBe(201);
+
+    const res = await activity(w.amitToken, w.abc._id);
+    expect(res.status).toBe(200);
+    expect(res.body.totals).toMatchObject({ opens: 2, calls: 3, connected: 2 });
+    const byDate = Object.fromEntries(res.body.days.map((d) => [d.date, d]));
+    expect(byDate['2026-09-20']).toMatchObject({ calls: 2, connected: 1 });
+    expect(byDate['2026-09-22']).toMatchObject({ calls: 1 }); // IST day, not the UTC day
+    const call = byDate['2026-09-20'].events.find((e) => e.type === 'call' && e.outcome === 'discussed_package');
+    expect(call).toMatchObject({ duration: 240, bucket: 'connected', notes: 'wants Goa' });
+    // Newest day first; each day's events newest first.
+    expect(res.body.days.map((d) => d.date)).toEqual([...res.body.days.map((d) => d.date)].sort().reverse());
+    expect(await LeadActivity.countDocuments({ leadId: w.abc._id, type: 'cold_calling_lead_opened', actorId: w.amit._id })).toBe(2);
+  });
+
+  test('another agent cannot read it; admin can read the agent history for a lead assigned to them', async () => {
+    const w = await world();
+    await access(w.amitToken, w.abc._id);
+    expect((await activity(await tokenFor(w.ravi), w.abc._id)).status).toBe(404);
+
+    const admin = await adminActivity(w.adminToken, String(w.amit._id), String(w.abc._id));
+    expect(admin.status).toBe(200);
+    expect(admin.body.totals.opens).toBe(1);
+    // Never assigned to Ravi -> 404, not an empty history.
+    expect((await adminActivity(w.adminToken, String(w.ravi._id), String(w.abc._id))).status).toBe(404);
+    expect((await adminActivity(w.adminToken, 'nope', String(w.abc._id))).status).toBe(404);
+    expect((await adminActivity(w.amitToken, String(w.amit._id), String(w.abc._id))).status).toBe(403);
+  });
+});
+
+describe('GET /cold-calling/my-summary (dashboard cards)', () => {
+  const summary = (t) => request(app).get('/api/cold-calling/my-summary').set(auth(t));
+
+  test('real counts for the signed-in agent only; Called Today counts distinct leads', async () => {
+    const w = await world();
+    const before = await summary(w.amitToken);
+    expect(before.status).toBe(200);
+    expect(before.body).toEqual({ assigned: 1, calledToday: 0, stillCold: 1, movedToWarm: 0, movedToHot: 0 });
+
+    // Two calls on the same lead today = 1 lead called today.
+    expect((await endCall(w.amitToken, w.abc._id, call('cnp_same_day', 0))).status).toBe(201);
+    expect((await endCall(w.amitToken, w.abc._id, call('cnp_same_day', 0))).status).toBe(201);
+    const after = await summary(w.amitToken);
+    expect(after.body.assigned).toBe(1);
+    expect(after.body.calledToday).toBe(1);
+
+    // Another agent sees only their own (empty) workspace.
+    expect((await summary(await tokenFor(w.ravi))).body).toEqual({ assigned: 0, calledToday: 0, stillCold: 0, movedToWarm: 0, movedToHot: 0 });
+  });
+
+  test('each card opens My Leads ?view= with exactly the card count; bad view is a 400', async () => {
+    const w = await world();
+    const second = await makeLead({ name: 'Second Co', assignedTo: w.rahul._id, branchId: w.branch._id });
+    expect((await w.assign(w.amit, [second])).status).toBe(201);
+    expect((await endCall(w.amitToken, w.abc._id, call('cnp_same_day', 0))).status).toBe(201);
+
+    const cards = (await summary(w.amitToken)).body;
+    const views = { all: 'assigned', called_today: 'calledToday', still_cold: 'stillCold', moved_warm: 'movedToWarm', moved_hot: 'movedToHot' };
+    for (const [view, key] of Object.entries(views)) {
+      const res = await mine(w.amitToken, { view });
+      expect([view, res.status, res.body.pagination.total]).toEqual([view, 200, cards[key]]);
+    }
+    expect(cards.calledToday).toBe(1);
+    expect((await mine(w.amitToken, { view: 'called_today' })).body.data.map((r) => r.lead.name)).toEqual(['ABC Travels']);
+    expect((await mine(w.amitToken, { view: 'everything' })).status).toBe(400);
+  });
+
+  test('only Cold Calling users can read it', async () => {
+    const w = await world();
+    expect((await summary(await tokenFor(w.rahul))).status).toBe(403);
+  });
+});
+
 describe('call reports do not mix ownership', () => {
   test('team-wide Call Report totals exclude Cold Calling calls; a per-user view includes them; owner is not credited', async () => {
     const w = await world();
@@ -406,6 +490,36 @@ describe('call reports do not mix ownership', () => {
     expect(amitOnly.totalCalls).toBe(1);
     const rahulOnly = await getExecutiveSummary({ ...period, userId: w.rahul._id });
     expect(rahulOnly.totalCalls).toBe(1); // Amit's call is not Rahul's
+
+    // The Cold Calling team filter shows ONLY cold-calling calls — the mirror image of the Sales view.
+    const coldTeam = await getAnalytics({ ...period, team: 'cold_calling' });
+    expect(coldTeam.byExecutive.map((row) => String(row.userId))).toEqual([String(w.amit._id)]);
+    expect(coldTeam.totalCalls).toBe(1);
+  });
+
+  test('Call Report team=cold_calling lists cold callers in Team Overview / roster; default stays Sales', async () => {
+    const w = await world();
+    await endCall(w.amitToken, w.abc._id, call('discussed_package', 120));
+    const { adminToken } = w;
+    const q = { dateFrom: '2000-01-01', dateTo: '2100-01-01' };
+
+    const cold = await request(app).get('/api/sales-manager/call-report/team-overview').query({ ...q, team: 'cold_calling' }).set(auth(adminToken));
+    expect(cold.status).toBe(200);
+    const coldIds = cold.body.map((r) => String(r._id));
+    expect(coldIds).toEqual(expect.arrayContaining([String(w.amit._id), String(w.ravi._id)]));
+    expect(coldIds).not.toContain(String(w.rahul._id));
+    expect(cold.body.find((r) => String(r._id) === String(w.amit._id))).toMatchObject({ totalCalls: 1, totalTalkTimeSec: 120 });
+
+    const sales = await request(app).get('/api/sales-manager/call-report/team-overview').query(q).set(auth(adminToken));
+    expect(sales.body.map((r) => String(r._id))).not.toContain(String(w.amit._id));
+
+    const roster = await request(app).get('/api/sales-manager/call-report/team-members').query({ team: 'cold_calling' }).set(auth(adminToken));
+    expect(roster.status).toBe(200);
+    expect(roster.body.map((r) => r.name)).toEqual(expect.arrayContaining(['Amit Sharma', 'Ravi Caller']));
+
+    const hours = await request(app).get('/api/sales-manager/call-report/hour-detail').query({ ...q, team: 'cold_calling' }).set(auth(adminToken));
+    expect(hours.body.summary.totalCalls).toBe(1);
+    expect(hours.body.calls[0].userName).toBe('Amit Sharma');
   });
 
   test('the data needed for later analytics is queryable: lead, caller, branch, start/end, duration, outcome', async () => {
