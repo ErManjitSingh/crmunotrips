@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { resolveLeadSourceKey, leadSourceLabel, LEAD_SOURCE_KEYS } = require('../constants/leadSources');
-const { REFERRAL_RELATIONSHIPS } = require('../models/Lead');
+const { REFERRAL_RELATIONSHIPS, FOOD_PREFERENCES } = require('../models/Lead');
 
 const LEAD_SOURCES = LEAD_SOURCE_KEYS;
 
@@ -107,6 +107,7 @@ function normalizeLeadInput(body = {}, { isUpdate = false } = {}) {
     alternatePhone: body.alternatePhone?.trim() || '',
     whatsapp: body.whatsapp?.trim() || body.phone?.trim(),
     city: body.city?.trim(),
+    subCity: body.subCity?.trim() || '',
     state: body.state?.trim(),
     destination: body.destination?.trim(),
     travelDate: body.travelDate,
@@ -134,6 +135,7 @@ function normalizeLeadInput(body = {}, { isUpdate = false } = {}) {
     hotelCategory: body.hotelCategory,
     mealPlan,
     mealPreference: body.mealPreference || mealPlan.toUpperCase(),
+    foodPreference: FOOD_PREFERENCES.includes(body.foodPreference) ? body.foodPreference : '',
     transportRequirement: body.cabType?.trim() || body.transportRequirement,
     specialRequirements: body.specialRequirements,
     followUpRemarks: body.followUpRemarks,
@@ -210,6 +212,7 @@ function normalizeLeadUpdateInput(body = {}) {
   setTrim('alternatePhone');
   setTrim('whatsapp');
   setTrim('city');
+  setTrim('subCity');
   setTrim('state');
   setTrim('destination');
   setTrim('pickupPoint');
@@ -278,6 +281,10 @@ function normalizeLeadUpdateInput(body = {}) {
     const mealPlan = normalizeMealPlan(body.mealPlan || body.mealPreference, 'map');
     normalized.mealPlan = mealPlan;
     normalized.mealPreference = body.mealPreference || mealPlan.toUpperCase();
+  }
+
+  if (hasOwn(body, 'foodPreference')) {
+    normalized.foodPreference = FOOD_PREFERENCES.includes(body.foodPreference) ? body.foodPreference : '';
   }
 
   if (hasOwn(body, 'transportRequirement') || hasOwn(body, 'cabType')) {

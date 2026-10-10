@@ -48,7 +48,7 @@ export default function LeadCustomerPanel({ lead }) {
             ? new Date(lead.dateOfBirth).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
             : '—'}
         />
-        <InfoRow label="Location" value={[lead.city, lead.state].filter(Boolean).join(', ') || '—'} />
+        <InfoRow label="Location" value={[lead.subCity, lead.city, lead.state].filter(Boolean).join(', ') || '—'} />
         <InfoRow label="Lead Age" value={computeLeadAge(lead.createdAt)} />
         <InfoRow label="Last Contacted" value={lastContacted} />
         <InfoRow label="Lead Owner" value={lead.assignedTo?.name || 'Unassigned'} />
@@ -84,6 +84,10 @@ export default function LeadCustomerPanel({ lead }) {
           value={String(lead.hotelCategory || '—').replace(/_/g, ' ')}
         />
         <InfoRow label="Meal Plan" value={(lead.mealPlan || lead.mealPreference || 'map').toString().toUpperCase()} />
+        <InfoRow
+          label="Food Preference"
+          value={{ veg: 'Veg', non_veg: 'Non-Veg' }[lead.foodPreference] || '—'}
+        />
         <InfoRow label="Intent" value={lead.priority || '—'} />
         {canSeeSource && <InfoRow label="Source" value={formatSource(lead)} />}
         <InfoRow label="Package Type" value={lead.leadType?.replace(/_/g, ' ') || '—'} />

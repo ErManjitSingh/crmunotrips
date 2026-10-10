@@ -4,7 +4,7 @@ import { User, MessageCircle, MapPin, ListPlus, Compass } from 'lucide-react';
 export const LEAD_FORM_STEPS = [
   { id: 1, key: 'identity', anchorId: 'step-identity', title: 'Customer Identity', subtitle: 'Name & phone number', icon: User },
   { id: 2, key: 'communication', anchorId: 'step-communication', title: 'Communication', subtitle: 'WhatsApp & email', icon: MessageCircle },
-  { id: 3, key: 'location', anchorId: 'step-location', title: 'Location', subtitle: 'City & state', icon: MapPin },
+  { id: 3, key: 'location', anchorId: 'step-location', title: 'Location', subtitle: 'City, sub city & state', icon: MapPin },
   { id: 4, key: 'details', anchorId: 'step-details', title: 'Additional Details', subtitle: 'Optional extras', icon: ListPlus },
   { id: 5, key: 'source', anchorId: 'step-source', title: 'Lead Source', subtitle: 'Where it came from', icon: Compass },
 ];
@@ -198,6 +198,12 @@ export const MEAL_PLAN_LABELS = {
   ap: 'AP — All Meals',
 };
 
+/** Keep in sync with backend/src/models/Lead.js FOOD_PREFERENCES */
+export const FOOD_PREFERENCE_OPTIONS = [
+  { value: 'veg', label: 'Veg' },
+  { value: 'non_veg', label: 'Non-Veg' },
+];
+
 export const CAB_TYPE_OPTIONS = [
   { value: 'sedan', label: 'Sedan' },
   { value: 'suv', label: 'SUV' },
@@ -217,6 +223,7 @@ export const defaultWizardValues = {
   whatsapp: '',
   email: '',
   city: '',
+  subCity: '',
   state: '',
   destination: '',
   travelDate: '',
@@ -235,6 +242,7 @@ export const defaultWizardValues = {
   infants: 0,
   hotelCategory: '3_star',
   mealPlan: 'map',
+  foodPreference: '',
   requirements: '',
   budgetRange: '',
   customBudget: '',

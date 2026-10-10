@@ -91,6 +91,8 @@ export function useLeadWizard({ initialValues, draftKey = DRAFT_STORAGE_KEY, isE
     const nextErrors = {};
     if (!values.name?.trim()) nextErrors.name = { message: 'Customer name is required' };
     if (!values.phone?.trim()) nextErrors.phone = { message: 'Phone is required' };
+    if (!values.subCity?.trim()) nextErrors.subCity = { message: 'Sub city is required' };
+    if (!values.foodPreference) nextErrors.foodPreference = { message: 'Select Veg or Non-Veg' };
     if (!values.leadSource) nextErrors.leadSource = { message: 'Select a source' };
     if (!values.priority) nextErrors.priority = { message: 'Select intent' };
     if (values.leadSource === 'referral') {

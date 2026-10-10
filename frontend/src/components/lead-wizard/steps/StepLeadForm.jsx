@@ -14,7 +14,7 @@ import { useSelector } from 'react-redux';
 import WizardField, { WizardInput, IconInput, IconSelect, WizardTextarea } from '../WizardField';
 import {
   INDIAN_STATES, DESTINATIONS, LEAD_TYPES, LEAD_SOURCES, PRIORITIES,
-  HOTEL_CATEGORY_OPTIONS, CAB_TYPE_OPTIONS, MEAL_PLAN_OPTIONS, filterPickupDropSuggestions, INTENT_LABEL,
+  HOTEL_CATEGORY_OPTIONS, CAB_TYPE_OPTIONS, MEAL_PLAN_OPTIONS, FOOD_PREFERENCE_OPTIONS, filterPickupDropSuggestions, INTENT_LABEL,
   getLeadSourcesForRole, defaultLeadSourceForRole, REFERRAL_RELATIONSHIPS,
 } from '../constants';
 import { calcTourDays } from '../leadWizardUtils';
@@ -376,6 +376,7 @@ export default function StepLeadForm({ isEdit, leadId }) {
   const alternatePhone = watch('alternatePhone');
   const name = watch('name');
   const occupationCategory = watch('occupationCategory') || '';
+  const foodPreference = watch('foodPreference') || '';
   const destination = watch('destination') || '';
   const leadType = watch('leadType') || 'fit';
   const priority = watch('priority');
@@ -618,9 +619,13 @@ export default function StepLeadForm({ isEdit, leadId }) {
       </StepSection>
 
       <StepSection id="step-location" number={3} title="Location">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <WizardField label="City" required error={errors.city?.message}>
             <IconInput icon={Building2} {...register('city')} placeholder="Mumbai" error={errors.city} />
+          </WizardField>
+
+          <WizardField label="Sub City" required error={errors.subCity?.message}>
+            <IconInput icon={MapPin} {...register('subCity')} placeholder="e.g. Andheri West" error={errors.subCity} />
           </WizardField>
 
           <WizardField label="State" error={errors.state?.message}>
@@ -852,6 +857,24 @@ export default function StepLeadForm({ isEdit, leadId }) {
               </IconSelect>
             </WizardField>
           </div>
+          <WizardField
+            label="Food preference"
+            required
+            error={errors.foodPreference?.message}
+            className="sm:col-span-2"
+          >
+            <div className="flex items-center h-10 gap-2">
+              {FOOD_PREFERENCE_OPTIONS.map((f) => (
+                <Chip
+                  key={f.value}
+                  active={foodPreference === f.value}
+                  onClick={() => setValue('foodPreference', f.value)}
+                >
+                  {f.label}
+                </Chip>
+              ))}
+            </div>
+          </WizardField>
           <p className="sm:col-span-2 text-[10px] text-slate-500">
             Default MAP — hotel prices follow this plan in quotations
           </p>

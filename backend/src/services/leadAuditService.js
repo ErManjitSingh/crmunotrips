@@ -50,6 +50,8 @@ const LEAD_TRACKED_FIELDS = [
   'leadScore',
   'occupationCategory',
   'occupation',
+  'subCity',
+  'foodPreference',
 ];
 
 const FIELD_LABELS = {
@@ -101,6 +103,8 @@ const FIELD_LABELS = {
   leadScore: 'Lead score',
   occupationCategory: 'Occupation category',
   occupation: 'Occupation',
+  subCity: 'Sub city',
+  foodPreference: 'Food preference',
 };
 
 async function logAudit({

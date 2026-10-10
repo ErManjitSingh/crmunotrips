@@ -11,7 +11,7 @@ export default function WizardField({ label, required, error, hint, children, cl
       )}
       {children}
       {hint && !error && <p className="text-[10px] text-slate-400 leading-tight">{hint}</p>}
-      {error && <p className="text-[10px] text-rose-500 font-medium">{error}</p>}
+      {error && <p data-field-error className="text-[10px] text-rose-500 font-medium">{error}</p>}
     </div>
   );
 }
