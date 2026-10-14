@@ -21,6 +21,7 @@ const {
   getTimeline,
   getSummary,
   getTeamOverviewHandler,
+  getTeamMembersHandler,
   getAnalyticsHandler,
   getHourDetail,
 } = require('../controllers/callReportController');
@@ -80,6 +81,7 @@ router.get('/calendar', managerOnly, getCalendar);
 router.get('/call-report/timeline', managerOrExecutiveSelf, getTimeline);
 router.get('/call-report/summary', managerOrExecutiveSelf, getSummary);
 router.get('/call-report/team-overview', managerOnly, getTeamOverviewHandler);
+router.get('/call-report/team-members', managerOnly, getTeamMembersHandler);
 router.get('/call-report/analytics', managerOrExecutiveSelf, getAnalyticsHandler);
 router.get('/call-report/hour-detail', managerOrExecutiveSelf, getHourDetail);
 

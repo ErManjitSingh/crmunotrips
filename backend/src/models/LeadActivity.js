@@ -26,6 +26,7 @@ const LEAD_ACTIVITY_TYPES = [
   'lead_reactivated',
   'lead_converted',
   'cold_calling_assigned',
+  'cold_calling_lead_opened',
   'lead_merged',
   'lead_deleted',
   'lead_restored',

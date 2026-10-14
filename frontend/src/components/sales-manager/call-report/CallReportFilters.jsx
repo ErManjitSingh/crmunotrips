@@ -9,6 +9,12 @@ function toInputDate(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+/** Call Report teams — Sales Executives and Cold Calling agents are reported separately, never mixed. */
+export const CALL_REPORT_TEAMS = [
+  { key: 'sales', label: 'Sales Executives' },
+  { key: 'cold_calling', label: 'Cold Calling' },
+];
+
 export const CALL_REPORT_PRESETS = [
   { key: 'today', label: 'Today' },
   { key: 'yesterday', label: 'Yesterday' },
@@ -42,6 +48,8 @@ export default function CallReportFilters({
   onExecutiveChange,
   search = '',
   onSearchChange,
+  team = 'sales',
+  onTeamChange,
   selfOnly = false,
 }) {
   const [showDates, setShowDates] = useState(false);
@@ -89,13 +97,27 @@ export default function CallReportFilters({
 
         {!selfOnly && (
           <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 rounded-xl border border-subtle bg-surface-elevated p-1">
+              {CALL_REPORT_TEAMS.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => onTeamChange?.(t.key)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                    team === t.key ? 'bg-violet-600 text-white shadow-sm' : 'text-content-muted hover:text-content-primary'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-muted" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => onSearchChange?.(e.target.value)}
-                placeholder="Search executive name…"
+                placeholder={team === 'cold_calling' ? 'Search cold caller name…' : 'Search executive name…'}
                 className="h-10 w-52 rounded-xl border border-subtle bg-white pl-9 pr-3 text-sm font-medium text-content-primary outline-none focus:border-violet-400"
               />
             </div>
@@ -104,7 +126,7 @@ export default function CallReportFilters({
               onChange={(e) => onExecutiveChange?.(e.target.value)}
               className="h-10 min-w-[200px] rounded-xl border border-subtle bg-white px-3 text-sm font-medium text-content-primary"
             >
-              <option value="all">All Executives</option>
+              <option value="all">{team === 'cold_calling' ? 'All Cold Callers' : 'All Executives'}</option>
               {executives.map((ex) => (
                 <option key={ex._id} value={ex._id}>{ex.name}</option>
               ))}

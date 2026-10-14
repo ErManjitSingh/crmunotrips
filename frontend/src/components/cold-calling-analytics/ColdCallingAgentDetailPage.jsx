@@ -200,7 +200,7 @@ export default function ColdCallingAgentDetailPage() {
         </>
       )}
 
-      <AdminCallHistoryModal open={historyOpen} lead={historyLead} onClose={() => setHistoryOpen(false)} />
+      <AdminCallHistoryModal open={historyOpen} lead={historyLead} agentId={agentId} agentName={agent?.name} onClose={() => setHistoryOpen(false)} />
     </div>
   );
 }

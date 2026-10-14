@@ -1,4 +1,5 @@
-import { History, PhoneCall } from 'lucide-react';
+import { History, MoreVertical, PhoneCall, UserRoundCog } from 'lucide-react';
+import { DropdownMenuRoot, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { formatAssignedDate } from '../../lib/executiveLeadStatusFilters';
 import { callButtonLead, describeCallActivity, formatCallDateTime } from '../../lib/coldCallingCalls';
 import { formatLeadId } from '../leads/constants';
@@ -73,8 +74,34 @@ function CallActivity({ calls }) {
   );
 }
 
-/** Call (the CRM's shared call button, Cold Calling authorization) + call history for one lead. */
-function RowActions({ row, onOpenHistory, className }) {
+/**
+ * ⋮ menu. Only actions the server says this agent may perform are listed (`canReassign` comes from the
+ * My Leads API); with none, the menu is not rendered at all.
+ */
+function RowMenu({ row, onReassign }) {
+  if (!onReassign || !row.canReassign) return null;
+  return (
+    <DropdownMenuRoot modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`More actions for ${row.lead.name}`}
+          className="inline-flex h-9 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70"
+        >
+          <MoreVertical className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem onClick={() => onReassign(row)} className="flex cursor-pointer items-center gap-2">
+          <UserRoundCog className="h-4 w-4" aria-hidden="true" /> Reassign
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenuRoot>
+  );
+}
+
+/** Call (the CRM's shared call button, Cold Calling authorization) + call history + ⋮ menu for one lead. */
+function RowActions({ row, onOpenHistory, onReassign, className }) {
   const hasCalls = Number(row.calls?.count || 0) > 0;
   // The server decides (a converted / lost lead can no longer be called); history stays available either way.
   const callable = row.canCall !== false;
@@ -107,6 +134,7 @@ function RowActions({ row, onOpenHistory, className }) {
           <History className="h-4 w-4" aria-hidden="true" />
         </button>
       )}
+      <RowMenu row={row} onReassign={onReassign} />
     </span>
   );
 }
@@ -117,7 +145,7 @@ function RowActions({ row, onOpenHistory, className }) {
  * for a lead the agent is assigned). "Original Sales Executive" is the snapshot taken at assignment;
  * "Current Sales Owner" is live.
  */
-export default function MyColdCallingLeadsList({ rows = [], loading = false, onOpenHistory }) {
+export default function MyColdCallingLeadsList({ rows = [], loading = false, onOpenHistory, onReassign, filterLabel = null }) {
   const empty = !loading && rows.length === 0;
   return (
     <div className="rounded-2xl border border-subtle bg-white shadow-sm" aria-busy={loading}>
@@ -148,7 +176,7 @@ export default function MyColdCallingLeadsList({ rows = [], loading = false, onO
                     <td className="max-w-[170px] px-2 py-3"><RowStatus row={row} /></td>
                     <td className="max-w-[90px] px-2 py-3"><CallActivity calls={row.calls} /></td>
                     <td className="whitespace-nowrap px-2 py-3 text-slate-600">{formatAssignedDate(row.assignedAt)}</td>
-                    <td className="px-2 py-3"><RowActions row={row} onOpenHistory={onOpenHistory} /></td>
+                    <td className="px-2 py-3"><RowActions row={row} onOpenHistory={onOpenHistory} onReassign={onReassign} /></td>
                   </tr>
                 ))}
             </tbody>
@@ -190,7 +218,7 @@ export default function MyColdCallingLeadsList({ rows = [], loading = false, onO
                       ? `${describeCallActivity(row.calls).label}, last: ${describeCallActivity(row.calls).lastOutcome}`
                       : 'Not called yet'}
                   </span>
-                  <RowActions row={row} onOpenHistory={onOpenHistory} className="mt-2.5" />
+                  <RowActions row={row} onOpenHistory={onOpenHistory} onReassign={onReassign} className="mt-2.5" />
                 </span>
               </li>
             ))}
@@ -202,10 +230,19 @@ export default function MyColdCallingLeadsList({ rows = [], loading = false, onO
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-100">
             <PhoneCall className="h-5 w-5" aria-hidden="true" />
           </span>
-          <p className="text-sm font-semibold text-slate-900">No leads assigned yet</p>
-          <p className="max-w-sm text-xs leading-relaxed text-slate-500">
-            Leads assigned to you for Cold Calling will appear here. Once Admin assigns Cold leads to you, they will show up in this list.
-          </p>
+          {filterLabel ? (
+            <>
+              <p className="text-sm font-semibold text-slate-900">No leads in &ldquo;{filterLabel}&rdquo;</p>
+              <p className="max-w-sm text-xs leading-relaxed text-slate-500">None of your assigned leads match this filter right now.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-slate-900">No leads assigned yet</p>
+              <p className="max-w-sm text-xs leading-relaxed text-slate-500">
+                Leads assigned to you for Cold Calling will appear here. Once Admin assigns Cold leads to you, they will show up in this list.
+              </p>
+            </>
+          )}
         </div>
       )}
     </div>

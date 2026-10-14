@@ -87,6 +87,22 @@ async function listMyCallsForLead({ coldCallerId, leadId, query = {} }) {
   );
 }
 
+/**
+ * Leads this agent called today (org calendar day), limited to their ACTIVE assignments — the population
+ * behind both the "Called Today" dashboard card and the My Leads "Called Today" filter.
+ */
+async function leadIdsCalledToday({ coldCallerId, now = new Date() }) {
+  const { startOfCalendarDay, endOfCalendarDay } = require('../utils/orgTimezone');
+  const userId = new mongoose.Types.ObjectId(String(coldCallerId));
+  const called = await CallNote.distinct('leadId', {
+    userId,
+    callerRole: 'cold_calling',
+    createdAt: { $gte: startOfCalendarDay(now), $lte: endOfCalendarDay(now) },
+  });
+  if (!called.length) return [];
+  return ColdCallingAssignment.distinct('leadId', { coldCallerId: userId, status: 'active', leadId: { $in: called } });
+}
+
 /** One aggregation for a whole page of leads: this agent's call count / last call / last outcome per lead. */
 async function summarizeMyCalls({ coldCallerId, leadIds }) {
   if (!leadIds.length) return new Map();
@@ -99,4 +115,4 @@ async function summarizeMyCalls({ coldCallerId, leadIds }) {
   return new Map(rows.map((row) => [String(row._id), row]));
 }
 
-module.exports = { lifecycleOf, canCallLead, assertLeadCallable, loadAssignedLead, findExistingCall, listMyCallsForLead, summarizeMyCalls };
+module.exports = { lifecycleOf, canCallLead, assertLeadCallable, loadAssignedLead, findExistingCall, listMyCallsForLead, summarizeMyCalls, leadIdsCalledToday };

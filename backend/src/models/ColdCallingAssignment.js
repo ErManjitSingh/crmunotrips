@@ -36,6 +36,17 @@ const coldCallingAssignmentSchema = new mongoose.Schema(
 
     status: { type: String, enum: ['active', 'closed'], default: 'active', required: true },
 
+    /**
+     * Set when the assignment is closed. 'reassigned_to_sales' = the agent handed the lead to a Sales
+     * Executive (a real ownership transfer, see coldCallingReassignService). The row itself is kept so
+     * the agent's calls and analytics history stay intact.
+     */
+    closedAt: { type: Date },
+    closedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    closedReason: { type: String, enum: ['reassigned_to_sales'] },
+    reassignedToId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    reassignedToName: { type: String, trim: true },
+
     assignedAt: { type: Date, default: Date.now, required: true },
     assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     assignedByName: { type: String, trim: true, default: '' },

@@ -11,6 +11,8 @@ import { createExecutiveFollowUp, buildFollowUpPayload } from '../followups/foll
 import { useLeadActivities } from '../../features/leads/hooks/useLeadActivities';
 import { isLeadStatusLocked } from '../../utils/leadUtils';
 import PostConvertCommercialModal from '../leads/PostConvertCommercialModal';
+import { ReassignedBanner } from './reassigned/ReassignedParts';
+import { REASSIGNED_LEADS_PATH } from './reassigned/reassignedLeads';
 
 export default function ExecutiveLeadDetailPage() {
   const { id } = useParams();
@@ -23,6 +25,8 @@ export default function ExecutiveLeadDetailPage() {
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
   const [markingCallDone, setMarkingCallDone] = useState(false);
   const [commercialOpen, setCommercialOpen] = useState(false);
+  // Set when the server says this lead was reassigned away from me (403 LEAD_REASSIGNED): show why, not "not found".
+  const [reassignedMessage, setReassignedMessage] = useState('');
 
   const loadLead = useCallback(({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -30,8 +34,15 @@ export default function ExecutiveLeadDetailPage() {
       params: { includeRelated: 1 },
       skipSuccessToast: true,
     })
-      .then((res) => setLead(res.data))
-      .catch(() => setLead(null))
+      .then((res) => {
+        setReassignedMessage('');
+        setLead(res.data);
+      })
+      .catch((err) => {
+        const body = err?.response?.data;
+        setReassignedMessage(body?.code === 'LEAD_REASSIGNED' ? body.message : '');
+        setLead(null);
+      })
       .finally(() => {
         if (!silent) setLoading(false);
       });
@@ -81,6 +92,19 @@ export default function ExecutiveLeadDetailPage() {
           <div className="xl:col-span-3 h-[500px] rounded-2xl bg-slate-100" />
           <div className="xl:col-span-6 h-[500px] rounded-2xl bg-slate-100" />
           <div className="xl:col-span-3 h-[400px] rounded-2xl bg-slate-100" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!lead && reassignedMessage) {
+    return (
+      <div className="space-y-3 rounded-2xl border border-amber-200 bg-white p-8 shadow-sm">
+        <ReassignedBanner message={reassignedMessage} />
+        <p className="text-sm text-content-muted">You can still view this lead&apos;s history, calls and timeline from your reassigned leads.</p>
+        <div className="flex flex-wrap gap-3 text-sm">
+          <Link to={REASSIGNED_LEADS_PATH} className="font-semibold text-violet-600 hover:underline">View reassigned leads</Link>
+          <Link to="/sales-executive/leads/all" className="text-content-muted hover:underline">← Back to My Leads</Link>
         </div>
       </div>
     );

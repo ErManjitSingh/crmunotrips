@@ -70,7 +70,13 @@ export default function LeadWizard() {
 
   const saveLead = async (action = 'list') => {
     if (!validate()) {
-      document.getElementById('step-identity')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Errors live in both cards (e.g. food preference is in Travel Information) — scroll to
+      // the first one actually shown, once it has rendered.
+      requestAnimationFrame(() => {
+        const firstError = document.querySelector('[data-field-error]');
+        if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        else document.getElementById('step-identity')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
       return;
     }
     setSaving(true);

@@ -27,6 +27,7 @@ const ACTIVITY_TITLES = {
   lead_reactivated: 'Lead Reactivated',
   lead_converted: 'Lead Converted',
   cold_calling_assigned: 'Assigned to Cold Calling',
+  cold_calling_lead_opened: 'Opened by Cold Calling',
   lead_deleted: 'Lead Deleted',
   lead_restored: 'Lead Restored',
   note_added: 'Note Added',

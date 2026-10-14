@@ -105,7 +105,7 @@ function StatTile({ label, value, icon: Icon, iconWrap }) {
   );
 }
 
-export default function AnalyticsSection({ executiveId, executives = [] }) {
+export default function AnalyticsSection({ executiveId, executives = [], team = 'sales' }) {
   const [presetKey, setPresetKey] = useState('7d');
   const [customRange, setCustomRange] = useState(null);
   const [data, setData] = useState(null);
@@ -122,24 +122,24 @@ export default function AnalyticsSection({ executiveId, executives = [] }) {
 
   useEffect(() => {
     setLoading(true);
-    const params = { dateFrom: range.dateFrom, dateTo: range.dateTo };
+    const params = { dateFrom: range.dateFrom, dateTo: range.dateTo, team };
     if (executiveId && executiveId !== 'all') params.executiveId = executiveId;
     API.get('/sales-manager/call-report/analytics', { params, skipSuccessToast: true })
       .then((r) => setData(r.data))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range.dateFrom, range.dateTo, executiveId]);
+  }, [range.dateFrom, range.dateTo, executiveId, team]);
 
   // Calls by Executive keeps its own Today / Yesterday / Custom filter, independent of the
   // Today/7d/30d range above — managers usually want "who called who yesterday", not a rolling window.
   useEffect(() => {
     setExecLoading(true);
-    const params = { dateFrom: execFilters.dateFrom, dateTo: execFilters.dateTo };
+    const params = { dateFrom: execFilters.dateFrom, dateTo: execFilters.dateTo, team };
     if (executiveId && executiveId !== 'all') params.executiveId = executiveId;
     API.get('/sales-manager/call-report/analytics', { params, skipSuccessToast: true })
       .then((r) => setExecData(r.data))
       .finally(() => setExecLoading(false));
-  }, [execFilters.dateFrom, execFilters.dateTo, executiveId]);
+  }, [execFilters.dateFrom, execFilters.dateTo, executiveId, team]);
 
   const byDay = useMemo(
     () => (data?.byDay || []).map((r) => ({
@@ -241,6 +241,7 @@ export default function AnalyticsSection({ executiveId, executives = [] }) {
               dateTo={range.dateTo}
               executiveId={executiveId}
               executives={executives}
+              team={team}
             />
 
             <ChartCard title="Calls by Day" icon={CalendarRange} iconWrap="bg-blue-500">
@@ -271,6 +272,7 @@ export default function AnalyticsSection({ executiveId, executives = [] }) {
             date={selectedDay}
             initialExecutiveId={executiveId}
             executives={executives}
+            team={team}
             onClose={() => setSelectedDay(null)}
           />
 

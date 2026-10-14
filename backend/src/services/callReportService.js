@@ -52,13 +52,23 @@ const EFFECTIVE_START = { $ifNull: ['$startedAt', '$createdAt'] };
 // what managers see elsewhere in the app (e.g. the timeline, which renders in browser-local time).
 const ORG_TZ = process.env.ATTENDANCE_TZ || 'Asia/Kolkata';
 
-function baseMatch({ userId, branchId, periodStart, periodEnd }) {
+/**
+ * Call Report has two separate teams: Sales (default) and Cold Calling. Anything other than an
+ * explicit 'cold_calling' is Sales, so an old/unknown client can never mix the two populations.
+ */
+function resolveCallerGroup(team) {
+  return team === 'cold_calling' ? 'cold_calling' : 'sales';
+}
+
+function baseMatch({ userId, branchId, periodStart, periodEnd, team }) {
   const branchObjectId = toObjectId(branchId);
   return {
     ...(userId
       ? { userId: new mongoose.Types.ObjectId(String(userId)) }
-      // Team-wide totals are Sales figures: Cold Calling agents' calls are theirs, not the sales team's.
-      : { callerRole: { $ne: 'cold_calling' } }),
+      // Team-wide totals are per team: Cold Calling agents' calls never count toward Sales figures and vice versa.
+      : resolveCallerGroup(team) === 'cold_calling'
+        ? { callerRole: 'cold_calling' }
+        : { callerRole: { $ne: 'cold_calling' } }),
     ...(branchObjectId ? { branchId: branchObjectId } : {}),
     createdAt: { $gte: periodStart, $lte: periodEnd },
   };
@@ -254,11 +264,11 @@ const HOUR_DETAIL_MAX_LIMIT = 100;
  * same matched set, for the Unique Guests / Avg Calls-per-Guest KPIs.
  */
 async function getHourlyCallDetail({
-  userId, branchId, dateFrom, dateTo, hour, outcome, durationGt, sortBy, sortDir, search, page, limit,
+  userId, branchId, team, dateFrom, dateTo, hour, outcome, durationGt, sortBy, sortDir, search, page, limit,
   includeGuestBreakdown,
 }) {
   const { periodStart, periodEnd } = resolvePeriod(dateFrom, dateTo);
-  const match = baseMatch({ userId, branchId, periodStart, periodEnd });
+  const match = baseMatch({ userId, branchId, periodStart, periodEnd, team });
   if (Number.isInteger(hour)) {
     match.$expr = { $eq: [{ $hour: { date: EFFECTIVE_START, timezone: ORG_TZ } }, hour] };
   }
@@ -367,9 +377,9 @@ async function getHourlyCallDetail({
   };
 }
 
-async function getAnalytics({ userId, branchId, dateFrom, dateTo }) {
+async function getAnalytics({ userId, branchId, team, dateFrom, dateTo }) {
   const { periodStart, periodEnd } = resolvePeriod(dateFrom, dateTo);
-  const match = baseMatch({ userId, branchId, periodStart, periodEnd });
+  const match = baseMatch({ userId, branchId, periodStart, periodEnd, team });
 
   const [result] = await CallNote.aggregate([
     { $match: match },
@@ -443,6 +453,7 @@ async function getAnalytics({ userId, branchId, dateFrom, dateTo }) {
 
 module.exports = {
   bucketSwitchStage,
+  resolveCallerGroup,
   getExecutiveTimeline,
   getExecutiveSummary,
   getTeamOverview,

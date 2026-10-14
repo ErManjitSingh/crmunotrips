@@ -47,6 +47,9 @@ const REFERRAL_RELATIONSHIPS = [
   'other',
 ];
 
+/** Asked alongside the meal plan on the Add/Edit Lead form. */
+const FOOD_PREFERENCES = ['veg', 'non_veg'];
+
 const leadSchema = new mongoose.Schema(
   {
     leadId: { type: String, unique: true, sparse: true },
@@ -58,6 +61,7 @@ const leadSchema = new mongoose.Schema(
     branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', index: true },
     whatsapp: { type: String, trim: true, index: true },
     city: { type: String, trim: true },
+    subCity: { type: String, trim: true, default: '' },
     state: { type: String, trim: true },
     destination: { type: String, required: true, trim: true, index: true },
     leadType: { type: String, enum: LEAD_TYPES, default: 'fit', index: true },
@@ -166,6 +170,7 @@ const leadSchema = new mongoose.Schema(
       index: true,
     },
     mealPreference: { type: String },
+    foodPreference: { type: String, enum: [...FOOD_PREFERENCES, ''], default: '' },
     transportRequirement: { type: String },
     specialRequirements: { type: String },
     followUpRemarks: { type: String },
@@ -201,6 +206,12 @@ const leadSchema = new mongoose.Schema(
     acceptanceMissedName: { type: String, trim: true, default: '' },
     acceptanceMissedAt: { type: Date },
     assignmentHistoryIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    /**
+     * The Sales Executive who owned the lead before its FIRST ownership transfer out of Cold Calling
+     * (coldCallingReassignService). Set once, never overwritten, so Rahul -> Aman -> Priya keeps "Rahul".
+     * Absent on leads that were never transferred — their original owner is simply `assignedTo`.
+     */
+    originalAssignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     /** Computed first-call deadline (hot/warm/night) */
     firstContactDeadline: { type: Date, index: true },
     assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -308,3 +319,4 @@ module.exports.BUDGET_RANGES = BUDGET_RANGES;
 module.exports.LEAD_SCORES = LEAD_SCORES;
 module.exports.LEAD_TYPES = LEAD_TYPES;
 module.exports.REFERRAL_RELATIONSHIPS = REFERRAL_RELATIONSHIPS;
+module.exports.FOOD_PREFERENCES = FOOD_PREFERENCES;

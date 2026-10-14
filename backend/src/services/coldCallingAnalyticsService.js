@@ -9,6 +9,7 @@ const { buildBucketExpression } = require('../utils/listStatusBucketFilter');
 const { bucketSwitchStage } = require('./callReportService');
 const { bucketOutcome } = require('../models/CallNote');
 const { ORG_TZ } = require('../utils/orgTimezone');
+const { leadIdsCalledToday } = require('./coldCallingCallService');
 const { parsePagination, paginatedResponse } = require('../utils/pagination');
 const {
   parseExecutiveLeadStatusQuery,
@@ -82,10 +83,11 @@ function parseColdCallingAgentLeadsQuery(query = {}, agentId, branchId = null) {
 /* Pipeline building blocks                                                                         */
 /* ------------------------------------------------------------------------------------------------ */
 
-function assignmentMatch({ branchId, agentId, periodStart, periodEnd }) {
+function assignmentMatch({ branchId, agentId, periodStart, periodEnd, activeOnly }) {
   return {
     ...(branchId ? { branchId } : {}),
     ...(agentId ? { coldCallerId: agentId } : {}),
+    ...(activeOnly ? { status: 'active' } : {}),
     ...((periodStart || periodEnd)
       ? { assignedAt: { ...(periodStart ? { $gte: periodStart } : {}), ...(periodEnd ? { $lte: periodEnd } : {}) } }
       : {}),
@@ -577,8 +579,43 @@ async function getColdCallingAgentLeads(params) {
   };
 }
 
+/* ------------------------------------------------------------------------------------------------ */
+/* Agent's own workspace summary                                                                    */
+/* ------------------------------------------------------------------------------------------------ */
+
+/**
+ * The signed-in Cold Caller's dashboard cards. Population = their ACTIVE assignments on non-deleted leads
+ * (the same set as "My Leads", so Assigned Leads here always equals the My Leads total). Still Cold /
+ * Moved to Warm / Moved to Hot use the exact admin-analytics rules (cohortPipeline), so the agent and the
+ * admin never see different numbers for the same leads:
+ *   stillCold    the lead's CURRENT bucket is Cold (converted / lost are not "still cold")
+ *   movedToWarm  the lead reached Warm at some point after it was assigned (movement ledger)
+ *   movedToHot   the lead reached Hot at some point after it was assigned (movement ledger)
+ * calledToday = distinct assigned leads this agent called today (org calendar day), from their own CallNotes.
+ * My Leads' `?view=` filter uses these same rules, so clicking a card always lists exactly that many leads.
+ */
+async function getMyCallingSummary({ coldCallerId }) {
+  await getConfig({ includeDisabled: false });
+  const agentId = new mongoose.Types.ObjectId(String(coldCallerId));
+
+  const [cohort, calledToday] = await Promise.all([
+    aggregateCohort({ agentId, activeOnly: true }),
+    leadIdsCalledToday({ coldCallerId: agentId }),
+  ]);
+
+  const group = cohort.agents[0];
+  return {
+    assigned: group?.assigned || 0,
+    calledToday: calledToday.length,
+    stillCold: group?.cold || 0,
+    movedToWarm: group?.movedWarm || 0,
+    movedToHot: group?.movedHot || 0,
+  };
+}
+
 module.exports = {
   cohortPipeline,
+  getMyCallingSummary,
   CATEGORIES,
   parseColdCallingAnalyticsQuery,
   parseColdCallingAgentLeadsQuery,

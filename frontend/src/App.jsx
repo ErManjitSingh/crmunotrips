@@ -76,6 +76,7 @@ import {
   ExecutiveDashboard,
   MyLeadsPage,
   ExecutiveLeadDetailPage,
+  ReassignedLeadsPage,
   ExecutiveFollowUpsPage,
   ExecutiveQuotationsPage,
   ExecutiveQuotationBuilder,
@@ -252,6 +253,7 @@ function App() {
                     path="leads/:id/view"
                     element={<ExecutiveLeadDetailPage />}
                   />
+                  <Route path="leads/reassigned" element={<ReassignedLeadsPage />} />
                   <Route path="leads/:filter" element={<MyLeadsPage />} />
                   <Route
                     path="follow-ups"
