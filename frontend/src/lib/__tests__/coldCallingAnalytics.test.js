@@ -70,6 +70,13 @@ test('overview link keeps every filter (Back restores the context); agent link p
   const back = new URL(buildColdCallingOverviewPath({ ...coldCallingFiltersFromSearchParams(new URL(agent, 'http://x').searchParams), agentId: '' }), 'http://x');
   assert.equal(back.searchParams.get('dateFrom'), '2026-09-01');
   assert.equal(back.searchParams.get('source'), 'dpw');
+
+  // Custom basePath (e.g. Team Leader workspace) generates clean routes without breaking the query contract
+  const tlAgent = buildColdCallingAgentPath('agentY', filters, '/team-leader/cold-calling');
+  assert.match(tlAgent, /^\/team-leader\/cold-calling\/agentY\?/);
+  const tlOverview = buildColdCallingOverviewPath(filters, '/team-leader/cold-calling');
+  assert.match(tlOverview, /^\/team-leader\/cold-calling\?/);
+  assert.doesNotMatch(tlOverview, /view=cold-calling/);
 });
 
 test('switching tabs keeps period / source / branch and drops the tab-specific executive or agent', () => {

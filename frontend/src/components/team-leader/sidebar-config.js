@@ -16,6 +16,7 @@ import {
   XOctagon,
   XCircle,
   Mail,
+  Headphones,
 } from 'lucide-react';
 
 export const teamLeaderNavItems = [
@@ -34,6 +35,7 @@ export const teamLeaderNavItems = [
   { path: '/team-leader/follow-ups', label: 'Team Follow-ups', icon: CalendarClock, badgeKey: 'followups.due' },
   { path: '/team-leader/performance', label: 'Executive Performance', icon: Trophy },
   { path: '/team-leader/escalations', label: 'Lead Escalations', icon: AlertTriangle, badgeKey: 'escalations' },
+  { path: '/team-leader/cold-calling', label: 'Cold Calling', icon: Headphones },
   {
     id: 'quotations',
     label: 'Quotations',

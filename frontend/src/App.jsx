@@ -34,6 +34,7 @@ import {
   ExecutiveLeadStatus,
   ExecutiveLeadStatusDetail,
   ColdCallingAgentDetail,
+  ColdCallingAnalytics,
   ColdCallingLayout,
   ColdCallingDashboard,
   ColdCallingMyLeads,
@@ -320,6 +321,14 @@ function App() {
                     element={<ExecutivePerformancePage />}
                   />
                   <Route path="escalations" element={<LeadEscalationsPage />} />
+                  <Route
+                    path="cold-calling"
+                    element={<ColdCallingAnalytics />}
+                  />
+                  <Route
+                    path="cold-calling/:agentId"
+                    element={<ColdCallingAgentDetail />}
+                  />
                   <Route
                     path="quotations/new"
                     element={<LeaderQuotationBuilder />}

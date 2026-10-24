@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { History, ClipboardList } from 'lucide-react';
 import { CATEGORY_LABELS, dash, describeCategoryReason, formatDateTime, formatNumber, outcomeLabel } from '../../lib/coldCallingAnalytics';
 import { formatAssignedDate } from '../../lib/executiveLeadStatusFilters';
@@ -55,6 +55,8 @@ function SkeletonRows() {
  * the existing call-gated masking). "Calls" opens that lead's complete call history.
  */
 export default function AgentLeadsTable({ rows = [], loading = false, refreshing = false, onOpenHistory, emptyMessage }) {
+  const location = useLocation();
+  const getLeadPath = (id) => (location.pathname.startsWith('/team-leader') ? `/team-leader/leads/${id}/view` : `/leads/${id}`);
   const empty = !loading && rows.length === 0;
   return (
     <div className={cn('rounded-2xl border border-subtle bg-white shadow-sm', refreshing && 'opacity-70 transition-opacity')} aria-busy={loading || refreshing}>
@@ -71,7 +73,7 @@ export default function AgentLeadsTable({ rows = [], loading = false, refreshing
               {!loading && rows.map((row) => (
                 <tr key={row.assignmentId} className="border-t border-slate-100" data-lead={row.lead.name}>
                   <td className="whitespace-nowrap px-2.5 py-2.5">
-                    <Link to={`/leads/${row.lead._id}`} className="font-semibold text-blue-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/70" aria-label={`Open lead ${formatLeadId(row.lead._id)}, ${row.lead.name}`}>
+                    <Link to={getLeadPath(row.lead._id)} className="font-semibold text-blue-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/70" aria-label={`Open lead ${formatLeadId(row.lead._id)}, ${row.lead.name}`}>
                       {formatLeadId(row.lead._id)}
                     </Link>
                   </td>
@@ -104,7 +106,7 @@ export default function AgentLeadsTable({ rows = [], loading = false, refreshing
               <span className={cn('w-1 shrink-0 rounded-full', (STATUS_THEME[row.category] || STATUS_THEME.unclassified).dot)} aria-hidden="true" />
               <span className="min-w-0 flex-1">
                 <span className="flex items-start justify-between gap-2">
-                  <Link to={`/leads/${row.lead._id}`} className="text-sm font-semibold text-blue-600">{formatLeadId(row.lead._id)}</Link>
+                  <Link to={getLeadPath(row.lead._id)} className="text-sm font-semibold text-blue-600">{formatLeadId(row.lead._id)}</Link>
                   <span className="block min-w-0 max-w-[65%]"><StatusCell row={row} stacked /></span>
                 </span>
                 <span className="mt-1 block truncate font-semibold text-slate-900">{row.lead.name}</span>
