@@ -44,7 +44,7 @@ function describeFollowUp(payloadOrDoc, body = {}) {
   return [category, type, when && `at ${when}`, outcome, notes].filter(Boolean).join(' · ');
 }
 
-async function createFollowUpForLead({ body, user, leadFilter = null }) {
+async function createFollowUpForLead({ body, user, leadFilter = null, autoNextCall = false }) {
   const leadId = body.lead || body.leadId;
   const leadQuery = { _id: leadId };
   if (leadFilter) Object.assign(leadQuery, leadFilter);
@@ -56,6 +56,8 @@ async function createFollowUpForLead({ body, user, leadFilter = null }) {
   try {
     payload = normalizeFollowUpPayload(body, user, lead);
     payload.branchId = lead.branchId || user.branchId || null;
+    // Server-side option only — never taken from the request body.
+    if (autoNextCall) payload.autoNextCall = true;
   } catch (e) {
     throw new ApiError(e.statusCode || 400, e.message);
   }

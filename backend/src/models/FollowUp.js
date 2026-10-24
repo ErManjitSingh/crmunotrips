@@ -41,6 +41,9 @@ const followUpSchema = new mongoose.Schema(
       default: 'warm',
       index: true,
     },
+    // Set only on the automatic "+2 hrs" reminder a saved call note creates; the next call note
+    // completes these (instead of matching notes text, which carries a category prefix).
+    autoNextCall: { type: Boolean, default: false },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   },

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { uploadCallRecording, getCallTranscript } = require('../controllers/callRecordingController');
 const {
   listLeads,
   listLostLeads,
@@ -75,18 +76,18 @@ router.get('/analytics/aging', authorize('admin', 'sales_manager', 'lead_provide
 router.get('/analytics/sources', authorize('admin', 'sales_manager', 'lead_provider'), getSourceAnalyticsHandler);
 router.get('/analytics/executives', authorize('admin', 'sales_manager', 'lead_provider'), getExecutivePerformanceHandler);
 router.get('/analytics/executive-lead-status', authorize('admin'), getExecutiveLeadStatusHandler);
-router.get('/analytics/executive-lead-status/cold-calling/agents', authorize('admin'), listColdCallingAgentsHandler);
+router.get('/analytics/executive-lead-status/cold-calling/agents', authorize('admin', 'team_leader'), listColdCallingAgentsHandler);
 router.post('/analytics/executive-lead-status/cold-calling/assign', authorize('admin'), assignColdLeadsHandler);
 router.get(
   '/analytics/executive-lead-status/:executiveId/leads',
   authorize('admin'),
   getExecutiveLeadStatusLeadsHandler
 );
-// Cold Calling analytics: Admin only (Cold Calling users are additionally fenced out by the role fence).
-router.get('/analytics/cold-calling', authorize('admin'), getColdCallingAnalyticsHandler);
-router.get('/analytics/cold-calling/:agentId', authorize('admin'), getColdCallingAgentDetailHandler);
-router.get('/analytics/cold-calling/:agentId/leads', authorize('admin'), getColdCallingAgentLeadsHandler);
-router.get('/analytics/cold-calling/:agentId/leads/:leadId/activity', authorize('admin'), getColdCallingAgentLeadActivityHandler);
+// Cold Calling analytics: Admin and Team Leader (Cold Calling users are additionally fenced out by the role fence).
+router.get('/analytics/cold-calling', authorize('admin', 'team_leader'), getColdCallingAnalyticsHandler);
+router.get('/analytics/cold-calling/:agentId', authorize('admin', 'team_leader'), getColdCallingAgentDetailHandler);
+router.get('/analytics/cold-calling/:agentId/leads', authorize('admin', 'team_leader'), getColdCallingAgentLeadsHandler);
+router.get('/analytics/cold-calling/:agentId/leads/:leadId/activity', authorize('admin', 'team_leader'), getColdCallingAgentLeadActivityHandler);
 router.get('/analytics/kpis', authorize('admin', 'sales_manager', 'lead_provider'), getKpis);
 router.get('/analytics/sla', authorize('admin', 'sales_manager', 'lead_provider'), getSlaAnalytics);
 router.get('/audit-log', authorize('admin', 'sales_manager'), listAuditLog);
@@ -104,6 +105,13 @@ router.get('/:id/transfer-history', getTransferHistory);
 router.get('/:id/audit', getAudit);
 router.get('/:id/call-notes', listCallNotes);
 router.post('/:id/call-notes', addCallNote);
+// Call recordings from the Sales Tracker app (raw audio body) and their transcripts.
+router.post(
+  '/:id/call-notes/:noteId/recording',
+  express.raw({ type: ['audio/*', 'application/octet-stream'], limit: '25mb' }),
+  uploadCallRecording
+);
+router.get('/:id/call-notes/:noteId/transcript', getCallTranscript);
 router.post('/:id/restore', requirePermission('leads', 'edit'), restoreLead);
 router.delete('/:id/permanent', requirePermission('leads', 'delete'), permanentDeleteLead);
 
