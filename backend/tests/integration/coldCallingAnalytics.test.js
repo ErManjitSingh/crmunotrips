@@ -137,11 +137,16 @@ const byName = (body, name) => body.agents.find((a) => a.name === name);
 const mumbaiScope = (w) => ({ 'x-branch-id': String(w.mumbai._id) });
 
 describe('authorization', () => {
-  test('Admin only: Cold Calling, Sales Executive, Manager, other roles and anonymous are refused on every endpoint', async () => {
+  test('Admin and Team Leader allowed (Team Leader branch-scoped); Sales Executive, Manager, other roles and anonymous are refused on every endpoint', async () => {
     const w = await seed();
     const urls = [API, `${API}/${w.amit._id}`, `${API}/${w.amit._id}/leads`];
     for (const url of urls) expect([url, (await get(w.adminToken, url, {}, mumbaiScope(w))).status]).toEqual([url, 200]);
-    for (const user of [w.amit, w.rahul, await makeUser('sales_manager', { branchId: w.mumbai._id }), await makeUser('team_leader', { branchId: w.mumbai._id }),
+
+    const tlMumbai = await makeUser('team_leader', { branchId: w.mumbai._id });
+    const tlMumbaiToken = await tokenFor(tlMumbai);
+    for (const url of urls) expect(['team_leader', url, (await get(tlMumbaiToken, url)).status]).toEqual(['team_leader', url, 200]);
+
+    for (const user of [w.amit, w.rahul, await makeUser('sales_manager', { branchId: w.mumbai._id }),
       await makeUser('accountant', { branchId: w.mumbai._id }), await makeUser('lead_provider', { branchId: w.mumbai._id })]) {
       const token = await tokenFor(user);
       for (const url of urls) expect([user.role, url, (await get(token, url)).status]).toEqual([user.role, url, 403]);

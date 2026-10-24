@@ -88,7 +88,13 @@ export default function ColdCallingAnalyticsView() {
             movements={data?.statusMovements}
             loading={isPending}
             refreshing={isFetching && !isPending}
-            detailPathFor={(agent) => buildColdCallingAgentPath(agent._id, appliedFilters)}
+            detailPathFor={(agent) =>
+              buildColdCallingAgentPath(
+                agent._id,
+                appliedFilters,
+                location.pathname.startsWith('/team-leader') ? '/team-leader/cold-calling' : undefined
+              )
+            }
             // The exact overview URL (including an agent filter), so Back from the agent page restores it.
             linkState={{ backTo: `${location.pathname}${location.search}` }}
           />

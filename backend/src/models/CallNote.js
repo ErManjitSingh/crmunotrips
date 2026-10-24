@@ -45,6 +45,25 @@ const callNoteSchema = new mongoose.Schema(
     duration: { type: Number, default: 0, min: 0 },
     startedAt: { type: Date },
     endedAt: { type: Date },
+    /**
+     * The phone dialer's recording of this call, uploaded by the Sales Tracker app. Stored in a
+     * private folder (never under the public /uploads), see services/callRecordingService.js.
+     */
+    recording: {
+      fileName: { type: String },
+      mimeType: { type: String },
+      sizeBytes: { type: Number, min: 0 },
+      durationMs: { type: Number, min: 0 },
+      uploadedAt: { type: Date },
+    },
+    /** Speech-to-text of [recording] (OpenRouter). status: pending | done | failed | not_configured */
+    transcript: {
+      status: { type: String },
+      text: { type: String },
+      model: { type: String },
+      error: { type: String },
+      completedAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

@@ -62,6 +62,7 @@ async function makeAuthedUser(role = 'sales_executive') {
   return { user, token };
 }
 
+/** Pass `assignedTo` — a Sales Executive may only log calls on their own leads. */
 async function makeLead(overrides = {}) {
   counter += 1;
   const creator = await User.create({
@@ -99,8 +100,8 @@ async function postCallNote(token, leadId, body) {
 describe('Call Note category <-> outcome backend validation', () => {
   describe('VALID combinations — accepted', () => {
     test('1. category=hot, outcome=ready_to_book -> ACCEPT', async () => {
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const res = await postCallNote(token, lead._id, { category: 'hot', outcome: 'ready_to_book' });
       expect(res.status).toBe(201);
       expect(res.body.outcome).toBe('ready_to_book');
@@ -117,8 +118,8 @@ describe('Call Note category <-> outcome backend validation', () => {
     // (Lead Status config default, backend/src/services/leadStatusConfigService.js) is
     // "discussed_package" (label "Package discussed"). Using the real key here.
     test('2. category=warm, outcome=discussed_package -> ACCEPT', async () => {
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const res = await postCallNote(token, lead._id, { category: 'warm', outcome: 'discussed_package' });
       expect(res.status).toBe(201);
 
@@ -127,8 +128,8 @@ describe('Call Note category <-> outcome backend validation', () => {
     });
 
     test('3. category=cold, outcome=budget_issues -> ACCEPT', async () => {
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const res = await postCallNote(token, lead._id, { category: 'cold', outcome: 'budget_issues' });
       expect(res.status).toBe(201);
 
@@ -138,8 +139,8 @@ describe('Call Note category <-> outcome backend validation', () => {
     });
 
     test('8. category omitted, outcome=ready_to_book -> category derived as hot, ACCEPT (preserves existing derive-from-outcome behavior)', async () => {
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const res = await postCallNote(token, lead._id, { outcome: 'ready_to_book' });
       expect(res.status).toBe(201);
       expect(res.body.status).toBe('negotiation');
@@ -151,8 +152,8 @@ describe('Call Note category <-> outcome backend validation', () => {
 
   describe('INVALID combinations — rejected with zero database side effects', () => {
     test('4. category=cold, outcome=ready_to_book -> REJECT, no mutation of any kind', async () => {
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const before = await Lead.findById(lead._id).lean();
       const beforeCounts = await countRelatedDocs(lead._id);
 
@@ -174,8 +175,8 @@ describe('Call Note category <-> outcome backend validation', () => {
     });
 
     test('5. category=hot, outcome=budget_issues -> REJECT', async () => {
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const res = await postCallNote(token, lead._id, { category: 'hot', outcome: 'budget_issues' });
       expect(res.status).toBe(400);
       expect(res.body.message).toMatch(/does not belong to/i);
@@ -184,8 +185,8 @@ describe('Call Note category <-> outcome backend validation', () => {
     });
 
     test('6. category=warm, outcome=invalid_outcome_xyz -> REJECT (unknown outcome, never guessed as warm)', async () => {
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const res = await postCallNote(token, lead._id, { category: 'warm', outcome: 'invalid_outcome_xyz' });
       expect(res.status).toBe(400);
       expect(res.body.message).toMatch(/unknown call outcome/i);
@@ -196,8 +197,8 @@ describe('Call Note category <-> outcome backend validation', () => {
     });
 
     test('7. category=invalid_category, outcome=ready_to_book -> REJECT', async () => {
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const res = await postCallNote(token, lead._id, { category: 'invalid_category', outcome: 'ready_to_book' });
       expect(res.status).toBe(400);
       expect(res.body.message).toMatch(/invalid status category/i);
@@ -220,13 +221,13 @@ describe('Call Note category <-> outcome backend validation', () => {
         null
       );
 
-      const { token } = await makeAuthedUser();
+      const { token, user } = await makeAuthedUser();
 
-      const leadOk = await makeLead();
+      const leadOk = await makeLead({ assignedTo: user._id });
       const okRes = await postCallNote(token, leadOk._id, { category: 'hot', outcome: 'documents_required' });
       expect(okRes.status).toBe(201);
 
-      const leadBad = await makeLead();
+      const leadBad = await makeLead({ assignedTo: user._id });
       const badRes = await postCallNote(token, leadBad._id, { category: 'cold', outcome: 'documents_required' });
       expect(badRes.status).toBe(400);
       expect(badRes.body.message).toMatch(/does not belong to/i);
@@ -243,8 +244,8 @@ describe('Call Note category <-> outcome backend validation', () => {
         null
       );
 
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const res = await postCallNote(token, lead._id, { category: 'hot', outcome: 'ready_to_book' });
       expect(res.status).toBe(400);
       expect(res.body.message).toMatch(/unknown call outcome/i);
@@ -270,8 +271,8 @@ describe('Call Note category <-> outcome backend validation', () => {
 
     test('A. category=warm, outcome=package_shared -> SUCCESS (configured Warm outcome)', async () => {
       await seedReportedLiveConfig();
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const res = await postCallNote(token, lead._id, { category: 'warm', outcome: 'package_shared' });
       expect(res.status).toBe(201);
       const updated = await Lead.findById(lead._id).lean();
@@ -284,8 +285,8 @@ describe('Call Note category <-> outcome backend validation', () => {
 
     test('B. category=cold, outcome=plan_cancel -> SUCCESS (configured Cold outcome)', async () => {
       await seedReportedLiveConfig();
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const res = await postCallNote(token, lead._id, { category: 'cold', outcome: 'plan_cancel' });
       expect(res.status).toBe(201);
       const updated = await Lead.findById(lead._id).lean();
@@ -294,8 +295,8 @@ describe('Call Note category <-> outcome backend validation', () => {
 
     test('C. category=cold, outcome=no_plan -> SUCCESS (configured Cold outcome)', async () => {
       await seedReportedLiveConfig();
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const res = await postCallNote(token, lead._id, { category: 'cold', outcome: 'no_plan' });
       expect(res.status).toBe(201);
       const updated = await Lead.findById(lead._id).lean();
@@ -304,16 +305,16 @@ describe('Call Note category <-> outcome backend validation', () => {
 
     test('D. category=hot, outcome=ready_to_book -> SUCCESS', async () => {
       await seedReportedLiveConfig();
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const res = await postCallNote(token, lead._id, { category: 'hot', outcome: 'ready_to_book' });
       expect(res.status).toBe(201);
     });
 
     test('E. category=cold, outcome=ready_to_book -> REJECT (cross-category, even with the new outcomes present)', async () => {
       await seedReportedLiveConfig();
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const before = await Lead.findById(lead._id).lean();
       const beforeCounts = await countRelatedDocs(lead._id);
 
@@ -327,16 +328,16 @@ describe('Call Note category <-> outcome backend validation', () => {
 
     test('F. category=hot, outcome=budget_issues -> REJECT', async () => {
       await seedReportedLiveConfig();
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const res = await postCallNote(token, lead._id, { category: 'hot', outcome: 'budget_issues' });
       expect(res.status).toBe(400);
     });
 
     test('G. category=cold, outcome=totally_unknown_outcome -> REJECT, zero mutation', async () => {
       await seedReportedLiveConfig();
-      const { token } = await makeAuthedUser();
-      const lead = await makeLead();
+      const { token, user } = await makeAuthedUser();
+      const lead = await makeLead({ assignedTo: user._id });
       const beforeCounts = await countRelatedDocs(lead._id);
 
       const res = await postCallNote(token, lead._id, { category: 'cold', outcome: 'totally_unknown_outcome' });
@@ -347,7 +348,7 @@ describe('Call Note category <-> outcome backend validation', () => {
 
     test('EXHAUSTIVE: every currently-configured Hot/Warm/Cold option in the Call Follow-up popup saves without error under its own category', async () => {
       await seedReportedLiveConfig();
-      const { token } = await makeAuthedUser();
+      const { token, user } = await makeAuthedUser();
       const cfg = await leadStatusConfigService.getConfig({ includeDisabled: false });
 
       const cases = [
@@ -360,7 +361,7 @@ describe('Call Note category <-> outcome backend validation', () => {
       const failures = [];
       for (const { category, outcome, label } of cases) {
         // eslint-disable-next-line no-await-in-loop
-        const lead = await makeLead();
+        const lead = await makeLead({ assignedTo: user._id });
         // eslint-disable-next-line no-await-in-loop
         const res = await postCallNote(token, lead._id, { category, outcome });
         if (res.status !== 201) {

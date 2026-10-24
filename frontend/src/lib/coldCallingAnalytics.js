@@ -42,15 +42,18 @@ export function toColdCallingParams(filters = {}) {
 }
 
 /** Overview URL carrying the filters (the Back link from an agent). */
-export function buildColdCallingOverviewPath(filters) {
-  return `${EXECUTIVE_LEAD_STATUS_PATH}?${coldCallingFiltersToSearchParams(filters)}`;
+export function buildColdCallingOverviewPath(filters, basePath = EXECUTIVE_LEAD_STATUS_PATH) {
+  const isDirectColdCalling = basePath.endsWith('/cold-calling');
+  const params = coldCallingFiltersToSearchParams(filters);
+  if (isDirectColdCalling) params.delete('view');
+  return `${basePath}?${params}`;
 }
 
 /** Agent detail URL: same period/source/branch, the agent comes from the path (so it is not also a query param). */
-export function buildColdCallingAgentPath(agentId, filters) {
+export function buildColdCallingAgentPath(agentId, filters, basePath = COLD_CALLING_ANALYTICS_PATH) {
   const params = coldCallingFiltersToSearchParams({ ...filters, agentId: '' });
   params.delete('view');
-  return `${COLD_CALLING_ANALYTICS_PATH}/${agentId}?${params}`;
+  return `${basePath}/${agentId}?${params}`;
 }
 
 /** Switching tabs keeps period / source / branch and drops the tab-specific executive / agent. */

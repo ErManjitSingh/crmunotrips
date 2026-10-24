@@ -21,6 +21,7 @@ export const LeadAuditLog = lazy(() => import('../pages/LeadAuditLog'));
 export const ExecutiveLeadStatus = lazy(() => import('../pages/ExecutiveLeadStatus'));
 export const ExecutiveLeadStatusDetail = lazy(() => import('../pages/ExecutiveLeadStatusDetail'));
 export const ColdCallingAgentDetail = lazy(() => import('../pages/ColdCallingAgentDetail'));
+export const ColdCallingAnalytics = lazy(() => import('../components/cold-calling-analytics/ColdCallingAnalyticsView'));
 export const ColdCallingLayout = lazy(() => import('../components/cold-calling/ColdCallingLayout'));
 export const ColdCallingDashboard = lazy(() => import('../pages/ColdCallingDashboard'));
 export const ColdCallingMyLeads = lazy(() => import('../pages/ColdCallingMyLeads'));

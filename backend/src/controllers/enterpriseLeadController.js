@@ -196,7 +196,37 @@ const listCallNotes = asyncHandler(async (req, res) => {
   res.json(paginatedResponse(rows, { page, limit, total }));
 });
 
-const addCallNote = asyncHandler(async (req, res) => {
+/**
+ * In-flight call-note submissions, keyed by lead + caller + call start. The API runs as a single
+ * process (PM2 fork, instances: 1), so this serialises an identical double-tap/retry that arrives
+ * while the first request is still saving; the existing-call check below then answers it.
+ * If the API is ever clustered this must become a database-level guard (e.g. a unique index).
+ */
+const inFlightCallNotes = new Map();
+
+async function runExclusiveCallNote(key, fn) {
+  if (!key) return fn();
+  while (inFlightCallNotes.has(key)) {
+    await inFlightCallNotes.get(key).catch(() => {});
+  }
+  const run = fn();
+  inFlightCallNotes.set(key, run);
+  try {
+    return await run;
+  } finally {
+    if (inFlightCallNotes.get(key) === run) inFlightCallNotes.delete(key);
+  }
+}
+
+function callNoteKey(req) {
+  const started = req.body?.startedAt ? new Date(req.body.startedAt).getTime() : NaN;
+  if (!Number.isFinite(started) || !req.user?._id) return null;
+  return `${req.params.id}:${req.user._id}:${started}`;
+}
+
+const addCallNote = asyncHandler(async (req, res) => runExclusiveCallNote(callNoteKey(req), () => saveCallNote(req, res)));
+
+async function saveCallNote(req, res) {
   const {
     outcome,
     notes,
@@ -215,8 +245,21 @@ const addCallNote = asyncHandler(async (req, res) => {
     _id: req.params.id,
     ...(req.branchId ? { branchId: req.branchId } : {}),
     isDeleted: { $ne: true },
+    // A Sales Executive may only log calls on leads assigned to them — same ownership rule as every
+    // /sales-executive/leads/:id route. 404 (not 403) so another executive's lead isn't revealed.
+    ...(req.user?.role === 'sales_executive' ? { assignedTo: req.user._id } : {}),
   });
   if (!lead) throw new ApiError(404, 'Lead not found');
+
+  // The same call (lead + caller + call start) is saved once. A retry after a lost response or a
+  // double submit gets the already-saved call back, with no new CallNote, status change, follow-up,
+  // activity or audit record — the same contract as the Cold Calling route (duplicate: true).
+  const { findExistingCall } = require('../services/coldCallingCallService');
+  const existingCall = await findExistingCall({ leadId: lead._id, userId: req.user._id, startedAt });
+  if (existingCall) {
+    res.status(200).json({ ...existingCall, duplicate: true, status: lead.status, callStats: lead.callStats });
+    return;
+  }
 
   // Safety net: a call being captured here means the executive accessed this lead's protected
   // phone number, so it must count as Opened — regardless of whether the frontend's pre-dial
@@ -360,13 +403,18 @@ const addCallNote = asyncHandler(async (req, res) => {
       const { createFollowUpForLead } = require('../services/followUpService');
       const { syncLeadFollowUpDates } = require('../utils/followUpHelpers');
 
-      // 2nd/3rd call: complete prior auto "+2 hrs" reminders so the new timing becomes nextFollowUp
+      // 2nd/3rd call: complete prior auto "+2 hrs" reminders so the new timing becomes nextFollowUp.
+      // Reminders saved before the autoNextCall flag existed are matched by their notes, where
+      // normalizeFollowUpPayload puts a "Cold — … . " / "Warm — … . " prefix before our text.
       await FollowUp.updateMany(
         {
           lead: lead._id,
           status: 'pending',
           type: 'call',
-          notes: { $regex: /^Auto next call/i },
+          $or: [
+            { autoNextCall: true },
+            { notes: { $regex: /(^|\. )Auto next call \(2 hrs\) after call — / } },
+          ],
         },
         {
           $set: {
@@ -394,6 +442,7 @@ const addCallNote = asyncHandler(async (req, res) => {
           priority: lead.priority || 'medium',
         },
         user: req.user,
+        autoNextCall: true,
       });
       await syncLeadFollowUpDates(lead._id);
     } catch (err) {
@@ -435,7 +484,7 @@ const addCallNote = asyncHandler(async (req, res) => {
     status: lead.status,
     callConnected,
   });
-});
+}
 
 const bulkUpdateStatus = asyncHandler(async (req, res) => {
   const {

@@ -82,7 +82,13 @@ export default function ColdCallingAgentDetailPage() {
   return (
     <div className="animate-fade-up px-4 pt-4 lg:px-0 lg:pt-0">
       <Link
-        to={location.state?.backTo || buildColdCallingOverviewPath(filters)}
+        to={
+          location.state?.backTo ||
+          buildColdCallingOverviewPath(
+            filters,
+            location.pathname.startsWith('/team-leader') ? '/team-leader/cold-calling' : undefined
+          )
+        }
         className="mb-4 inline-flex items-center gap-1.5 rounded-lg text-sm font-semibold text-violet-700 transition hover:text-violet-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/70"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />

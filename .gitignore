@@ -4,3 +4,7 @@ backend/uploads/
 .env
 *.log
 .DS_Store
+# Private call recordings (never served publicly)
+backend/storage/
+# Local OpenRouter key for the standalone transcription test (never commit)
+backend/.env.openrouter-test
